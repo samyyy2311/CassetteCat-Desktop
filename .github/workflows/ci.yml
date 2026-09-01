@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4.3.1
+        with:
+          version: "6.8.*"
+          target: desktop
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Configure
+        run: cmake --preset dev
+
+      - name: Build
+        run: cmake --build --preset dev --parallel
+
+      - name: Run self-check
+        run: .\build\dev\CassetteCat.exe --self-check

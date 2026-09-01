@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4.3.1
+        with:
+          version: "6.8.*"
+          target: desktop
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build/release --parallel
+
+      - name: Run self-check
+        run: .\build\release\CassetteCat.exe --self-check
+
+      - name: Package
+        shell: pwsh
+        run: |
+          cmake --install build/release --prefix dist/CassetteCat
+          Compress-Archive -Path dist/CassetteCat -DestinationPath "CassetteCat-$env:GITHUB_REF_NAME-windows-x64.zip"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$env:GITHUB_REF_NAME" "CassetteCat-$env:GITHUB_REF_NAME-windows-x64.zip" --generate-notes --title "CassetteCat $env:GITHUB_REF_NAME"

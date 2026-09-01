@@ -1,0 +1,21 @@
+name: Bug report
+description: Report a reproducible problem
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: Include clear steps to reproduce the issue.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Environment
+      description: OS, app version, and Qt version if known.
+    validations:
+      required: true

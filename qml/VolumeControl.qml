@@ -5,6 +5,7 @@ import QtQuick.Layouts
 Item {
     id: root
     property real volume: 1.0
+    property bool showPercentage: true
     signal volumeAdjusted(real newVolume)
 
     implicitWidth: 160
@@ -177,7 +178,8 @@ Item {
 
         Label {
             id: pctLabel
-            Layout.preferredWidth: 34
+            Layout.preferredWidth: root.showPercentage ? 34 : 0
+            visible: root.showPercentage
             text: Math.round(root.volume * 100) + "%"
             color: (volTrackMouse.containsMouse || root.isDragging || pctMouse.containsMouse) ? root.textPrimary : root.silverDim
             font.family: root.monoFont

@@ -9,7 +9,7 @@
 /out.log
 /out.txt
 
-# Favicon-converter output; the app uses only cassettecat_icon.png and cassettecat_icon.ico.
+# Favicon
 /assets/icons/
 /assets/android-chrome-*.png
 /assets/apple-touch-icon.png

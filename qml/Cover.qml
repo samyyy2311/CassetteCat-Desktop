@@ -1,11 +1,28 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Effects
+import QtQuick.Window
 
 Item {
     id: root
     property var track: ({})
     property real radius: 8
+    property bool keepPreviousArtwork: false
+    property bool cacheArtwork: false
+    property real stableSourceSize: 0
+    readonly property url artworkSource: {
+        const currentTrack = root.track || ({})
+        return currentTrack.artworkUrl || (currentTrack.filePath ? library.artworkFor(currentTrack.filePath) : "")
+    }
+    property url displayedSource: artworkSource
+
+    onArtworkSourceChanged: {
+        if (artworkSource === displayedSource) return
+        if (keepPreviousArtwork && artImage.status === Image.Ready && displayedSource) {
+            previousArt.source = displayedSource
+            previousArt.opacity = 1
+        }
+        displayedSource = artworkSource
+    }
 
     function coverColor(value) {
         const colors = [
@@ -22,7 +39,6 @@ Item {
         anchors.fill: parent
         radius: root.radius
         color: root.coverColor(root.track ? (root.track.title || root.track.album || root.track.artist || "CassetteCat") : "CassetteCat")
-        clip: true
 
         LucideIcon {
             anchors.centerIn: parent
@@ -34,30 +50,64 @@ Item {
         }
     }
 
+    Rectangle {
+        id: maskItem
+        width: Math.max(1, root.width)
+        height: Math.max(1, root.height)
+        radius: root.radius
+        color: "#FFFFFF"
+        visible: false
+        layer.enabled: root.radius > 0
+        layer.smooth: true
+    }
+
     Image {
-        id: artImage
+        id: previousArt
         anchors.fill: parent
-        source: root.track ? (root.track.artworkUrl || "") : ""
+        sourceSize.width: Math.max(1, Math.ceil((root.stableSourceSize || width) * Screen.devicePixelRatio))
+        sourceSize.height: Math.max(1, Math.ceil((root.stableSourceSize || height) * Screen.devicePixelRatio))
         fillMode: Image.PreserveAspectCrop
-        visible: status === Image.Ready && source.toString() !== ""
         asynchronous: true
-        layer.enabled: true
+        cache: root.cacheArtwork
+        smooth: true
+        mipmap: false
+        autoTransform: true
+        opacity: 0
+        visible: opacity > 0 && source.toString() !== ""
+
+        Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+
+        layer.enabled: root.radius > 0
         layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: maskItem
         }
     }
 
-    Item {
-        id: maskItem
+    Image {
+        id: artImage
         anchors.fill: parent
-        layer.enabled: true
-        visible: false
+        source: root.displayedSource
+        fillMode: Image.PreserveAspectCrop
+        sourceSize.width: Math.max(1, Math.ceil((root.stableSourceSize || width) * Screen.devicePixelRatio))
+        sourceSize.height: Math.max(1, Math.ceil((root.stableSourceSize || height) * Screen.devicePixelRatio))
+        visible: status === Image.Ready && source.toString() !== ""
+        opacity: visible ? 1 : 0
+        asynchronous: true
+        cache: root.cacheArtwork
+        smooth: true
+        mipmap: false
+        autoTransform: true
 
-        Rectangle {
-            anchors.fill: parent
-            radius: root.radius
-            color: "white"
+        onStatusChanged: {
+            if (status === Image.Ready || status === Image.Error) previousArt.opacity = 0
+        }
+        Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
+
+        layer.enabled: root.radius > 0
+        layer.effect: MultiEffect {
+            maskEnabled: true
+            maskSource: maskItem
         }
     }
 }

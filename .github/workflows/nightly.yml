@@ -1,0 +1,55 @@
+name: Nightly Desktop Build
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4.3.1
+        with:
+          version: "6.8.*"
+          target: desktop
+          arch: win64_msvc2022_64
+          modules: qtmultimedia
+          cache: true
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build/nightly -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
+
+      - name: Build
+        run: cmake --build build/nightly --parallel 2
+
+      - name: Run self-check
+        run: .\build\nightly\CassetteCat.exe --self-check
+
+      - name: Run tests
+        run: ctest --test-dir build/nightly --output-on-failure
+
+      - name: Package portable app
+        shell: pwsh
+        run: |
+          cmake --install build/nightly --prefix dist/CassetteCat
+          Compress-Archive -Path dist/CassetteCat -DestinationPath "CassetteCat-nightly-${{ github.run_number }}-windows-x64.zip"
+
+      - name: Upload portable app
+        uses: actions/upload-artifact@v4
+        with:
+          name: CassetteCat-windows-nightly-${{ github.run_number }}
+          path: CassetteCat-nightly-${{ github.run_number }}-windows-x64.zip
+          retention-days: 30

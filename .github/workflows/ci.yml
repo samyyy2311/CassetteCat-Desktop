@@ -2,7 +2,10 @@ name: CI
 
 on:
   push:
+    branches: [ "main" ]
   pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,10 +31,56 @@ jobs:
           cache: true
 
       - name: Configure
-        run: cmake --preset dev
+        shell: pwsh
+        run: cmake -S . -B build/ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
 
       - name: Build
-        run: cmake --build --preset dev --parallel
+        run: cmake --build build/ci --parallel 2
 
       - name: Run self-check
-        run: .\build\dev\CassetteCat.exe --self-check
+        run: .\build\ci\CassetteCat.exe --self-check
+
+      - name: Run tests
+        run: ctest --test-dir build/ci --output-on-failure
+
+      - name: Package portable app
+        shell: pwsh
+        run: |
+          cmake --install build/ci --prefix dist/CassetteCat
+          Compress-Archive -Path dist/CassetteCat -DestinationPath "CassetteCat-ci-${{ github.sha }}-windows-x64.zip"
+
+      - name: Upload portable app
+        uses: actions/upload-artifact@v4
+        with:
+          name: CassetteCat-windows-ci-${{ github.sha }}
+          path: CassetteCat-ci-${{ github.sha }}-windows-x64.zip
+          retention-days: 14
+
+  linux:
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+      QT_QPA_OFFSCREEN_NO_GLX: "1"
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4.3.1
+        with:
+          version: "6.8.*"
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtmultimedia
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build/ci-linux -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+
+      - name: Build
+        run: cmake --build build/ci-linux --parallel 2
+
+      - name: Run self-check
+        run: ./build/ci-linux/CassetteCat --self-check
+
+      - name: Run tests
+        run: ctest --test-dir build/ci-linux --output-on-failure

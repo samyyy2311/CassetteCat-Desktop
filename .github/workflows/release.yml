@@ -4,15 +4,29 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing version tag to publish
+        required: true
+        type: string
 
 permissions:
   contents: write
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Check release tag
+        shell: pwsh
+        run: if ($env:RELEASE_TAG -notmatch '^v.+') { throw 'Release tags must start with v.' }
 
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
@@ -29,7 +43,8 @@ jobs:
           cache: true
 
       - name: Configure
-        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release
+        shell: pwsh
+        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
 
       - name: Build
         run: cmake --build build/release --parallel
@@ -41,9 +56,53 @@ jobs:
         shell: pwsh
         run: |
           cmake --install build/release --prefix dist/CassetteCat
-          Compress-Archive -Path dist/CassetteCat -DestinationPath "CassetteCat-$env:GITHUB_REF_NAME-windows-x64.zip"
+          Compress-Archive -Path dist/CassetteCat -DestinationPath "CassetteCat-$env:RELEASE_TAG-windows-x64.zip"
+          (Get-FileHash "CassetteCat-$env:RELEASE_TAG-windows-x64.zip" -Algorithm SHA256).Hash | Set-Content "CassetteCat-$env:RELEASE_TAG-windows-x64.zip.sha256"
 
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$env:GITHUB_REF_NAME" "CassetteCat-$env:GITHUB_REF_NAME-windows-x64.zip" --generate-notes --title "CassetteCat $env:GITHUB_REF_NAME"
+        run: gh release create "$env:RELEASE_TAG" "CassetteCat-$env:RELEASE_TAG-windows-x64.zip" "CassetteCat-$env:RELEASE_TAG-windows-x64.zip.sha256" --generate-notes --title "CassetteCat $env:RELEASE_TAG"
+
+  linux:
+    needs: windows
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+      QT_QPA_OFFSCREEN_NO_GLX: "1"
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4.3.1
+        with:
+          version: "6.8.*"
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtmultimedia
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+
+      - name: Build
+        run: cmake --build build/release --parallel 2
+
+      - name: Run self-check
+        run: ./build/release/CassetteCat --self-check
+
+      - name: Run tests
+        run: ctest --test-dir build/release --output-on-failure
+
+      - name: Package
+        run: |
+          cmake --install build/release --prefix dist/CassetteCat
+          tar -czf "CassetteCat-$RELEASE_TAG-linux-x64.tar.gz" -C dist CassetteCat
+          sha256sum "CassetteCat-$RELEASE_TAG-linux-x64.tar.gz" > "CassetteCat-$RELEASE_TAG-linux-x64.tar.gz.sha256"
+
+      - name: Publish Linux release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" "CassetteCat-$RELEASE_TAG-linux-x64.tar.gz" "CassetteCat-$RELEASE_TAG-linux-x64.tar.gz.sha256"

@@ -20,7 +20,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
 
@@ -71,7 +71,7 @@ jobs:
       QT_QPA_PLATFORM: offscreen
       QT_QPA_OFFSCREEN_NO_GLX: "1"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
 

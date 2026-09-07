@@ -48,7 +48,7 @@ jobs:
           Compress-Archive -Path dist/CassetteCat -DestinationPath "CassetteCat-nightly-${{ github.run_number }}-windows-x64.zip"
 
       - name: Upload portable app
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: CassetteCat-windows-nightly-${{ github.run_number }}
           path: CassetteCat-nightly-${{ github.run_number }}-windows-x64.zip

@@ -19,7 +19,10 @@ Item {
         repeat: true
         onTriggered: {
             if (!root.targetView) return
-            const flick = root.targetView.flickableItem || root.targetView
+            const flick = root.targetView.contentY !== undefined
+                ? root.targetView
+                : root.targetView.contentItem
+            if (!flick || flick.contentY === undefined) return
             const dy = root.currentPoint.y - root.originPoint.y
             const deadZone = 12
             if (Math.abs(dy) > deadZone) {

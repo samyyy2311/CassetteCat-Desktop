@@ -6,479 +6,312 @@ Item {
     id: root
     signal backClicked()
 
-    Flickable {
+    component CreditItemRow: Rectangle {
+        id: itemRoot
+        property var itemData: ({})
+        signal clicked()
+
+        Layout.fillWidth: true
+        Layout.preferredHeight: 54
+        color: m.containsMouse ? surfaceCardHover : "transparent"
+        Behavior on color { ColorAnimation { duration: 120 } }
+
+        Item {
+            id: iconBadge
+            anchors.left: parent.left
+            anchors.leftMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            width: 24
+            height: 24
+
+            LucideIcon {
+                anchors.centerIn: parent
+                width: 20
+                height: 20
+                icon: itemRoot.itemData.icon || ""
+                preserveColor: !!itemRoot.itemData.preserveColor
+                color: m.containsMouse ? recordRedHover : textPrimary
+            }
+        }
+
+        Column {
+            anchors.left: iconBadge.right
+            anchors.leftMargin: 14
+            anchors.right: linkIcon.left
+            anchors.rightMargin: 14
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 2
+
+            Label {
+                width: parent.width
+                text: itemRoot.itemData.title || ""
+                color: m.containsMouse ? recordRedHover : textPrimary
+                font.family: displayFont
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                elide: Text.ElideRight
+            }
+
+            Label {
+                width: parent.width
+                text: itemRoot.itemData.subtitle || ""
+                color: textSecondary
+                font.family: bodyFont
+                font.pixelSize: 11
+                elide: Text.ElideRight
+            }
+        }
+
+        LucideIcon {
+            id: linkIcon
+            anchors.right: parent.right
+            anchors.rightMargin: 16
+            anchors.verticalCenter: parent.verticalCenter
+            width: 14
+            height: 14
+            icon: "external-link"
+            color: m.containsMouse ? recordRedHover : silverDim
+        }
+
+        MouseArea {
+            id: m
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: itemRoot.clicked()
+        }
+    }
+
+    ScrollView {
+        id: scroll
         anchors.fill: parent
-        contentWidth: width
-        contentHeight: contentCol.implicitHeight + 80
         clip: true
-        boundsBehavior: Flickable.StopAtBounds
+        contentWidth: availableWidth
+        contentHeight: bodyCol.implicitHeight + 48
+        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
         ScrollBar.vertical: SleekScrollBar {}
 
-        ColumnLayout {
-            id: contentCol
-            width: Math.min(parent.width - 64, 760)
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: 24
+        Column {
+            id: bodyCol
+            width: scroll.availableWidth
+            spacing: 10
+            topPadding: 24
+            bottomPadding: 36
 
-            Item { Layout.preferredHeight: 12 }
+            ColumnLayout {
+                x: 32
+                width: scroll.availableWidth - 64
+                spacing: 10
 
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 16
+                // ---- Header matching SubPageHeader with rotated left-pointing chevron ----
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
 
-                PressDepthIconButton {
-                    boxSize: 36
-                    iconSize: 18
-                    iconName: "chevron-down"
-                    tint: textPrimary
-                    tooltipText: "Back to Settings"
-                    onClicked: root.backClicked()
-                }
+                    PressDepthIconButton {
+                        boxSize: 36
+                        iconSize: 18
+                        iconName: "chevron-left"
+                        tint: textPrimary
+                        tooltipText: "Back to Settings"
+                        onClicked: root.backClicked()
+                    }
 
-                ColumnLayout {
-                    spacing: 2
                     Label {
+                        Layout.fillWidth: true
                         text: "Credits & Open Source"
                         color: textPrimary
                         font.family: displayFont
-                        font.pixelSize: 24
+                        font.pixelSize: 20
                         font.weight: Font.Bold
-                    }
-                    Label {
-                        text: "Services, data providers, and open-source libraries"
-                        color: textSecondary
-                        font.family: bodyFont
-                        font.pixelSize: 12
+                        font.letterSpacing: -0.3
+                        elide: Text.ElideRight
                     }
                 }
-            }
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 10
-
-                Label {
-                    text: "SERVICES & DATA"
-                    color: recordRedHover
-                    font.family: monoFont
-                    font.pixelSize: 11
-                    font.weight: Font.Bold
-                }
-
-                Repeater {
-                    model: [
-                        {
-                            title: "LRCLIB",
-                            subtitle: "Synchronized and plain lyrics (lrclib.net)",
-                            icon: "music",
-                            url: "https://lrclib.net"
-                        },
-                        {
-                            title: "Deezer",
-                            subtitle: "Artist portraits and high-res imagery (deezer.com)",
-                            icon: "disc",
-                            url: "https://deezer.com"
-                        },
-                        {
-                            title: "TheAudioDB",
-                            subtitle: "Fallback artist images and biographies (theaudiodb.com)",
-                            icon: "mic",
-                            url: "https://theaudiodb.com"
-                        },
-                        {
-                            title: "Radio Browser",
-                            subtitle: "Community-run internet radio station directory (radio-browser.info)",
-                            icon: "radio",
-                            url: "https://radio-browser.info"
-                        },
-                        {
-                            title: "Wikipedia & Wikimedia",
-                            subtitle: "Artist biographies and album background (CC BY-SA 4.0)",
-                            icon: "globe",
-                            url: "https://wikipedia.org"
-                        },
-                        {
-                            title: "MusicBrainz",
-                            subtitle: "Open music encyclopedia and metadata references",
-                            icon: "disc",
-                            url: "https://musicbrainz.org"
-                        },
-                        {
-                            title: "Cover Art Archive",
-                            subtitle: "Archival CD and vinyl cover scans (Internet Archive & MusicBrainz)",
-                            icon: "disc",
-                            url: "https://coverartarchive.org"
-                        },
-                        {
-                            title: "ListenBrainz",
-                            subtitle: "Open scrobbling platform and CC0 listening data",
-                            icon: "audio-lines",
-                            url: "https://listenbrainz.org"
-                        },
-                        {
-                            title: "Libre.fm",
-                            subtitle: "Free software music scrobbling network (GNU FM)",
-                            icon: "radio",
-                            url: "https://libre.fm"
-                        },
-                        {
-                            title: "GitHub",
-                            subtitle: "Release update checks (github.com)",
-                            icon: "external-link",
-                            url: "https://github.com"
-                        }
-                    ]
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 56
-                        radius: 14
-                        color: credMouse.containsMouse ? surfaceElevated : surfaceCard
-                        border.width: credMouse.containsMouse ? 1.5 : 1.0
-                        border.color: credMouse.containsMouse ? recordRed : borderSubtle
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                        Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 16
-                            anchors.rightMargin: 16
-                            spacing: 14
-
-                            LucideIcon {
-                                Layout.preferredWidth: 20
-                                Layout.preferredHeight: 20
-                                icon: modelData.icon
-                                color: credMouse.containsMouse ? recordRedHover : textPrimary
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
-
-                                Label {
-                                    text: modelData.title
-                                    color: credMouse.containsMouse ? recordRedHover : textPrimary
-                                    font.family: displayFont
-                                    font.pixelSize: 14
-                                    font.weight: Font.DemiBold
-                                }
-                                Label {
-                                    text: modelData.subtitle
-                                    color: textSecondary
-                                    font.family: bodyFont
-                                    font.pixelSize: 11
-                                    elide: Text.ElideRight
-                                }
-                            }
-
-                            LucideIcon {
-                                Layout.preferredWidth: 14
-                                Layout.preferredHeight: 14
-                                icon: "external-link"
-                                color: credMouse.containsMouse ? recordRedHover : silverDim
-                            }
-                        }
-
-                        MouseArea {
-                            id: credMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Qt.openUrlExternally(modelData.url)
-                        }
-                    }
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 10
-
-                Label {
-                    text: "CORE AUDIO & ARCHITECTURE"
-                    color: recordRedHover
-                    font.family: monoFont
-                    font.pixelSize: 11
-                    font.weight: Font.Bold
-                }
-
-                Repeater {
-                    model: [
-                        {
-                            title: "AutoEq",
-                            subtitle: "Calibrated headphone equalizer response curves by Jaakko Pasanen",
-                            icon: "audio-lines",
-                            url: "https://github.com/jaakkopasanen/AutoEq"
-                        },
-                        {
-                            title: "Qt Multimedia",
-                            subtitle: "Hardware audio playback, streaming, and audio sinks",
-                            icon: "music",
-                            url: "https://doc.qt.io/qt-6/qtmultimedia-index.html"
-                        },
-                        {
-                            title: "Qt Network",
-                            subtitle: "High-performance HTTP/REST client for lyrics and data sync",
-                            icon: "globe",
-                            url: "https://doc.qt.io/qt-6/qtnetwork-index.html"
-                        },
-                        {
-                            title: "TagLib",
-                            subtitle: "Audio metadata and embedded ID3/MP4/FLAC tag parser",
-                            icon: "info",
-                            url: "https://taglib.org"
-                        },
-                        {
-                            title: "DWM Windows Frameless",
-                            subtitle: "Hardware-accelerated Windows Desktop Window Manager composition",
-                            icon: "shield",
-                            url: "https://learn.microsoft.com/en-us/windows/win32/dwm/dwm-overview"
-                        }
-                    ]
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 56
-                        radius: 14
-                        color: coreMouse.containsMouse ? surfaceElevated : surfaceCard
-                        border.width: coreMouse.containsMouse ? 1.5 : 1.0
-                        border.color: coreMouse.containsMouse ? recordRed : borderSubtle
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                        Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 16
-                            anchors.rightMargin: 16
-                            spacing: 14
-
-                            LucideIcon {
-                                Layout.preferredWidth: 20
-                                Layout.preferredHeight: 20
-                                icon: modelData.icon
-                                color: coreMouse.containsMouse ? recordRedHover : textPrimary
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
-
-                                Label {
-                                    text: modelData.title
-                                    color: coreMouse.containsMouse ? recordRedHover : textPrimary
-                                    font.family: displayFont
-                                    font.pixelSize: 14
-                                    font.weight: Font.DemiBold
-                                }
-                                Label {
-                                    text: modelData.subtitle
-                                    color: textSecondary
-                                    font.family: bodyFont
-                                    font.pixelSize: 11
-                                    elide: Text.ElideRight
-                                }
-                            }
-
-                            LucideIcon {
-                                Layout.preferredWidth: 14
-                                Layout.preferredHeight: 14
-                                icon: "external-link"
-                                color: coreMouse.containsMouse ? recordRedHover : silverDim
-                            }
-                        }
-
-                        MouseArea {
-                            id: coreMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Qt.openUrlExternally(modelData.url)
-                        }
-                    }
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 10
-
-                Label {
-                    text: "DESIGN & TYPOGRAPHY"
-                    color: recordRedHover
-                    font.family: monoFont
-                    font.pixelSize: 11
-                    font.weight: Font.Bold
-                }
-
-                Repeater {
-                    model: [
-                        {
-                            title: "Lucide Icons",
-                            subtitle: "App logo & open-source iconography (lucide.dev, ISC License)",
-                            icon: "info",
-                            url: "https://lucide.dev"
-                        },
-                        {
-                            title: "Simple Icons",
-                            subtitle: "Authentic brand SVG icons (simpleicons.org, CC0 1.0)",
-                            icon: "shield",
-                            url: "https://simpleicons.org"
-                        },
-                        {
-                            title: "IBM Plex (Sans & Mono)",
-                            subtitle: "Designed by Mike Abbink and Bold Monday for IBM (OFL 1.1)",
-                            icon: "info",
-                            url: "https://github.com/IBM/plex"
-                        },
-                        {
-                            title: "Space Grotesk",
-                            subtitle: "Proportional monospace display typeface by Florian Karsten (OFL 1.1)",
-                            icon: "info",
-                            url: "https://github.com/floriankarsten/space-grotesk"
-                        }
-                    ]
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 56
-                        radius: 14
-                        color: desMouse.containsMouse ? surfaceElevated : surfaceCard
-                        border.width: desMouse.containsMouse ? 1.5 : 1.0
-                        border.color: desMouse.containsMouse ? recordRed : borderSubtle
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                        Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 16
-                            anchors.rightMargin: 16
-                            spacing: 14
-
-                            LucideIcon {
-                                Layout.preferredWidth: 20
-                                Layout.preferredHeight: 20
-                                icon: modelData.icon
-                                color: desMouse.containsMouse ? recordRedHover : textPrimary
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                spacing: 2
-
-                                Label {
-                                    text: modelData.title
-                                    color: desMouse.containsMouse ? recordRedHover : textPrimary
-                                    font.family: displayFont
-                                    font.pixelSize: 14
-                                    font.weight: Font.DemiBold
-                                }
-                                Label {
-                                    text: modelData.subtitle
-                                    color: textSecondary
-                                    font.family: bodyFont
-                                    font.pixelSize: 11
-                                    elide: Text.ElideRight
-                                }
-                            }
-
-                            LucideIcon {
-                                Layout.preferredWidth: 14
-                                Layout.preferredHeight: 14
-                                icon: "external-link"
-                                color: desMouse.containsMouse ? recordRedHover : silverDim
-                            }
-                        }
-
-                        MouseArea {
-                            id: desMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Qt.openUrlExternally(modelData.url)
-                        }
-                    }
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 10
-
-                Label {
-                    text: "OPEN SOURCE LICENSE"
-                    color: recordRedHover
-                    font.family: monoFont
-                    font.pixelSize: 11
-                    font.weight: Font.Bold
-                }
+                // ---- Section 1: Services & Data ----
+                SectionLabel { text: "Services & Data" }
 
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 56
-                    radius: 14
-                    color: licMouse.containsMouse ? surfaceElevated : surfaceCard
-                    border.width: licMouse.containsMouse ? 1.5 : 1.0
-                    border.color: licMouse.containsMouse ? recordRed : borderSubtle
+                    implicitHeight: s1Col.implicitHeight
+                    radius: 12
+                    color: surfaceCard
+                    border.width: 1
+                    border.color: borderSubtle
+                    clip: true
 
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    Behavior on border.color { ColorAnimation { duration: 120 } }
+                    ColumnLayout {
+                        id: s1Col
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        spacing: 0
 
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 16
-                        anchors.rightMargin: 16
-                        spacing: 14
+                        Repeater {
+                            model: [
+                                { title: "LRCLIB", subtitle: "Synchronized and plain lyrics (lrclib.net)", icon: "lrclib", preserveColor: true, url: "https://lrclib.net" },
+                                { title: "Deezer", subtitle: "Artist portraits and high-res imagery (deezer.com)", icon: "deezer", preserveColor: true, url: "https://deezer.com" },
+                                { title: "TheAudioDB", subtitle: "Fallback artist images and biographies (theaudiodb.com)", icon: "theaudiodb", preserveColor: true, url: "https://theaudiodb.com" },
+                                { title: "Radio Browser", subtitle: "Community-run internet radio station directory (radio-browser.info)", icon: "radio", preserveColor: false, url: "https://radio-browser.info" },
+                                { title: "Wikipedia & Wikimedia", subtitle: "Artist biographies and album background (CC BY-SA 4.0)", icon: "wikipedia", preserveColor: true, url: "https://wikipedia.org" },
+                                { title: "MusicBrainz", subtitle: "Open music encyclopedia and metadata references", icon: "musicbrainz", preserveColor: true, url: "https://musicbrainz.org" },
+                                { title: "Cover Art Archive", subtitle: "Archival CD and vinyl cover scans (Internet Archive & MusicBrainz)", icon: "archive", preserveColor: true, url: "https://coverartarchive.org" },
+                                { title: "ListenBrainz", subtitle: "Open scrobbling platform and CC0 listening data", icon: "listenbrainz", preserveColor: true, url: "https://listenbrainz.org" },
+                                { title: "Libre.fm", subtitle: "Free software music scrobbling network (GNU FM)", icon: "librefm", preserveColor: true, url: "https://libre.fm" },
+                                { title: "GitHub", subtitle: "Release update checks (github.com)", icon: "github", preserveColor: true, url: "https://github.com" }
+                            ]
 
-                        LucideIcon {
-                            Layout.preferredWidth: 20
-                            Layout.preferredHeight: 20
-                            icon: "shield"
-                            color: licMouse.containsMouse ? recordRedHover : textPrimary
-                        }
+                            delegate: ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
 
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 2
+                                Rectangle {
+                                    visible: index > 0
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 1
+                                    color: borderSubtle
+                                    opacity: 0.6
+                                }
 
-                            Label {
-                                text: "GNU General Public License v3.0"
-                                color: licMouse.containsMouse ? recordRedHover : textPrimary
-                                font.family: displayFont
-                                font.pixelSize: 14
-                                font.weight: Font.DemiBold
+                                CreditItemRow {
+                                    itemData: modelData
+                                    onClicked: Qt.openUrlExternally(modelData.url)
+                                }
                             }
-                            Label {
-                                text: "View source code and contribute on GitHub"
-                                color: textSecondary
-                                font.family: bodyFont
-                                font.pixelSize: 11
-                                elide: Text.ElideRight
-                            }
-                        }
-
-                        LucideIcon {
-                            Layout.preferredWidth: 14
-                            Layout.preferredHeight: 14
-                            icon: "external-link"
-                            color: licMouse.containsMouse ? recordRedHover : silverDim
                         }
                     }
+                }
 
-                    MouseArea {
-                        id: licMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: Qt.openUrlExternally("https://github.com/samyyy2311/CassetteCat")
+                // ---- Section 2: Core Audio & Architecture ----
+                SectionLabel { text: "Core Audio & Architecture" }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: s2Col.implicitHeight
+                    radius: 12
+                    color: surfaceCard
+                    border.width: 1
+                    border.color: borderSubtle
+                    clip: true
+
+                    ColumnLayout {
+                        id: s2Col
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        spacing: 0
+
+                        Repeater {
+                            model: [
+                                { title: "AutoEq", subtitle: "Calibrated headphone equalizer response curves by Jaakko Pasanen", icon: "autoeq", preserveColor: true, url: "https://github.com/jaakkopasanen/AutoEq" },
+                                { title: "Qt Multimedia", subtitle: "Hardware audio playback, streaming, and audio sinks", icon: "music", preserveColor: false, url: "https://doc.qt.io/qt-6/qtmultimedia-index.html" },
+                                { title: "Qt Network", subtitle: "High-performance HTTP/REST client for lyrics and data sync", icon: "globe", preserveColor: false, url: "https://doc.qt.io/qt-6/qtnetwork-index.html" },
+                                { title: "TagLib", subtitle: "Audio metadata and embedded ID3/MP4/FLAC tag parser", icon: "disc", preserveColor: false, url: "https://taglib.org" },
+                                { title: "DWM Windows Frameless", subtitle: "Hardware-accelerated Windows Desktop Window Manager composition", icon: "shield", preserveColor: false, url: "https://learn.microsoft.com/en-us/windows/win32/dwm/dwm-overview" }
+                            ]
+
+                            delegate: ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                Rectangle {
+                                    visible: index > 0
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 1
+                                    color: borderSubtle
+                                    opacity: 0.6
+                                }
+
+                                CreditItemRow {
+                                    itemData: modelData
+                                    onClicked: Qt.openUrlExternally(modelData.url)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ---- Section 3: Design & Typography ----
+                SectionLabel { text: "Design & Typography" }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: s3Col.implicitHeight
+                    radius: 12
+                    color: surfaceCard
+                    border.width: 1
+                    border.color: borderSubtle
+                    clip: true
+
+                    ColumnLayout {
+                        id: s3Col
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        spacing: 0
+
+                        Repeater {
+                            model: [
+                                { title: "Lucide Icons", subtitle: "App logo & open-source iconography (lucide.dev, ISC License)", icon: "logo", preserveColor: false, url: "https://lucide.dev" },
+                                { title: "Simple Icons", subtitle: "Authentic brand SVG icons (simpleicons.org, CC0 1.0)", icon: "simpleicons", preserveColor: true, url: "https://simpleicons.org" },
+                                { title: "IBM Plex (Sans & Mono)", subtitle: "Designed by Mike Abbink and Bold Monday for IBM (OFL 1.1)", icon: "ibm", preserveColor: true, url: "https://github.com/IBM/plex" },
+                                { title: "Space Grotesk", subtitle: "Proportional monospace display typeface by Florian Karsten (OFL 1.1)", icon: "quote", preserveColor: false, url: "https://github.com/floriankarsten/space-grotesk" }
+                            ]
+
+                            delegate: ColumnLayout {
+                                Layout.fillWidth: true
+                                spacing: 0
+
+                                Rectangle {
+                                    visible: index > 0
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 1
+                                    color: borderSubtle
+                                    opacity: 0.6
+                                }
+
+                                CreditItemRow {
+                                    itemData: modelData
+                                    onClicked: Qt.openUrlExternally(modelData.url)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ---- Section 4: Open Source License ----
+                SectionLabel { text: "Open Source License" }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    implicitHeight: s4Col.implicitHeight
+                    radius: 12
+                    color: surfaceCard
+                    border.width: 1
+                    border.color: borderSubtle
+                    clip: true
+
+                    ColumnLayout {
+                        id: s4Col
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        spacing: 0
+
+                        CreditItemRow {
+                            itemData: ({
+                                title: "GNU General Public License v3.0",
+                                subtitle: "View source code and contribute on GitHub",
+                                icon: "gpl",
+                                preserveColor: true,
+                                url: "https://github.com/samyyy2311/CassetteCat"
+                            })
+                            onClicked: Qt.openUrlExternally("https://github.com/samyyy2311/CassetteCat")
+                        }
                     }
                 }
             }
-
-            Item { Layout.preferredHeight: 32 }
         }
     }
 }

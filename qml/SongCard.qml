@@ -28,7 +28,7 @@ Item {
             Rectangle {
                 id: coverContainer
                 anchors.fill: parent
-                radius: 12
+                radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
                 color: surfaceCard
                 clip: true
                 border.width: root.isCurrent ? 1.5 : (cardMouse.containsMouse ? 1.5 : 0)

@@ -8,19 +8,21 @@ Item {
     property int duration: 0
     property bool showRemainingTime: true
     signal seekRequested(int positionMs)
+    signal remainingToggled(bool value)
 
     implicitWidth: 400
     implicitHeight: 28
 
-    readonly property color recordRed: "#C23B30"
-    readonly property color recordRedHover: "#D14337"
+    property color accentColor: "#C23B30"
+    property color accentHover: "#D14337"
+    readonly property color recordRed: accentColor
+    readonly property color recordRedHover: accentHover
     readonly property color surfaceElevated: "#2A2825"
     readonly property color surfaceTooltip: "#1A1816"
     readonly property color borderSubtle: "#2E2B28"
     readonly property color silver: "#C4C4C0"
     readonly property color silverDim: "#6E6C68"
-    readonly property color textPrimary: "#F5F0EC"
-    readonly property string monoFont: "IBM Plex Mono"
+    readonly property string monoFont: (typeof monoFontFamily !== "undefined" && monoFontFamily.length > 0) ? monoFontFamily : "IBM Plex Mono"
 
     property bool isDragging: false
     property int dragPositionMs: 0
@@ -51,7 +53,7 @@ Item {
             Layout.preferredWidth: 42
             Layout.alignment: Qt.AlignVCenter
             text: root.formatTime(root.currentPosMs)
-            color: (trackMouse.containsMouse || root.isDragging) ? root.textPrimary : root.silverDim
+            color: (trackMouse.containsMouse || root.isDragging) ? "#F5F0EC" : root.silverDim
             font.family: root.monoFont
             font.pixelSize: 11
             font.weight: Font.Medium
@@ -123,7 +125,7 @@ Item {
                     id: hoverText
                     anchors.centerIn: parent
                     text: root.formatTime(Math.floor((trackMouse.mouseX / Math.max(1, trackContainer.width)) * root.duration))
-                    color: root.textPrimary
+                    color: "#F5F0EC"
                     font.family: root.monoFont
                     font.pixelSize: 10
                     font.weight: Font.Bold
@@ -182,7 +184,7 @@ Item {
             text: root.showRemainingTime
                 ? root.formatRemaining(root.currentPosMs, root.duration)
                 : root.formatTime(root.duration)
-            color: (trackMouse.containsMouse || root.isDragging || timeMouse.containsMouse) ? root.textPrimary : root.silverDim
+            color: (trackMouse.containsMouse || root.isDragging || timeMouse.containsMouse) ? "#F5F0EC" : root.silverDim
             font.family: root.monoFont
             font.pixelSize: 11
             font.weight: Font.Medium
@@ -194,7 +196,7 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    root.showRemainingTime = !root.showRemainingTime
+                    root.remainingToggled(!root.showRemainingTime)
                 }
             }
         }

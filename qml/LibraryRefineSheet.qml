@@ -174,8 +174,8 @@ Rectangle {
 
             ColumnLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: root.activeTab === "radio" ? 0 : implicitHeight
-                visible: root.activeTab !== "radio"
+                Layout.preferredHeight: root.activeTab === "songs" ? implicitHeight : 0
+                visible: root.activeTab === "songs"
                 spacing: 8
 
                 Label {
@@ -316,7 +316,7 @@ Rectangle {
                 }
             }
 
-            Rectangle { Layout.fillWidth: true; height: 1; color: "#222222" }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#222222" }
 
             ColumnLayout {
                 Layout.fillWidth: true

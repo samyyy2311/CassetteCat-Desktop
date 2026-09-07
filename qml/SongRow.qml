@@ -10,14 +10,16 @@ Rectangle {
     property bool showCover: true
     property bool showDuration: true
     property bool showHeart: true
-    property bool showFormatBadge: true
+    property bool showSourceBadge: true
     property color defaultTextColor: textPrimary
     property color activeTextColor: recordRed
     property color cardBg: "transparent"
     property color hoverBg: surfaceElevated
     property color activeBg: surfaceCard
-    property real rowHeight: 54
+    property real rowHeight: (typeof window !== "undefined" && window.trackDensity === "compact") ? 42 : 54
     property real rowRadius: 10
+    property real coverRadius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 8
+    property bool showFormatBadge: (typeof window !== "undefined" && window.showFormatBadges !== undefined) ? window.showFormatBadges : true
 
     signal clicked()
     signal favoriteClicked()
@@ -52,7 +54,7 @@ Rectangle {
             Layout.preferredWidth: 40
             Layout.preferredHeight: 40
             Layout.alignment: Qt.AlignVCenter
-            radius: 8
+            radius: root.coverRadius
             track: root.track
         }
 
@@ -90,6 +92,33 @@ Rectangle {
                 font.family: bodyFont
                 font.pixelSize: 12
                 elide: Text.ElideRight
+            }
+        }
+
+        Rectangle {
+            visible: showSourceBadge && !!(root.track && root.track.filePath
+                && (String(root.track.filePath).startsWith("subsonic:") || String(root.track.filePath).startsWith("jellyfin:")))
+            Layout.alignment: Qt.AlignVCenter
+            Layout.preferredHeight: 20
+            Layout.preferredWidth: srcText.implicitWidth + 10
+            radius: 4
+            color: "#18FFFFFF"
+            border.width: 1
+            border.color: "#30FFFFFF"
+
+            Label {
+                id: srcText
+                anchors.centerIn: parent
+                text: {
+                    const p = String(root.track ? root.track.filePath : "")
+                    if (p.startsWith("subsonic:")) return "SUBSONIC"
+                    if (p.startsWith("jellyfin:")) return "JELLYFIN"
+                    return ""
+                }
+                color: textSecondary
+                font.family: monoFont
+                font.pixelSize: 9
+                font.weight: Font.Bold
             }
         }
 
@@ -143,7 +172,7 @@ Rectangle {
         Label {
             visible: showDuration
             Layout.alignment: Qt.AlignVCenter
-            text: root.track ? (root.track.duration || "—") : "—"
+            text: root.track ? (root.track.duration || "-") : "-"
             color: textSecondary
             font.family: monoFont
             font.pixelSize: 12

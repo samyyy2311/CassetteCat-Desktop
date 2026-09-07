@@ -5,7 +5,11 @@ Item {
     property string iconName: "play"
     property int buttonSize: 36
     property bool accented: false
-    property color iconColor: accented ? root.recordRed : root.textPrimary
+    property color accentColor: "#C23B30"
+    property color accentHover: "#D64337"
+    readonly property color recordRed: accentColor
+    readonly property color recordRedHover: accentHover
+    property color iconColor: accented ? root.accentColor : root.textPrimary
     property bool filled: true
     property string tooltipText: ""
     signal clicked()
@@ -13,8 +17,6 @@ Item {
     implicitWidth: root.buttonSize
     implicitHeight: root.buttonSize
 
-    readonly property color recordRed: "#C23B30"
-    readonly property color recordRedHover: "#D64337"
     readonly property color surfaceContainerHigh: "#22201D"
     readonly property color surfaceContainerHover: "#2C2A26"
     readonly property color surfaceContainerLowest: "#161513"
@@ -46,7 +48,7 @@ Item {
 
         border.width: root.accented ? 1.2 : (root.isHovered ? 1.0 : 0)
         border.color: root.accented
-            ? (root.isHovered ? "#FF4E40" : "#C23B30")
+            ? (root.isHovered ? root.recordRedHover : root.recordRed)
             : (root.isHovered ? "#35FFFFFF" : "transparent")
 
         Behavior on border.color { ColorAnimation { duration: 150 } }
@@ -58,7 +60,7 @@ Item {
             height: Math.max(14, Math.round(root.buttonSize * 0.44))
             icon: root.iconName
             color: root.accented
-                ? (root.isHovered ? "#FF4E40" : root.recordRedHover)
+                ? root.recordRedHover
                 : (root.isHovered ? root.textPrimary : root.iconColor)
         }
     }

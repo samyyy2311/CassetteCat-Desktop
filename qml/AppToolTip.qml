@@ -7,6 +7,8 @@ Item {
     property bool below: false
     property int delay: 250
 
+    readonly property var rootWindow: Window.window
+
     readonly property bool isAutoBelow: {
         if (below) return true
         if (!parent) return false
@@ -18,7 +20,30 @@ Item {
         }
     }
 
+    // Automatically clamp horizontally so tooltips never spill off the window edge
+    readonly property real clampedHorizontalOffset: {
+        if (!parent || !rootWindow || rootWindow.width <= 0) return 0
+        try {
+            const pos = parent.mapToItem(null, 0, 0)
+            if (!pos) return 0
+            const centerGlobalX = pos.x + parent.width / 2
+            const halfPill = pill.width / 2
+            const minX = 12
+            const maxX = rootWindow.width - 12
+
+            if (centerGlobalX + halfPill > maxX) {
+                return (maxX - (centerGlobalX + halfPill))
+            } else if (centerGlobalX - halfPill < minX) {
+                return (minX - (centerGlobalX - halfPill))
+            }
+            return 0
+        } catch (e) {
+            return 0
+        }
+    }
+
     anchors.horizontalCenter: parent.horizontalCenter
+    anchors.horizontalCenterOffset: clampedHorizontalOffset
     anchors.top: isAutoBelow ? parent.bottom : undefined
     anchors.topMargin: isAutoBelow ? 8 : 0
     anchors.bottom: isAutoBelow ? undefined : parent.top
@@ -56,6 +81,8 @@ Item {
         NumberAnimation { duration: 130; easing.type: Easing.OutCubic }
     }
 
+    rotation: parent ? -parent.rotation : 0
+
     Rectangle {
         id: pill
         width: Math.max(36, label.implicitWidth + 20)
@@ -69,7 +96,7 @@ Item {
             id: label
             anchors.centerIn: parent
             text: root.text
-            font.family: "Space Grotesk"
+            font.family: (typeof displayFont !== "undefined" && displayFont.length > 0) ? displayFont : "Space Grotesk"
             font.pixelSize: 11
             font.weight: Font.DemiBold
             color: "#FFFFFF"

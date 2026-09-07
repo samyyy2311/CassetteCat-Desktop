@@ -4,19 +4,21 @@ import QtQuick.Layouts
 
 Item {
     id: root
-    property string catImage: "qrc:/CassetteCat/assets/01-orange-headphones.png"
+    property string catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
     property string title: "No tracks found"
     property string subtitle: "Try adjusting your filters or search"
     property string actionLabel: ""
     signal actionClicked()
 
-    anchors.centerIn: parent
-    width: Math.min(parent.width - 40, 360)
-    height: contentCol.implicitHeight
+    implicitWidth: 360
+    implicitHeight: contentCol.implicitHeight
 
     ColumnLayout {
         id: contentCol
-        anchors.centerIn: parent
+        width: implicitWidth
+        height: implicitHeight
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
         spacing: 12
 
         Item {

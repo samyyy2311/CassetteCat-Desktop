@@ -5,6 +5,7 @@ Item {
     id: root
     property string icon: ""
     property color color: "#F5F0EC"
+    property bool preserveColor: false
 
     implicitWidth: 20
     implicitHeight: 20
@@ -12,12 +13,12 @@ Item {
     Image {
         id: iconImg
         anchors.fill: parent
-        source: root.icon ? "qrc:/CassetteCat/qml/icons/" + root.icon + ".svg" : ""
+        source: root.icon ? "qrc:/qt/qml/CassetteCat/qml/icons/" + root.icon + ".svg" : ""
         sourceSize.width: Math.max(1, root.width * 2)
         sourceSize.height: Math.max(1, root.height * 2)
         fillMode: Image.PreserveAspectFit
         smooth: true
-        visible: false
+        visible: root.preserveColor
     }
 
     MultiEffect {
@@ -25,5 +26,6 @@ Item {
         source: iconImg
         colorization: 1.0
         colorizationColor: root.color
+        visible: !root.preserveColor
     }
 }

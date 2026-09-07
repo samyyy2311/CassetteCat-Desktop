@@ -10,7 +10,7 @@ Item {
     property var track: ({})
     property real cardWidth: 170
     property real cardHeight: 235
-    property real imageRadius: 12
+    property real imageRadius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
 
     signal clicked()
 

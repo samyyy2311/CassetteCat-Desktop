@@ -4,474 +4,411 @@ import QtQuick.Layouts
 
 Item {
     id: root
+
     property int trackCount: 0
+    property string libraryFolder: ""
+    property var excludedFolders: []
+    property bool ignoreShortClips: false
+    property string defaultLaunchPage: "last"
+    property string songSortMetric: "title"
+    property string trackDensity: "comfortable"
+    property bool showFormatBadges: true
+    property string accentName: "recordRed"
+    property string customAccentColor: "#C23B30"
+    property int albumArtRadius: 16
+    property string nowPlayingBackdrop: "tinted"
+    property bool showRemainingTime: true
     property bool resumeQueueOnLaunch: true
+    property bool globalShortcutsEnabled: false
+    property bool globalShortcutsSupported: false
+    property string globalShortcutStatus: ""
+    property var globalShortcutBindings: ({})
+    property string sleepTimerMode: "off"
+    property string sleepTimerStatus: "Off"
+    property bool sleepFadeOut: true
+    property bool autoplayEnabled: false
+    property bool volumeLimitEnabled: false
+    property int maxVolumePercent: 80
+    property bool closeToTray: true
+    property bool startMinimizedToTray: false
+    property string nowPlayingNotifications: "minimized"
+    property bool trayAvailable: true
     property bool miniPlayerAlwaysOnTop: true
     property int lyricsFontSize: 28
+    property string lyricsAlignment: "left"
+    property string lyricsActiveStyle: "white"
+    property bool preferLocalLyrics: true
+    property bool offlineBlackout: false
+    property bool svcLrclib: true
+    property bool svcRadio: true
+    property bool svcDeezer: true
+    property bool svcAudiodb: true
+    property bool svcWiki: true
+    property string backupStatus: ""
     property bool creditsOpen: false
+    property string currentSection: "library"
+
+    readonly property var categories: [
+        { id: "library", label: "Music Library", icon: "folder" },
+        { id: "appearance", label: "Appearance", icon: "sliders-horizontal" },
+        { id: "playback", label: "Playback", icon: "play" },
+        { id: "desktop", label: "Desktop", icon: "pip" },
+        { id: "lyrics", label: "Lyrics", icon: "quote" },
+        { id: "network", label: "Network & Privacy", icon: "shield" },
+        { id: "data", label: "Backup & Data", icon: "refresh-cw" },
+        { id: "credits", label: "Credits", icon: "info" }
+    ]
 
     signal chooseFolderRequested()
     signal backRequested()
     signal resumeQueueOnLaunchSelected(bool value)
+    signal globalShortcutsEnabledSelected(bool value)
+    signal globalShortcutSelected(string action, string shortcut)
     signal miniPlayerAlwaysOnTopSelected(bool value)
     signal lyricsFontSizeSelected(int value)
+    signal defaultLaunchPageSelected(string value)
+    signal addExcludeRequested()
+    signal removeExcludeRequested(string path)
+    signal ignoreShortClipsSelected(bool value)
+    signal songSortSelected(string value)
+    signal trackDensitySelected(string value)
+    signal showFormatBadgesSelected(bool value)
+    signal accentSelected(string value)
+    signal customAccentSelected(string hexColor)
+    signal albumArtRadiusSelected(int value)
+    signal nowPlayingBackdropSelected(string value)
+    signal showRemainingTimeSelected(bool value)
+    signal sleepTimerSelected(string value)
+    signal sleepTimerCancelled()
+    signal sleepFadeOutSelected(bool value)
+    signal autoplaySelected(bool value)
+    signal volumeLimitSelected(bool value)
+    signal maxVolumeSelected(int value)
+    signal preferLocalLyricsSelected(bool value)
+    signal lyricsAlignmentSelected(string value)
+    signal lyricsActiveStyleSelected(string value)
+    signal offlineBlackoutSelected(bool value)
+    signal serviceToggleRequested(string name, bool value)
+    signal openJellyfinRequested()
+    signal openSubsonicRequested()
+    signal exportBackupRequested()
+    signal importBackupRequested()
+    signal closeToTraySelected(bool value)
+    signal startMinimizedToTraySelected(bool value)
+    signal nowPlayingNotificationsSelected(string value)
 
-    // Centered readable column, matching CreditsView's max width.
-    // On narrow windows this collapses to 32px side margins like Home.
-    readonly property real maxContentWidth: 720
+    function chooseSection(id) {
+        if (id === "credits") {
+            creditsOpen = true
+            return
+        }
+        creditsOpen = false
+        currentSection = id
+        contentScroll.contentItem.contentY = 0
+    }
 
     StackLayout {
         anchors.fill: parent
         currentIndex: root.creditsOpen ? 1 : 0
 
-        ScrollView {
-            id: scroll
-            clip: true
-            contentWidth: availableWidth
-            contentHeight: bodyCol.implicitHeight + 48
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ScrollBar.vertical: SleekScrollBar {}
+        Item {
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 0
 
-            Column {
-                id: bodyCol
-                width: scroll.availableWidth
-                spacing: 26
-                topPadding: 24
-                bottomPadding: 36
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 32
+                    Layout.rightMargin: 32
+                    Layout.topMargin: 24
+                    Layout.bottomMargin: 20
+                    spacing: 16
 
-                // ---- Header: same kicker / title / stats pattern as Home ----
-                ColumnLayout {
-                    x: (scroll.availableWidth - width) / 2
-                    width: Math.min(scroll.availableWidth - 64, root.maxContentWidth)
-                    spacing: 4
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 4
 
-                    Label {
-                        text: "SETTINGS"
-                        color: recordRed
-                        font.family: monoFont
-                        font.pixelSize: 10
-                        font.weight: Font.Bold
-                        font.letterSpacing: 1.0
+                        Label {
+                            text: "Settings"
+                            color: textPrimary
+                            font.family: displayFont
+                            font.pixelSize: 28
+                            font.weight: Font.Bold
+                        }
+
+                        Label {
+                            text: root.trackCount > 0
+                                ? root.trackCount + " tracks in your library"
+                                : "Playback, library, and privacy preferences"
+                            color: textSecondary
+                            font.family: bodyFont
+                            font.pixelSize: 12
+                        }
                     }
+
                     Label {
-                        text: "Preferences & library"
-                        color: textPrimary
-                        font.family: displayFont
-                        font.pixelSize: 28
-                        font.weight: Font.Bold
-                        font.letterSpacing: -0.4
-                    }
-                    Label {
-                        text: root.trackCount > 0
-                              ? (root.trackCount + " songs in library • changes save automatically")
-                              : "Scan a music folder to populate your library"
+                        text: "Changes save immediately"
                         color: silverDim
                         font.family: monoFont
-                        font.pixelSize: 11
+                        font.pixelSize: 10
                     }
                 }
 
-                // ---- Music library ----
-                ColumnLayout {
-                    x: (scroll.availableWidth - width) / 2
-                    width: Math.min(scroll.availableWidth - 64, root.maxContentWidth)
-                    spacing: 10
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 1
+                    color: borderSubtle
+                }
 
-                    SectionLabel { text: "MUSIC LIBRARY" }
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    readonly property bool compact: width < 840
 
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: libRow.implicitHeight + 32
-                        radius: 12
-                        color: surfaceCard
-                        border.width: 1
-                        border.color: borderSubtle
+                    Flickable {
+                        id: compactNav
+                        visible: parent.compact
+                        anchors.top: parent.top
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.leftMargin: 24
+                        anchors.rightMargin: 24
+                        height: 48
+                        contentWidth: compactRow.implicitWidth
+                        clip: true
 
-                        RowLayout {
-                            id: libRow
-                            anchors.fill: parent
-                            anchors.leftMargin: 16
-                            anchors.rightMargin: 16
-                            anchors.topMargin: 16
-                            anchors.bottomMargin: 16
-                            spacing: 14
+                        Row {
+                            id: compactRow
+                            spacing: 6
 
-                            IconBadge {
-                                Layout.alignment: Qt.AlignVCenter
-                                iconName: "folder"
-                            }
+                            Repeater {
+                                model: root.categories
 
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                Layout.alignment: Qt.AlignVCenter
-                                spacing: 2
+                                delegate: Rectangle {
+                                    readonly property bool selected: root.currentSection === modelData.id && modelData.id !== "credits"
+                                    width: compactLabel.implicitWidth + 24
+                                    height: 32
+                                    radius: 16
+                                    color: selected ? recordRed : "transparent"
+                                    border.width: selected ? 0 : 1
+                                    border.color: borderSubtle
 
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: "Audio Directory"
-                                    color: textPrimary
-                                    font.family: displayFont
-                                    font.pixelSize: 14
-                                    font.weight: Font.DemiBold
-                                    elide: Text.ElideRight
+                                    Label {
+                                        id: compactLabel
+                                        anchors.centerIn: parent
+                                        text: modelData.label
+                                        color: parent.selected ? "white" : textSecondary
+                                        font.family: displayFont
+                                        font.pixelSize: 11
+                                        font.weight: Font.DemiBold
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.chooseSection(modelData.id)
+                                    }
                                 }
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: root.trackCount + " tracks loaded from library"
-                                    color: textSecondary
-                                    font.family: bodyFont
-                                    font.pixelSize: 11
-                                    elide: Text.ElideRight
-                                }
                             }
+                        }
+                    }
 
-                            Rectangle {
-                                Layout.alignment: Qt.AlignVCenter
-                                Layout.preferredWidth: chooseLbl.implicitWidth + 28
-                                Layout.preferredHeight: 34
-                                radius: 17
-                                color: chooseMouse.containsMouse ? "#20FF3344" : "transparent"
-                                border.width: 1.5
-                                border.color: recordRed
+                    Column {
+                        id: navigation
+                        visible: !parent.compact
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        anchors.left: parent.left
+                        anchors.leftMargin: 24
+                        width: 184
+                        spacing: 3
 
-                                Behavior on color { ColorAnimation { duration: 120 } }
+                        Repeater {
+                            model: root.categories
 
-                                Label {
-                                    id: chooseLbl
-                                    anchors.centerIn: parent
-                                    text: "Choose folder"
-                                    color: recordRedHover
-                                    font.family: displayFont
-                                    font.pixelSize: 12
-                                    font.weight: Font.DemiBold
+                            delegate: Rectangle {
+                                readonly property bool selected: root.currentSection === modelData.id && modelData.id !== "credits"
+                                width: navigation.width
+                                height: 38
+                                radius: 8
+                                color: selected ? surfaceCard : (navMouse.containsMouse ? surfaceCardHover : "transparent")
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 10
+                                    anchors.rightMargin: 10
+                                    spacing: 9
+
+                                    LucideIcon {
+                                        Layout.preferredWidth: 16
+                                        Layout.preferredHeight: 16
+                                        icon: modelData.icon
+                                        color: parent.parent.selected ? recordRedHover : silverDim
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: modelData.label
+                                        color: parent.parent.selected ? textPrimary : textSecondary
+                                        font.family: displayFont
+                                        font.pixelSize: 12
+                                        font.weight: parent.parent.selected ? Font.DemiBold : Font.Normal
+                                        elide: Text.ElideRight
+                                    }
                                 }
 
                                 MouseArea {
-                                    id: chooseMouse
+                                    id: navMouse
                                     anchors.fill: parent
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.chooseFolderRequested()
+                                    onClicked: root.chooseSection(modelData.id)
                                 }
                             }
                         }
                     }
-                }
-
-                // ---- Playback: grouped rows with inset divider ----
-                ColumnLayout {
-                    x: (scroll.availableWidth - width) / 2
-                    width: Math.min(scroll.availableWidth - 64, root.maxContentWidth)
-                    spacing: 10
-
-                    SectionLabel { text: "PLAYBACK" }
 
                     Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: playCol.implicitHeight
-                        radius: 12
-                        color: surfaceCard
-                        border.width: 1
-                        border.color: borderSubtle
+                        visible: !parent.compact
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        anchors.left: navigation.right
+                        anchors.leftMargin: 20
+                        width: 1
+                        color: borderSubtle
+                    }
+
+                    ScrollView {
+                        id: contentScroll
+                        anchors.top: parent.compact ? compactNav.bottom : parent.top
+                        anchors.bottom: parent.bottom
+                        anchors.left: parent.compact ? parent.left : navigation.right
+                        anchors.leftMargin: parent.compact ? 24 : 40
+                        anchors.right: parent.right
+                        anchors.rightMargin: 24
+                        clip: true
+                        contentWidth: availableWidth
+                        contentHeight: sectionContent.implicitHeight + 48
+                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                        ScrollBar.vertical: SleekScrollBar {}
 
                         ColumnLayout {
-                            id: playCol
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.top: parent.top
-                            anchors.bottom: parent.bottom
-                            anchors.leftMargin: 16
-                            anchors.rightMargin: 16
-                            anchors.topMargin: 8
-                            anchors.bottomMargin: 8
-                            spacing: 0
+                            id: sectionContent
+                            x: Math.max(0, (contentScroll.availableWidth - width) / 2)
+                            width: Math.min(contentScroll.availableWidth - 20, 960)
+                            spacing: 18
 
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 64
-                                spacing: 14
-
-                                IconBadge {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    iconName: "play"
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                    spacing: 2
-
-                                    Label {
-                                        Layout.fillWidth: true
-                                        text: "Resume Queue on Launch"
-                                        color: textPrimary
-                                        font.family: displayFont
-                                        font.pixelSize: 14
-                                        font.weight: Font.DemiBold
-                                        elide: Text.ElideRight
-                                    }
-                                    Label {
-                                        Layout.fillWidth: true
-                                        text: "Restore the active track, position, and queue"
-                                        color: textSecondary
-                                        font.family: bodyFont
-                                        font.pixelSize: 11
-                                        elide: Text.ElideRight
-                                    }
-                                }
-
-                                Row {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    spacing: 6
-                                    SettingsChoicePill { label: "ON"; selected: root.resumeQueueOnLaunch; onClicked: root.resumeQueueOnLaunchSelected(true) }
-                                    SettingsChoicePill { label: "OFF"; selected: !root.resumeQueueOnLaunch; onClicked: root.resumeQueueOnLaunchSelected(false) }
-                                }
+                            SettingsLibrarySection {
+                                visible: root.currentSection === "library"
+                                trackCount: root.trackCount
+                                libraryFolder: root.libraryFolder
+                                excludedFolders: root.excludedFolders
+                                ignoreShortClips: root.ignoreShortClips
+                                defaultLaunchPage: root.defaultLaunchPage
+                                songSortMetric: root.songSortMetric
+                                trackDensity: root.trackDensity
+                                showFormatBadges: root.showFormatBadges
+                                onChooseFolderRequested: root.chooseFolderRequested()
+                                onAddExcludeRequested: root.addExcludeRequested()
+                                onRemoveExcludeRequested: path => root.removeExcludeRequested(path)
+                                onIgnoreShortClipsSelected: value => root.ignoreShortClipsSelected(value)
+                                onDefaultLaunchPageSelected: value => root.defaultLaunchPageSelected(value)
+                                onSongSortSelected: value => root.songSortSelected(value)
+                                onTrackDensitySelected: value => root.trackDensitySelected(value)
+                                onShowFormatBadgesSelected: value => root.showFormatBadgesSelected(value)
                             }
 
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.leftMargin: 54
-                                Layout.preferredHeight: 1
-                                color: borderSubtle
-                                opacity: 0.7
+                            SettingsAppearanceSection {
+                                visible: root.currentSection === "appearance"
+                                accentName: root.accentName
+                                customAccentColor: root.customAccentColor
+                                albumArtRadius: root.albumArtRadius
+                                nowPlayingBackdrop: root.nowPlayingBackdrop
+                                showRemainingTime: root.showRemainingTime
+                                onAccentSelected: value => root.accentSelected(value)
+                                onCustomAccentSelected: value => root.customAccentSelected(value)
+                                onAlbumArtRadiusSelected: value => root.albumArtRadiusSelected(value)
+                                onNowPlayingBackdropSelected: value => root.nowPlayingBackdropSelected(value)
+                                onShowRemainingTimeSelected: value => root.showRemainingTimeSelected(value)
                             }
 
-                            RowLayout {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 64
-                                spacing: 14
-
-                                IconBadge {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    iconName: "pip"
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                    spacing: 2
-
-                                    Label {
-                                        Layout.fillWidth: true
-                                        text: "Keep Mini Player on Top"
-                                        color: textPrimary
-                                        font.family: displayFont
-                                        font.pixelSize: 14
-                                        font.weight: Font.DemiBold
-                                        elide: Text.ElideRight
-                                    }
-                                    Label {
-                                        Layout.fillWidth: true
-                                        text: "Keep the compact player visible above other windows"
-                                        color: textSecondary
-                                        font.family: bodyFont
-                                        font.pixelSize: 11
-                                        elide: Text.ElideRight
-                                    }
-                                }
-
-                                Row {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    spacing: 6
-                                    SettingsChoicePill { label: "ON"; selected: root.miniPlayerAlwaysOnTop; onClicked: root.miniPlayerAlwaysOnTopSelected(true) }
-                                    SettingsChoicePill { label: "OFF"; selected: !root.miniPlayerAlwaysOnTop; onClicked: root.miniPlayerAlwaysOnTopSelected(false) }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ---- Lyrics: vertical card so pills wrap on narrow windows ----
-                ColumnLayout {
-                    x: (scroll.availableWidth - width) / 2
-                    width: Math.min(scroll.availableWidth - 64, root.maxContentWidth)
-                    spacing: 10
-
-                    SectionLabel { text: "LYRICS" }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: lyricsCol.implicitHeight + 32
-                        radius: 12
-                        color: surfaceCard
-                        border.width: 1
-                        border.color: borderSubtle
-
-                        ColumnLayout {
-                            id: lyricsCol
-                            anchors.fill: parent
-                            anchors.leftMargin: 16
-                            anchors.rightMargin: 16
-                            anchors.topMargin: 16
-                            anchors.bottomMargin: 16
-                            spacing: 12
-
-                            RowLayout {
-                                Layout.fillWidth: true
-                                spacing: 14
-
-                                IconBadge {
-                                    Layout.alignment: Qt.AlignVCenter
-                                    iconName: "quote"
-                                }
-
-                                ColumnLayout {
-                                    Layout.fillWidth: true
-                                    Layout.alignment: Qt.AlignVCenter
-                                    spacing: 2
-
-                                    Label {
-                                        Layout.fillWidth: true
-                                        text: "Lyrics Text Size"
-                                        color: textPrimary
-                                        font.family: displayFont
-                                        font.pixelSize: 14
-                                        font.weight: Font.DemiBold
-                                        elide: Text.ElideRight
-                                    }
-                                    Label {
-                                        Layout.fillWidth: true
-                                        text: "Choose the scale used in the lyrics view"
-                                        color: textSecondary
-                                        font.family: bodyFont
-                                        font.pixelSize: 11
-                                        elide: Text.ElideRight
-                                    }
-                                }
+                            SettingsPlaybackSection {
+                                visible: root.currentSection === "playback"
+                                resumeQueueOnLaunch: root.resumeQueueOnLaunch
+                                autoplayEnabled: root.autoplayEnabled
+                                globalShortcutsEnabled: root.globalShortcutsEnabled
+                                globalShortcutsSupported: root.globalShortcutsSupported
+                                globalShortcutStatus: root.globalShortcutStatus
+                                globalShortcutBindings: root.globalShortcutBindings
+                                sleepTimerMode: root.sleepTimerMode
+                                sleepTimerStatus: root.sleepTimerStatus
+                                sleepFadeOut: root.sleepFadeOut
+                                volumeLimitEnabled: root.volumeLimitEnabled
+                                maxVolumePercent: root.maxVolumePercent
+                                onResumeQueueOnLaunchSelected: value => root.resumeQueueOnLaunchSelected(value)
+                                onAutoplaySelected: value => root.autoplaySelected(value)
+                                onGlobalShortcutsEnabledSelected: value => root.globalShortcutsEnabledSelected(value)
+                                onGlobalShortcutSelected: (action, shortcut) => root.globalShortcutSelected(action, shortcut)
+                                onSleepTimerSelected: value => root.sleepTimerSelected(value)
+                                onSleepTimerCancelled: root.sleepTimerCancelled()
+                                onSleepFadeOutSelected: value => root.sleepFadeOutSelected(value)
+                                onVolumeLimitSelected: value => root.volumeLimitSelected(value)
+                                onMaxVolumeSelected: value => root.maxVolumeSelected(value)
                             }
 
-                            Flow {
-                                Layout.fillWidth: true
-                                spacing: 8
-                                SettingsChoicePill { label: "SMALL"; selected: root.lyricsFontSize === 24; onClicked: root.lyricsFontSizeSelected(24) }
-                                SettingsChoicePill { label: "DEFAULT"; selected: root.lyricsFontSize === 28; onClicked: root.lyricsFontSizeSelected(28) }
-                                SettingsChoicePill { label: "LARGE"; selected: root.lyricsFontSize === 32; onClicked: root.lyricsFontSizeSelected(32) }
+                            SettingsDesktopSection {
+                                visible: root.currentSection === "desktop"
+                                closeToTray: root.closeToTray
+                                startMinimizedToTray: root.startMinimizedToTray
+                                nowPlayingNotifications: root.nowPlayingNotifications
+                                miniPlayerAlwaysOnTop: root.miniPlayerAlwaysOnTop
+                                trayAvailable: root.trayAvailable
+                                onCloseToTraySelected: value => root.closeToTraySelected(value)
+                                onStartMinimizedToTraySelected: value => root.startMinimizedToTraySelected(value)
+                                onNowPlayingNotificationsSelected: value => root.nowPlayingNotificationsSelected(value)
+                                onMiniPlayerAlwaysOnTopSelected: value => root.miniPlayerAlwaysOnTopSelected(value)
+                            }
+
+                            SettingsLyricsSection {
+                                visible: root.currentSection === "lyrics"
+                                lyricsFontSize: root.lyricsFontSize
+                                lyricsAlignment: root.lyricsAlignment
+                                lyricsActiveStyle: root.lyricsActiveStyle
+                                preferLocalLyrics: root.preferLocalLyrics
+                                onLyricsFontSizeSelected: value => root.lyricsFontSizeSelected(value)
+                                onLyricsAlignmentSelected: value => root.lyricsAlignmentSelected(value)
+                                onLyricsActiveStyleSelected: value => root.lyricsActiveStyleSelected(value)
+                                onPreferLocalLyricsSelected: value => root.preferLocalLyricsSelected(value)
+                            }
+
+                            SettingsNetworkSection {
+                                visible: root.currentSection === "network"
+                                offlineBlackout: root.offlineBlackout
+                                svcLrclib: root.svcLrclib
+                                svcRadio: root.svcRadio
+                                svcDeezer: root.svcDeezer
+                                svcAudiodb: root.svcAudiodb
+                                svcWiki: root.svcWiki
+                                onOfflineBlackoutSelected: value => root.offlineBlackoutSelected(value)
+                                onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
+                                onOpenJellyfinRequested: root.openJellyfinRequested()
+                                onOpenSubsonicRequested: root.openSubsonicRequested()
+                            }
+
+                            SettingsBackupSection {
+                                visible: root.currentSection === "data"
+                                backupStatus: root.backupStatus
+                                onExportBackupRequested: root.exportBackupRequested()
+                                onImportBackupRequested: root.importBackupRequested()
                             }
                         }
                     }
-                }
-
-                // ---- About: same hover treatment as CreditsView cards ----
-                ColumnLayout {
-                    x: (scroll.availableWidth - width) / 2
-                    width: Math.min(scroll.availableWidth - 64, root.maxContentWidth)
-                    spacing: 10
-
-                    SectionLabel { text: "ABOUT & ACKNOWLEDGEMENTS" }
-
-                    Rectangle {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: aboutRow.implicitHeight + 32
-                        radius: 12
-                        color: aboutMouse.containsMouse ? surfaceElevated : surfaceCard
-                        border.width: aboutMouse.containsMouse ? 1.5 : 1
-                        border.color: aboutMouse.containsMouse ? recordRed : borderSubtle
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                        Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                        RowLayout {
-                            id: aboutRow
-                            anchors.fill: parent
-                            anchors.leftMargin: 16
-                            anchors.rightMargin: 16
-                            anchors.topMargin: 16
-                            anchors.bottomMargin: 16
-                            spacing: 14
-
-                            IconBadge {
-                                Layout.alignment: Qt.AlignVCenter
-                                iconName: "info"
-                                iconColor: aboutMouse.containsMouse ? recordRedHover : textPrimary
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth: true
-                                Layout.alignment: Qt.AlignVCenter
-                                spacing: 2
-
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: "Credits & Open Source Services"
-                                    color: aboutMouse.containsMouse ? recordRedHover : textPrimary
-                                    font.family: displayFont
-                                    font.pixelSize: 14
-                                    font.weight: Font.DemiBold
-                                    elide: Text.ElideRight
-                                }
-                                Label {
-                                    Layout.fillWidth: true
-                                    text: "LRCLIB, Cover Art Archive, MusicBrainz, Radio Browser, Wikipedia, and more"
-                                    color: textSecondary
-                                    font.family: bodyFont
-                                    font.pixelSize: 11
-                                    elide: Text.ElideRight
-                                }
-                            }
-
-                            LucideIcon {
-                                Layout.preferredWidth: 16
-                                Layout.preferredHeight: 16
-                                Layout.alignment: Qt.AlignVCenter
-                                icon: "chevron-down"
-                                rotation: -90
-                                color: aboutMouse.containsMouse ? recordRedHover : silverDim
-                            }
-                        }
-
-                        MouseArea {
-                            id: aboutMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.creditsOpen = true
-                        }
-                    }
-                }
-
-                Label {
-                    x: (scroll.availableWidth - width) / 2
-                    width: Math.min(scroll.availableWidth - 64, root.maxContentWidth)
-                    horizontalAlignment: Text.AlignHCenter
-                    text: "Preferences save automatically • GPL-3.0"
-                    color: silverDim
-                    font.family: monoFont
-                    font.pixelSize: 10
-                    opacity: 0.75
                 }
             }
         }
 
         CreditsView {
             onBackClicked: root.creditsOpen = false
-        }
-    }
-
-    component SectionLabel: Label {
-        color: recordRedHover
-        font.family: monoFont
-        font.pixelSize: 11
-        font.weight: Font.Bold
-        font.letterSpacing: 0.8
-    }
-
-    component IconBadge: Rectangle {
-        property string iconName: "settings"
-        property color iconColor: recordRedHover
-
-        implicitWidth: 40
-        implicitHeight: 40
-        radius: 10
-        color: surfaceElevated
-        border.width: 1
-        border.color: borderVariant
-
-        LucideIcon {
-            anchors.centerIn: parent
-            width: 20
-            height: 20
-            icon: parent.iconName
-            color: parent.iconColor
         }
     }
 }

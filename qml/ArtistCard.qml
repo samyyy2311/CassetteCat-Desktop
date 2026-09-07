@@ -2,6 +2,7 @@ import QtQuick.Controls
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Effects
+import QtQuick.Window
 
 Item {
     id: root
@@ -11,22 +12,27 @@ Item {
     property real cardWidth: 170
     property real cardHeight: 230
     property string artistImageUrl: ""
+    property bool imageAllowed: true
+    property bool imageRequested: false
 
     signal clicked()
 
     width: cardWidth
     height: cardHeight
 
-    Component.onCompleted: {
-        if (root.name && typeof services !== "undefined") {
-            const cached = services.getArtistImage(root.name)
-            if (cached && cached.length > 0) {
-                artistImageUrl = cached
-            } else {
-                services.fetchArtistImage(root.name)
-            }
+    function loadArtistImage() {
+        if (!root.name || !root.imageAllowed || root.imageRequested || typeof services === "undefined") return
+        root.imageRequested = true
+        const cached = services.getArtistImage(root.name)
+        if (cached && cached.length > 0) {
+            artistImageUrl = cached
+        } else {
+            services.fetchArtistImage(root.name)
         }
     }
+
+    Component.onCompleted: loadArtistImage()
+    onImageAllowedChanged: if (imageAllowed) loadArtistImage()
 
     Connections {
         target: typeof services !== "undefined" ? services : null
@@ -94,8 +100,11 @@ Item {
                         id: artistPhoto
                         anchors.fill: parent
                         source: root.artistImageUrl
+                        sourceSize.width: Math.max(1, Math.ceil(width * Screen.devicePixelRatio))
+                        sourceSize.height: Math.max(1, Math.ceil(height * Screen.devicePixelRatio))
                         fillMode: Image.PreserveAspectCrop
                         asynchronous: true
+                        cache: false
                         visible: status === Image.Ready && source !== ""
                         layer.enabled: true
                         layer.effect: MultiEffect {

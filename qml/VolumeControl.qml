@@ -11,8 +11,10 @@ Item {
     implicitWidth: 160
     implicitHeight: 30
 
-    readonly property color recordRed: "#C23B30"
-    readonly property color recordRedHover: "#D14337"
+    property color accentColor: "#C23B30"
+    property color accentHover: "#D14337"
+    readonly property color recordRed: accentColor
+    readonly property color recordRedHover: accentHover
     readonly property color surfaceElevated: "#2A2825"
     readonly property color surfaceTooltip: "#1A1816"
     readonly property color borderVariant: "#2E2B28"
@@ -20,7 +22,7 @@ Item {
     readonly property color silverDim: "#6E6C68"
     readonly property color textPrimary: "#F5F0EC"
     readonly property color textSecondary: "#A8A29A"
-    readonly property string monoFont: "IBM Plex Mono"
+    readonly property string monoFont: (typeof monoFontFamily !== "undefined" && monoFontFamily.length > 0) ? monoFontFamily : "IBM Plex Mono"
 
     property real lastNonZeroVolume: 0.8
     property bool isDragging: false

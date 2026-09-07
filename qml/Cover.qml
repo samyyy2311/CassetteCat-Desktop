@@ -5,19 +5,45 @@ import QtQuick.Window
 Item {
     id: root
     property var track: ({})
-    property real radius: 8
+    property real radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 8
     property bool keepPreviousArtwork: false
     property bool cacheArtwork: false
     property real stableSourceSize: 0
+    property int fillMode: Image.PreserveAspectCrop
+    readonly property int requestedSourceSize: Math.max(1, Math.min(1024,
+        Math.ceil((stableSourceSize > 0 ? stableSourceSize : Math.max(width, height)) * Screen.devicePixelRatio)))
+    function normalizeUrl(val) {
+        if (!val) return ""
+        const str = String(val).trim()
+        if (!str) return ""
+        if (str.startsWith("file://") || str.startsWith("http://") || str.startsWith("https://") || str.startsWith("qrc:/") || str.startsWith("image://")) {
+            return str
+        }
+        return "file:///" + str.replace(/\\/g, "/")
+    }
+
     readonly property url artworkSource: {
+        // Depend on the remote revision so lazily downloaded server artwork appears.
+        streaming.remoteArtRevision
         const currentTrack = root.track || ({})
-        return currentTrack.artworkUrl || (currentTrack.filePath ? library.artworkFor(currentTrack.filePath) : "")
+        if (currentTrack.artworkUrl) return normalizeUrl(currentTrack.artworkUrl)
+        const path = currentTrack.filePath || ""
+        if (!path) return ""
+        if (path.startsWith("subsonic:") || path.startsWith("jellyfin:")) {
+            return normalizeUrl(streaming.remoteArtwork(path))
+        }
+        return normalizeUrl(library.artworkFor(path))
     }
     property url displayedSource: artworkSource
+    readonly property real artworkImplicitWidth: artImage.implicitWidth
+    readonly property real artworkImplicitHeight: artImage.implicitHeight
+    readonly property real artworkAspectRatio: (artImage.implicitHeight > 0 && artImage.implicitWidth > 0)
+        ? (artImage.implicitWidth / artImage.implicitHeight)
+        : 1.0
 
     onArtworkSourceChanged: {
-        if (artworkSource === displayedSource) return
-        if (keepPreviousArtwork && artImage.status === Image.Ready && displayedSource) {
+        if (artworkSource.toString() === displayedSource.toString()) return
+        if (keepPreviousArtwork && artImage.status === Image.Ready && displayedSource.toString() !== "") {
             previousArt.source = displayedSource
             previousArt.opacity = 1
         }
@@ -52,8 +78,7 @@ Item {
 
     Rectangle {
         id: maskItem
-        width: Math.max(1, root.width)
-        height: Math.max(1, root.height)
+        anchors.fill: parent
         radius: root.radius
         color: "#FFFFFF"
         visible: false
@@ -64,9 +89,9 @@ Item {
     Image {
         id: previousArt
         anchors.fill: parent
-        sourceSize.width: Math.max(1, Math.ceil((root.stableSourceSize || width) * Screen.devicePixelRatio))
-        sourceSize.height: Math.max(1, Math.ceil((root.stableSourceSize || height) * Screen.devicePixelRatio))
-        fillMode: Image.PreserveAspectCrop
+        sourceSize.width: root.requestedSourceSize
+        sourceSize.height: root.requestedSourceSize
+        fillMode: root.fillMode
         asynchronous: true
         cache: root.cacheArtwork
         smooth: true
@@ -75,9 +100,12 @@ Item {
         opacity: 0
         visible: opacity > 0 && source.toString() !== ""
 
+        onOpacityChanged: {
+            if (opacity === 0 && source.toString() !== "") source = ""
+        }
         Behavior on opacity { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
-        layer.enabled: root.radius > 0
+        layer.enabled: root.radius > 0 && previousArt.visible
         layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: maskItem
@@ -88,9 +116,9 @@ Item {
         id: artImage
         anchors.fill: parent
         source: root.displayedSource
-        fillMode: Image.PreserveAspectCrop
-        sourceSize.width: Math.max(1, Math.ceil((root.stableSourceSize || width) * Screen.devicePixelRatio))
-        sourceSize.height: Math.max(1, Math.ceil((root.stableSourceSize || height) * Screen.devicePixelRatio))
+        fillMode: root.fillMode
+        sourceSize.width: root.requestedSourceSize
+        sourceSize.height: root.requestedSourceSize
         visible: status === Image.Ready && source.toString() !== ""
         opacity: visible ? 1 : 0
         asynchronous: true

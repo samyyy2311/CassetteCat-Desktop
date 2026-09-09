@@ -4,6 +4,7 @@
 #include <QDebug>
 
 #ifdef _WIN32
+#define NOMINMAX
 #include <windows.h>
 #include <wincred.h>
 #endif

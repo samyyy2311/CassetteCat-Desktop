@@ -260,6 +260,7 @@ endif()
 
 target_link_libraries(CassetteCat PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent Qt6::QuickEffects Qt6::Network Qt6::Widgets tag)
 if(WIN32)
+    target_compile_definitions(CassetteCat PRIVATE NOMINMAX)
     target_link_libraries(CassetteCat PRIVATE dwmapi ole32 shell32 shlwapi propsys runtimeobject)
     get_filename_component(windowsSdkRoot
         "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots;KitsRoot10]"

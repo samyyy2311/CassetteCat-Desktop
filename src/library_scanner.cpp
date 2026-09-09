@@ -77,12 +77,12 @@ bool scanSelfCheck()
     QDataStream stream(&wav, QIODevice::WriteOnly);
     stream.setByteOrder(QDataStream::LittleEndian);
     stream.writeRawData("RIFF", 4);
-    stream << quint32(36);
+    stream << quint32(38);
     stream.writeRawData("WAVEfmt ", 8);
     stream << quint32(16) << quint16(1) << quint16(1) << quint32(8000)
            << quint32(16000) << quint16(2) << quint16(16);
     stream.writeRawData("data", 4);
-    stream << quint32(0);
+    stream << quint32(2) << quint16(0);
     track.write(wav);
     track.close();
     dotTrack.close();

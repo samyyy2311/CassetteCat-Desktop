@@ -296,6 +296,11 @@ set_target_properties(CassetteCat PROPERTIES
     WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE TRUE
 )
+if(UNIX AND NOT APPLE)
+    set_target_properties(CassetteCat PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    )
+endif()
 
 include(GNUInstallDirs)
 

@@ -80,7 +80,7 @@ jobs:
         run: cmake --build build/ci-linux --parallel 2
 
       - name: Run self-check
-        run: ./build/ci-linux/CassetteCat --self-check
+        run: ./build/ci-linux/bin/CassetteCat --self-check
 
       - name: Run tests
         run: ctest --test-dir build/ci-linux --output-on-failure

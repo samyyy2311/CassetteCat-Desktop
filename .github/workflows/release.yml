@@ -100,7 +100,7 @@ jobs:
         run: cmake --build build/release --parallel 2
 
       - name: Run self-check
-        run: ./build/release/CassetteCat --self-check
+        run: ./build/release/bin/CassetteCat --self-check
 
       - name: Run tests
         run: ctest --test-dir build/release --output-on-failure

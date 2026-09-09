@@ -374,7 +374,7 @@ int main(int argc, char *argv[])
             quickWin->setIcon(appIcon);
             quickWin->show();
             setupWindowsFrameless(quickWin);
-            smtc.initialize(reinterpret_cast<quintptr>(quickWin->winId()));
+            smtc.initialize(static_cast<quintptr>(quickWin->winId()));
             activateWindow(quickWin);
 #endif
             break;

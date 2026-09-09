@@ -6,6 +6,7 @@
 #include <QVariantMap>
 
 class QAudioBufferOutput;
+class QMediaDevices;
 class QAudioOutput;
 class QMediaPlayer;
 class QQuickWindow;
@@ -21,6 +22,8 @@ class PlayerController final : public QObject
     Q_PROPERTY(QString formattedPosition READ formattedPosition NOTIFY positionChanged)
     Q_PROPERTY(QString formattedDuration READ formattedDuration NOTIFY durationChanged)
     Q_PROPERTY(float volume READ volume WRITE setVolume NOTIFY volumeChanged)
+    Q_PROPERTY(QVariantList audioOutputs READ audioOutputs NOTIFY audioOutputsChanged)
+    Q_PROPERTY(QString audioDeviceId READ audioDeviceId NOTIFY audioDeviceChanged)
     Q_PROPERTY(bool shuffleEnabled READ shuffleEnabled WRITE setShuffleEnabled NOTIFY shuffleEnabledChanged)
     Q_PROPERTY(qreal audioLevel READ audioLevel NOTIFY audioLevelChanged)
     Q_PROPERTY(bool audioMeterEnabled READ audioMeterEnabled WRITE setAudioMeterEnabled NOTIFY audioMeterEnabledChanged)
@@ -44,6 +47,8 @@ public:
     QString formattedPosition() const;
     QString formattedDuration() const;
     float volume() const;
+    QVariantList audioOutputs() const;
+    QString audioDeviceId() const;
     QString error() const;
 
     Q_INVOKABLE QString getLyrics(const QString &filePath) const;
@@ -51,9 +56,11 @@ public:
     Q_INVOKABLE void setShuffleEnabled(bool enabled);
     Q_INVOKABLE void toggleShuffle();
     Q_INVOKABLE void setVolume(float vol);
+    Q_INVOKABLE bool setAudioDevice(const QString &id);
     Q_INVOKABLE void restoreTrack(const QVariantMap &track, qint64 positionMs = 0);
     Q_INVOKABLE void playTrack(const QVariantMap &track);
     Q_INVOKABLE void togglePlay();
+    Q_INVOKABLE void play();
     Q_INVOKABLE void pause();
     Q_INVOKABLE void stop();
     Q_INVOKABLE void seek(qint64 positionMs);
@@ -66,6 +73,8 @@ signals:
     void positionChanged();
     void durationChanged();
     void volumeChanged();
+    void audioOutputsChanged();
+    void audioDeviceChanged();
     void shuffleEnabledChanged();
     void audioLevelChanged();
     void audioMeterEnabledChanged();
@@ -81,6 +90,7 @@ private:
     void setAudioLevel(qreal level);
 
     QAudioOutput *m_audioOutput = nullptr;
+    QMediaDevices *m_mediaDevices = nullptr;
     QAudioBufferOutput *m_bufferOutput = nullptr;
     QMediaPlayer *m_player = nullptr;
     StreamingController *m_streaming = nullptr;
@@ -92,4 +102,5 @@ private:
     qint64 m_position = 0;
     qint64 m_duration = 0;
     QString m_error;
+    bool m_pauseExpected = false;
 };

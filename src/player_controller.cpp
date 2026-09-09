@@ -6,7 +6,9 @@
 
 #include <QAudioBuffer>
 #include <QAudioBufferOutput>
+#include <QAudioDevice>
 #include <QAudioFormat>
+#include <QMediaDevices>
 #include <QAudioOutput>
 #include <QBuffer>
 #include <QDataStream>
@@ -36,19 +38,50 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     : QObject(parent)
     , m_streaming(streaming)
     , m_audioOutput(new QAudioOutput(this))
+    , m_mediaDevices(new QMediaDevices(this))
     , m_bufferOutput(new QAudioBufferOutput(this))
     , m_player(new QMediaPlayer(this))
 {
     m_player->setAudioOutput(m_audioOutput);
     m_audioOutput->setVolume(1.0f);
+    connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged, this, [this] {
+        emit audioOutputsChanged();
+        emit audioDeviceChanged();
+    });
 
     connect(m_player, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
+        const bool wasPlaying = m_isPlaying;
         const bool playing = (state == QMediaPlayer::PlayingState);
+        qInfo().noquote() << "[PLAYER] state=" << static_cast<int>(state)
+                          << "positionMs=" << m_player->position()
+                          << "track=" << m_currentTrack.value("filePath").toString();
         if (m_isPlaying != playing) {
             m_isPlaying = playing;
+#ifdef _WIN32
+            SetThreadExecutionState(ES_CONTINUOUS | (playing ? ES_SYSTEM_REQUIRED : 0));
+#endif
             emit isPlayingChanged();
         }
         if (!playing) setAudioLevel(0.0);
+        if (state == QMediaPlayer::StoppedState && !m_pauseExpected && !m_currentTrack.isEmpty()) {
+            const QString stoppedTrackPath = m_currentTrack.value("filePath").toString();
+            QTimer::singleShot(75, this, [this, stoppedTrackPath] {
+                if (m_pauseExpected || m_currentTrack.value("filePath").toString() != stoppedTrackPath
+                    || m_player->playbackState() == QMediaPlayer::PlayingState
+                    || m_player->mediaStatus() == QMediaPlayer::EndOfMedia) return;
+                qWarning().noquote() << "[PLAYER] unexpected backend stop; resuming positionMs=" << m_player->position();
+                m_player->play();
+            });
+        }
+        if (state == QMediaPlayer::PausedState && wasPlaying
+            && !m_pauseExpected && m_player->mediaStatus() != QMediaPlayer::EndOfMedia) {
+            qWarning() << "[PLAYER] unexpected backend pause; resuming";
+            QTimer::singleShot(0, m_player, &QMediaPlayer::play);
+        }
+        if (state == QMediaPlayer::PlayingState) {
+            m_pauseExpected = false;
+        }
+        if (state == QMediaPlayer::PausedState) m_pauseExpected = false;
     });
 
     connect(m_bufferOutput, &QAudioBufferOutput::audioBufferReceived, this, [this](const QAudioBuffer &buffer) {
@@ -73,12 +106,15 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     });
 
     connect(m_player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status) {
+        qInfo().noquote() << "[PLAYER] mediaStatus=" << static_cast<int>(status)
+                          << "positionMs=" << m_player->position();
         if (status == QMediaPlayer::EndOfMedia) {
             emit trackEnded();
         }
     });
 
     connect(m_player, &QMediaPlayer::errorOccurred, this, [this](QMediaPlayer::Error, const QString &message) {
+        qWarning().noquote() << "[PLAYER] error positionMs=" << m_player->position() << message;
         if (m_error == message) return;
         m_error = message;
         emit errorChanged();
@@ -106,6 +142,34 @@ qint64 PlayerController::duration() const { return m_duration; }
 QString PlayerController::formattedPosition() const { return formatDuration(static_cast<int>(m_position / 1000)); }
 QString PlayerController::formattedDuration() const { return formatDuration(static_cast<int>(m_duration / 1000)); }
 float PlayerController::volume() const { return m_audioOutput ? m_audioOutput->volume() : 1.0f; }
+QVariantList PlayerController::audioOutputs() const
+{
+    QVariantList outputs;
+    for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
+        QVariantMap output;
+        output.insert("value", QString::fromLatin1(device.id().toHex()));
+        output.insert("label", device.description());
+        outputs.append(output);
+    }
+    return outputs;
+}
+
+QString PlayerController::audioDeviceId() const
+{
+    return m_audioOutput ? QString::fromLatin1(m_audioOutput->device().id().toHex()) : QString();
+}
+
+bool PlayerController::setAudioDevice(const QString &id)
+{
+    for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
+        if (QString::fromLatin1(device.id().toHex()) != id) continue;
+        if (m_audioOutput->device().id() == device.id()) return true;
+        m_audioOutput->setDevice(device);
+        emit audioDeviceChanged();
+        return true;
+    }
+    return false;
+}
 QString PlayerController::error() const { return m_error; }
 
 void PlayerController::setAudioMeterEnabled(bool enabled)
@@ -232,6 +296,7 @@ void PlayerController::setVolume(float vol)
 void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs)
 {
     if (!loadTrack(track)) return;
+    m_pauseExpected = true;
     m_player->pause();
     if (positionMs > 0) {
         m_player->setPosition(positionMs);
@@ -243,6 +308,7 @@ void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs)
 void PlayerController::playTrack(const QVariantMap &track)
 {
     if (!loadTrack(track)) return;
+    m_pauseExpected = false;
     m_player->play();
 }
 
@@ -280,6 +346,8 @@ bool PlayerController::loadTrack(const QVariantMap &track)
 void PlayerController::togglePlay()
 {
     if (m_player->playbackState() == QMediaPlayer::PlayingState) {
+        qInfo().noquote() << "[PLAYER] pause source=toggle positionMs=" << m_player->position();
+        m_pauseExpected = true;
         m_player->pause();
     } else if (m_player->playbackState() == QMediaPlayer::PausedState) {
         m_player->play();
@@ -288,13 +356,22 @@ void PlayerController::togglePlay()
     }
 }
 
+void PlayerController::play()
+{
+    if (m_player->playbackState() != QMediaPlayer::PlayingState)
+        m_player->play();
+}
+
 void PlayerController::pause()
 {
+    qInfo().noquote() << "[PLAYER] pause requested positionMs=" << m_player->position();
+    m_pauseExpected = true;
     m_player->pause();
 }
 
 void PlayerController::stop()
 {
+    m_pauseExpected = true;
     m_player->stop();
 }
 

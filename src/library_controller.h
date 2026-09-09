@@ -1,11 +1,13 @@
 #pragma once
 
 #include <QAbstractListModel>
+#include <QFileSystemWatcher>
 #include <QHash>
 #include <QProcess>
 #include <QSet>
 #include <QString>
 #include <QStringList>
+#include <QTimer>
 #include <QUrl>
 #include <QVariantList>
 #include <QVariantMap>
@@ -14,7 +16,7 @@
 class LibraryController final : public QAbstractListModel
 {
     Q_OBJECT
-    Q_PROPERTY(QString folder READ folder NOTIFY changed)
+    Q_PROPERTY(QStringList folders READ folders NOTIFY changed)
     Q_PROPERTY(int trackCount READ trackCount NOTIFY tracksChanged)
     Q_PROPERTY(int visibleTrackCount READ visibleTrackCount NOTIFY visibleTracksChanged)
 
@@ -26,7 +28,7 @@ public:
         TrackRole = Qt::UserRole + 1
     };
 
-    QString folder() const;
+    QStringList folders() const;
     int trackCount() const { return m_trackCount; }
     int visibleTrackCount() const { return m_visibleRows.size(); }
     int rowCount(const QModelIndex &parent = {}) const override;
@@ -34,6 +36,7 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     Q_INVOKABLE void loadFolder(const QUrl &url);
+    Q_INVOKABLE void removeFolder(const QString &path);
     Q_INVOKABLE QString localPath(const QUrl &url) const;
     Q_INVOKABLE QString artworkFor(const QString &filePath);
     Q_INVOKABLE QVariantMap trackForPath(const QString &filePath) const;
@@ -53,8 +56,10 @@ signals:
     void visibleTracksChanged();
 
 private:
-    void setFolderPath(const QString &path);
-    void startScan(const QString &path);
+    void setFolderPaths(QStringList paths);
+    void startScan();
+    void rescanFolder();
+    void updateFolderWatch();
     void setFilter(const QString &query, const QString &format, bool strictFormat,
                    bool favoritesOnly, const QVariantMap &favorites, const QString &sortMetric,
                    bool ascending, const QVariantList &excludedFolders, bool ignoreShortClips);
@@ -62,7 +67,7 @@ private:
     bool isAvailable(const QVariantMap &track) const;
     bool matchesVisibleFilter(const QVariantMap &track) const;
 
-    QString m_folder;
+    QStringList m_folders;
     QVariantList m_tracks;
     QVector<int> m_visibleRows;
     QString m_query;
@@ -76,8 +81,11 @@ private:
     bool m_ignoreShortClips = false;
     int m_trackCount = 0;
     QHash<QString, QString> m_artworkUrls;
+    QFileSystemWatcher m_folderWatcher;
+    QTimer m_watchDebounce;
     QProcess m_scanProcess;
-    QString m_pendingScanPath;
+    QStringList m_pendingScanPaths;
+    QVariantList m_scannedTracks;
     quint64 m_scanGeneration = 0;
     quint64 m_activeScanGeneration = 0;
 };

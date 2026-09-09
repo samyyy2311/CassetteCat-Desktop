@@ -6,6 +6,8 @@
 
 #include <QCoreApplication>
 #include <QDir>
+#include <QDirIterator>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QRegularExpression>
 #include <QSettings>
@@ -39,38 +41,62 @@ QString primaryArtist(const QString &artist)
 
 LibraryController::LibraryController(QObject *parent)
     : QAbstractListModel(parent)
+    , m_folderWatcher(this)
+    , m_watchDebounce(this)
     , m_scanProcess(this)
 {
+    m_watchDebounce.setSingleShot(true);
+    m_watchDebounce.setInterval(750);
+    connect(&m_folderWatcher, &QFileSystemWatcher::directoryChanged, this, [this] {
+        m_watchDebounce.start();
+    });
+    connect(&m_watchDebounce, &QTimer::timeout, this, &LibraryController::rescanFolder);
     connect(&m_scanProcess, &QProcess::finished, this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
-        const QString pendingPath = std::exchange(m_pendingScanPath, {});
-        if (!pendingPath.isEmpty()) {
-            startScan(pendingPath);
+        const bool completed = m_activeScanGeneration == m_scanGeneration
+            && exitStatus == QProcess::NormalExit && exitCode == 0;
+        if (completed) {
+            const QJsonDocument document = QJsonDocument::fromJson(m_scanProcess.readAllStandardOutput());
+            if (document.isArray()) m_scannedTracks += document.toVariant().toList();
+        }
+        if (!m_pendingScanPaths.isEmpty()) {
+            startScan();
             return;
         }
-        if (m_activeScanGeneration != m_scanGeneration || exitStatus != QProcess::NormalExit || exitCode != 0) return;
+        if (!completed) return;
 
-        const QJsonDocument document = QJsonDocument::fromJson(m_scanProcess.readAllStandardOutput());
-        if (!document.isArray()) return;
+        QSet<QString> seenPaths;
+        QVariantList tracks;
+        tracks.reserve(m_scannedTracks.size());
+        for (const QVariant &value : std::as_const(m_scannedTracks)) {
+            const QString path = value.toMap().value("filePath").toString();
+            if (!path.isEmpty() && !seenPaths.contains(path)) {
+                seenPaths.insert(path);
+                tracks.append(value);
+            }
+        }
 
         beginResetModel();
-        m_tracks = document.toVariant().toList();
+        m_tracks = tracks;
         rebuildVisibleRows();
         endResetModel();
+        updateFolderWatch();
         emit changed();
         emit tracksChanged();
         emit visibleTracksChanged();
     });
 
     QSettings settings(settingsFilePath(), QSettings::IniFormat);
-    const QString savedFolder = settings.value("library/folder").toString();
-    if (!savedFolder.isEmpty() && QDir(savedFolder).exists()) {
-        QTimer::singleShot(100, this, [this, savedFolder] {
-            setFolderPath(savedFolder);
+    QStringList savedFolders = settings.value("library/folders").toStringList();
+    if (savedFolders.isEmpty()) savedFolders = {settings.value("library/folder").toString()};
+    savedFolders.removeAll(QString());
+    if (!savedFolders.isEmpty()) {
+        QTimer::singleShot(100, this, [this, savedFolders] {
+            setFolderPaths(savedFolders);
         });
     }
 }
 
-QString LibraryController::folder() const { return m_folder; }
+QStringList LibraryController::folders() const { return m_folders; }
 
 int LibraryController::rowCount(const QModelIndex &parent) const
 {
@@ -149,16 +175,25 @@ QString LibraryController::localPath(const QUrl &url) const
 
 void LibraryController::loadFolder(const QUrl &url)
 {
-    const QString path = localPath(url);
+    QString path = localPath(url);
 
     if (path.isEmpty()) {
         return;
     }
+    const QFileInfo info(path);
+    if (info.isFile()) path = info.absolutePath();
+    if (!QDir(path).exists()) return;
 
-    setFolderPath(path);
+    QStringList paths = m_folders;
+    if (!paths.contains(path)) paths.append(path);
+    setFolderPaths(paths);
+}
 
-    QSettings settings(settingsFilePath(), QSettings::IniFormat);
-    settings.setValue("library/folder", path);
+void LibraryController::removeFolder(const QString &path)
+{
+    QStringList paths = m_folders;
+    paths.removeAll(path);
+    setFolderPaths(paths);
 }
 
 QString LibraryController::artworkFor(const QString &filePath)
@@ -383,29 +418,65 @@ void LibraryController::rebuildVisibleRows()
     });
 }
 
-void LibraryController::setFolderPath(const QString &path)
+void LibraryController::setFolderPaths(QStringList paths)
 {
+    for (auto it = paths.begin(); it != paths.end();) {
+        const QFileInfo info(*it);
+        if (!info.isDir()) it = paths.erase(it);
+        else {
+            *it = info.absoluteFilePath();
+            ++it;
+        }
+    }
+    paths.removeDuplicates();
     ++m_scanGeneration;
-    m_folder = path;
+    m_folders = std::move(paths);
     beginResetModel();
     m_tracks.clear();
     rebuildVisibleRows();
     endResetModel();
     m_artworkUrls.clear();
+    updateFolderWatch();
     emit changed();
     emit tracksChanged();
     emit visibleTracksChanged();
 
-    if (m_scanProcess.state() != QProcess::NotRunning) {
-        m_pendingScanPath = path;
-        m_scanProcess.kill();
-        return;
-    }
-    startScan(path);
+    m_scannedTracks.clear();
+    m_pendingScanPaths = m_folders;
+    QSettings settings(settingsFilePath(), QSettings::IniFormat);
+    settings.setValue("library/folders", m_folders);
+    settings.setValue("library/folder", m_folders.isEmpty() ? QString() : m_folders.first());
+    if (m_scanProcess.state() != QProcess::NotRunning) m_scanProcess.kill();
+    else if (!m_pendingScanPaths.isEmpty()) startScan();
 }
 
-void LibraryController::startScan(const QString &path)
+void LibraryController::rescanFolder()
 {
+    if (m_folders.isEmpty()) return;
+    ++m_scanGeneration;
+    m_scannedTracks.clear();
+    m_pendingScanPaths = m_folders;
+    if (m_scanProcess.state() != QProcess::NotRunning) m_scanProcess.kill();
+    else startScan();
+}
+
+void LibraryController::updateFolderWatch()
+{
+    const QStringList watchedDirectories = m_folderWatcher.directories();
+    if (!watchedDirectories.isEmpty())
+        m_folderWatcher.removePaths(watchedDirectories);
+    QStringList directories;
+    for (const QString &path : std::as_const(m_folders)) {
+        directories.append(path);
+        QDirIterator iterator(path, QDir::Dirs | QDir::NoDotAndDotDot, QDirIterator::Subdirectories);
+        while (iterator.hasNext()) directories.append(iterator.next());
+    }
+    m_folderWatcher.addPaths(directories);
+}
+
+void LibraryController::startScan()
+{
+    if (m_pendingScanPaths.isEmpty()) return;
     m_activeScanGeneration = m_scanGeneration;
-    m_scanProcess.start(QCoreApplication::applicationFilePath(), {"--scan-library", path});
+    m_scanProcess.start(QCoreApplication::applicationFilePath(), {"--scan-library", m_pendingScanPaths.takeFirst()});
 }

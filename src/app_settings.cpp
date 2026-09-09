@@ -2,6 +2,7 @@
 
 #include "app_paths.h"
 
+#include <QDebug>
 #include <QFile>
 #include <QSaveFile>
 
@@ -14,7 +15,7 @@ SettingsController::SettingsController(QObject *parent)
 void SettingsController::setValue(const QString &key, const QVariant &value)
 {
     m_settings.setValue(key, value);
-    m_settings.sync();
+    sync();
 }
 
 void SettingsController::setValues(const QVariantMap &values)
@@ -22,7 +23,7 @@ void SettingsController::setValues(const QVariantMap &values)
     for (auto it = values.cbegin(); it != values.cend(); ++it) {
         m_settings.setValue(it.key(), it.value());
     }
-    m_settings.sync();
+    sync();
 }
 
 QVariant SettingsController::value(const QString &key, const QVariant &defaultValue) const
@@ -33,6 +34,9 @@ QVariant SettingsController::value(const QString &key, const QVariant &defaultVa
 void SettingsController::sync()
 {
     m_settings.sync();
+    if (m_settings.status() != QSettings::NoError) {
+        qWarning().noquote() << "SETTINGS_SYNC_FAILED:" << static_cast<int>(m_settings.status()) << m_settings.fileName();
+    }
 }
 
 bool SettingsController::exportTextFile(const QUrl &url, const QString &text)

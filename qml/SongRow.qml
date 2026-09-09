@@ -24,6 +24,18 @@ Rectangle {
     signal clicked()
     signal favoriteClicked()
 
+    Drag.active: trackDrag.active
+    Drag.source: root
+    Drag.hotSpot.x: width / 2
+    Drag.hotSpot.y: height / 2
+    Drag.supportedActions: Qt.CopyAction
+    Drag.dragType: Drag.Automatic
+
+    DragHandler {
+        id: trackDrag
+        target: null
+    }
+
     height: rowHeight
     radius: rowRadius
     color: rowMouse.containsMouse ? hoverBg : (isCurrent ? activeBg : cardBg)
@@ -31,17 +43,6 @@ Rectangle {
     border.color: isCurrent ? recordRed : "transparent"
 
     Behavior on color { ColorAnimation { duration: 120 } }
-
-    Rectangle {
-        anchors.left: parent.left
-        anchors.verticalCenter: parent.verticalCenter
-        anchors.leftMargin: 4
-        width: 3.5
-        height: 20
-        radius: 1.75
-        color: recordRed
-        visible: isCurrent
-    }
 
     RowLayout {
         anchors.fill: parent
@@ -162,7 +163,6 @@ Rectangle {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     if (root.track && root.track.filePath) {
-                        toggleFavorite(root.track.filePath)
                         root.favoriteClicked()
                     }
                 }
@@ -182,6 +182,7 @@ Rectangle {
     MouseArea {
         id: rowMouse
         anchors.fill: parent
+        z: -1
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.clicked()

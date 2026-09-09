@@ -10,6 +10,7 @@ Item {
     anchors.fill: parent
     property alias searchBox: pageSearchBox
     property alias searchInput: pageSearchInput
+    readonly property bool filtering: appWindow.searchQuery.trim().length > 0 || appWindow.activeFormatFilter !== "ALL"
 
     ColumnLayout {
         anchors.fill: parent
@@ -41,7 +42,7 @@ Item {
                 }
 
                 Label {
-                    text: root.appWindow.searchQuery.trim().length > 0 ? root.libraryModel.visibleTrackCount + " matching tracks" : root.libraryModel.trackCount + " tracks in your library"
+                    text: root.filtering ? root.libraryModel.visibleTrackCount + " matching tracks" : "Search by title, artist, album, or format"
                     color: silverDim
                     font.family: monoFont
                     font.pixelSize: 11
@@ -53,7 +54,7 @@ Item {
             }
 
             PressDepthIconButton {
-                visible: root.appWindow.searchQuery.length > 0 || root.appWindow.activeFormatFilter !== "ALL"
+                visible: root.filtering
                 boxSize: 32
                 iconSize: 15
                 iconName: "rotate-ccw"
@@ -216,6 +217,7 @@ Item {
             }
 
             Label {
+                visible: root.filtering
                 text: root.libraryModel.visibleTrackCount + " results"
                 color: textSecondary
                 font.family: monoFont
@@ -227,6 +229,7 @@ Item {
             id: searchResults
             Layout.fillWidth: true
             Layout.fillHeight: true
+            visible: root.filtering
             clip: true
             model: root.libraryModel
             spacing: 6
@@ -257,7 +260,7 @@ Item {
                     }
 
                     Label {
-                        text: root.appWindow.searchQuery.length > 0 ? "Best matches first" : "All tracks"
+                        text: root.appWindow.searchQuery.length > 0 ? "Best matches first" : "Format results"
                         color: silverDim
                         font.family: monoFont
                         font.pixelSize: 10
@@ -349,14 +352,25 @@ Item {
                 anchors.centerIn: parent
                 visible: root.libraryModel.visibleTrackCount === 0
                 catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
-                title: root.appWindow.searchQuery.length > 0 || root.appWindow.activeFormatFilter !== "ALL" ? "No matching tracks" : "Your library is empty"
-                subtitle: root.appWindow.searchQuery.length > 0 || root.appWindow.activeFormatFilter !== "ALL" ? "Try a different search or clear the format filter" : "Choose a music folder in Settings to start searching"
-                actionLabel: root.appWindow.searchQuery.length > 0 || root.appWindow.activeFormatFilter !== "ALL" ? "Clear Search" : ""
+                title: "No matching tracks"
+                subtitle: "Try a different search or clear the format filter"
+                actionLabel: "Clear Search"
                 onActionClicked: {
                     root.appWindow.searchQuery = "";
                     root.appWindow.activeFormatFilter = "ALL";
                 }
             }
+        }
+
+        EmptyState {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            visible: !root.filtering
+            catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
+            title: "Start searching"
+            subtitle: root.libraryModel.trackCount > 0
+                ? "Type a title, artist, album, or choose a format"
+                : "Choose a music folder in Settings to begin"
         }
     }
 }

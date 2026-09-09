@@ -42,6 +42,10 @@ Item {
                         {
                             id: "genres",
                             label: "Genres"
+                        },
+                        {
+                            id: "playlists",
+                            label: "Playlists"
                         }
                     ]
 
@@ -178,8 +182,8 @@ Item {
 
             Rectangle {
                 id: searchInputBox
-                visible: root.appWindow.libSearchVisible || root.appWindow.libSearchQuery.length > 0
-                Layout.preferredWidth: (root.appWindow.libSearchVisible || root.appWindow.libSearchQuery.length > 0) ? 175 : 0
+                visible: root.appWindow.libraryTab !== "playlists" && (root.appWindow.libSearchVisible || root.appWindow.libSearchQuery.length > 0)
+                Layout.preferredWidth: visible ? 175 : 0
                 Layout.preferredHeight: 34
                 radius: 17
                 clip: true
@@ -261,7 +265,7 @@ Item {
             }
 
             PressDepthIconButton {
-                visible: !root.appWindow.libSearchVisible && root.appWindow.libSearchQuery.length === 0
+                visible: root.appWindow.libraryTab !== "playlists" && !root.appWindow.libSearchVisible && root.appWindow.libSearchQuery.length === 0
                 boxSize: 34
                 iconSize: 16
                 iconName: "search"
@@ -275,6 +279,7 @@ Item {
             }
 
             PressDepthIconButton {
+                visible: root.appWindow.libraryTab !== "playlists"
                 boxSize: 34
                 iconSize: 16
                 iconName: "sliders-horizontal"
@@ -303,7 +308,7 @@ Item {
             id: libraryStack
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: root.appWindow.libraryTab === "songs" ? 0 : (root.appWindow.libraryTab === "artists" ? 1 : (root.appWindow.libraryTab === "albums" ? 2 : 3))
+            currentIndex: root.appWindow.libraryTab === "songs" ? 0 : (root.appWindow.libraryTab === "artists" ? 1 : (root.appWindow.libraryTab === "albums" ? 2 : (root.appWindow.libraryTab === "genres" ? 3 : 4)))
 
             Item {
                 GridView {
@@ -549,6 +554,10 @@ Item {
                     onActionClicked: root.appWindow.libSearchQuery = ""
                 }
             }
+
+            LibraryPlaylistsView {
+                appWindow: root.appWindow
+            }
         }
     }
 
@@ -561,7 +570,9 @@ Item {
                 return artistGrid;
             if (root.appWindow.libraryTab === "albums")
                 return albumGrid;
-            return genreGrid;
+            if (root.appWindow.libraryTab === "genres")
+                return genreGrid;
+            return null;
         }
     }
 
@@ -576,6 +587,34 @@ Item {
                     libAutoScroller.stop();
                 else
                     libAutoScroller.start(mouse.x, mouse.y);
+            }
+        }
+    }
+
+    DropArea {
+        anchors.fill: parent
+        keys: ["text/uri-list"]
+        onDropped: drop => {
+            if (!drop.urls || drop.urls.length === 0) return
+            root.libraryModel.loadFolder(drop.urls[0])
+            drop.accepted = true
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            visible: parent.containsDrag
+            color: "#B00E0D0C"
+            border.width: 2
+            border.color: recordRed
+            radius: 12
+
+            Label {
+                anchors.centerIn: parent
+                text: "Drop a music folder to scan"
+                color: textPrimary
+                font.family: displayFont
+                font.pixelSize: 18
+                font.weight: Font.Bold
             }
         }
     }

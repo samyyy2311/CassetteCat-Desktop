@@ -9,6 +9,33 @@ Item {
     anchors.fill: parent
     property alias searchBox: radioSearchBox
     property alias searchInput: radSearchInput
+    readonly property bool radioUnavailable: appWindow.offlineBlackout || !appWindow.svcRadio
+    readonly property string unavailableTitle: appWindow.offlineBlackout
+                                             ? "Online services are paused"
+                                             : "Radio Browser is turned off"
+    readonly property string unavailableSubtitle: appWindow.offlineBlackout && !appWindow.svcRadio
+                                                ? "Offline Blackout Mode and Radio Browser are both disabled"
+                                                : (appWindow.offlineBlackout
+                                                   ? "Offline Blackout Mode prevents Radio Browser from connecting"
+                                                   : "Enable Radio Browser to discover and play live stations")
+
+    function stationTrack(station) {
+        return {
+            title: station.name || "Live Radio Stream",
+            artist: station.country || "Radio Browser",
+            album: "Internet Radio Broadcast",
+            filePath: station.streamUrl,
+            format: "STREAM",
+            duration: "LIVE",
+            artworkUrl: station.favicon || ""
+        }
+    }
+
+    function playStation(station) {
+        const stations = appWindow.radioStations || []
+        const index = stations.findIndex(candidate => candidate.streamUrl === station.streamUrl)
+        appWindow.startRadioPlayback(stations.map(candidate => root.stationTrack(candidate)), index)
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -29,7 +56,7 @@ Item {
                     font.weight: Font.Bold
                 }
                 Label {
-                    text: root.appWindow.radioStations.length > 0 ? (root.appWindow.radioIsCustomized ? (root.appWindow.radioStations.length + " filtered live stations") : (root.appWindow.radioStations.length + " global live stations (Radio Browser API)")) : "Discover online radio streams"
+                    text: root.radioUnavailable ? root.unavailableSubtitle : (root.appWindow.radioStations.length > 0 ? (root.appWindow.radioIsCustomized ? (root.appWindow.radioStations.length + " filtered live stations") : (root.appWindow.radioStations.length + " global live stations (Radio Browser API)")) : "Discover online radio streams")
                     color: textSecondary
                     font.family: monoFont
                     font.pixelSize: 12
@@ -44,6 +71,7 @@ Item {
                 id: radioSearchBox
                 Layout.preferredWidth: 240
                 Layout.preferredHeight: 36
+                enabled: !root.radioUnavailable
                 radius: 18
                 color: surfaceCard
                 border.width: 1
@@ -108,6 +136,7 @@ Item {
                 boxSize: 36
                 iconSize: 18
                 iconName: "refresh-cw"
+                enabled: !root.radioUnavailable
                 tint: textPrimary
                 tooltipText: "Refresh Stations"
                 onClicked: root.appWindow.refreshRadio()
@@ -117,6 +146,7 @@ Item {
                 boxSize: 36
                 iconSize: 18
                 iconName: "sliders-horizontal"
+                enabled: !root.radioUnavailable
                 tint: textPrimary
                 highlighted: root.appWindow.radioIsCustomized
                 tooltipText: "Refine & Sort Stations"
@@ -175,6 +205,7 @@ Item {
                             clip: true
 
                             Image {
+                                id: stationArtwork
                                 anchors.fill: parent
                                 anchors.margins: 4
                                 source: modelData.favicon || ""
@@ -188,7 +219,7 @@ Item {
                                 height: 24
                                 icon: "radio"
                                 color: recordRedHover
-                                visible: !modelData.favicon || modelData.favicon.length === 0
+                                visible: stationArtwork.status !== Image.Ready
                             }
                         }
 
@@ -217,40 +248,28 @@ Item {
                         }
 
                         TransportButton {
+                            id: stationPlayButton
                             buttonSize: 36
                             iconName: (root.playerController.currentTrack && root.playerController.currentTrack.filePath === modelData.streamUrl && root.playerController.isPlaying) ? "pause" : "play"
                             accented: root.playerController.currentTrack && root.playerController.currentTrack.filePath === modelData.streamUrl
+                            tooltipText: root.playerController.currentTrack && root.playerController.currentTrack.filePath === modelData.streamUrl && root.playerController.isPlaying ? "Pause station" : "Play station"
                             onClicked: {
-                                const stTrack = {
-                                    title: modelData.name || "Live Radio Stream",
-                                    artist: modelData.country || "Radio Browser",
-                                    album: "Internet Radio Broadcast",
-                                    filePath: modelData.streamUrl,
-                                    format: "STREAM",
-                                    duration: "LIVE",
-                                    artworkUrl: modelData.favicon || ""
-                                };
-                                root.appWindow.playTrack(stTrack);
+                                if (root.playerController.currentTrack && root.playerController.currentTrack.filePath === modelData.streamUrl) root.playerController.togglePlay()
+                                else root.playStation(modelData)
                             }
                         }
                     }
 
                     MouseArea {
                         id: radCardMouse
-                        anchors.fill: parent
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: Math.max(0, parent.width - 64)
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            const stTrack = {
-                                title: modelData.name || "Live Radio Stream",
-                                artist: modelData.country || "Radio Browser",
-                                album: "Internet Radio Broadcast",
-                                filePath: modelData.streamUrl,
-                                format: "STREAM",
-                                duration: "LIVE",
-                                artworkUrl: modelData.favicon || ""
-                            };
-                            root.appWindow.playTrack(stTrack);
+                            root.playStation(modelData)
                         }
                     }
                 }
@@ -262,10 +281,20 @@ Item {
             Layout.fillHeight: true
             visible: root.appWindow.radioStations.length === 0
             catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
-            title: "Loading Radio Stations..."
-            subtitle: "Connecting to the global Radio Browser directory"
-            actionLabel: "Retry Connection"
-            onActionClicked: root.appWindow.refreshRadio()
+            title: root.radioUnavailable ? root.unavailableTitle : "Loading Radio Stations..."
+            subtitle: root.radioUnavailable ? root.unavailableSubtitle : "Connecting to the global Radio Browser directory"
+            actionLabel: root.radioUnavailable
+                         ? (root.appWindow.offlineBlackout ? "Enable online services" : "Enable Radio Browser")
+                         : "Retry Connection"
+            onActionClicked: {
+                if (root.radioUnavailable) {
+                    root.appWindow.offlineBlackout = false
+                    root.appWindow.svcRadio = true
+                    Qt.callLater(root.appWindow.refreshRadio)
+                } else {
+                    root.appWindow.refreshRadio()
+                }
+            }
         }
     }
 }

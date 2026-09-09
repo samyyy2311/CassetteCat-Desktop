@@ -36,6 +36,7 @@ Column {
                 showFormatBadge: root.appWindow ? root.appWindow.showFormatBadges : true
                 coverRadius: root.appWindow ? (root.appWindow.albumArtRadius <= 0 ? 2 : (root.appWindow.albumArtRadius <= 8 ? 6 : 8)) : 8
                 onClicked: if (root.appWindow) root.appWindow.playTrack(modelData)
+                onFavoriteClicked: if (root.appWindow) root.appWindow.toggleFavorite(modelData.filePath)
             }
         }
     }

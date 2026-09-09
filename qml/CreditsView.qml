@@ -4,7 +4,6 @@ import QtQuick.Layouts
 
 Item {
     id: root
-    signal backClicked()
 
     component CreditItemRow: Rectangle {
         id: itemRoot
@@ -82,52 +81,19 @@ Item {
         }
     }
 
-    ScrollView {
-        id: scroll
-        anchors.fill: parent
-        clip: true
-        contentWidth: availableWidth
-        contentHeight: bodyCol.implicitHeight + 48
-        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-        ScrollBar.vertical: SleekScrollBar {}
+    implicitHeight: bodyCol.implicitHeight + 48
 
-        Column {
+    Column {
             id: bodyCol
-            width: scroll.availableWidth
+            width: root.width
             spacing: 10
-            topPadding: 24
+            topPadding: 0
             bottomPadding: 36
 
             ColumnLayout {
                 x: 32
-                width: scroll.availableWidth - 64
+                width: root.width - 64
                 spacing: 10
-
-                // ---- Header matching SubPageHeader with rotated left-pointing chevron ----
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 12
-
-                    PressDepthIconButton {
-                        boxSize: 36
-                        iconSize: 18
-                        iconName: "chevron-left"
-                        tint: textPrimary
-                        tooltipText: "Back to Settings"
-                        onClicked: root.backClicked()
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: "Credits & Open Source"
-                        color: textPrimary
-                        font.family: displayFont
-                        font.pixelSize: 20
-                        font.weight: Font.Bold
-                        font.letterSpacing: -0.3
-                        elide: Text.ElideRight
-                    }
-                }
 
                 // ---- Section 1: Services & Data ----
                 SectionLabel { text: "Services & Data" }
@@ -313,5 +279,4 @@ Item {
                 }
             }
         }
-    }
 }

@@ -34,6 +34,7 @@ Column {
                 track: modelData
                 showAlbum: false
                 onClicked: if (root.appWindow) root.appWindow.playTrack(modelData)
+                onFavoriteClicked: if (root.appWindow) root.appWindow.toggleFavorite(modelData.filePath)
             }
         }
     }

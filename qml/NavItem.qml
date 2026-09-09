@@ -10,6 +10,8 @@ Item {
     property string iconName: ""
     property string label: ""
     property bool preserveIconColor: false
+    property bool accessHintsVisible: false
+    property string accessKey: ""
 
     implicitWidth: sidebarWidth
     implicitHeight: 40
@@ -77,6 +79,28 @@ Item {
             elide: Text.ElideRight
             visible: !root.sidebarCollapsed && opacity > 0.01
             opacity: Math.max(0.0, Math.min(1.0, (root.sidebarWidth - 90) / 110))
+        }
+
+        Rectangle {
+            visible: root.accessHintsVisible && root.accessKey.length > 0
+            anchors.right: parent.right
+            anchors.rightMargin: 7
+            anchors.verticalCenter: parent.verticalCenter
+            width: 20
+            height: 20
+            radius: 4
+            color: root.appWindow.surfaceBase
+            border.width: 1
+            border.color: root.appWindow.recordRed
+
+            Label {
+                anchors.centerIn: parent
+                text: root.accessKey
+                color: root.appWindow.recordRedHover
+                font.family: root.appWindow.monoFont
+                font.pixelSize: 10
+                font.weight: Font.Bold
+            }
         }
     }
 

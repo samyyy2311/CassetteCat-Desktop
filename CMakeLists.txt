@@ -68,12 +68,15 @@ qt_add_qml_module(CassetteCat
         qml/NowPlayingTopBar.qml
         qml/NowPlayingLyricsView.qml
         qml/NowPlayingQueueView.qml
+        qml/QueueTrackRow.qml
         qml/LucideIcon.qml
+        qml/HoverMarqueeLabel.qml
         qml/TransportButton.qml
         qml/PressDepthIconButton.qml
         qml/AudioSeeker.qml
         qml/VolumeControl.qml
         qml/Cover.qml
+        qml/VinylFallback.qml
         qml/AppToolTip.qml
         qml/SongRow.qml
         qml/SongCard.qml
@@ -89,9 +92,11 @@ qt_add_qml_module(CassetteCat
         qml/HomePage.qml
         qml/HomeSongCard.qml
         qml/LibraryPage.qml
+        qml/LibraryPlaylistsView.qml
         qml/HomeTrackShelf.qml
         qml/SearchPage.qml
         qml/RadioPage.qml
+        qml/RemoteServerPage.qml
         qml/JellyfinPage.qml
         qml/SubsonicPage.qml
         qml/NavItem.qml
@@ -102,6 +107,7 @@ qt_add_qml_module(CassetteCat
         qml/EmptyState.qml
         qml/SleekScrollBar.qml
         qml/SettingsChoicePill.qml
+        qml/SettingsNavigationItem.qml
         qml/SettingCard.qml
         qml/SettingRow.qml
         qml/SettingSwitch.qml
@@ -110,14 +116,17 @@ qt_add_qml_module(CassetteCat
         qml/SettingButton.qml
         qml/SettingColorPicker.qml
         qml/SettingDivider.qml
+        qml/SettingsPathList.qml
         qml/SettingsLibrarySection.qml
         qml/SettingsAppearanceSection.qml
         qml/SettingsPlaybackSection.qml
+        qml/SettingsShortcutsSection.qml
         qml/SettingsDesktopSection.qml
         qml/SettingsLyricsSection.qml
         qml/SettingsNetworkSection.qml
         qml/SettingsBackupSection.qml
         qml/ShortcutCaptureField.qml
+        qml/ShortcutDefinitions.qml
         qml/SettingsPage.qml
         qml/CreditsView.qml
         qml/AutoScroller.qml
@@ -252,7 +261,20 @@ endif()
 
 target_link_libraries(CassetteCat PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent Qt6::QuickEffects Qt6::Network Qt6::Widgets tag)
 if(WIN32)
-    target_link_libraries(CassetteCat PRIVATE dwmapi)
+    target_link_libraries(CassetteCat PRIVATE dwmapi ole32 shell32 shlwapi propsys runtimeobject)
+    get_filename_component(windowsSdkRoot
+        "[HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots;KitsRoot10]"
+        ABSOLUTE
+    )
+    file(GLOB cppWinrtIncludeDirs "${windowsSdkRoot}/Include/*/cppwinrt")
+    list(SORT cppWinrtIncludeDirs COMPARE NATURAL ORDER DESCENDING)
+    list(GET cppWinrtIncludeDirs 0 cppWinrtIncludeDir)
+    if(NOT EXISTS "${cppWinrtIncludeDir}/winrt/base.h")
+        message(FATAL_ERROR "C++/WinRT headers are required to build CassetteCat on Windows")
+    endif()
+    target_include_directories(CassetteCat PRIVATE
+        "${cppWinrtIncludeDir}"
+    )
     add_custom_command(TARGET CassetteCat POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "$<TARGET_FILE:Qt6::Widgets>"

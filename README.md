@@ -73,6 +73,8 @@ tar -xzf CassetteCat-*-linux-x64.tar.gz
 
 ### Windows
 
+The installer adds a Start menu entry and can optionally associate common audio files with CassetteCat. The ZIP remains portable:
+
 ```powershell
 gh release download --repo samyyy2311/CassetteCat-Desktop --pattern '*windows-x64.zip'
 $archive = Get-ChildItem 'CassetteCat-*-windows-x64.zip' | Select-Object -First 1

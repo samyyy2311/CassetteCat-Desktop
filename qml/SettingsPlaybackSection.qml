@@ -6,10 +6,6 @@ ColumnLayout {
     id: root
     property bool resumeQueueOnLaunch: true
     property bool autoplayEnabled: false
-    property bool globalShortcutsEnabled: false
-    property bool globalShortcutsSupported: false
-    property string globalShortcutStatus: ""
-    property var globalShortcutBindings: ({})
     property string sleepTimerMode: "off"
     property string sleepTimerStatus: "Off"
     property bool sleepFadeOut: true
@@ -18,8 +14,6 @@ ColumnLayout {
 
     signal resumeQueueOnLaunchSelected(bool value)
     signal autoplaySelected(bool value)
-    signal globalShortcutsEnabledSelected(bool value)
-    signal globalShortcutSelected(string action, string shortcut)
     signal sleepTimerSelected(string value)
     signal sleepTimerCancelled()
     signal sleepFadeOutSelected(bool value)
@@ -53,61 +47,6 @@ ColumnLayout {
             SettingSwitch {
                 checked: root.autoplayEnabled
                 onToggled: val => root.autoplaySelected(val)
-            }
-        }
-    }
-
-    SectionLabel { text: "Global Shortcuts" }
-
-    SettingCard {
-        SettingRow {
-            iconName: "zap"
-            title: "System-Wide Hotkeys"
-            subtitle: root.globalShortcutsSupported ? root.globalShortcutStatus : "Not available on this platform"
-
-            SettingSwitch {
-                enabled: root.globalShortcutsSupported
-                checked: root.globalShortcutsEnabled
-                onToggled: val => root.globalShortcutsEnabledSelected(val)
-            }
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            visible: root.globalShortcutsSupported && root.globalShortcutsEnabled
-            Layout.topMargin: 4
-            Layout.bottomMargin: 4
-            spacing: 6
-
-            SettingDivider {}
-
-            Repeater {
-                model: [
-                    { action: "playPause", label: "Play / Pause", defaultKey: "Ctrl+Alt+Space" },
-                    { action: "previous", label: "Previous Track", defaultKey: "Ctrl+Alt+Left" },
-                    { action: "next", label: "Next Track", defaultKey: "Ctrl+Alt+Right" },
-                    { action: "favorite", label: "Toggle Favorite", defaultKey: "Ctrl+Alt+F" },
-                    { action: "search", label: "Focus Search", defaultKey: "Ctrl+Alt+S" },
-                    { action: "miniPlayer", label: "Toggle Mini Player", defaultKey: "Ctrl+Alt+M" }
-                ]
-                delegate: RowLayout {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    spacing: 12
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: modelData.label
-                        color: textPrimary
-                        font.family: displayFont
-                        font.pixelSize: 12
-                    }
-
-                    ShortcutCaptureField {
-                        shortcut: (root.globalShortcutBindings && root.globalShortcutBindings[modelData.action]) || modelData.defaultKey
-                        onShortcutCaptured: value => root.globalShortcutSelected(modelData.action, value)
-                    }
-                }
             }
         }
     }

@@ -5,6 +5,7 @@ Rectangle {
     id: root
 
     property string shortcut: ""
+    property bool allowPlainKey: false
     signal shortcutCaptured(string shortcut)
 
     implicitWidth: 148
@@ -39,7 +40,7 @@ Rectangle {
         }
         const key = root.keyName(event.key)
         const modifiers = event.modifiers
-        if (!key || !(modifiers & (Qt.ControlModifier | Qt.AltModifier))) return
+        if (!key || (!root.allowPlainKey && !(modifiers & (Qt.ControlModifier | Qt.AltModifier)))) return
 
         const parts = []
         if (modifiers & Qt.ControlModifier) parts.push("Ctrl")

@@ -9,11 +9,14 @@ ColumnLayout {
     property string nowPlayingNotifications: "minimized"
     property bool miniPlayerAlwaysOnTop: true
     property bool trayAvailable: true
+    property var audioOutputs: []
+    property string audioDeviceId: ""
 
     signal closeToTraySelected(bool value)
     signal startMinimizedToTraySelected(bool value)
     signal nowPlayingNotificationsSelected(string value)
     signal miniPlayerAlwaysOnTopSelected(bool value)
+    signal audioDeviceSelected(string value)
 
     Layout.fillWidth: true
     spacing: 16
@@ -80,6 +83,19 @@ ColumnLayout {
                 checked: root.miniPlayerAlwaysOnTop
                 onToggled: val => root.miniPlayerAlwaysOnTopSelected(val)
             }
+        }
+    }
+
+    SectionLabel { text: "Audio Output" }
+
+    SettingCard {
+        SettingChoiceGroup {
+            iconName: "volume-2"
+            title: "Playback Device"
+            subtitle: "Choose where CassetteCat sends audio"
+            options: root.audioOutputs
+            selectedValue: root.audioDeviceId
+            onOptionSelected: value => root.audioDeviceSelected(String(value))
         }
     }
 

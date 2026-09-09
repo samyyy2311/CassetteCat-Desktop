@@ -6,7 +6,7 @@ Item {
     id: root
 
     property int trackCount: 0
-    property string libraryFolder: ""
+    property var libraryFolders: []
     property var excludedFolders: []
     property bool ignoreShortClips: false
     property string defaultLaunchPage: "last"
@@ -23,16 +23,21 @@ Item {
     property bool globalShortcutsSupported: false
     property string globalShortcutStatus: ""
     property var globalShortcutBindings: ({})
+    property var inAppShortcutBindings: ({})
+    property var inAppShortcutActions: []
+    property string inAppShortcutStatus: ""
     property string sleepTimerMode: "off"
     property string sleepTimerStatus: "Off"
     property bool sleepFadeOut: true
     property bool autoplayEnabled: false
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 80
-    property bool closeToTray: true
+    property bool closeToTray: false
     property bool startMinimizedToTray: false
     property string nowPlayingNotifications: "minimized"
     property bool trayAvailable: true
+    property var audioOutputs: []
+    property string audioDeviceId: ""
     property bool miniPlayerAlwaysOnTop: true
     property int lyricsFontSize: 28
     property string lyricsAlignment: "left"
@@ -52,6 +57,7 @@ Item {
         { id: "library", label: "Music Library", icon: "folder" },
         { id: "appearance", label: "Appearance", icon: "sliders-horizontal" },
         { id: "playback", label: "Playback", icon: "play" },
+        { id: "shortcuts", label: "Keyboard Shortcuts", icon: "zap" },
         { id: "desktop", label: "Desktop", icon: "pip" },
         { id: "lyrics", label: "Lyrics", icon: "quote" },
         { id: "network", label: "Network & Privacy", icon: "shield" },
@@ -59,12 +65,15 @@ Item {
         { id: "credits", label: "Credits", icon: "info" }
     ]
 
-    signal chooseFolderRequested()
+    signal addLibraryFolderRequested()
+    signal removeLibraryFolderRequested(string path)
     signal backRequested()
     signal resumeQueueOnLaunchSelected(bool value)
     signal globalShortcutsEnabledSelected(bool value)
     signal globalShortcutSelected(string action, string shortcut)
+    signal inAppShortcutSelected(string action, string shortcut)
     signal miniPlayerAlwaysOnTopSelected(bool value)
+    signal audioDeviceSelected(string value)
     signal lyricsFontSizeSelected(int value)
     signal defaultLaunchPageSelected(string value)
     signal addExcludeRequested()
@@ -98,67 +107,16 @@ Item {
     signal nowPlayingNotificationsSelected(string value)
 
     function chooseSection(id) {
-        if (id === "credits") {
-            creditsOpen = true
-            return
-        }
         creditsOpen = false
         currentSection = id
         contentScroll.contentItem.contentY = 0
     }
 
-    StackLayout {
+    Item {
         anchors.fill: parent
-        currentIndex: root.creditsOpen ? 1 : 0
-
-        Item {
             ColumnLayout {
                 anchors.fill: parent
                 spacing: 0
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 32
-                    Layout.rightMargin: 32
-                    Layout.topMargin: 24
-                    Layout.bottomMargin: 20
-                    spacing: 16
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 4
-
-                        Label {
-                            text: "Settings"
-                            color: textPrimary
-                            font.family: displayFont
-                            font.pixelSize: 28
-                            font.weight: Font.Bold
-                        }
-
-                        Label {
-                            text: root.trackCount > 0
-                                ? root.trackCount + " tracks in your library"
-                                : "Playback, library, and privacy preferences"
-                            color: textSecondary
-                            font.family: bodyFont
-                            font.pixelSize: 12
-                        }
-                    }
-
-                    Label {
-                        text: "Changes save immediately"
-                        color: silverDim
-                        font.family: monoFont
-                        font.pixelSize: 10
-                    }
-                }
-
-                Rectangle {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 1
-                    color: borderSubtle
-                }
 
                 Item {
                     Layout.fillWidth: true
@@ -184,30 +142,12 @@ Item {
                             Repeater {
                                 model: root.categories
 
-                                delegate: Rectangle {
-                                    readonly property bool selected: root.currentSection === modelData.id && modelData.id !== "credits"
-                                    width: compactLabel.implicitWidth + 24
-                                    height: 32
-                                    radius: 16
-                                    color: selected ? recordRed : "transparent"
-                                    border.width: selected ? 0 : 1
-                                    border.color: borderSubtle
-
-                                    Label {
-                                        id: compactLabel
-                                        anchors.centerIn: parent
-                                        text: modelData.label
-                                        color: parent.selected ? "white" : textSecondary
-                                        font.family: displayFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                    }
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: root.chooseSection(modelData.id)
-                                    }
+                                delegate: SettingsNavigationItem {
+                                    label: modelData.label
+                                    iconName: modelData.icon
+                                    compact: true
+                                    selected: root.currentSection === modelData.id
+                                    onClicked: root.chooseSection(modelData.id)
                                 }
                             }
                         }
@@ -220,50 +160,20 @@ Item {
                         anchors.bottom: parent.bottom
                         anchors.left: parent.left
                         anchors.leftMargin: 24
+                        anchors.topMargin: 16
+                        anchors.bottomMargin: 16
                         width: 184
-                        spacing: 3
+                        spacing: 6
 
                         Repeater {
                             model: root.categories
 
-                            delegate: Rectangle {
-                                readonly property bool selected: root.currentSection === modelData.id && modelData.id !== "credits"
+                            delegate: SettingsNavigationItem {
                                 width: navigation.width
-                                height: 38
-                                radius: 8
-                                color: selected ? surfaceCard : (navMouse.containsMouse ? surfaceCardHover : "transparent")
-
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 10
-                                    anchors.rightMargin: 10
-                                    spacing: 9
-
-                                    LucideIcon {
-                                        Layout.preferredWidth: 16
-                                        Layout.preferredHeight: 16
-                                        icon: modelData.icon
-                                        color: parent.parent.selected ? recordRedHover : silverDim
-                                    }
-
-                                    Label {
-                                        Layout.fillWidth: true
-                                        text: modelData.label
-                                        color: parent.parent.selected ? textPrimary : textSecondary
-                                        font.family: displayFont
-                                        font.pixelSize: 12
-                                        font.weight: parent.parent.selected ? Font.DemiBold : Font.Normal
-                                        elide: Text.ElideRight
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: navMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.chooseSection(modelData.id)
-                                }
+                                label: modelData.label
+                                iconName: modelData.icon
+                                selected: root.currentSection === modelData.id
+                                onClicked: root.chooseSection(modelData.id)
                             }
                         }
                     }
@@ -300,15 +210,17 @@ Item {
 
                             SettingsLibrarySection {
                                 visible: root.currentSection === "library"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
                                 trackCount: root.trackCount
-                                libraryFolder: root.libraryFolder
+                                libraryFolders: root.libraryFolders
                                 excludedFolders: root.excludedFolders
                                 ignoreShortClips: root.ignoreShortClips
                                 defaultLaunchPage: root.defaultLaunchPage
                                 songSortMetric: root.songSortMetric
                                 trackDensity: root.trackDensity
                                 showFormatBadges: root.showFormatBadges
-                                onChooseFolderRequested: root.chooseFolderRequested()
+                                onAddLibraryFolderRequested: root.addLibraryFolderRequested()
+                                onRemoveLibraryFolderRequested: path => root.removeLibraryFolderRequested(path)
                                 onAddExcludeRequested: root.addExcludeRequested()
                                 onRemoveExcludeRequested: path => root.removeExcludeRequested(path)
                                 onIgnoreShortClipsSelected: value => root.ignoreShortClipsSelected(value)
@@ -320,6 +232,7 @@ Item {
 
                             SettingsAppearanceSection {
                                 visible: root.currentSection === "appearance"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
                                 accentName: root.accentName
                                 customAccentColor: root.customAccentColor
                                 albumArtRadius: root.albumArtRadius
@@ -334,12 +247,9 @@ Item {
 
                             SettingsPlaybackSection {
                                 visible: root.currentSection === "playback"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
                                 resumeQueueOnLaunch: root.resumeQueueOnLaunch
                                 autoplayEnabled: root.autoplayEnabled
-                                globalShortcutsEnabled: root.globalShortcutsEnabled
-                                globalShortcutsSupported: root.globalShortcutsSupported
-                                globalShortcutStatus: root.globalShortcutStatus
-                                globalShortcutBindings: root.globalShortcutBindings
                                 sleepTimerMode: root.sleepTimerMode
                                 sleepTimerStatus: root.sleepTimerStatus
                                 sleepFadeOut: root.sleepFadeOut
@@ -347,8 +257,6 @@ Item {
                                 maxVolumePercent: root.maxVolumePercent
                                 onResumeQueueOnLaunchSelected: value => root.resumeQueueOnLaunchSelected(value)
                                 onAutoplaySelected: value => root.autoplaySelected(value)
-                                onGlobalShortcutsEnabledSelected: value => root.globalShortcutsEnabledSelected(value)
-                                onGlobalShortcutSelected: (action, shortcut) => root.globalShortcutSelected(action, shortcut)
                                 onSleepTimerSelected: value => root.sleepTimerSelected(value)
                                 onSleepTimerCancelled: root.sleepTimerCancelled()
                                 onSleepFadeOutSelected: value => root.sleepFadeOutSelected(value)
@@ -356,21 +264,41 @@ Item {
                                 onMaxVolumeSelected: value => root.maxVolumeSelected(value)
                             }
 
+                            SettingsShortcutsSection {
+                                visible: root.currentSection === "shortcuts"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
+                                globalShortcutsEnabled: root.globalShortcutsEnabled
+                                globalShortcutsSupported: root.globalShortcutsSupported
+                                globalShortcutStatus: root.globalShortcutStatus
+                                globalShortcutBindings: root.globalShortcutBindings
+                                inAppShortcutBindings: root.inAppShortcutBindings
+                                inAppActions: root.inAppShortcutActions
+                                inAppShortcutStatus: root.inAppShortcutStatus
+                                onGlobalShortcutsEnabledSelected: value => root.globalShortcutsEnabledSelected(value)
+                                onGlobalShortcutSelected: (action, shortcut) => root.globalShortcutSelected(action, shortcut)
+                                onInAppShortcutSelected: (action, shortcut) => root.inAppShortcutSelected(action, shortcut)
+                            }
+
                             SettingsDesktopSection {
                                 visible: root.currentSection === "desktop"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
                                 closeToTray: root.closeToTray
                                 startMinimizedToTray: root.startMinimizedToTray
                                 nowPlayingNotifications: root.nowPlayingNotifications
                                 miniPlayerAlwaysOnTop: root.miniPlayerAlwaysOnTop
                                 trayAvailable: root.trayAvailable
+                                audioOutputs: root.audioOutputs
+                                audioDeviceId: root.audioDeviceId
                                 onCloseToTraySelected: value => root.closeToTraySelected(value)
                                 onStartMinimizedToTraySelected: value => root.startMinimizedToTraySelected(value)
                                 onNowPlayingNotificationsSelected: value => root.nowPlayingNotificationsSelected(value)
                                 onMiniPlayerAlwaysOnTopSelected: value => root.miniPlayerAlwaysOnTopSelected(value)
+                                onAudioDeviceSelected: value => root.audioDeviceSelected(value)
                             }
 
                             SettingsLyricsSection {
                                 visible: root.currentSection === "lyrics"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
                                 lyricsFontSize: root.lyricsFontSize
                                 lyricsAlignment: root.lyricsAlignment
                                 lyricsActiveStyle: root.lyricsActiveStyle
@@ -383,6 +311,7 @@ Item {
 
                             SettingsNetworkSection {
                                 visible: root.currentSection === "network"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
                                 offlineBlackout: root.offlineBlackout
                                 svcLrclib: root.svcLrclib
                                 svcRadio: root.svcRadio
@@ -397,18 +326,20 @@ Item {
 
                             SettingsBackupSection {
                                 visible: root.currentSection === "data"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
                                 backupStatus: root.backupStatus
                                 onExportBackupRequested: root.exportBackupRequested()
                                 onImportBackupRequested: root.importBackupRequested()
+                            }
+
+                            CreditsView {
+                                visible: root.currentSection === "credits"
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible ? implicitHeight : 0
                             }
                         }
                     }
                 }
             }
-        }
-
-        CreditsView {
-            onBackClicked: root.creditsOpen = false
-        }
     }
 }

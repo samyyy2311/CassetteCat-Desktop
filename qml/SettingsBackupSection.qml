@@ -90,7 +90,7 @@ ColumnLayout {
             Layout.topMargin: 10
             Layout.bottomMargin: 4
             wrapMode: Text.WordWrap
-            text: "Importing a backup restores application settings and library state after asking for confirmation. Passwords, secrets, and server authentication tokens are never exported."
+            text: "Importing a backup applies its saved settings and library state immediately. Passwords, secrets, and server authentication tokens are never exported."
             color: silverDim
             font.family: bodyFont
             font.pixelSize: 11

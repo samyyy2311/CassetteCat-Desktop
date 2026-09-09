@@ -5,15 +5,12 @@ Rectangle {
     id: root
     property var options: []
     property var selectedValue: ""
-    property var currentVal: selectedValue
     signal optionSelected(var value)
-
-    onSelectedValueChanged: currentVal = selectedValue
 
     implicitHeight: 32
     implicitWidth: rowLayout.implicitWidth + 8
     radius: 16
-    color: "#161513"
+    color: "transparent"
     border.width: 1
     border.color: borderSubtle
 
@@ -28,22 +25,25 @@ Rectangle {
                 id: segItem
                 readonly property var optVal: (modelData && typeof modelData === "object" && "value" in modelData) ? modelData.value : modelData
                 readonly property string optLabel: (modelData && typeof modelData === "object" && "label" in modelData) ? modelData.label : String(modelData)
-                readonly property bool isSelected: root.currentVal !== undefined && (root.currentVal === optVal || String(root.currentVal).toLowerCase() === String(optVal).toLowerCase())
+                readonly property bool isSelected: root.selectedValue !== undefined && (root.selectedValue === optVal || String(root.selectedValue).toLowerCase() === String(optVal).toLowerCase())
 
                 height: 26
                 width: segLabel.implicitWidth + 16
                 radius: 13
-                color: isSelected ? recordRed : (segMouse.containsMouse ? "#262421" : "transparent")
+                color: segMouse.containsMouse ? "#262421" : "transparent"
+                border.width: isSelected ? 1 : 0
+                border.color: recordRed
                 scale: segMouse.pressed ? 0.96 : 1.0
 
                 Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on border.color { ColorAnimation { duration: 120 } }
                 Behavior on scale { NumberAnimation { duration: 80 } }
 
                 Label {
                     id: segLabel
                     anchors.centerIn: parent
                     text: segItem.optLabel
-                    color: segItem.isSelected ? "#FFFFFF" : (segMouse.containsMouse ? textPrimary : textSecondary)
+                    color: segItem.isSelected ? recordRedHover : (segMouse.containsMouse ? textPrimary : textSecondary)
                     font.family: displayFont
                     font.pixelSize: 11
                     font.weight: segItem.isSelected ? Font.Bold : Font.Medium
@@ -55,10 +55,7 @@ Rectangle {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        root.currentVal = segItem.optVal
-                        root.optionSelected(segItem.optVal)
-                    }
+                    onClicked: root.optionSelected(segItem.optVal)
                 }
             }
         }

@@ -25,7 +25,7 @@ ColumnLayout {
         SettingRow {
             iconName: "sliders-horizontal"
             title: "Accent Colour"
-            subtitle: "Main highlight color used across the interface"
+            subtitle: "Applied to active navigation, selected controls, playback, seek bars, and volume"
         }
 
         Flow {
@@ -120,6 +120,7 @@ ColumnLayout {
                 }
             }
         }
+
     }
 
     SectionLabel { text: "Cover Art & Backdrop" }

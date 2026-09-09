@@ -5,7 +5,7 @@ import QtQuick.Layouts
 ColumnLayout {
     id: root
     property int trackCount: 0
-    property string libraryFolder: ""
+    property var libraryFolders: []
     property var excludedFolders: []
     property bool ignoreShortClips: false
     property string defaultLaunchPage: "last"
@@ -13,7 +13,8 @@ ColumnLayout {
     property string trackDensity: "comfortable"
     property bool showFormatBadges: true
 
-    signal chooseFolderRequested()
+    signal addLibraryFolderRequested()
+    signal removeLibraryFolderRequested(string path)
     signal addExcludeRequested()
     signal removeExcludeRequested(string path)
     signal ignoreShortClipsSelected(bool value)
@@ -30,16 +31,21 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "folder"
-            title: "Audio Directory"
-            subtitle: root.libraryFolder.length > 0
-                      ? (root.libraryFolder + " • " + root.trackCount + " songs")
+            title: "Audio Folders"
+            subtitle: root.libraryFolders.length > 0
+                      ? (root.libraryFolders.length + " folder(s) • " + root.trackCount + " songs")
                       : (root.trackCount + " tracks loaded from library")
 
             SettingButton {
-                text: "Choose folder"
+                text: "Add folder"
                 iconName: "folder"
-                onClicked: root.chooseFolderRequested()
+                onClicked: root.addLibraryFolderRequested()
             }
+        }
+
+        SettingsPathList {
+            paths: root.libraryFolders
+            onRemoveRequested: path => root.removeLibraryFolderRequested(path)
         }
 
         SettingDivider {}
@@ -56,30 +62,9 @@ ColumnLayout {
             }
         }
 
-        Repeater {
-            model: root.excludedFolders
-            delegate: RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 0
-                Layout.topMargin: 4
-                Layout.bottomMargin: 4
-                spacing: 10
-
-                Label {
-                    Layout.fillWidth: true
-                    text: modelData
-                    color: textSecondary
-                    font.family: monoFont
-                    font.pixelSize: 10
-                    elide: Text.ElideMiddle
-                }
-
-                SettingButton {
-                    text: "Remove"
-                    destructive: true
-                    onClicked: root.removeExcludeRequested(modelData)
-                }
-            }
+        SettingsPathList {
+            paths: root.excludedFolders
+            onRemoveRequested: path => root.removeExcludeRequested(path)
         }
 
         SettingDivider {}

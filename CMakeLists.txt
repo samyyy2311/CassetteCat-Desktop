@@ -3,9 +3,9 @@ project(CassetteCat VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-find_package(Qt6 6.8 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Concurrent QuickEffects Network Widgets)
+find_package(Qt6 6.11 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Concurrent QuickEffects Network Widgets)
 
-qt_standard_project_setup(REQUIRES 6.8)
+qt_standard_project_setup(REQUIRES 6.11)
 
 set(CassetteCat_PLATFORM_SOURCES)
 if(WIN32)
@@ -272,7 +272,8 @@ if(WIN32)
     if(NOT EXISTS "${cppWinrtIncludeDir}/winrt/base.h")
         message(FATAL_ERROR "C++/WinRT headers are required to build CassetteCat on Windows")
     endif()
-    target_include_directories(CassetteCat PRIVATE
+    set_source_files_properties(src/smtc_controller.cpp PROPERTIES
+        INCLUDE_DIRECTORIES
         "${cppWinrtIncludeDir}"
     )
     add_custom_command(TARGET CassetteCat POST_BUILD

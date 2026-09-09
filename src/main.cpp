@@ -1,9 +1,11 @@
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QLocalServer>
 #include <QLocalSocket>
 #include <QDebug>
 #include <QCoreApplication>
 #include <QFile>
+#include <QFileInfo>
 #include <QApplication>
 #include <QFont>
 #include <QIcon>
@@ -14,12 +16,14 @@
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QSize>
+#include <QStandardPaths>
 #include <QStringList>
 #include <QTextStream>
 #include <QUrl>
 #include <QVariantList>
 #include <cstring>
 #include <iostream>
+#include <string>
 
 #include <QFontDatabase>
 
@@ -39,22 +43,31 @@
 namespace {
 
 constexpr auto kInstanceServerName = "CassetteCat.Desktop.Instance";
+#ifdef _WIN32
+constexpr auto kInstanceMutexName = L"CassetteCat.AudioEngine.Desktop.InstanceMutex";
+#endif
 
-bool notifyRunningInstance(const QString &serverName)
+bool notifyRunningInstance(const QString &serverName, const QString &openPath = {})
 {
     QLocalSocket socket;
     socket.connectToServer(serverName);
-    if (!socket.waitForConnected(200)) return false;
-    socket.write("activate");
-    socket.waitForBytesWritten(200);
-    return true;
+    if (!socket.waitForConnected(200)) {
+        qWarning() << "Instance handoff connection failed:" << socket.errorString();
+        return false;
+    }
+    QJsonObject request{{"action", "activate"}};
+    if (!openPath.isEmpty()) request.insert("path", openPath);
+    socket.write(QJsonDocument(request).toJson(QJsonDocument::Compact));
+    const bool written = socket.waitForBytesWritten(200);
+    if (!written) qWarning() << "Instance handoff write failed:" << socket.errorString();
+    return written;
 }
 
-bool startInstanceServer(QLocalServer &server, const QString &serverName)
+bool startInstanceServer(QLocalServer &server, const QString &serverName, const QString &openPath = {})
 {
     server.setSocketOptions(QLocalServer::UserAccessOption);
     if (server.listen(serverName)) return true;
-    if (notifyRunningInstance(serverName)) return false;
+    if (notifyRunningInstance(serverName, openPath)) return false;
 
     QLocalServer::removeServer(serverName);
     if (server.listen(serverName)) return true;
@@ -103,6 +116,8 @@ void writeDebugLog(QtMsgType, const QMessageLogContext &, const QString &message
 #include <windows.h>
 #include <dwmapi.h>
 #include <shobjidl.h>
+#include <propkey.h>
+#include <propvarutil.h>
 
 static void setupWindowsFrameless(QQuickWindow *window) {
     if (!window) return;
@@ -113,6 +128,37 @@ static void setupWindowsFrameless(QQuickWindow *window) {
     MARGINS margins = { 1, 1, 1, 1 };
     DwmExtendFrameIntoClientArea(hwnd, &margins);
 }
+
+static void registerWindowsAppIdentity()
+{
+    const QString shortcutPath = QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation)
+        + "/CassetteCat.lnk";
+    IShellLinkW *shellLink = nullptr;
+    if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER,
+                                IID_IShellLinkW, reinterpret_cast<void **>(&shellLink)))) return;
+    const std::wstring target = QCoreApplication::applicationFilePath().toStdWString();
+    const std::wstring shortcut = shortcutPath.toStdWString();
+    shellLink->SetPath(target.c_str());
+    shellLink->SetDescription(L"CassetteCat music player");
+    IPropertyStore *properties = nullptr;
+    if (SUCCEEDED(shellLink->QueryInterface(IID_PPV_ARGS(&properties)))) {
+        PROPVARIANT value;
+        PropVariantInit(&value);
+        if (SUCCEEDED(InitPropVariantFromString(L"CassetteCat.AudioEngine.Desktop.App", &value))) {
+            properties->SetValue(PKEY_AppUserModel_ID, value);
+            properties->Commit();
+        }
+        PropVariantClear(&value);
+        properties->Release();
+    }
+    IPersistFile *persist = nullptr;
+    if (SUCCEEDED(shellLink->QueryInterface(IID_PPV_ARGS(&persist)))) {
+        persist->Save(shortcut.c_str(), TRUE);
+        persist->Release();
+    }
+    shellLink->Release();
+}
+
 #endif
 
 int main(int argc, char *argv[])
@@ -133,6 +179,10 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle("Basic");
     QCoreApplication::setOrganizationName("CassetteCat");
     QCoreApplication::setApplicationName("CassetteCat");
+#ifdef Q_OS_WIN
+    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    registerWindowsAppIdentity();
+#endif
 
     if (argc == 2 && std::strcmp(argv[1], "--single-instance-self-check") == 0) {
         return singleInstanceSelfCheck() ? 0 : 1;
@@ -191,17 +241,26 @@ int main(int argc, char *argv[])
                 && PlayerController::selfCheck() && singleInstanceSelfCheck()) ? 0 : 1;
     }
 
+    QString openPath;
+    for (int i = 1; i < argc; ++i) {
+        const QFileInfo candidate(QString::fromLocal8Bit(argv[i]));
+        if (candidate.exists()) {
+            openPath = candidate.absoluteFilePath();
+            break;
+        }
+    }
+
     QLocalServer instanceServer;
-    if (!startInstanceServer(instanceServer, QString::fromLatin1(kInstanceServerName))) return 0;
+#ifdef _WIN32
+    const HANDLE instanceMutex = CreateMutexW(nullptr, FALSE, kInstanceMutexName);
+    if (!instanceMutex || GetLastError() == ERROR_ALREADY_EXISTS) {
+        notifyRunningInstance(QString::fromLatin1(kInstanceServerName), openPath);
+        return 0;
+    }
+#endif
+    if (!startInstanceServer(instanceServer, QString::fromLatin1(kInstanceServerName), openPath)) return 0;
 
     QQuickWindow *mainWindow = nullptr;
-    QObject::connect(&instanceServer, &QLocalServer::newConnection, &app, [&] {
-        while (QLocalSocket *socket = instanceServer.nextPendingConnection()) {
-            socket->readAll();
-            socket->deleteLater();
-            activateWindow(mainWindow);
-        }
-    });
 
     QIcon appIcon;
     appIcon.addFile(":/qt/qml/CassetteCat/assets/cassettecat_icon.png", QSize(16, 16));
@@ -226,6 +285,43 @@ int main(int argc, char *argv[])
     GlobalShortcutController globalShortcuts(&app);
     TrayController tray(appIcon, &app);
     if (tray.available()) app.setQuitOnLastWindowClosed(false);
+
+    const auto openExternalPath = [&](const QString &path) {
+        const QFileInfo file(path);
+        if (!file.exists()) return;
+        if (file.isDir()) {
+            library.loadFolder(QUrl::fromLocalFile(file.absoluteFilePath()));
+            return;
+        }
+        QVariantMap track;
+        track.insert("filePath", file.absoluteFilePath());
+        track.insert("fileName", file.fileName());
+        track.insert("title", file.completeBaseName());
+        track.insert("artist", "Unknown Artist");
+        track.insert("album", "External file");
+        track.insert("format", file.suffix().toUpper());
+        player.playTrack(track);
+    };
+
+    const auto handleInstanceSocket = [&](QLocalSocket *socket) {
+        const auto processRequest = [&, socket] {
+            const QJsonDocument request = QJsonDocument::fromJson(socket->readAll());
+            const QString path = request.object().value("path").toString();
+            qInfo() << "Instance handoff received:" << path;
+            if (!path.isEmpty()) openExternalPath(path);
+            activateWindow(mainWindow);
+            socket->disconnectFromServer();
+        };
+        QObject::connect(socket, &QLocalSocket::readyRead, &app, processRequest);
+        QObject::connect(socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater);
+        if (socket->bytesAvailable()) processRequest();
+    };
+
+    const auto processInstanceConnections = [&] {
+        while (QLocalSocket *socket = instanceServer.nextPendingConnection()) handleInstanceSocket(socket);
+    };
+    QObject::connect(&instanceServer, &QLocalServer::newConnection, &app, processInstanceConnections);
+    processInstanceConnections();
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("displayFontFamily", displayFontFamily);
     engine.rootContext()->setContextProperty("bodyFontFamily", bodyFontFamily);
@@ -285,5 +381,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    return app.exec();
+    if (!openPath.isEmpty()) openExternalPath(openPath);
+
+    const int result = app.exec();
+#ifdef _WIN32
+    CloseHandle(instanceMutex);
+#endif
+    return result;
 }

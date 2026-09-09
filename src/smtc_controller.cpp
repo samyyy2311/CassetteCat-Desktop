@@ -3,6 +3,7 @@
 
 #include <QDebug>
 #include <QFileInfo>
+#include <QUrl>
 #include <algorithm>
 
 #ifdef Q_OS_WIN
@@ -10,6 +11,10 @@
 #include <windows.h>
 #include <inspectable.h>
 #include <winstring.h>
+#include <winrt/base.h>
+#include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Storage.h>
+#include <winrt/Windows.Storage.Streams.h>
 
 // Authentic Windows 10/11 WinRT GUIDs
 static const GUID IID_ISystemMediaTransportControlsInterop =
@@ -338,8 +343,6 @@ SmtcController::SmtcController(PlayerController *player, QObject *parent)
         connect(m_player, &PlayerController::currentTrackChanged, this, &SmtcController::onTrackChanged);
         connect(m_player, &PlayerController::isPlayingChanged, this, &SmtcController::onPlayingChanged);
         connect(m_player, &PlayerController::positionChanged, this, &SmtcController::onPositionChanged);
-        connect(this, &SmtcController::playRequested, m_player, &PlayerController::togglePlay);
-        connect(this, &SmtcController::pauseRequested, m_player, &PlayerController::pause);
         connect(this, &SmtcController::seekRequested, m_player, &PlayerController::seek);
     }
 }
@@ -429,7 +432,6 @@ void SmtcController::initialize(quintptr hwnd)
 
 void SmtcController::updateTrack(const QString &title, const QString &artist, const QString &album, const QString &artworkPath)
 {
-    Q_UNUSED(artworkPath);
 #ifdef Q_OS_WIN
     if (!d->controls || !d->initialized) return;
 
@@ -444,6 +446,19 @@ void SmtcController::updateTrack(const QString &title, const QString &artist, co
         }
 
         updater->put_Type(MediaPlaybackType_Music);
+
+        const QUrl artworkUrl(artworkPath);
+        const QString localArtworkPath = artworkUrl.isLocalFile() ? artworkUrl.toLocalFile() : artworkPath;
+        if (QFileInfo::exists(localArtworkPath)) {
+            try {
+                const auto file = winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(
+                    localArtworkPath.toStdWString()).get();
+                const auto thumbnail = winrt::Windows::Storage::Streams::RandomAccessStreamReference::CreateFromFile(file);
+                updater->put_Thumbnail(winrt::get_abi(thumbnail));
+            } catch (...) {
+                qWarning() << "[SMTC] Failed to load artwork:" << localArtworkPath;
+            }
+        }
 
         IMusicDisplayProperties *props = nullptr;
         if (SUCCEEDED(updater->get_MusicProperties(&props)) && props) {
@@ -546,9 +561,9 @@ void SmtcController::onTrackChanged()
         : track.value("title").toString();
     const QString artist = track.value("artist").toString();
     const QString album = track.value("album").toString();
-    const QString filePath = track.value("filePath").toString();
+    const QString artworkPath = track.value("artworkUrl").toString();
 
-    updateTrack(title, artist, album, filePath);
+    updateTrack(title, artist, album, artworkPath);
     if (m_player->duration() > 0) {
         updateTimeline(m_player->position(), m_player->duration());
     }

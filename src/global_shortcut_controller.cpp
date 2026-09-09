@@ -1,6 +1,7 @@
 #include "global_shortcut_controller.h"
 
 #include <QCoreApplication>
+#include <QGuiApplication>
 #include <QStringList>
 #include <iterator>
 
@@ -115,6 +116,13 @@ GlobalShortcutController::GlobalShortcutController(QObject *parent)
         { "search", "Ctrl+Alt+S" },
         { "miniPlayer", "Ctrl+Alt+M" }
     };
+    m_altHoldTimer.setSingleShot(true);
+    m_altHoldTimer.setInterval(500);
+    connect(&m_altHoldTimer, &QTimer::timeout, this, [this] {
+        if (!m_altPressed || QGuiApplication::applicationState() != Qt::ApplicationActive) return;
+        m_accessHintsVisible = true;
+        emit accessHintsRequested(true);
+    });
     QCoreApplication::instance()->installNativeEventFilter(this);
 #ifdef Q_OS_WIN
     setStatus("Global shortcuts are off");
@@ -218,6 +226,30 @@ bool GlobalShortcutController::nativeEventFilter(const QByteArray &eventType, vo
 #ifdef Q_OS_WIN
     if (eventType != "windows_generic_MSG") return false;
     const auto *msg = static_cast<MSG *>(message);
+    if (msg->message == WM_SYSKEYDOWN && msg->wParam == VK_MENU) {
+        if (m_altPressed) return false;
+        m_altPressed = true;
+        if (m_accessHintsVisible) {
+            m_accessHintsVisible = false;
+            emit accessHintsRequested(false);
+            return false;
+        }
+        m_altHoldTimer.start();
+        return false;
+    }
+    if (msg->message == WM_SYSKEYUP && msg->wParam == VK_MENU) {
+        m_altPressed = false;
+        m_altHoldTimer.stop();
+        return false;
+    }
+    if (m_accessHintsVisible && (msg->message == WM_KEYDOWN || msg->message == WM_SYSKEYDOWN)) {
+        const UINT key = msg->wParam;
+        if (key >= 'A' && key <= 'Z') {
+            emit accessKeyRequested(QString(QChar(key)));
+            if (result) *result = 0;
+            return true;
+        }
+    }
     if (msg->message != WM_HOTKEY) return false;
 
     switch (msg->wParam) {

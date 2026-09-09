@@ -3,6 +3,7 @@
 #include <QAbstractNativeEventFilter>
 #include <QObject>
 #include <QString>
+#include <QTimer>
 #include <QVariantMap>
 
 class GlobalShortcutController final : public QObject, public QAbstractNativeEventFilter
@@ -38,6 +39,8 @@ signals:
     void favoriteRequested();
     void searchRequested();
     void miniPlayerRequested();
+    void accessHintsRequested(bool visible);
+    void accessKeyRequested(const QString &key);
 
 private:
     bool registerShortcuts();
@@ -45,6 +48,9 @@ private:
     void setStatus(const QString &status);
 
     bool m_enabled = false;
+    bool m_altPressed = false;
+    bool m_accessHintsVisible = false;
+    QTimer m_altHoldTimer;
     QString m_status;
     QVariantMap m_shortcuts;
 };

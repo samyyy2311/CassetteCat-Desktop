@@ -3,9 +3,9 @@ project(CassetteCat VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-find_package(Qt6 6.11 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Concurrent QuickEffects Network Widgets)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Concurrent QuickEffects Network Widgets)
 
-qt_standard_project_setup(REQUIRES 6.11)
+qt_standard_project_setup(REQUIRES 6.10)
 
 set(CassetteCat_PLATFORM_SOURCES)
 if(WIN32)
@@ -203,7 +203,6 @@ qt_add_qml_module(CassetteCat
         qml/icons/ibm.svg
         qml/icons/gpl.svg
         qml/icons/simpleicons.svg
-        assets/apple-touch-icon.png
         assets/01-orange-headphones.png
         assets/02-black-cat-cassette.png
         assets/cassettecat_icon.png

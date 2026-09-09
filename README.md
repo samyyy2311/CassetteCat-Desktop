@@ -84,7 +84,7 @@ Expand-Archive $archive.FullName .\CassetteCat
 
 ## Build from source
 
-You need Qt 6.11 or newer with Qt Quick and Qt Quick Controls 2, CMake 3.24 or newer, and Ninja.
+You need Qt 6.10 or newer with Qt Quick and Qt Quick Controls 2, CMake 3.24 or newer, and Ninja.
 
 ```powershell
 cmake --preset dev

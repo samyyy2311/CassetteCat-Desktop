@@ -24,7 +24,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4.3.1
         with:
-          version: "6.11.*"
+          version: "6.10.*"
           target: desktop
           arch: win64_msvc2022_64
           modules: qtmultimedia qtquickeffectmaker
@@ -67,7 +67,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@v4.3.1
         with:
-          version: "6.11.*"
+          version: "6.10.*"
           target: desktop
           arch: linux_gcc_64
           modules: qtmultimedia qtquickeffectmaker

@@ -15,20 +15,17 @@ Item {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        height: 76
+        height: 88
         spacing: 4
 
-        Label {
+        HoverMarqueeLabel {
             Layout.fillWidth: true
             text: root.playerController.currentTrack.title || "No Track Selected"
-            color: "#FFFFFF"
-            font.family: root.appWindow.displayFont
-            font.pixelSize: 30
-            font.weight: Font.Bold
-            font.letterSpacing: -0.5
-            wrapMode: Text.WordWrap
-            maximumLineCount: 2
-            elide: Text.ElideRight
+            textColor: "#FFFFFF"
+            fontFamily: root.appWindow.displayFont
+            pixelSize: 30
+            weight: Font.Bold
+            Layout.preferredHeight: 38
         }
 
         Label {
@@ -45,7 +42,19 @@ Item {
             wrapMode: Text.WordWrap
             maximumLineCount: 1
             elide: Text.ElideRight
+
+            MouseArea {
+                anchors.fill: parent
+                enabled: !!root.playerController.currentTrack.album
+                hoverEnabled: true
+                cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: {
+                    root.appWindow.nowPlayingOpen = false
+                    root.appWindow.openCatalogDetail("album", root.playerController.currentTrack.album, root.playerController.currentTrack)
+                }
+            }
         }
+
     }
 
     AudioSeeker {
@@ -58,8 +67,7 @@ Item {
         position: root.playerController.position
         duration: root.playerController.duration
         showRemainingTime: root.appWindow.showRemainingTime
-        accentColor: root.appWindow.recordRed
-        accentHover: root.appWindow.recordRedHover
+        paletteSource: root.appWindow
         onSeekRequested: positionMs => root.playerController.seek(positionMs)
         onRemainingToggled: value => root.remainingTimeToggled(value)
     }
@@ -79,8 +87,7 @@ Item {
 
             TransportButton {
                 buttonSize: 42
-                accentColor: root.appWindow.recordRed
-                accentHover: root.appWindow.recordRedHover
+                paletteSource: root.appWindow
                 iconName: "shuffle"
                 accented: root.playerController.shuffleEnabled
                 onClicked: root.appWindow.toggleQueueShuffle()
@@ -88,8 +95,7 @@ Item {
 
             TransportButton {
                 buttonSize: 52
-                accentColor: root.appWindow.recordRed
-                accentHover: root.appWindow.recordRedHover
+                paletteSource: root.appWindow
                 iconName: "skip-back"
                 iconColor: root.appWindow.textPrimary
                 onClicked: root.appWindow.playPrevious()
@@ -97,8 +103,7 @@ Item {
 
             TransportButton {
                 buttonSize: 72
-                accentColor: root.appWindow.recordRed
-                accentHover: root.appWindow.recordRedHover
+                paletteSource: root.appWindow
                 iconName: root.appWindow.playerVisuallyPlaying ? "pause" : "play"
                 accented: true
                 iconColor: root.appWindow.recordRed
@@ -107,8 +112,7 @@ Item {
 
             TransportButton {
                 buttonSize: 52
-                accentColor: root.appWindow.recordRed
-                accentHover: root.appWindow.recordRedHover
+                paletteSource: root.appWindow
                 iconName: "skip-forward"
                 iconColor: root.appWindow.textPrimary
                 onClicked: root.appWindow.playNext()
@@ -116,8 +120,7 @@ Item {
 
             TransportButton {
                 buttonSize: 42
-                accentColor: root.appWindow.recordRed
-                accentHover: root.appWindow.recordRedHover
+                paletteSource: root.appWindow
                 iconName: root.appWindow.repeatMode === 2 ? "repeat-1" : "repeat"
                 accented: root.appWindow.repeatMode > 0
                 iconColor: root.appWindow.repeatMode > 0 ? root.appWindow.recordRed : root.appWindow.textPrimary
@@ -139,8 +142,7 @@ Item {
 
         VolumeControl {
             Layout.preferredWidth: 200
-            accentColor: root.appWindow.recordRed
-            accentHover: root.appWindow.recordRedHover
+            paletteSource: root.appWindow
             volume: root.playerController.volume
             onVolumeAdjusted: value => root.playerController.setVolume(value)
         }

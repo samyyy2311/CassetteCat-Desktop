@@ -15,7 +15,7 @@ Item {
     function normalizeUrl(val) {
         if (!val) return ""
         const str = String(val).trim()
-        if (!str) return ""
+        if (!str || str === "null" || str === "undefined") return ""
         if (str.startsWith("file://") || str.startsWith("http://") || str.startsWith("https://") || str.startsWith("qrc:/") || str.startsWith("image://")) {
             return str
         }
@@ -40,6 +40,9 @@ Item {
     readonly property real artworkAspectRatio: (artImage.implicitHeight > 0 && artImage.implicitWidth > 0)
         ? (artImage.implicitWidth / artImage.implicitHeight)
         : 1.0
+    readonly property bool showingFallback: !artImage.visible && !previousArt.visible
+    readonly property bool currentTrackPlaying: player.isPlaying && root.track && player.currentTrack
+                                              && root.track.filePath === player.currentTrack.filePath
 
     onArtworkSourceChanged: {
         if (artworkSource.toString() === displayedSource.toString()) return
@@ -66,13 +69,11 @@ Item {
         radius: root.radius
         color: root.coverColor(root.track ? (root.track.title || root.track.album || root.track.artist || "CassetteCat") : "CassetteCat")
 
-        LucideIcon {
-            anchors.centerIn: parent
-            visible: artImage.status !== Image.Ready || !artImage.visible
-            width: Math.max(16, Math.min(parent.width * 0.46, parent.height * 0.46))
-            height: width
-            icon: "disc"
-            color: "#8E8A84"
+        VinylFallback {
+            anchors.fill: parent
+            visible: root.showingFallback
+            accent: recordRed
+            playing: root.currentTrackPlaying && visible
         }
     }
 

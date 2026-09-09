@@ -1,9 +1,10 @@
-import QtQuick
+﻿import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
 Item {
     id: root
+
     required property var miniPlayer
 
     function scrollToCurrentTrack() {
@@ -46,89 +47,13 @@ Item {
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: SleekScrollBar { anchors.rightMargin: 2 }
 
-                delegate: Rectangle {
-                    id: queueRowItem
+                delegate: QueueTrackRow {
                     width: ListView.view.width - 4
-                    height: modelData.type === "header" ? 22 : 40
-                    radius: 5
-                    color: modelData.type === "header"
-                        ? "transparent"
-                        : (queueRowMouse.containsMouse
-                            ? miniPlayer.surfaceElevated
-                            : (modelData.type === "current" ? "#1E1C1A" : "transparent"))
-                    border.width: modelData.type === "current" ? 1 : 0
-                    border.color: miniPlayer.borderCard
-
-                    Label {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 4
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: modelData.type === "header"
-                        text: modelData.title || ""
-                        color: modelData.title === "NOW PLAYING" ? miniPlayer.recordRed : miniPlayer.silverDim
-                        font.family: miniPlayer.monoFont
-                        font.pixelSize: 9
-                        font.weight: Font.Bold
-                    }
-
-                    RowLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 6
-                        anchors.rightMargin: 6
-                        spacing: 8
-                        visible: modelData.type !== "header"
-
-                        Cover {
-                            Layout.preferredWidth: 28
-                            Layout.preferredHeight: 28
-                            radius: 4
-                            fillMode: Image.PreserveAspectCrop
-                            track: modelData.track || modelData
-                        }
-
-                        ColumnLayout {
-                            Layout.fillWidth: true
-                            spacing: 0
-
-                            Label {
-                                Layout.fillWidth: true
-                                text: modelData.title || (modelData.track ? modelData.track.title : "") || ""
-                                color: modelData.type === "current" ? miniPlayer.recordRedHover : miniPlayer.textPrimary
-                                font.family: miniPlayer.displayFont
-                                font.pixelSize: 11
-                                font.weight: modelData.type === "current" ? Font.Bold : Font.Medium
-                                elide: Text.ElideRight
-                            }
-
-                            Label {
-                                Layout.fillWidth: true
-                                text: modelData.artist || (modelData.track ? modelData.track.artist : "") || "Unknown Artist"
-                                color: miniPlayer.textSecondary
-                                font.family: miniPlayer.bodyFont
-                                font.pixelSize: 9
-                                elide: Text.ElideRight
-                            }
-                        }
-
-                        Label {
-                            text: modelData.duration || ""
-                            color: miniPlayer.silverDim
-                            font.family: miniPlayer.monoFont
-                            font.pixelSize: 9
-                        }
-                    }
-
-                    MouseArea {
-                        id: queueRowMouse
-                        anchors.fill: parent
-                        enabled: modelData.type !== "header"
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            const track = modelData.track || modelData
-                            if (track && track.filePath) miniPlayer.playTrack(track)
-                        }
-                    }
+                    paletteSource: miniPlayer
+                    entry: modelData
+                    compact: true
+                    allowCurrentActivation: true
+                    onTrackActivated: track => miniPlayer.playTrack(track)
                 }
 
                 Label {

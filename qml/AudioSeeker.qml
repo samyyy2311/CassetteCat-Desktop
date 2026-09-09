@@ -13,8 +13,9 @@ Item {
     implicitWidth: 400
     implicitHeight: 28
 
-    property color accentColor: "#C23B30"
-    property color accentHover: "#D14337"
+    property var paletteSource: null
+    property color accentColor: paletteSource ? paletteSource.recordRed : "#C23B30"
+    property color accentHover: paletteSource ? paletteSource.recordRedHover : "#D14337"
     readonly property color recordRed: accentColor
     readonly property color recordRedHover: accentHover
     readonly property color surfaceElevated: "#2A2825"

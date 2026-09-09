@@ -189,32 +189,5 @@ Item {
             }
         }
 
-        Rectangle {
-            width: 38
-            height: 38
-            radius: 19
-            color: closeNpMouse.containsMouse ? "#45C23B30" : "#10FFFFFF"
-            border.width: 1
-            border.color: closeNpMouse.containsMouse ? "#65C23B30" : "#14FFFFFF"
-
-            Behavior on color { ColorAnimation { duration: 160 } }
-            Behavior on border.color { ColorAnimation { duration: 160 } }
-
-            LucideIcon {
-                anchors.centerIn: parent
-                width: 16
-                height: 16
-                icon: "x"
-                color: closeNpMouse.containsMouse ? "#FFFFFF" : root.appWindow.silverDim
-            }
-
-            MouseArea {
-                id: closeNpMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.appWindow.nowPlayingOpen = false
-            }
-        }
     }
 }

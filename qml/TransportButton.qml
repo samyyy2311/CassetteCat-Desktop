@@ -5,8 +5,9 @@ Item {
     property string iconName: "play"
     property int buttonSize: 36
     property bool accented: false
-    property color accentColor: "#C23B30"
-    property color accentHover: "#D64337"
+    property var paletteSource: null
+    property color accentColor: paletteSource ? paletteSource.recordRed : "#C23B30"
+    property color accentHover: paletteSource ? paletteSource.recordRedHover : "#D64337"
     readonly property color recordRed: accentColor
     readonly property color recordRedHover: accentHover
     property color iconColor: accented ? root.accentColor : root.textPrimary

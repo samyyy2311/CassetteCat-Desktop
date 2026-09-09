@@ -83,11 +83,16 @@ ApplicationWindow {
     property bool nowPlayingClosing: false
     property bool sidebarCollapsed: false
     property var favoriteTracks: ({})
+    property var playlists: []
+    property string playlistStatus: ""
+    property var playlistPendingExport: null
     property var playCounts: ({})
     property var seenAt: ({})
     property int repeatMode: 0 // 0: Off, 1: Repeat All, 2: Repeat One
     property var playbackQueue: []
     property var originalPlaybackQueue: []
+    property var radioPlaybackQueue: []
+    property var originalRadioPlaybackQueue: []
     property bool playbackQueueRestored: false
     property var playbackHistory: []
     property bool playbackHistoryRestored: false
@@ -110,6 +115,9 @@ ApplicationWindow {
     readonly property bool globalShortcutsSupported: globalShortcuts.supported
     readonly property string globalShortcutStatus: globalShortcuts.status
     readonly property var globalShortcutBindings: globalShortcuts.shortcuts
+    property var inAppShortcutBindings: ({})
+    property string inAppShortcutStatus: ""
+    property bool accessHintsVisible: false
     property int lyricsFontSize: 28
     property string defaultLaunchPage: "last"
     property var excludedFolders: []
@@ -141,6 +149,10 @@ ApplicationWindow {
     property string jellyfinError: ""
     property bool subsonicConnecting: false
     property string subsonicError: ""
+
+    ShortcutDefinitions {
+        id: shortcutDefinitions
+    }
 
     Binding {
         target: player
@@ -249,12 +261,12 @@ ApplicationWindow {
             entries.push({ type: "header", title: "NOW PLAYING" })
             entries.push({ type: "current", track: player.currentTrack, title: player.currentTrack.title, fileName: player.currentTrack.fileName, filePath: player.currentTrack.filePath, artist: player.currentTrack.artist, album: player.currentTrack.album, duration: player.currentTrack.duration })
         }
-        const queue = playbackQueue.length ? playbackQueue : uniqueTracks(availableTracks())
+        const queue = activePlaybackQueue()
         const currentIndex = currentQueueIndex()
         const upcoming = currentIndex >= 0 ? queue.slice(currentIndex + 1) : queue
         if (upcoming.length) {
             entries.push({ type: "header", title: "UP NEXT" })
-            upcoming.forEach(track => entries.push({ type: "track", track: track, title: track.title, fileName: track.fileName, filePath: track.filePath, artist: track.artist, album: track.album, duration: track.duration }))
+            upcoming.forEach(track => entries.push({ type: "track", track: track, title: track.title, fileName: track.fileName, filePath: track.filePath, artist: track.artist, album: track.album, duration: track.duration, queueEditable: true }))
         }
         return entries
     }
@@ -316,6 +328,13 @@ ApplicationWindow {
         nowPlayingMode = appSettings.value("player/nowPlayingMode", "controls")
         miniPlayerAlwaysOnTop = appSettings.value("ui/miniPlayerAlwaysOnTop", true)
         resumeQueueOnLaunch = appSettings.value("player/resumeQueueOnLaunch", true)
+        player.setAudioDevice(appSettings.value("player/audioDeviceId", ""))
+        try {
+            const savedShortcuts = appSettings.value("ui/inAppShortcuts", "{}")
+            inAppShortcutBindings = typeof savedShortcuts === "string" ? JSON.parse(savedShortcuts) : savedShortcuts
+        } catch (error) {
+            inAppShortcutBindings = ({})
+        }
         globalShortcuts.setShortcut("playPause", appSettings.value("ui/globalShortcut/playPause", "Ctrl+Alt+Space"))
         globalShortcuts.setShortcut("previous", appSettings.value("ui/globalShortcut/previous", "Ctrl+Alt+Left"))
         globalShortcuts.setShortcut("next", appSettings.value("ui/globalShortcut/next", "Ctrl+Alt+Right"))
@@ -323,7 +342,7 @@ ApplicationWindow {
         globalShortcuts.setShortcut("search", appSettings.value("ui/globalShortcut/search", "Ctrl+Alt+S"))
         globalShortcuts.setShortcut("miniPlayer", appSettings.value("ui/globalShortcut/miniPlayer", "Ctrl+Alt+M"))
         globalShortcutsEnabled = appSettings.value("ui/globalShortcutsEnabled", false)
-        closeToTray = appSettings.value("ui/closeToTray", true)
+        closeToTray = appSettings.value("ui/closeToTray", false)
         startMinimizedToTray = appSettings.value("ui/startMinimizedToTray", false)
         nowPlayingNotifications = appSettings.value("ui/nowPlayingNotifications", "minimized")
         if (startMinimizedToTray && tray.available) {
@@ -389,6 +408,7 @@ ApplicationWindow {
         } catch (e) {
             favoriteTracks = {}
         }
+        restorePlaylists()
         playCounts = numberMapFromSetting("library/playCounts")
         seenAt = numberMapFromSetting("library/seenAt")
         settingsInitialized = true
@@ -403,6 +423,15 @@ ApplicationWindow {
         restorePlaybackQueue()
         restorePlaybackHistory()
         if (page === "radio") Qt.callLater(refreshRadio)
+        if (!startMinimizedToTray) {
+            Qt.callLater(function() {
+                window.showNormal()
+                window.x = Math.max(0, Math.round((Screen.width - window.width) / 2))
+                window.y = Math.max(0, Math.round((Screen.height - window.height) / 2))
+                window.raise()
+                window.requestActivate()
+            })
+        }
     }
 
     function restoreLastPlayedTrack() {
@@ -454,6 +483,115 @@ ApplicationWindow {
 
     function savedTrackPaths(trackList) {
         return JSON.stringify((trackList || []).map(track => track.filePath).filter(path => !!path))
+    }
+
+    function restorePlaylists() {
+        try {
+            const saved = JSON.parse(appSettings.value("library/playlists", "[]") || "[]")
+            playlists = Array.isArray(saved) ? saved.filter(item => item && item.id && item.name && Array.isArray(item.trackPaths)) : []
+        } catch (e) {
+            playlists = []
+        }
+    }
+
+    function playlistTracks(playlist) {
+        if (!playlist || !Array.isArray(playlist.trackPaths)) return []
+        const tracksByPath = {}
+        playbackTracks().forEach(track => tracksByPath[track.filePath] = track)
+        return playlist.trackPaths.map(path => tracksByPath[path]).filter(track => !!track)
+    }
+
+    function createPlaylist(name, tracks) {
+        const title = String(name || "").trim()
+        if (!title) return false
+        const trackPaths = [...new Set((tracks || []).map(track => track.filePath).filter(path => !!path))]
+        playlists = playlists.concat([{ id: Date.now().toString(36), name: title, trackPaths: trackPaths }])
+        return true
+    }
+
+    function deletePlaylist(id) {
+        playlists = playlists.filter(playlist => playlist.id !== id)
+    }
+
+    function playPlaylist(playlist) {
+        const tracks = playlistTracks(playlist)
+        if (tracks.length) startPlayback(tracks, 0, false)
+    }
+
+    function saveQueueAsPlaylist(name) {
+        const queue = activePlaybackQueue().filter(track => track.format !== "STREAM")
+        return queue.length > 0 && createPlaylist(name, queue)
+    }
+
+    function addTrackToPlaylist(id, track) {
+        if (!id || !track || !track.filePath || track.format === "STREAM") return false
+        let added = false
+        playlists = playlists.map(playlist => {
+            if (playlist.id !== id || playlist.trackPaths.includes(track.filePath)) return playlist
+            added = true
+            return Object.assign({}, playlist, { trackPaths: playlist.trackPaths.concat([track.filePath]) })
+        })
+        if (added) playlistStatus = "Added to playlist"
+        return added
+    }
+
+    function appendToQueue(track) {
+        if (!track || !track.filePath || track.format === "STREAM"
+                || (player.currentTrack && player.currentTrack.format === "STREAM")) return false
+        if (playbackQueue.some(candidate => trackIdentity(candidate) === trackIdentity(track))) return false
+        playbackQueue = playbackQueue.concat([track])
+        if (!originalPlaybackQueue.some(candidate => trackIdentity(candidate) === trackIdentity(track))) {
+            originalPlaybackQueue = originalPlaybackQueue.concat([track])
+        }
+        queueRevision++
+        return true
+    }
+
+    function requestPlaylistImport() {
+        playlistImportDialog.open()
+    }
+
+    function requestPlaylistExport(playlist) {
+        playlistPendingExport = playlist
+        playlistExportDialog.open()
+    }
+
+    function normalizedPlaylistPath(path) {
+        let value = String(path || "").trim()
+        if (!value || value.startsWith("#")) return ""
+        if (value.startsWith("file://")) value = decodeURIComponent(value.replace(/^file:\/\/\/?/i, ""))
+        return value.replace(/\\/g, "/").replace(/^\/+([A-Za-z]:\/)/, "$1").toLowerCase()
+    }
+
+    function importM3u(url) {
+        const text = appSettings.readTextFile(url)
+        const sourcePath = library.localPath(url)
+        if (!text || !sourcePath) {
+            playlistStatus = "Could not read playlist"
+            return
+        }
+        const tracksByPath = {}
+        playbackTracks().forEach(track => tracksByPath[normalizedPlaylistPath(track.filePath)] = track)
+        const tracks = text.split(/\r?\n/).map(line => tracksByPath[normalizedPlaylistPath(line)]).filter(track => !!track)
+        if (!tracks.length) {
+            playlistStatus = "No tracks from this playlist are in your library"
+            return
+        }
+        const fileName = sourcePath.replace(/\\/g, "/").split("/").pop()
+        const name = fileName.replace(/\.[^.]+$/, "") || "Imported playlist"
+        createPlaylist(name, tracks)
+        playlistStatus = "Imported " + tracks.length + " track" + (tracks.length === 1 ? "" : "s")
+    }
+
+    function exportM3u(url) {
+        const playlist = playlistPendingExport
+        playlistPendingExport = null
+        if (!playlist) return
+        const tracks = playlistTracks(playlist)
+        const text = "#EXTM3U\n" + tracks.map(track => track.filePath).join("\n") + (tracks.length ? "\n" : "")
+        playlistStatus = appSettings.exportTextFile(url, text)
+            ? "Exported " + tracks.length + " track" + (tracks.length === 1 ? "" : "s")
+            : "Could not export playlist"
     }
 
     function numberMap(value) {
@@ -544,6 +682,27 @@ ApplicationWindow {
         if (settingsInitialized) appSettings.setValue(key, value)
     }
 
+    function inAppShortcut(action) {
+        const selected = inAppShortcutBindings[action]
+        return selected || shortcutDefinitions.defaultKey(action)
+    }
+
+    function setInAppShortcut(action, shortcut) {
+        const matching = shortcutDefinitions.inAppActions.find(item => item.action === action)
+        if (!matching) return
+        for (const item of shortcutDefinitions.inAppActions) {
+            if (item.action !== action && inAppShortcut(item.action) === shortcut) {
+                inAppShortcutStatus = shortcut + " is already assigned to " + item.label
+                return
+            }
+        }
+        const updated = Object.assign({}, inAppShortcutBindings)
+        if (shortcut === matching.defaultKey) delete updated[action]
+        else updated[action] = shortcut
+        inAppShortcutBindings = updated
+        inAppShortcutStatus = "Shortcut saved"
+    }
+
     function dismissSearchFocus(point) {
         const contains = function(item) {
             return item && item.visible && item.contains(item.mapFromItem(appArea, point.x, point.y))
@@ -610,6 +769,7 @@ ApplicationWindow {
         }
         saveSetting("ui/globalShortcutsEnabled", globalShortcutsEnabled)
     }
+    onInAppShortcutBindingsChanged: saveSetting("ui/inAppShortcuts", JSON.stringify(inAppShortcutBindings))
     onLyricsFontSizeChanged: saveSetting("lyrics/fontSize", lyricsFontSize)
     onAccentNameChanged: saveSetting("ui/accentName", accentName)
     onCustomAccentColorChanged: saveSetting("ui/customAccentColor", customAccentColor)
@@ -691,6 +851,7 @@ ApplicationWindow {
         updateVisibleLibrary()
         refreshHomeRecommendations()
     }
+    onPlaylistsChanged: if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
     onPlayCountsChanged: {
         if (settingsInitialized) appSettings.setValue("library/playCounts", JSON.stringify(playCounts))
         refreshHomeRecommendations()
@@ -775,24 +936,19 @@ ApplicationWindow {
     }
 
     Shortcut {
-        sequence: "Ctrl+Shift+M"
+        sequence: inAppShortcut("toggleMiniPlayer")
         onActivated: toggleMiniPlayer()
     }
 
     Shortcut {
-        sequence: "Ctrl+M"
-        onActivated: toggleMiniPlayer()
-    }
-
-    Shortcut {
-        sequence: "Ctrl+B"
+        sequence: inAppShortcut("toggleSidebar")
         onActivated: {
             if (!miniPlayerMode) sidebarCollapsed = !sidebarCollapsed
         }
     }
 
     Shortcut {
-        sequence: "Ctrl+F"
+        sequence: inAppShortcut("search")
         onActivated: {
             if (!miniPlayerMode) {
                 nowPlayingOpen = false
@@ -802,7 +958,7 @@ ApplicationWindow {
     }
 
     Shortcut {
-        sequence: "Escape"
+        sequence: inAppShortcut("closePlayerView")
         onActivated: {
             if (miniPlayerMode) {
                 toggleMiniPlayer()
@@ -813,7 +969,7 @@ ApplicationWindow {
     }
 
     Shortcut {
-        sequence: "Space"
+        sequence: inAppShortcut("playPause")
         onActivated: {
             if (!player.currentTrack.filePath && library.trackCount > 0) {
                 shuffleAll()
@@ -824,27 +980,39 @@ ApplicationWindow {
     }
 
     Shortcut {
-        sequence: "Ctrl+Up"
+        sequence: inAppShortcut("volumeUp")
         onActivated: player.setVolume(Math.min(1.0, player.volume + 0.05))
     }
 
     Shortcut {
-        sequence: "Ctrl+Down"
+        sequence: inAppShortcut("volumeDown")
         onActivated: player.setVolume(Math.max(0.0, player.volume - 0.05))
     }
 
     Shortcut {
-        sequence: "Ctrl+Right"
+        sequence: inAppShortcut("seekForward")
         onActivated: player.seek(Math.min(player.duration, player.position + 5000))
     }
 
     Shortcut {
-        sequence: "Ctrl+Left"
+        sequence: inAppShortcut("seekBackward")
         onActivated: player.seek(Math.max(0, player.position - 5000))
     }
 
     Shortcut {
-        sequence: "M"
+        sequence: inAppShortcut("nowPlayingNext")
+        enabled: nowPlayingOpen
+        onActivated: player.seek(Math.min(player.duration, player.position + 5000))
+    }
+
+    Shortcut {
+        sequence: inAppShortcut("nowPlayingPrevious")
+        enabled: nowPlayingOpen
+        onActivated: player.seek(Math.max(0, player.position - 5000))
+    }
+
+    Shortcut {
+        sequence: inAppShortcut("mute")
         onActivated: player.setVolume(player.volume > 0.001 ? 0.0 : 0.8)
     }
 
@@ -1238,9 +1406,7 @@ ApplicationWindow {
             ? extractPrimaryArtist(track.artist) === title
             : (track.album || "Unknown Album") === title)
         catalogDetailOpen = true
-    }
-
-
+}
     function getGenreGroups() { return genreGroups }
     function getFolderGroups() { return folderGroups }
 
@@ -1281,8 +1447,23 @@ ApplicationWindow {
         playQueuedTrack(playbackQueue[shuffle ? 0 : index])
     }
 
+    function startRadioPlayback(source, startIndex) {
+        if (!source || source.length === 0) return
+        const queue = uniqueTracks(source)
+        if (!queue.length) return
+        const index = Math.max(0, Math.min(startIndex, queue.length - 1))
+        originalRadioPlaybackQueue = queue.slice()
+        radioPlaybackQueue = queue.slice()
+        playQueuedTrack(radioPlaybackQueue[index])
+    }
+
+    function activePlaybackQueue() {
+        if (player.currentTrack && player.currentTrack.format === "STREAM") return radioPlaybackQueue
+        return playbackQueue.length ? playbackQueue : uniqueTracks(availableTracks())
+    }
+
     function currentQueueIndex() {
-        const queue = playbackQueue.length ? playbackQueue : uniqueTracks(availableTracks())
+        const queue = activePlaybackQueue()
         const filePath = player.currentTrack ? player.currentTrack.filePath : ""
         return queue.findIndex(track => track.filePath === filePath)
     }
@@ -1301,23 +1482,58 @@ ApplicationWindow {
         playQueuedTrack(track)
     }
 
+    function removeQueuedTrack(track) {
+        if (!track || !track.filePath) return
+        const queue = activePlaybackQueue()
+        const index = queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(track))
+        if (index < 0 || index <= currentQueueIndex()) return
+        const nextQueue = queue.slice()
+        nextQueue.splice(index, 1)
+        if (player.currentTrack && player.currentTrack.format === "STREAM") {
+            radioPlaybackQueue = nextQueue
+            originalRadioPlaybackQueue = originalRadioPlaybackQueue.filter(candidate => trackIdentity(candidate) !== trackIdentity(track))
+        } else {
+            playbackQueue = nextQueue
+            originalPlaybackQueue = originalPlaybackQueue.filter(candidate => trackIdentity(candidate) !== trackIdentity(track))
+        }
+        queueRevision++
+    }
+
+    function moveQueuedTrackNext(track) {
+        if (!track || !track.filePath) return
+        const queue = activePlaybackQueue()
+        const currentIndex = currentQueueIndex()
+        const index = queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(track))
+        if (index < 0 || index <= currentIndex + 1) return
+        const nextQueue = queue.slice()
+        nextQueue.splice(index, 1)
+        nextQueue.splice(currentIndex + 1, 0, track)
+        if (player.currentTrack && player.currentTrack.format === "STREAM") radioPlaybackQueue = nextQueue
+        else playbackQueue = nextQueue
+        queueRevision++
+    }
+
     function toggleQueueShuffle() {
-        const queue = playbackQueue.length ? playbackQueue : uniqueTracks(availableTracks())
+        const radioQueue = player.currentTrack && player.currentTrack.format === "STREAM"
+        const queue = activePlaybackQueue()
         if (queue.length < 2) return
         const currentIndex = currentQueueIndex()
         player.toggleShuffle()
         if (currentIndex < 0) return
 
         if (player.shuffleEnabled) {
-            playbackQueue = queue.slice(0, currentIndex + 1).concat(shuffledTracks(queue.slice(currentIndex + 1)))
+            const shuffled = queue.slice(0, currentIndex + 1).concat(shuffledTracks(queue.slice(currentIndex + 1)))
+            if (radioQueue) radioPlaybackQueue = shuffled
+            else playbackQueue = shuffled
         } else {
-            playbackQueue = originalPlaybackQueue.length ? originalPlaybackQueue.slice() : queue.slice()
+            if (radioQueue) radioPlaybackQueue = originalRadioPlaybackQueue.length ? originalRadioPlaybackQueue.slice() : queue.slice()
+            else playbackQueue = originalPlaybackQueue.length ? originalPlaybackQueue.slice() : queue.slice()
         }
         queueRevision++
     }
 
     function playNext() {
-        const queue = playbackQueue.length ? playbackQueue : uniqueTracks(availableTracks())
+        const queue = activePlaybackQueue()
         if (!queue.length) return
         const currentIndex = currentQueueIndex()
         if (currentIndex < 0) {
@@ -1326,7 +1542,7 @@ ApplicationWindow {
             playQueuedTrack(queue[currentIndex + 1])
         } else if (repeatMode === 1) {
             playQueuedTrack(queue[0])
-        } else if (autoplayEnabled && library.trackCount > 0) {
+        } else if (player.currentTrack && player.currentTrack.format !== "STREAM" && autoplayEnabled && library.trackCount > 0) {
             shuffleAll()
         }
     }
@@ -1336,7 +1552,7 @@ ApplicationWindow {
             player.seek(0)
             return
         }
-        const queue = playbackQueue.length ? playbackQueue : uniqueTracks(availableTracks())
+        const queue = activePlaybackQueue()
         const currentIndex = currentQueueIndex()
         if (currentIndex > 0) playQueuedTrack(queue[currentIndex - 1])
         else player.seek(0)
@@ -1354,7 +1570,9 @@ ApplicationWindow {
     Connections {
         target: player
         function onTrackEnded() {
-            if (repeatMode === 2) {
+            if (sleepTimerMode === "track") {
+                triggerSleepTimerStop()
+            } else if (repeatMode === 2) {
                 player.seek(0)
                 player.play()
             } else {
@@ -1453,6 +1671,7 @@ ApplicationWindow {
                 version: 2,
                 timestamp: new Date().toISOString(),
                 accentName: window.accentName,
+                customAccentColor: window.customAccentColor,
                 albumArtRadius: window.albumArtRadius,
                 nowPlayingBackdrop: window.nowPlayingBackdrop,
                 showRemainingTime: window.showRemainingTime,
@@ -1463,16 +1682,27 @@ ApplicationWindow {
                 excludedFolders: window.excludedFolders,
                 resumeQueueOnLaunch: window.resumeQueueOnLaunch,
                 globalShortcutsEnabled: window.globalShortcutsEnabled,
+                globalShortcutBindings: window.globalShortcutBindings,
                 miniPlayerAlwaysOnTop: window.miniPlayerAlwaysOnTop,
                 autoplayEnabled: window.autoplayEnabled,
+                sleepFadeOut: window.sleepFadeOut,
                 volumeLimitEnabled: window.volumeLimitEnabled,
                 maxVolumePercent: window.maxVolumePercent,
+                closeToTray: window.closeToTray,
+                startMinimizedToTray: window.startMinimizedToTray,
+                nowPlayingNotifications: window.nowPlayingNotifications,
                 lyricsFontSize: window.lyricsFontSize,
                 lyricsAlignment: window.lyricsAlignment,
                 lyricsActiveStyle: window.lyricsActiveStyle,
                 preferLocalLyrics: window.preferLocalLyrics,
                 offlineBlackout: window.offlineBlackout,
+                svcLrclib: window.svcLrclib,
+                svcRadio: window.svcRadio,
+                svcDeezer: window.svcDeezer,
+                svcAudiodb: window.svcAudiodb,
+                svcWiki: window.svcWiki,
                 favoriteTracks: window.favoriteTracks,
+                playlists: window.playlists,
                 playCounts: window.playCounts,
                 seenAt: window.seenAt
             }
@@ -1496,6 +1726,7 @@ ApplicationWindow {
                 try {
                     const data = JSON.parse(text)
                     if (data.accentName) { window.accentName = data.accentName; appSettings.setValue("ui/accentName", data.accentName) }
+                    if (data.customAccentColor) { window.customAccentColor = data.customAccentColor; appSettings.setValue("ui/customAccentColor", data.customAccentColor) }
                     if (data.albumArtRadius !== undefined) { window.albumArtRadius = data.albumArtRadius; appSettings.setValue("ui/albumArtRadius", data.albumArtRadius) }
                     if (data.nowPlayingBackdrop) { window.nowPlayingBackdrop = data.nowPlayingBackdrop; appSettings.setValue("player/nowPlayingBackdrop", data.nowPlayingBackdrop) }
                     if (data.showRemainingTime !== undefined) { window.showRemainingTime = data.showRemainingTime; appSettings.setValue("player/showRemainingTime", data.showRemainingTime) }
@@ -1505,16 +1736,33 @@ ApplicationWindow {
                     if (data.defaultLaunchPage) { window.defaultLaunchPage = data.defaultLaunchPage; appSettings.setValue("ui/defaultLaunchPage", data.defaultLaunchPage) }
                     if (data.excludedFolders) { window.excludedFolders = data.excludedFolders; appSettings.setValue("library/excludedFolders", data.excludedFolders) }
                     if (data.resumeQueueOnLaunch !== undefined) { window.resumeQueueOnLaunch = data.resumeQueueOnLaunch; appSettings.setValue("player/resumeQueueOnLaunch", data.resumeQueueOnLaunch) }
+                    if (Array.isArray(data.playlists)) { window.playlists = data.playlists; appSettings.setValue("library/playlists", JSON.stringify(data.playlists)) }
                     if (data.globalShortcutsEnabled !== undefined) { window.globalShortcutsEnabled = data.globalShortcutsEnabled }
+                    if (data.globalShortcutBindings) {
+                        for (const action in data.globalShortcutBindings) {
+                            if (globalShortcuts.setShortcut(action, data.globalShortcutBindings[action])) {
+                                appSettings.setValue("ui/globalShortcut/" + action, globalShortcuts.shortcuts[action])
+                            }
+                        }
+                    }
                     if (data.miniPlayerAlwaysOnTop !== undefined) { window.miniPlayerAlwaysOnTop = data.miniPlayerAlwaysOnTop; appSettings.setValue("ui/miniPlayerAlwaysOnTop", data.miniPlayerAlwaysOnTop) }
                     if (data.autoplayEnabled !== undefined) { window.autoplayEnabled = data.autoplayEnabled; appSettings.setValue("player/autoplayEnabled", data.autoplayEnabled) }
+                    if (data.sleepFadeOut !== undefined) { window.sleepFadeOut = data.sleepFadeOut; appSettings.setValue("player/sleepFadeOut", data.sleepFadeOut) }
                     if (data.volumeLimitEnabled !== undefined) { window.volumeLimitEnabled = data.volumeLimitEnabled; appSettings.setValue("player/volumeLimitEnabled", data.volumeLimitEnabled) }
                     if (data.maxVolumePercent !== undefined) { window.maxVolumePercent = data.maxVolumePercent; appSettings.setValue("player/maxVolumePercent", data.maxVolumePercent) }
+                    if (data.closeToTray !== undefined) { window.closeToTray = data.closeToTray; appSettings.setValue("ui/closeToTray", data.closeToTray) }
+                    if (data.startMinimizedToTray !== undefined) { window.startMinimizedToTray = data.startMinimizedToTray; appSettings.setValue("ui/startMinimizedToTray", data.startMinimizedToTray) }
+                    if (data.nowPlayingNotifications) { window.nowPlayingNotifications = data.nowPlayingNotifications; appSettings.setValue("ui/nowPlayingNotifications", data.nowPlayingNotifications) }
                     if (data.lyricsFontSize) { window.lyricsFontSize = data.lyricsFontSize; appSettings.setValue("lyrics/fontSize", data.lyricsFontSize) }
                     if (data.lyricsAlignment) { window.lyricsAlignment = data.lyricsAlignment; appSettings.setValue("lyrics/alignment", data.lyricsAlignment) }
                     if (data.lyricsActiveStyle) { window.lyricsActiveStyle = data.lyricsActiveStyle; appSettings.setValue("lyrics/activeStyle", data.lyricsActiveStyle) }
                     if (data.preferLocalLyrics !== undefined) { window.preferLocalLyrics = data.preferLocalLyrics; appSettings.setValue("lyrics/preferLocal", data.preferLocalLyrics) }
                     if (data.offlineBlackout !== undefined) window.offlineBlackout = data.offlineBlackout
+                    if (data.svcLrclib !== undefined) window.svcLrclib = data.svcLrclib
+                    if (data.svcRadio !== undefined) window.svcRadio = data.svcRadio
+                    if (data.svcDeezer !== undefined) window.svcDeezer = data.svcDeezer
+                    if (data.svcAudiodb !== undefined) window.svcAudiodb = data.svcAudiodb
+                    if (data.svcWiki !== undefined) window.svcWiki = data.svcWiki
                     if (data.favoriteTracks) {
                         window.favoriteTracks = data.favoriteTracks
                         appSettings.setValue("library/favorites", JSON.stringify(data.favoriteTracks))
@@ -1533,11 +1781,32 @@ ApplicationWindow {
         }
     }
 
+    FileDialog {
+        id: playlistImportDialog
+        title: "Import M3U Playlist"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Playlist files (*.m3u *.m3u8)"]
+        onAccepted: importM3u(selectedFile)
+    }
+
+    FileDialog {
+        id: playlistExportDialog
+        title: "Export M3U Playlist"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["Playlist files (*.m3u)"]
+        defaultSuffix: "m3u"
+        onAccepted: exportM3u(selectedFile)
+        onRejected: playlistPendingExport = null
+    }
+
     // Windows 11 Media Controls & Keyboard Media Keys
     Connections {
         target: (typeof smtc !== "undefined") ? smtc : null
-        function onPlayRequested() { player.togglePlay() }
-        function onPauseRequested() { player.pause() }
+        function onPlayRequested() { player.play() }
+        function onPauseRequested() {
+            console.log("[PLAYER] pause source=SMTC")
+            player.pause()
+        }
         function onNextRequested() { window.playNext() }
         function onPreviousRequested() { window.playPrevious() }
     }
@@ -1562,6 +1831,15 @@ ApplicationWindow {
         }
         function onMiniPlayerRequested() {
             window.toggleMiniPlayer()
+        }
+        function onAccessHintsRequested(visible) {
+            window.accessHintsVisible = visible
+        }
+        function onAccessKeyRequested(key) {
+            const destinations = ({ H: "home", L: "library", J: "jellyfin", U: "subsonic", R: "radio", S: "search", T: "settings" })
+            if (destinations[key] === undefined) return
+            window.nowPlayingOpen = false
+            window.page = destinations[key]
         }
     }
 
@@ -1628,6 +1906,7 @@ ApplicationWindow {
         if (sleepFadeOut && player.volume > 0.05) {
             fadeOutTimer.restart()
         } else {
+            console.log("[PLAYER] pause source=sleep-timer")
             player.pause()
             cancelSleepTimer()
         }
@@ -1643,6 +1922,7 @@ ApplicationWindow {
                 player.setVolume(Math.max(0.0, player.volume - targetStep))
             } else {
                 stop()
+                console.log("[PLAYER] pause source=sleep-timer")
                 player.pause()
                 cancelSleepTimer()
             }
@@ -2076,12 +2356,12 @@ ApplicationWindow {
                     anchors.right: parent.right
                     spacing: 4
 
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "home"; iconName: "house"; label: "Home" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "library"; iconName: "music"; label: "Library" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "jellyfin"; iconName: "jellyfin"; label: "Jellyfin"; preserveIconColor: true }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "subsonic"; iconName: "subsonic"; label: "Subsonic"; preserveIconColor: true }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "radio"; iconName: "radio"; label: "Radio" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "search"; iconName: "search"; label: "Search" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "home"; iconName: "house"; label: "Home"; accessHintsVisible: window.accessHintsVisible; accessKey: "H" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "library"; iconName: "music"; label: "Library"; accessHintsVisible: window.accessHintsVisible; accessKey: "L" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "jellyfin"; iconName: "jellyfin"; label: "Jellyfin"; preserveIconColor: true; accessHintsVisible: window.accessHintsVisible; accessKey: "J" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "subsonic"; iconName: "subsonic"; label: "Subsonic"; preserveIconColor: true; accessHintsVisible: window.accessHintsVisible; accessKey: "U" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "radio"; iconName: "radio"; label: "Radio"; accessHintsVisible: window.accessHintsVisible; accessKey: "R" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "search"; iconName: "search"; label: "Search"; accessHintsVisible: window.accessHintsVisible; accessKey: "S" }
                 }
 
                 // Bottom Controls Group
@@ -2104,7 +2384,7 @@ ApplicationWindow {
 
                     Item { width: 1; height: 2 }
 
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "settings"; iconName: "settings"; label: "Settings" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "settings"; iconName: "settings"; label: "Settings"; accessHintsVisible: window.accessHintsVisible; accessKey: "T" }
 
                     Item {
                         id: bottomToggleItem
@@ -2270,16 +2550,21 @@ ApplicationWindow {
                         id: settingsRoot
                         anchors.fill: parent
                         trackCount: library.trackCount
-                        libraryFolder: library.folder
+                        libraryFolders: library.folders
                         closeToTray: window.closeToTray
                         startMinimizedToTray: window.startMinimizedToTray
                         nowPlayingNotifications: window.nowPlayingNotifications
                         trayAvailable: tray.available
+                        audioOutputs: player.audioOutputs
+                        audioDeviceId: player.audioDeviceId
                         resumeQueueOnLaunch: window.resumeQueueOnLaunch
                         globalShortcutsEnabled: window.globalShortcutsEnabled
                         globalShortcutsSupported: window.globalShortcutsSupported
                         globalShortcutStatus: window.globalShortcutStatus
                         globalShortcutBindings: window.globalShortcutBindings
+                        inAppShortcutBindings: window.inAppShortcutBindings
+                        inAppShortcutActions: shortcutDefinitions.inAppActions
+                        inAppShortcutStatus: window.inAppShortcutStatus
                         miniPlayerAlwaysOnTop: window.miniPlayerAlwaysOnTop
                         lyricsFontSize: window.lyricsFontSize
                         defaultLaunchPage: window.defaultLaunchPage
@@ -2309,7 +2594,8 @@ ApplicationWindow {
                         svcAudiodb: window.svcAudiodb
                         svcWiki: window.svcWiki
 
-                        onChooseFolderRequested: folderDialog.open()
+                        onAddLibraryFolderRequested: folderDialog.open()
+                        onRemoveLibraryFolderRequested: path => library.removeFolder(path)
                         onBackRequested: page = "home"
                         onResumeQueueOnLaunchSelected: value => window.resumeQueueOnLaunch = value
                         onGlobalShortcutsEnabledSelected: value => { window.globalShortcutsEnabled = value }
@@ -2318,7 +2604,11 @@ ApplicationWindow {
                                 appSettings.setValue("ui/globalShortcut/" + action, globalShortcuts.shortcuts[action])
                             }
                         }
+                        onInAppShortcutSelected: (action, shortcut) => window.setInAppShortcut(action, shortcut)
                         onMiniPlayerAlwaysOnTopSelected: value => window.miniPlayerAlwaysOnTop = value
+                        onAudioDeviceSelected: value => {
+                            if (player.setAudioDevice(value)) appSettings.setValue("player/audioDeviceId", player.audioDeviceId)
+                        }
                         onLyricsFontSizeSelected: value => window.lyricsFontSize = value
                         onDefaultLaunchPageSelected: value => window.defaultLaunchPage = value
                         onAddExcludeRequested: excludeFolderDialog.open()
@@ -2400,6 +2690,34 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             height: 88
             color: surfaceDock
+
+            DropArea {
+                id: queueDropArea
+                anchors.fill: parent
+                z: 2
+                onEntered: drag => drag.accepted = !!(drag.source && drag.source.track
+                    && drag.source.track.format !== "STREAM")
+                onDropped: drop => {
+                    if (window.appendToQueue(drop.source.track)) drop.accepted = true
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    visible: queueDropArea.containsDrag
+                    color: "transparent"
+                    border.width: 1
+                    border.color: recordRed
+
+                    Label {
+                        anchors.centerIn: parent
+                        text: "Add to queue"
+                        color: recordRed
+                        font.family: monoFont
+                        font.pixelSize: 11
+                        font.weight: Font.Bold
+                    }
+                }
+            }
 
             Rectangle {
                 anchors.top: parent.top
@@ -2533,24 +2851,15 @@ ApplicationWindow {
 
                         TransportButton {
                             buttonSize: 34
+                            paletteSource: window
                             iconName: "shuffle"
                             accented: player.shuffleEnabled
                             onClicked: toggleQueueShuffle()
                         }
 
                         TransportButton {
-                            buttonSize: 34
-                            iconName: "quote"
-                            accented: nowPlayingOpen && nowPlayingMode === "lyrics"
-                            iconColor: nowPlayingMode === "lyrics" ? recordRed : textPrimary
-                            onClicked: {
-                                nowPlayingMode = "lyrics"
-                                nowPlayingOpen = true
-                            }
-                        }
-
-                        TransportButton {
                             buttonSize: 38
+                            paletteSource: window
                             iconName: "skip-back"
                             iconColor: textPrimary
                             onClicked: playPrevious()
@@ -2558,6 +2867,7 @@ ApplicationWindow {
 
                         TransportButton {
                             buttonSize: 46
+                            paletteSource: window
                             iconName: playerVisuallyPlaying ? "pause" : "play"
                             accented: true
                             iconColor: recordRed
@@ -2572,6 +2882,7 @@ ApplicationWindow {
 
                         TransportButton {
                             buttonSize: 38
+                            paletteSource: window
                             iconName: "skip-forward"
                             iconColor: textPrimary
                             onClicked: playNext()
@@ -2579,17 +2890,7 @@ ApplicationWindow {
 
                         TransportButton {
                             buttonSize: 34
-                            iconName: "list-music"
-                            accented: nowPlayingOpen && nowPlayingMode === "queue"
-                            iconColor: nowPlayingMode === "queue" ? recordRed : textPrimary
-                            onClicked: {
-                                nowPlayingMode = "queue"
-                                nowPlayingOpen = true
-                            }
-                        }
-
-                        TransportButton {
-                            buttonSize: 34
+                            paletteSource: window
                             iconName: repeatMode === 2 ? "repeat-1" : "repeat"
                             accented: repeatMode > 0
                             iconColor: repeatMode > 0 ? recordRed : textPrimary
@@ -2604,14 +2905,15 @@ ApplicationWindow {
                         position: player.position
                         duration: player.duration
                         showRemainingTime: window.showRemainingTime
+                        paletteSource: window
                         onSeekRequested: posMs => player.seek(posMs)
                         onRemainingToggled: val => { window.showRemainingTime = val; appSettings.setValue("player/showRemainingTime", val) }
                     }
                 }
 
                 RowLayout {
-                    Layout.preferredWidth: 320
-                    Layout.maximumWidth: 320
+                    Layout.preferredWidth: 372
+                    Layout.maximumWidth: 372
                     Layout.alignment: Qt.AlignRight
                     spacing: 10
 
@@ -2626,8 +2928,33 @@ ApplicationWindow {
                     VolumeControl {
                         Layout.preferredWidth: 140
                         volume: player.volume
+                        paletteSource: window
                         onVolumeAdjusted: newVol => {
                             player.setVolume(newVol)
+                        }
+                    }
+
+                    PressDepthIconButton {
+                        boxSize: 36
+                        iconSize: 18
+                        iconName: "quote"
+                        tint: nowPlayingMode === "lyrics" ? recordRed : silverDim
+                        tooltipText: "Lyrics"
+                        onClicked: {
+                            nowPlayingMode = "lyrics"
+                            nowPlayingOpen = true
+                        }
+                    }
+
+                    PressDepthIconButton {
+                        boxSize: 36
+                        iconSize: 18
+                        iconName: "list-music"
+                        tint: nowPlayingMode === "queue" ? recordRed : silverDim
+                        tooltipText: "Queue"
+                        onClicked: {
+                            nowPlayingMode = "queue"
+                            nowPlayingOpen = true
                         }
                     }
 
@@ -2865,6 +3192,7 @@ ApplicationWindow {
                             position: player.position
                             duration: player.duration
                             showRemainingTime: window.showRemainingTime
+                            paletteSource: window
                             onSeekRequested: posMs => player.seek(posMs)
                             onRemainingToggled: val => { window.showRemainingTime = val; appSettings.setValue("player/showRemainingTime", val) }
                         }
@@ -2875,6 +3203,7 @@ ApplicationWindow {
 
                             TransportButton {
                                 buttonSize: 32
+                                paletteSource: window
                                 iconName: "shuffle"
                                 accented: player.shuffleEnabled
                                 onClicked: toggleQueueShuffle()
@@ -2884,6 +3213,7 @@ ApplicationWindow {
 
                             TransportButton {
                                 buttonSize: 38
+                                paletteSource: window
                                 iconName: "skip-back"
                                 iconColor: textPrimary
                                 onClicked: playPrevious()
@@ -2891,6 +3221,7 @@ ApplicationWindow {
 
                             TransportButton {
                                 buttonSize: 48
+                                paletteSource: window
                                 iconName: playerVisuallyPlaying ? "pause" : "play"
                                 accented: true
                                 iconColor: recordRed
@@ -2899,6 +3230,7 @@ ApplicationWindow {
 
                             TransportButton {
                                 buttonSize: 38
+                                paletteSource: window
                                 iconName: "skip-forward"
                                 iconColor: textPrimary
                                 onClicked: playNext()
@@ -2908,6 +3240,7 @@ ApplicationWindow {
 
                             TransportButton {
                                 buttonSize: 32
+                                paletteSource: window
                                 iconName: repeatMode === 2 ? "repeat-1" : "repeat"
                                 accented: repeatMode > 0
                                 iconColor: repeatMode > 0 ? recordRed : textPrimary
@@ -2922,6 +3255,7 @@ ApplicationWindow {
                             VolumeControl {
                                 Layout.preferredWidth: 160
                                 volume: player.volume
+                                paletteSource: window
                                 onVolumeAdjusted: newVol => player.setVolume(newVol)
                             }
                             Item { Layout.fillWidth: true }

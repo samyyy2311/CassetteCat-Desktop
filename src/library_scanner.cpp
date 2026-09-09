@@ -4,6 +4,7 @@
 
 #include <QDir>
 #include <QDirIterator>
+#include <QDataStream>
 #include <QFile>
 #include <QFileInfo>
 #include <QTemporaryDir>
@@ -65,13 +66,24 @@ QVariantList scanTracks(const QString &folder)
 bool scanSelfCheck()
 {
     QTemporaryDir folder;
-    QFile track(folder.filePath("CassetteCat Check.mp3"));
-    QFile dotTrack(folder.filePath(".trashed-12345.mp3"));
+    QFile track(folder.filePath("CassetteCat Check.wav"));
+    QFile dotTrack(folder.filePath(".trashed-12345.wav"));
 
     if (!folder.isValid() || !track.open(QIODevice::WriteOnly) || !dotTrack.open(QIODevice::WriteOnly)) {
         return false;
     }
 
+    QByteArray wav;
+    QDataStream stream(&wav, QIODevice::WriteOnly);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    stream.writeRawData("RIFF", 4);
+    stream << quint32(36);
+    stream.writeRawData("WAVEfmt ", 8);
+    stream << quint32(16) << quint16(1) << quint16(1) << quint32(8000)
+           << quint32(16000) << quint16(2) << quint16(16);
+    stream.writeRawData("data", 4);
+    stream << quint32(0);
+    track.write(wav);
     track.close();
     dotTrack.close();
 

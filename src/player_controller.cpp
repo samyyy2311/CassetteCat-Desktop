@@ -284,7 +284,7 @@ void PlayerController::setVolume(float vol)
         QSettings limitSettings(settingsFilePath(), QSettings::IniFormat);
         if (limitSettings.value("player/volumeLimitEnabled", false).toBool()) {
             const int maxPercent = std::clamp(limitSettings.value("player/maxVolumePercent", 80).toInt(), 10, 100);
-            clamped = std::min(clamped, maxPercent / 100.0f);
+            clamped = (std::min)(clamped, maxPercent / 100.0f);
         }
         if (m_audioOutput->volume() != clamped) {
             m_audioOutput->setVolume(clamped);

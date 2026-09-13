@@ -10,26 +10,16 @@ finish-args:
   - --device=dri
   - --filesystem=host:ro
 modules:
-  - name: taglib
-    buildsystem: cmake-ninja
-    config-opts:
-      - -DBUILD_TESTING=OFF
-      - -DBUILD_EXAMPLES=OFF
-    sources:
-      - type: git
-        url: https://github.com/taglib/taglib.git
-        tag: v2.0.2
-    cleanup:
-      - /bin/taglib-config*
-      - /include
-      - /lib/cmake
-      - /lib/pkgconfig
   - name: cassettecat
     buildsystem: cmake-ninja
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
       - -DCASSETTECAT_BUILD_TESTING=OFF
-      - -DCASSETTECAT_TAGLIB_SOURCE_DIR=/run/build/taglib
+      - -DCASSETTECAT_TAGLIB_SOURCE_DIR=/run/build/cassettecat/taglib-src
     sources:
       - type: dir
         path: ../..
+      - type: git
+        url: https://github.com/taglib/taglib.git
+        tag: v2.0.2
+        dest: taglib-src

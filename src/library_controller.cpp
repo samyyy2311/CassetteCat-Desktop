@@ -123,10 +123,15 @@ QHash<int, QByteArray> LibraryController::roleNames() const
 bool LibraryController::selfCheck()
 {
     LibraryController library;
+#ifdef Q_OS_WIN
+    const QString networkFilePath = "//server/music/Live Sets";
+#else
+    const QString networkFilePath = "/music/Live Sets";
+#endif
     const std::pair<QString, QString> folderUrls[] = {
         {"file:///home/music/Live%20Sets", "/home/music/Live Sets"},
         {"file:///C:/Music/100%25%20Hits", "C:/Music/100% Hits"},
-        {"file://server/music/Live%20Sets", "//server/music/Live Sets"},
+        {"file://server/music/Live%20Sets", networkFilePath},
         {"file:///home/music/%2520", "/home/music/%20"},
         {"https://example.com/music", ""},
         {"", ""},

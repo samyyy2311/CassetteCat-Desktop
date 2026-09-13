@@ -5,6 +5,7 @@ QtObject {
         { action: "toggleMiniPlayer", label: "Toggle Mini Player", defaultKey: "Ctrl+M" },
         { action: "toggleSidebar", label: "Toggle Sidebar", defaultKey: "Ctrl+B" },
         { action: "search", label: "Open Search", defaultKey: "Ctrl+F" },
+        { action: "quickSwitcher", label: "Quick Switcher", defaultKey: "Ctrl+K" },
         { action: "closePlayerView", label: "Close Player View", defaultKey: "Escape" },
         { action: "playPause", label: "Play / Pause", defaultKey: "Space" },
         { action: "volumeUp", label: "Volume Up", defaultKey: "Ctrl+Up" },

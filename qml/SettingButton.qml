@@ -6,8 +6,10 @@ Rectangle {
     id: root
     property string text: ""
     property string iconName: ""
+    property bool preserveIconColor: false
     property bool primary: false
     property bool destructive: false
+    property string accessibleName: text
     signal clicked()
 
     implicitWidth: contentRow.implicitWidth + 24
@@ -15,7 +17,7 @@ Rectangle {
     radius: 16
     color: {
         if (mouseArea.containsMouse) {
-            if (root.destructive) return "#25FF3344"
+            if (root.destructive) return mouseArea.containsMouse ? Qt.rgba(1,0.13,0.13,0.18) : "transparent"
             if (root.primary) return "#2A1614"
             return "#2A2825"
         }
@@ -24,10 +26,12 @@ Rectangle {
     }
     border.width: 1
     border.color: {
-        if (root.destructive) return mouseArea.containsMouse ? "#FF4455" : "#66FF4455"
+        if (root.destructive) return mouseArea.containsMouse ? recordRedHover : recordRed
         if (root.primary) return recordRed
         return mouseArea.containsMouse ? silverDim : borderVariant
     }
+    Accessible.name: root.accessibleName
+    Accessible.role: Accessible.Button
 
     scale: mouseArea.pressed ? 0.96 : 1.0
 
@@ -46,12 +50,13 @@ Rectangle {
             Layout.preferredHeight: 14
             Layout.alignment: Qt.AlignVCenter
             icon: root.iconName
-            color: root.destructive ? "#FF6677" : (root.primary ? recordRedHover : textPrimary)
+            preserveColor: root.preserveIconColor
+            color: root.destructive ? recordRedHover : (root.primary ? recordRedHover : textPrimary)
         }
 
         Label {
             text: root.text
-            color: root.destructive ? "#FF6677" : (root.primary ? recordRedHover : textPrimary)
+            color: root.destructive ? recordRedHover : (root.primary ? recordRedHover : textPrimary)
             font.family: displayFont
             font.pixelSize: 11
             font.weight: Font.DemiBold
@@ -67,4 +72,8 @@ Rectangle {
         cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
         onClicked: root.clicked()
     }
+
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+    activeFocusOnTab: true
 }

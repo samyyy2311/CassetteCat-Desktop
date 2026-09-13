@@ -78,6 +78,7 @@ ApplicationWindow {
     property string catalogDetailTitle: ""
     property var catalogDetailTracks: []
     property var catalogDetailHeroTrack: ({})
+    property var catalogDetailHistory: []
     property string nowPlayingMode: "controls" // "controls", "lyrics", "queue"
     property var lyricsListView: null
     property bool nowPlayingClosing: false
@@ -95,6 +96,7 @@ ApplicationWindow {
     property var originalRadioPlaybackQueue: []
     property bool playbackQueueRestored: false
     property var playbackHistory: []
+    property var selectedTrackPaths: ({})
     property bool playbackHistoryRestored: false
     property var historyTrackedTrack: null
     property double historyAccumulatedMs: 0
@@ -120,6 +122,7 @@ ApplicationWindow {
     property bool accessHintsVisible: false
     property int lyricsFontSize: 28
     property string defaultLaunchPage: "last"
+    property string settingsSection: "library"
     property var excludedFolders: []
     property bool ignoreShortClips: false
     property string trackDensity: "comfortable"
@@ -143,6 +146,12 @@ ApplicationWindow {
     property bool svcDeezer: true
     property bool svcAudiodb: true
     property bool svcWiki: true
+    property bool scrobbleListenBrainzEnabled: false
+    property string scrobbleListenBrainzUser: ""
+    property bool scrobbleListenBrainzConnected: false
+    property bool scrobbleLibreFmEnabled: false
+    property string scrobbleLibreFmUser: ""
+    property bool scrobbleLibreFmConnected: false
     property bool lastTrackRestored: false
     property bool playerStateDirty: false
     property bool jellyfinConnecting: false
@@ -188,6 +197,14 @@ ApplicationWindow {
                 restorePlaybackHistory()
             }
         }
+        function onJellyfinLyricsFetched(filePath, lyrics) {
+            if (!player.currentTrack || player.currentTrack.filePath !== filePath) return
+            if (lyrics && lyrics.trim().length) {
+                applyLyrics(lyrics, "Jellyfin")
+            } else if (!offlineBlackout && svcLrclib) {
+                services.fetchLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", player.currentTrack.durationSeconds || 0)
+            }
+        }
     }
 
     Connections {
@@ -207,6 +224,7 @@ ApplicationWindow {
     property bool lyricSearchOpen: false
     property bool lyricSearchLoading: false
     property var lyricSearchResults: []
+    property var lyricsSelectionCallback: null
     property string lyricSearchQuery: ""
     property bool lyricCustomEditorOpen: false
     property string lyricCustomText: ""
@@ -278,6 +296,7 @@ ApplicationWindow {
     property string radioLanguageFilter: ""
     property string radioSortOrder: "votes"
     property bool radioSortDescending: true
+    property string radioViewMode: "grid"
     property bool radioRefineOpen: false
     readonly property bool radioIsCustomized: radioActiveTag !== "ALL" || radioCountryFilter.length > 0 || radioLanguageFilter.length > 0 || radioSortOrder !== "votes" || !radioSortDescending
 
@@ -298,6 +317,37 @@ ApplicationWindow {
         function onRadioStationsLoaded(stations) {
             radioStations = stations
         }
+        function onListenBrainzValidationFinished(valid, userName, error) {
+            if (valid) {
+                window.scrobbleListenBrainzUser = userName
+                window.scrobbleListenBrainzConnected = true
+                window.scrobbleListenBrainzEnabled = true
+                appSettings.setValue("scrobble/listenbrainz_user", userName)
+                appSettings.setValue("scrobble/listenbrainz_enabled", true)
+            }
+        }
+        function onLibreFmAuthFinished(success, userName, sessionKey, error) {
+            if (success) {
+                window.scrobbleLibreFmUser = userName
+                window.scrobbleLibreFmConnected = true
+                window.scrobbleLibreFmEnabled = true
+                appSettings.setValue("scrobble/librefm_user", userName)
+                appSettings.setValue("scrobble/librefm_enabled", true)
+            }
+        }
+        function onCoverApplied(album, artist, artworkPath, filePath) {
+            library.setAlbumArtwork(album, artist, artworkPath)
+            if (filePath) {
+                library.setCustomArtwork(filePath, artworkPath)
+            }
+            if (player.currentTrack) {
+                const trackAlbum = player.currentTrack.album || ""
+                const trackFile = player.currentTrack.filePath || ""
+                if ((filePath && trackFile === filePath) || (album && trackAlbum.toLowerCase() === album.toLowerCase())) {
+                    player.updateCurrentTrackArtwork(artworkPath)
+                }
+            }
+        }
     }
 
     Component.onCompleted: {
@@ -312,18 +362,20 @@ ApplicationWindow {
         }
 
         page = appSettings.value("ui/page", "home")
+        homeScrollPosition = appSettings.value("ui/homeScrollPosition", 0)
         window.libraryTab = appSettings.value("ui/libraryTab", "songs")
         libraryViewMode = appSettings.value("ui/libraryViewMode", "grid")
         sidebarCollapsed = appSettings.value("ui/sidebarCollapsed", false)
-        libSearchQuery = appSettings.value("library/searchQuery", "")
-        searchQuery = appSettings.value("search/query", "")
+        libSearchQuery = ""
+        searchQuery = ""
         activeFormatFilter = appSettings.value("search/formatFilter", "ALL")
-        radioSearchQuery = appSettings.value("radio/searchQuery", "")
+        radioSearchQuery = ""
         radioActiveTag = appSettings.value("radio/activeTag", "ALL")
         radioCountryFilter = appSettings.value("radio/country", "")
         radioLanguageFilter = appSettings.value("radio/language", "")
         radioSortOrder = appSettings.value("radio/sortOrder", "votes")
         radioSortDescending = appSettings.value("radio/sortDescending", true)
+        radioViewMode = appSettings.value("radio/viewMode", "grid")
         nowPlayingOpen = false
         nowPlayingMode = appSettings.value("player/nowPlayingMode", "controls")
         miniPlayerAlwaysOnTop = appSettings.value("ui/miniPlayerAlwaysOnTop", true)
@@ -358,6 +410,7 @@ ApplicationWindow {
         showFormatBadges = appSettings.value("ui/showFormatBadges", true)
         ignoreShortClips = appSettings.value("library/ignoreShortClips", false)
         defaultLaunchPage = appSettings.value("ui/defaultLaunchPage", "last")
+        settingsSection = appSettings.value("ui/settingsSection", "library")
         try {
             const exc = appSettings.value("library/excludedFolders", [])
             excludedFolders = Array.isArray(exc) ? exc : []
@@ -366,6 +419,7 @@ ApplicationWindow {
         }
         autoplayEnabled = appSettings.value("player/autoplayEnabled", false)
         sleepFadeOut = appSettings.value("player/sleepFadeOut", true)
+        sleepTimerMode = appSettings.value("player/sleepTimerMode", "off")
         volumeLimitEnabled = appSettings.value("player/volumeLimitEnabled", false)
         maxVolumePercent = appSettings.value("player/maxVolumePercent", 80)
         lyricsAlignment = appSettings.value("lyrics/alignment", "left")
@@ -377,9 +431,17 @@ ApplicationWindow {
         svcDeezer = appSettings.value("services/deezer", true)
         svcAudiodb = appSettings.value("services/audiodb", true)
         svcWiki = appSettings.value("services/wiki", true)
+        scrobbleListenBrainzEnabled = appSettings.value("scrobble/listenbrainz_enabled", false)
+        scrobbleListenBrainzUser = appSettings.value("scrobble/listenbrainz_user", "")
+        scrobbleListenBrainzConnected = services.hasListenBrainzSession()
+        scrobbleLibreFmEnabled = appSettings.value("scrobble/librefm_enabled", false)
+        scrobbleLibreFmUser = appSettings.value("scrobble/librefm_user", "")
+        scrobbleLibreFmConnected = services.hasLibreFmSession()
 
         if (defaultLaunchPage && defaultLaunchPage !== "last") {
             page = defaultLaunchPage
+        } else {
+            page = appSettings.value("ui/page", "home")
         }
 
         songSortMetric = appSettings.value("sort/songMetric", "title")
@@ -396,7 +458,7 @@ ApplicationWindow {
 
         repeatMode = appSettings.value("player/repeatMode", 0)
         if (typeof player.setVolume !== "undefined") {
-            player.setVolume(appSettings.value("player/volume", 1.0))
+            setPlayerVolume(appSettings.value("player/volume", 1.0))
         }
         if (typeof player.setShuffleEnabled !== "undefined") {
             player.setShuffleEnabled(appSettings.value("player/shuffleEnabled", false))
@@ -425,9 +487,15 @@ ApplicationWindow {
         if (page === "radio") Qt.callLater(refreshRadio)
         if (!startMinimizedToTray) {
             Qt.callLater(function() {
-                window.showNormal()
-                window.x = Math.max(0, Math.round((Screen.width - window.width) / 2))
-                window.y = Math.max(0, Math.round((Screen.height - window.height) / 2))
+                if (!isMaximized) {
+                    window.showNormal()
+                    const savedX = appSettings.value("window/x", -1)
+                    const savedY = appSettings.value("window/y", -1)
+                    const validX = (savedX >= 0 && savedX < Screen.width - 100)
+                    const validY = (savedY >= 0 && savedY < Screen.height - 100)
+                    window.x = validX ? savedX : Math.max(0, Math.round((Screen.width - window.width) / 2))
+                    window.y = validY ? savedY : Math.max(0, Math.round((Screen.height - window.height) / 2))
+                }
                 window.raise()
                 window.requestActivate()
             })
@@ -435,14 +503,19 @@ ApplicationWindow {
     }
 
     function restoreLastPlayedTrack() {
-        if (!resumeQueueOnLaunch || lastTrackRestored || streaming.remoteLibraryLoading) return
-        if (library.trackCount === 0 && streaming.remoteTracks.length === 0) return
-        lastTrackRestored = true
-
+        if (!resumeQueueOnLaunch || lastTrackRestored) return
         const lastTrackPath = appSettings.value("player/lastTrack", "")
-        if (lastTrackPath) {
-            const track = playbackTracks().find(candidate => candidate.filePath === lastTrackPath)
-            if (track && track.filePath) player.restoreTrack(track, appSettings.value("player/lastPosition", 0))
+        if (!lastTrackPath) {
+            lastTrackRestored = true
+            return
+        }
+        const normTarget = normalizedPlaylistPath(lastTrackPath)
+        const track = playbackTracks().find(candidate => normalizedPlaylistPath(candidate.filePath) === normTarget)
+        if (track && track.filePath) {
+            lastTrackRestored = true
+            player.restoreTrack(track, appSettings.value("player/lastPosition", 0))
+        } else if (!streaming.remoteLibraryLoading && library.trackCount > 0) {
+            lastTrackRestored = true
         }
     }
 
@@ -452,30 +525,41 @@ ApplicationWindow {
             "player/lastTrack": player.currentTrack.filePath,
             "player/lastPosition": Math.max(0, player.position)
         })
+        appSettings.sync()
     }
 
     function restorePlaybackHistory() {
-        if (playbackHistoryRestored || streaming.remoteLibraryLoading) return
+        if (playbackHistoryRestored) return
         if (library.trackCount === 0 && streaming.remoteTracks.length === 0) return
-        playbackHistoryRestored = true
-        playbackHistory = restoredTracks("player/history").slice(0, 50)
+        const tracks = restoredTracks("player/history")
+        if (tracks.length > 0 || (!streaming.remoteLibraryLoading && library.trackCount > 0)) {
+            playbackHistoryRestored = true
+            playbackHistory = tracks.slice(0, 50)
+        }
     }
 
     function restorePlaybackQueue() {
-        if (!resumeQueueOnLaunch || playbackQueueRestored || streaming.remoteLibraryLoading) return
+        if (!resumeQueueOnLaunch || playbackQueueRestored) return
         if (library.trackCount === 0 && streaming.remoteTracks.length === 0) return
-        playbackQueueRestored = true
-        playbackQueue = restoredTracks("player/queue")
-        originalPlaybackQueue = restoredTracks("player/originalQueue")
-        if (!originalPlaybackQueue.length) originalPlaybackQueue = playbackQueue.slice()
+        const queue = restoredTracks("player/queue")
+        if (queue.length > 0 || (!streaming.remoteLibraryLoading && library.trackCount > 0)) {
+            playbackQueueRestored = true
+            playbackQueue = queue
+            originalPlaybackQueue = restoredTracks("player/originalQueue")
+            if (!originalPlaybackQueue.length) originalPlaybackQueue = playbackQueue.slice()
+        }
     }
 
     function restoredTracks(key) {
         try {
             const savedPaths = JSON.parse(appSettings.value(key, "[]") || "[]")
             const tracksByPath = {}
-            playbackTracks().forEach(track => tracksByPath[track.filePath] = track)
-            return uniqueTracks(savedPaths.map(path => tracksByPath[path]).filter(track => !!track))
+            playbackTracks().forEach(track => {
+                if (track && track.filePath) {
+                    tracksByPath[normalizedPlaylistPath(track.filePath)] = track
+                }
+            })
+            return uniqueTracks(savedPaths.map(path => tracksByPath[normalizedPlaylistPath(path)]).filter(track => !!track))
         } catch (e) {
             return []
         }
@@ -509,6 +593,70 @@ ApplicationWindow {
         return true
     }
 
+    function clearListeningRecord() {
+        playCounts = {}
+        playbackHistory = []
+        historyRecordedForTrack = false
+    }
+
+    function isTrackSelected(path) {
+        return !!(path && selectedTrackPaths[path])
+    }
+
+    function toggleTrackSelection(path) {
+        if (!path) return
+        const next = Object.assign({}, selectedTrackPaths)
+        if (next[path]) delete next[path]
+        else next[path] = true
+        selectedTrackPaths = next
+    }
+
+    function clearTrackSelection() {
+        selectedTrackPaths = {}
+    }
+
+    function selectedTracks() {
+        return playbackTracks().filter(track => isTrackSelected(track.filePath))
+    }
+
+    function addSelectedTracksToQueue() {
+        selectedTracks().forEach(track => appendToQueue(track))
+        clearTrackSelection()
+    }
+
+    function favoriteSelectedTracks() {
+        const next = Object.assign({}, favoriteTracks)
+        selectedTracks().forEach(track => { if (track.filePath) next[track.filePath] = true })
+        favoriteTracks = next
+        clearTrackSelection()
+    }
+
+    function createSmartPlaylist(name, tracks) {
+        const paths = [...new Set((tracks || []).map(track => track.filePath).filter(path => !!path))]
+        if (!paths.length) return false
+        const existing = playlists.find(playlist => playlist.name === name)
+        playlists = existing
+            ? playlists.map(playlist => playlist.id === existing.id ? Object.assign({}, playlist, { trackPaths: paths }) : playlist)
+            : playlists.concat([{ id: Date.now().toString(36), name: name, trackPaths: paths }])
+        playlistStatus = name + " updated"
+        return true
+    }
+
+    function libraryHealth() {
+        const tracks = availableTracks().filter(track => track && track.format !== "STREAM")
+        const keys = {}
+        tracks.forEach(track => {
+            const key = [track.title, track.artist, track.album].map(value => String(value || "").trim().toLowerCase()).join("\u001f")
+            keys[key] = (keys[key] || 0) + 1
+        })
+        return {
+            total: tracks.length,
+            noFolderArtwork: tracks.filter(track => !track.artworkUrl).length,
+            metadataGaps: tracks.filter(track => !track.title || !track.artist || !track.album).length,
+            duplicateMetadata: Object.keys(keys).filter(key => key && keys[key] > 1).reduce((total, key) => total + keys[key] - 1, 0)
+        }
+    }
+
     function deletePlaylist(id) {
         playlists = playlists.filter(playlist => playlist.id !== id)
     }
@@ -540,6 +688,21 @@ ApplicationWindow {
                 || (player.currentTrack && player.currentTrack.format === "STREAM")) return false
         if (playbackQueue.some(candidate => trackIdentity(candidate) === trackIdentity(track))) return false
         playbackQueue = playbackQueue.concat([track])
+        if (!originalPlaybackQueue.some(candidate => trackIdentity(candidate) === trackIdentity(track))) {
+            originalPlaybackQueue = originalPlaybackQueue.concat([track])
+        }
+        queueRevision++
+        return true
+    }
+
+    function insertTrackNext(track) {
+        if (!track || !track.filePath || track.format === "STREAM"
+                || (player.currentTrack && player.currentTrack.format === "STREAM")) return false
+        if (!playbackQueue.length || !player.currentTrack.filePath) return playTrack(track)
+        const currentIdx = playbackQueue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(player.currentTrack))
+        const insertAt = currentIdx >= 0 ? currentIdx + 1 : 0
+        const filtered = playbackQueue.filter(candidate => trackIdentity(candidate) !== trackIdentity(track))
+        playbackQueue = filtered.slice(0, insertAt).concat([track]).concat(filtered.slice(insertAt))
         if (!originalPlaybackQueue.some(candidate => trackIdentity(candidate) === trackIdentity(track))) {
             originalPlaybackQueue = originalPlaybackQueue.concat([track])
         }
@@ -621,13 +784,12 @@ ApplicationWindow {
 
     function reconcileLibraryMaps() {
         if (!settingsInitialized || library.trackCount === 0) return
-        const nextCounts = {}
-        const nextSeenAt = {}
+        const nextCounts = Object.assign({}, playCounts)
+        const nextSeenAt = Object.assign({}, seenAt)
         const now = Date.now()
         availableTracks().forEach(track => {
             if (!track.filePath) return
-            if (playCounts[track.filePath] > 0) nextCounts[track.filePath] = playCounts[track.filePath]
-            nextSeenAt[track.filePath] = seenAt[track.filePath] > 0 ? seenAt[track.filePath] : now
+            if (!nextSeenAt[track.filePath]) nextSeenAt[track.filePath] = now
         })
         if (!sameNumberMap(playCounts, nextCounts)) playCounts = nextCounts
         if (!sameNumberMap(seenAt, nextSeenAt)) seenAt = nextSeenAt
@@ -638,6 +800,9 @@ ApplicationWindow {
         historyAccumulatedMs = 0
         historyPlayingSince = player.isPlaying && historyTrackedTrack ? Date.now() : 0
         historyRecordedForTrack = false
+        if (track && track.format !== "STREAM") {
+            services.scrobbleNowPlaying(track)
+        }
     }
 
     function pauseHistoryTracking() {
@@ -660,6 +825,9 @@ ApplicationWindow {
         counts[historyTrackedTrack.filePath] = (counts[historyTrackedTrack.filePath] || 0) + 1
         playCounts = counts
         playbackHistory = [historyTrackedTrack].concat(playbackHistory.filter(track => track.filePath !== historyTrackedTrack.filePath)).slice(0, 50)
+        if (historyTrackedTrack.format !== "STREAM") {
+            services.scrobbleTrack(historyTrackedTrack, Math.floor(Date.now() / 1000))
+        }
     }
 
     function finishHistoryTracking() {
@@ -710,10 +878,26 @@ ApplicationWindow {
         const libraryPage = libraryPageLoader.item
         const searchPage = searchPageLoader.item
         const radioPage = radioPageLoader.item
-        if (contains(libraryPage ? libraryPage.searchBox : null) || contains(searchPage ? searchPage.searchBox : null) || contains(radioPage ? radioPage.searchBox : null)) return
-        if (libraryPage) libraryPage.searchInput.focus = false
+        const jellyfinPage = jellyfinPageLoader.item
+        const subsonicPage = subsonicPageLoader.item
+        if (contains(libraryPage ? libraryPage.searchBox : null) || contains(searchPage ? searchPage.searchBox : null) || contains(radioPage ? radioPage.searchBox : null) || contains(jellyfinPage ? jellyfinPage.searchBox : null) || contains(subsonicPage ? subsonicPage.searchBox : null)) return
+        if (libraryPage) {
+            libraryPage.searchInput.focus = false
+            if (!libraryPage.appWindow.libSearchQuery.length && libraryPage.searchBox) libraryPage.searchBox.collapse()
+        }
         if (searchPage) searchPage.searchInput.focus = false
-        if (radioPage) radioPage.searchInput.focus = false
+        if (radioPage) {
+            radioPage.searchInput.focus = false
+            if (!radioPage.appWindow.radioSearchQuery.length && radioPage.searchBox) radioPage.searchBox.collapse()
+        }
+        if (jellyfinPage) {
+            jellyfinPage.searchInput.focus = false
+            if (!jellyfinPage.searchQuery.length && jellyfinPage.searchBox) jellyfinPage.searchBox.collapse()
+        }
+        if (subsonicPage) {
+            subsonicPage.searchInput.focus = false
+            if (!subsonicPage.searchQuery.length && subsonicPage.searchBox) subsonicPage.searchBox.collapse()
+        }
     }
 
     onPageChanged: {
@@ -725,25 +909,26 @@ ApplicationWindow {
         if (page !== "radio") services.cancelRadioRequests()
         dismissSearchFocus(Qt.point(-1, -1))
     }
+    onHomeScrollPositionChanged: if (settingsInitialized) appSettings.setValue("ui/homeScrollPosition", homeScrollPosition)
     onLibraryTabChanged: if (settingsInitialized) {
         appSettings.setValue("ui/libraryTab", window.libraryTab)
         if (libraryPageLoader.item) libraryPageLoader.item.searchInput.focus = false
     }
     onLibraryViewModeChanged: if (settingsInitialized) appSettings.setValue("ui/libraryViewMode", libraryViewMode)
+    onRadioViewModeChanged: if (settingsInitialized) appSettings.setValue("radio/viewMode", radioViewMode)
     onSidebarCollapsedChanged: if (settingsInitialized) appSettings.setValue("ui/sidebarCollapsed", sidebarCollapsed)
+    onSettingsSectionChanged: if (settingsInitialized) appSettings.setValue("ui/settingsSection", settingsSection)
     onLibSearchQueryChanged: {
-        if (settingsInitialized) appSettings.setValue("library/searchQuery", libSearchQuery)
         updateVisibleLibrary()
     }
     onSearchQueryChanged: {
-        if (settingsInitialized) appSettings.setValue("search/query", searchQuery)
         updateVisibleLibrary()
     }
     onActiveFormatFilterChanged: {
         if (settingsInitialized) appSettings.setValue("search/formatFilter", activeFormatFilter)
         updateVisibleLibrary()
     }
-    onRadioSearchQueryChanged: if (settingsInitialized) appSettings.setValue("radio/searchQuery", radioSearchQuery)
+    onRadioSearchQueryChanged: {}
     onRadioActiveTagChanged: if (settingsInitialized) appSettings.setValue("radio/activeTag", radioActiveTag)
     onRadioCountryFilterChanged: if (settingsInitialized) appSettings.setValue("radio/country", radioCountryFilter)
     onRadioLanguageFilterChanged: if (settingsInitialized) appSettings.setValue("radio/language", radioLanguageFilter)
@@ -784,6 +969,7 @@ ApplicationWindow {
         updateVisibleLibrary()
     }
     onSleepFadeOutChanged: saveSetting("player/sleepFadeOut", sleepFadeOut)
+    onSleepTimerModeChanged: saveSetting("player/sleepTimerMode", sleepTimerMode)
     onAutoplayEnabledChanged: saveSetting("player/autoplayEnabled", autoplayEnabled)
     onVolumeLimitEnabledChanged: saveSetting("player/volumeLimitEnabled", volumeLimitEnabled)
     onMaxVolumePercentChanged: saveSetting("player/maxVolumePercent", maxVolumePercent)
@@ -801,6 +987,8 @@ ApplicationWindow {
     onSvcDeezerChanged: saveSetting("services/deezer", svcDeezer)
     onSvcAudiodbChanged: saveSetting("services/audiodb", svcAudiodb)
     onSvcWikiChanged: saveSetting("services/wiki", svcWiki)
+    onScrobbleListenBrainzEnabledChanged: saveSetting("scrobble/listenbrainz_enabled", scrobbleListenBrainzEnabled)
+    onScrobbleLibreFmEnabledChanged: saveSetting("scrobble/librefm_enabled", scrobbleLibreFmEnabled)
     onLyricsSyncOffsetMsChanged: if (settingsInitialized) {
         if (player.currentTrack && player.currentTrack.filePath) appSettings.setValue(lyricsSyncKey(player.currentTrack), lyricsSyncOffsetMs)
         parsedLyrics = parseLrc(player.currentLyrics)
@@ -881,6 +1069,8 @@ ApplicationWindow {
             if (!isMax && window.width > 400 && window.height > 300) {
                 appSettings.setValue("window/width", window.width)
                 appSettings.setValue("window/height", window.height)
+                if (window.x >= 0) appSettings.setValue("window/x", window.x)
+                if (window.y >= 0) appSettings.setValue("window/y", window.y)
             }
         }
     }
@@ -891,18 +1081,103 @@ ApplicationWindow {
     onHeightChanged: if (settingsInitialized && window.visibility !== Window.Maximized && window.height > 300) {
         appSettings.setValue("window/height", window.height)
     }
+    onXChanged: if (settingsInitialized && window.visibility !== Window.Maximized && window.x >= 0) {
+        appSettings.setValue("window/x", window.x)
+    }
+    onYChanged: if (settingsInitialized && window.visibility !== Window.Maximized && window.y >= 0) {
+        appSettings.setValue("window/y", window.y)
+    }
     onClosing: function(close) {
         persistBeforeExit()
         if (!appQuitting && closeToTray && tray.available) {
             close.accepted = false
             window.hide()
             tray.notifyHidden()
+        } else if (!appQuitting) {
+            appQuitting = true
+            Qt.quit()
         }
     }
 
     function persistBeforeExit() {
         finishHistoryTracking()
         persistPlayerState()
+        if (window.visibility !== Window.Maximized) {
+            if (window.width > 400) appSettings.setValue("window/width", window.width)
+            if (window.height > 300) appSettings.setValue("window/height", window.height)
+            if (window.x >= 0) appSettings.setValue("window/x", window.x)
+            if (window.y >= 0) appSettings.setValue("window/y", window.y)
+        }
+        appSettings.setValue("window/maximized", window.visibility === Window.Maximized)
+        appSettings.setValues({
+            "ui/page": page,
+            "ui/homeScrollPosition": homeScrollPosition,
+            "ui/libraryTab": libraryTab,
+            "ui/libraryViewMode": libraryViewMode,
+            "ui/sidebarCollapsed": sidebarCollapsed,
+            "ui/accentName": accentName,
+            "ui/customAccentColor": customAccentColor,
+            "ui/albumArtRadius": albumArtRadius,
+            "search/formatFilter": activeFormatFilter,
+            "radio/activeTag": radioActiveTag,
+            "radio/country": radioCountryFilter,
+            "radio/language": radioLanguageFilter,
+            "radio/sortOrder": radioSortOrder,
+            "radio/sortDescending": radioSortDescending,
+            "radio/viewMode": radioViewMode,
+            "ui/miniPlayerAlwaysOnTop": miniPlayerAlwaysOnTop,
+            "ui/globalShortcutsEnabled": globalShortcutsEnabled,
+            "ui/inAppShortcuts": JSON.stringify(inAppShortcutBindings),
+            "ui/nowPlayingNotifications": nowPlayingNotifications,
+            "player/resumeQueueOnLaunch": resumeQueueOnLaunch,
+            "player/nowPlayingMode": nowPlayingMode,
+            "player/audioDeviceId": player.audioDeviceId,
+            "ui/closeToTray": closeToTray,
+            "ui/startMinimizedToTray": startMinimizedToTray,
+            "ui/defaultLaunchPage": defaultLaunchPage,
+            "ui/settingsSection": settingsSection,
+            "ui/trackDensity": trackDensity,
+            "ui/showFormatBadges": showFormatBadges,
+            "library/ignoreShortClips": ignoreShortClips,
+            "lyrics/fontSize": lyricsFontSize,
+            "player/nowPlayingBackdrop": nowPlayingBackdrop,
+            "player/showRemainingTime": showRemainingTime,
+            "lyrics/alignment": lyricsAlignment,
+            "lyrics/activeStyle": lyricsActiveStyle,
+            "lyrics/preferLocal": preferLocalLyrics,
+            "player/autoplayEnabled": autoplayEnabled,
+            "player/sleepFadeOut": sleepFadeOut,
+            "player/sleepTimerMode": sleepTimerMode,
+            "player/volumeLimitEnabled": volumeLimitEnabled,
+            "player/maxVolumePercent": maxVolumePercent,
+            "network/offlineBlackout": offlineBlackout,
+            "services/lrclib": svcLrclib,
+            "services/radio": svcRadio,
+            "services/deezer": svcDeezer,
+            "services/audiodb": svcAudiodb,
+            "services/wiki": svcWiki,
+            "scrobble/listenbrainz_enabled": scrobbleListenBrainzEnabled,
+            "scrobble/listenbrainz_user": scrobbleListenBrainzUser,
+            "scrobble/librefm_enabled": scrobbleLibreFmEnabled,
+            "scrobble/librefm_user": scrobbleLibreFmUser,
+            "sort/songMetric": songSortMetric,
+            "sort/songAscending": songSortAscending,
+            "sort/artistMetric": artistSortMetric,
+            "sort/artistAscending": artistSortAscending,
+            "sort/albumMetric": albumSortMetric,
+            "sort/albumAscending": albumSortAscending,
+            "sort/genreMetric": genreSortMetric,
+            "sort/genreAscending": genreSortAscending,
+            "sort/folderMetric": folderSortMetric,
+            "sort/folderAscending": folderSortAscending,
+            "sort/songFilterMode": songFilterMode,
+            "player/repeatMode": repeatMode,
+            "player/volume": fadeOutTimer.running ? fadeOutTimer.preFadeVolume : player.volume,
+            "player/shuffleEnabled": player.shuffleEnabled,
+            "library/excludedFolders": Array.isArray(excludedFolders) ? excludedFolders : [],
+            "library/favorites": JSON.stringify(favoriteTracks),
+            "library/playlists": JSON.stringify(playlists)
+        })
         appSettings.sync()
     }
 
@@ -958,6 +1233,21 @@ ApplicationWindow {
     }
 
     Shortcut {
+        sequence: inAppShortcut("quickSwitcher")
+        onActivated: {
+            if (miniPlayerMode) return
+            nowPlayingOpen = false
+            page = "search"
+            Qt.callLater(function() {
+                if (searchPageLoader.item) {
+                    searchPageLoader.item.searchInput.forceActiveFocus()
+                    searchPageLoader.item.searchInput.selectAll()
+                }
+            })
+        }
+    }
+
+    Shortcut {
         sequence: inAppShortcut("closePlayerView")
         onActivated: {
             if (miniPlayerMode) {
@@ -981,12 +1271,12 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("volumeUp")
-        onActivated: player.setVolume(Math.min(1.0, player.volume + 0.05))
+        onActivated: setPlayerVolume(player.volume + 0.05)
     }
 
     Shortcut {
         sequence: inAppShortcut("volumeDown")
-        onActivated: player.setVolume(Math.max(0.0, player.volume - 0.05))
+        onActivated: setPlayerVolume(player.volume - 0.05)
     }
 
     Shortcut {
@@ -1013,7 +1303,7 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("mute")
-        onActivated: player.setVolume(player.volume > 0.001 ? 0.0 : 0.8)
+        onActivated: setPlayerVolume(player.volume > 0.001 ? 0.0 : 0.8)
     }
 
     function toggleMaximize() {
@@ -1027,17 +1317,20 @@ ApplicationWindow {
 
     function toggleFavorite(filePath) {
         if (!filePath) return
+        const norm = normalizedPlaylistPath(filePath)
         const favs = Object.assign({}, favoriteTracks)
-        if (favs[filePath]) {
+        if (favs[norm] || favs[filePath]) {
+            delete favs[norm]
             delete favs[filePath]
         } else {
-            favs[filePath] = true
+            favs[norm] = true
         }
         favoriteTracks = favs
     }
 
     function isFavorite(filePath) {
-        return !!favoriteTracks[filePath]
+        if (!filePath) return false
+        return !!(favoriteTracks[filePath] || favoriteTracks[normalizedPlaylistPath(filePath)])
     }
 
     function toggleRepeat() {
@@ -1172,6 +1465,11 @@ ApplicationWindow {
 
     function applyLyrics(lyrics, provider) {
         player.setCurrentLyrics(lyrics || "")
+        if (lyricsSelectionCallback) {
+            const callback = lyricsSelectionCallback
+            lyricsSelectionCallback = null
+            callback(lyrics || "")
+        }
         lyricsProvider = provider || ""
         parsedLyrics = parseLrc(lyrics || "")
         activeLyricIndex = -1
@@ -1193,6 +1491,9 @@ ApplicationWindow {
             applyLyrics(embedded, "Embedded metadata")
         } else if (!preferLocalLyrics && local && local.trim().length) {
             applyLyrics(local, "Local file")
+        } else if (!offlineBlackout && track.source === "jellyfin" && track.remoteId) {
+            applyLyrics("", "")
+            streamingController.fetchJellyfinLyrics(track.filePath, track.remoteId)
         } else if (!offlineBlackout && svcLrclib) {
             applyLyrics("", "")
             services.fetchLyrics(track.title || track.fileName || "", track.artist || "", track.album || "", track.durationSeconds || 0)
@@ -1214,12 +1515,21 @@ ApplicationWindow {
         services.searchLyrics(query, query.toLowerCase() === currentTitle ? (player.currentTrack.artist || "") : "")
     }
 
-    function openLyricsSearch() {
+    function openLyricsSearch(onSelected) {
+        lyricsSelectionCallback = onSelected || null
         lyricSearchOpen = true
         lyricCustomEditorOpen = false
         lyricCustomText = ""
         lyricSearchQuery = player.currentTrack.title || player.currentTrack.fileName || ""
         searchLyricsOnline()
+    }
+
+    function openCoverSearch(album, artist, filePath) {
+        coverSearchPopup.openFor(album, artist, filePath)
+    }
+
+    function openTrackMetadataEditor() {
+        if (player.currentTrack && player.currentTrack.filePath) metadataDialog.openFor(player.currentTrack)
     }
 
     onNowPlayingOpenChanged: {
@@ -1238,6 +1548,7 @@ ApplicationWindow {
         if (!catalogDetailOpen) {
             catalogDetailTracks = []
             catalogDetailHeroTrack = ({})
+            catalogDetailHistory = []
         }
     }
 
@@ -1399,14 +1710,45 @@ ApplicationWindow {
     }
 
     function openCatalogDetail(mode, title, heroTrack) {
+        if (catalogDetailOpen) {
+            catalogDetailHistory = catalogDetailHistory.concat([{
+                mode: catalogDetailMode,
+                title: catalogDetailTitle,
+                heroTrack: catalogDetailHeroTrack
+            }])
+        }
         catalogDetailMode = mode
         catalogDetailTitle = title
         catalogDetailHeroTrack = heroTrack
-        catalogDetailTracks = availableTracks().filter(track => mode === "artist"
-            ? extractPrimaryArtist(track.artist) === title
-            : (track.album || "Unknown Album") === title)
+        const trackPool = (heroTrack && heroTrack.remoteId) ? playbackTracks() : availableTracks()
+        catalogDetailTracks = trackPool.filter(track => {
+            if (mode === "artist") return extractPrimaryArtist(track.artist) === title || (track.artist || "").trim() === title
+            if (mode === "genre") return (track.genre || "").trim() === title || (!track.genre && title === "Soundtrack")
+            if (mode === "folder") {
+                const p = (track.filePath || "").replace(/\\/g, "/")
+                const slash = p.lastIndexOf('/')
+                const folderPath = slash < 0 ? "Music" : p.substring(0, slash)
+                const folderName = folderPath.split('/').pop() || "Music"
+                return folderName === title || folderPath === title
+            }
+            if (mode === "playlist") {
+                const pl = playlists.find(p => p.name === title || p.id === title)
+                return pl ? (pl.trackPaths || []).includes(track.filePath) : false
+            }
+            return (track.album || "Unknown Album") === title
+        })
         catalogDetailOpen = true
-}
+    }
+    function closeCatalogDetail() {
+        if (catalogDetailHistory.length) {
+            const previous = catalogDetailHistory[catalogDetailHistory.length - 1]
+            catalogDetailHistory = catalogDetailHistory.slice(0, -1)
+            openCatalogDetail(previous.mode, previous.title, previous.heroTrack)
+            catalogDetailHistory = catalogDetailHistory.slice(0, -1)
+            return
+        }
+        catalogDetailOpen = false
+    }
     function getGenreGroups() { return genreGroups }
     function getFolderGroups() { return folderGroups }
 
@@ -1436,6 +1778,7 @@ ApplicationWindow {
 
     function startPlayback(source, startIndex, shuffle) {
         if (!source || source.length === 0) return
+        player.setShuffleEnabled(!!shuffle)
         const requested = source[Math.max(0, Math.min(startIndex, source.length - 1))]
         const queue = uniqueTracks(source)
         if (!queue.length) return
@@ -1447,8 +1790,15 @@ ApplicationWindow {
         playQueuedTrack(playbackQueue[shuffle ? 0 : index])
     }
 
+    function shufflePlayback(source) {
+        const queue = uniqueTracks(source)
+        if (!queue.length) return
+        startPlayback(queue, Math.floor(Math.random() * queue.length), true)
+    }
+
     function startRadioPlayback(source, startIndex) {
         if (!source || source.length === 0) return
+        player.setShuffleEnabled(false)
         const queue = uniqueTracks(source)
         if (!queue.length) return
         const index = Math.max(0, Math.min(startIndex, queue.length - 1))
@@ -1561,9 +1911,7 @@ ApplicationWindow {
     function shuffleAll() {
         const queue = uniqueTracks(availableTracks())
         if (!queue.length) return
-        const randomIdx = Math.floor(Math.random() * queue.length)
-        player.setShuffleEnabled(true)
-        startPlayback(queue, randomIdx, true)
+        shufflePlayback(queue)
         refreshSpotlight()
     }
 
@@ -1610,12 +1958,16 @@ ApplicationWindow {
         }
         function onIsPlayingChanged() {
             tray.setPlaying(player.isPlaying)
-            if (player.isPlaying) playbackPending = false
-            if (player.isPlaying) resumeHistoryTracking()
-            else pauseHistoryTracking()
+            if (player.isPlaying) {
+                playbackPending = false
+                resumeHistoryTracking()
+            } else {
+                pauseHistoryTracking()
+                persistPlayerState()
+            }
         }
         function onVolumeChanged() {
-            if (settingsInitialized) appSettings.setValue("player/volume", player.volume)
+            if (settingsInitialized && !fadeOutTimer.running) appSettings.setValue("player/volume", player.volume)
         }
         function onShuffleEnabledChanged() {
             if (settingsInitialized) appSettings.setValue("player/shuffleEnabled", player.shuffleEnabled)
@@ -1683,6 +2035,7 @@ ApplicationWindow {
                 resumeQueueOnLaunch: window.resumeQueueOnLaunch,
                 globalShortcutsEnabled: window.globalShortcutsEnabled,
                 globalShortcutBindings: window.globalShortcutBindings,
+                inAppShortcutBindings: window.inAppShortcutBindings,
                 miniPlayerAlwaysOnTop: window.miniPlayerAlwaysOnTop,
                 autoplayEnabled: window.autoplayEnabled,
                 sleepFadeOut: window.sleepFadeOut,
@@ -1744,6 +2097,10 @@ ApplicationWindow {
                                 appSettings.setValue("ui/globalShortcut/" + action, globalShortcuts.shortcuts[action])
                             }
                         }
+                    }
+                    if (data.inAppShortcutBindings && typeof data.inAppShortcutBindings === "object") {
+                        window.inAppShortcutBindings = Object.assign({}, defaultInAppShortcuts, data.inAppShortcutBindings)
+                        appSettings.setValue("ui/inAppShortcuts", JSON.stringify(window.inAppShortcutBindings))
                     }
                     if (data.miniPlayerAlwaysOnTop !== undefined) { window.miniPlayerAlwaysOnTop = data.miniPlayerAlwaysOnTop; appSettings.setValue("ui/miniPlayerAlwaysOnTop", data.miniPlayerAlwaysOnTop) }
                     if (data.autoplayEnabled !== undefined) { window.autoplayEnabled = data.autoplayEnabled; appSettings.setValue("player/autoplayEnabled", data.autoplayEnabled) }
@@ -1836,7 +2193,7 @@ ApplicationWindow {
             window.accessHintsVisible = visible
         }
         function onAccessKeyRequested(key) {
-            const destinations = ({ H: "home", L: "library", J: "jellyfin", U: "subsonic", R: "radio", S: "search", T: "settings" })
+            const destinations = ({ H: "home", L: "library", I: "stats", J: "jellyfin", U: "subsonic", R: "radio", S: "search", T: "settings" })
             if (destinations[key] === undefined) return
             window.nowPlayingOpen = false
             window.page = destinations[key]
@@ -1846,6 +2203,7 @@ ApplicationWindow {
     Connections {
         target: tray
         function onShowRequested() {
+            window.show()
             window.showNormal()
             window.raise()
             window.requestActivate()
@@ -1904,6 +2262,7 @@ ApplicationWindow {
 
     function triggerSleepTimerStop() {
         if (sleepFadeOut && player.volume > 0.05) {
+            fadeOutTimer.preFadeVolume = player.volume
             fadeOutTimer.restart()
         } else {
             console.log("[PLAYER] pause source=sleep-timer")
@@ -1917,6 +2276,7 @@ ApplicationWindow {
         interval: 80
         repeat: true
         property real targetStep: 0.05
+        property real preFadeVolume: 1.0
         onTriggered: {
             if (player.volume > targetStep) {
                 player.setVolume(Math.max(0.0, player.volume - targetStep))
@@ -1924,20 +2284,27 @@ ApplicationWindow {
                 stop()
                 console.log("[PLAYER] pause source=sleep-timer")
                 player.pause()
+                player.setVolume(preFadeVolume)
                 cancelSleepTimer()
             }
         }
     }
 
-    // Volume limiter enforcement
+    function setPlayerVolume(val) {
+        let v = Math.max(0.0, Math.min(1.0, val))
+        if (volumeLimitEnabled) {
+            const limit = Math.max(0.05, maxVolumePercent / 100.0)
+            if (v > limit) v = limit
+        }
+        player.setVolume(v)
+    }
+
     function enforceVolumeLimit() {
         if (volumeLimitEnabled) {
-            const limit = Math.max(0.1, maxVolumePercent / 100.0)
+            const limit = Math.max(0.05, maxVolumePercent / 100.0)
             if (player.volume > limit) player.setVolume(limit)
         }
     }
-
-
 
     Component {
         id: miniPlayerComponent
@@ -1954,6 +2321,10 @@ ApplicationWindow {
             accentColor: window.recordRed
             accentHover: window.recordRedHover
             lyricsActiveStyle: window.lyricsActiveStyle
+            lyricsAlignment: window.lyricsAlignment
+            lyricsFontSize: window.lyricsFontSize
+            volumeLimitEnabled: window.volumeLimitEnabled
+            maxVolumePercent: window.maxVolumePercent
             queueEntries: window.queueEntries
             parsedLyrics: window.parsedLyrics
             activeLyricIndex: window.activeLyricIndex
@@ -2104,7 +2475,7 @@ ApplicationWindow {
                 anchors.rightMargin: 16
 
                 Label {
-                    text: page === "home" ? "Home" : page === "library" ? "Library" : page === "radio" ? "Radio" : page === "search" ? "Search" : page === "jellyfin" ? "Jellyfin" : page === "subsonic" ? "Subsonic" : "Settings"
+                    text: page === "home" ? "Home" : page === "library" ? "Library" : page === "radio" ? "Radio" : page === "search" ? "Search" : page === "stats" ? "Listening Record" : page === "jellyfin" ? "Jellyfin" : page === "subsonic" ? "Subsonic" : "Settings"
                     color: textPrimary
                     font.family: displayFont
                     font.pixelSize: 22
@@ -2133,7 +2504,7 @@ ApplicationWindow {
                 iconName: "chevron-left"
                 tint: textPrimary
                 tooltipText: "Back"
-                onClicked: catalogDetailOpen = false
+                onClicked: closeCatalogDetail()
             }
 
             Label {
@@ -2362,6 +2733,7 @@ ApplicationWindow {
                     NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "subsonic"; iconName: "subsonic"; label: "Subsonic"; preserveIconColor: true; accessHintsVisible: window.accessHintsVisible; accessKey: "U" }
                     NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "radio"; iconName: "radio"; label: "Radio"; accessHintsVisible: window.accessHintsVisible; accessKey: "R" }
                     NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "search"; iconName: "search"; label: "Search"; accessHintsVisible: window.accessHintsVisible; accessKey: "S" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "stats"; iconName: "clock"; label: "Listening Record"; accessHintsVisible: window.accessHintsVisible; accessKey: "I" }
                 }
 
                 // Bottom Controls Group
@@ -2454,7 +2826,7 @@ ApplicationWindow {
 
                 StackLayout {
                     anchors.fill: parent
-                    currentIndex: page === "home" ? 0 : (page === "library" ? 1 : (page === "search" ? 2 : (page === "radio" ? 3 : (page === "jellyfin" ? 4 : (page === "subsonic" ? 5 : 6)))))
+                    currentIndex: page === "home" ? 0 : (page === "library" ? 1 : (page === "search" ? 2 : (page === "radio" ? 3 : (page === "jellyfin" ? 4 : (page === "subsonic" ? 5 : (page === "stats" ? 6 : 7))))))
 
                     Loader {
                         id: homePageLoader
@@ -2462,23 +2834,25 @@ ApplicationWindow {
                         Layout.fillHeight: true
                         active: page === "home" && !nowPlayingOpen
 
-                        sourceComponent: HomePage {
-                            appWindow: window
-                            libraryModel: library
-                            spotlightTrack: window.spotlightTrack
-                            quickPicks: window.quickPicks
-                            heavyRotation: window.heavyRotation
-                            recentlyPlayed: window.recentlyPlayed
-                            recentlyAdded: window.recentlyAdded
-                            forgottenFavs: window.forgottenFavs
-                            albumsRotation: window.albumsRotation
-                            artistsRotation: window.artistsRotation
-                            greeting: window.greeting
-                            greetingSubtitle: window.greetingSubtitle
-                            albumCount: window.albumCount
-                            artistCount: window.artistCount
-                            initialScrollPosition: window.homeScrollPosition
-                            onScrollPositionChanged: position => window.homeScrollPosition = position
+                        sourceComponent: Component {
+                            HomePage {
+                                appWindow: window
+                                libraryModel: library
+                                spotlightTrack: window.spotlightTrack
+                                quickPicks: window.quickPicks
+                                heavyRotation: window.heavyRotation
+                                recentlyPlayed: window.recentlyPlayed
+                                recentlyAdded: window.recentlyAdded
+                                forgottenFavs: window.forgottenFavs
+                                albumsRotation: window.albumsRotation
+                                artistsRotation: window.artistsRotation
+                                greeting: window.greeting
+                                greetingSubtitle: window.greetingSubtitle
+                                albumCount: window.albumCount
+                                artistCount: window.artistCount
+                                initialScrollPosition: window.homeScrollPosition
+                                onScrollPositionChanged: position => window.homeScrollPosition = position
+                            }
                         }
                     }
 
@@ -2487,9 +2861,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         active: page === "library"
-                        sourceComponent: LibraryPage {
-                            appWindow: window
-                            libraryModel: library
+                        sourceComponent: Component {
+                            LibraryPage {
+                                appWindow: window
+                                libraryModel: library
+                            }
                         }
                     }
 
@@ -2498,10 +2874,12 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         active: page === "search"
-                        sourceComponent: SearchPage {
-                            appWindow: window
-                            libraryModel: library
-                            playerController: player
+                        sourceComponent: Component {
+                            SearchPage {
+                                appWindow: window
+                                libraryModel: library
+                                playerController: player
+                            }
                         }
                     }
 
@@ -2510,9 +2888,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         active: page === "radio"
-                        sourceComponent: RadioPage {
-                            appWindow: window
-                            playerController: player
+                        sourceComponent: Component {
+                            RadioPage {
+                                appWindow: window
+                                playerController: player
+                            }
                         }
                     }
 
@@ -2522,9 +2902,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         active: page === "jellyfin"
-                        sourceComponent: JellyfinPage {
-                            appWindow: window
-                            streamingController: streaming
+                        sourceComponent: Component {
+                            JellyfinPage {
+                                appWindow: window
+                                streamingController: streaming
+                            }
                         }
                     }
 
@@ -2534,9 +2916,26 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         active: page === "subsonic"
-                        sourceComponent: SubsonicPage {
-                            appWindow: window
-                            streamingController: streaming
+                        sourceComponent: Component {
+                            SubsonicPage {
+                                appWindow: window
+                                streamingController: streaming
+                            }
+                        }
+                    }
+
+                    Loader {
+                        id: listeningRecordPageLoader
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        active: page === "stats"
+                        sourceComponent: Component {
+                            ListeningRecordPage {
+                                appWindow: window
+                                tracks: window.availableTracks()
+                                playCounts: window.playCounts
+                                playbackHistory: window.playbackHistory
+                            }
                         }
                     }
 
@@ -2547,112 +2946,136 @@ ApplicationWindow {
                         active: page === "settings"
                         sourceComponent: Component {
                             SettingsPage {
-                        id: settingsRoot
-                        anchors.fill: parent
-                        trackCount: library.trackCount
-                        libraryFolders: library.folders
-                        closeToTray: window.closeToTray
-                        startMinimizedToTray: window.startMinimizedToTray
-                        nowPlayingNotifications: window.nowPlayingNotifications
-                        trayAvailable: tray.available
-                        audioOutputs: player.audioOutputs
-                        audioDeviceId: player.audioDeviceId
-                        resumeQueueOnLaunch: window.resumeQueueOnLaunch
-                        globalShortcutsEnabled: window.globalShortcutsEnabled
-                        globalShortcutsSupported: window.globalShortcutsSupported
-                        globalShortcutStatus: window.globalShortcutStatus
-                        globalShortcutBindings: window.globalShortcutBindings
-                        inAppShortcutBindings: window.inAppShortcutBindings
-                        inAppShortcutActions: shortcutDefinitions.inAppActions
-                        inAppShortcutStatus: window.inAppShortcutStatus
-                        miniPlayerAlwaysOnTop: window.miniPlayerAlwaysOnTop
-                        lyricsFontSize: window.lyricsFontSize
-                        defaultLaunchPage: window.defaultLaunchPage
-                        excludedFolders: window.excludedFolders
-                        ignoreShortClips: window.ignoreShortClips
-                        songSortMetric: window.songSortMetric
-                        trackDensity: window.trackDensity
-                        showFormatBadges: window.showFormatBadges
-                        accentName: window.accentName
-                        customAccentColor: window.customAccentColor
-                        albumArtRadius: window.albumArtRadius
-                        nowPlayingBackdrop: window.nowPlayingBackdrop
-                        showRemainingTime: window.showRemainingTime
-                        sleepTimerMode: window.sleepTimerMode
-                        sleepTimerStatus: window.sleepTimerStatus
-                        sleepFadeOut: window.sleepFadeOut
-                        autoplayEnabled: window.autoplayEnabled
-                        volumeLimitEnabled: window.volumeLimitEnabled
-                        maxVolumePercent: window.maxVolumePercent
-                        preferLocalLyrics: window.preferLocalLyrics
-                        lyricsAlignment: window.lyricsAlignment
-                        lyricsActiveStyle: window.lyricsActiveStyle
-                        offlineBlackout: window.offlineBlackout
-                        svcLrclib: window.svcLrclib
-                        svcRadio: window.svcRadio
-                        svcDeezer: window.svcDeezer
-                        svcAudiodb: window.svcAudiodb
-                        svcWiki: window.svcWiki
+                                id: settingsRoot
+                                anchors.fill: parent
+                                currentSection: window.settingsSection
+                                trackCount: library.trackCount
+                                libraryFolders: library.folders
+                                closeToTray: window.closeToTray
+                                startMinimizedToTray: window.startMinimizedToTray
+                                nowPlayingNotifications: window.nowPlayingNotifications
+                                trayAvailable: tray.available
+                                audioOutputs: player.audioOutputs
+                                audioDeviceId: player.audioDeviceId
+                                resumeQueueOnLaunch: window.resumeQueueOnLaunch
+                                globalShortcutsEnabled: window.globalShortcutsEnabled
+                                globalShortcutsSupported: window.globalShortcutsSupported
+                                globalShortcutStatus: window.globalShortcutStatus
+                                globalShortcutBindings: window.globalShortcutBindings
+                                inAppShortcutBindings: window.inAppShortcutBindings
+                                inAppShortcutActions: shortcutDefinitions.inAppActions
+                                inAppShortcutStatus: window.inAppShortcutStatus
+                                miniPlayerAlwaysOnTop: window.miniPlayerAlwaysOnTop
+                                lyricsFontSize: window.lyricsFontSize
+                                defaultLaunchPage: window.defaultLaunchPage
+                                excludedFolders: window.excludedFolders
+                                ignoreShortClips: window.ignoreShortClips
+                                songSortMetric: window.songSortMetric
+                                trackDensity: window.trackDensity
+                                showFormatBadges: window.showFormatBadges
+                                accentName: window.accentName
+                                customAccentColor: window.customAccentColor
+                                albumArtRadius: window.albumArtRadius
+                                nowPlayingBackdrop: window.nowPlayingBackdrop
+                                showRemainingTime: window.showRemainingTime
+                                sleepTimerMode: window.sleepTimerMode
+                                sleepTimerStatus: window.sleepTimerStatus
+                                sleepFadeOut: window.sleepFadeOut
+                                autoplayEnabled: window.autoplayEnabled
+                                volumeLimitEnabled: window.volumeLimitEnabled
+                                maxVolumePercent: window.maxVolumePercent
+                                preferLocalLyrics: window.preferLocalLyrics
+                                lyricsAlignment: window.lyricsAlignment
+                                lyricsActiveStyle: window.lyricsActiveStyle
+                                offlineBlackout: window.offlineBlackout
+                                svcLrclib: window.svcLrclib
+                                svcRadio: window.svcRadio
+                                svcDeezer: window.svcDeezer
+                                svcAudiodb: window.svcAudiodb
+                                svcWiki: window.svcWiki
+                                scrobbleListenBrainzEnabled: window.scrobbleListenBrainzEnabled
+                                scrobbleListenBrainzUser: window.scrobbleListenBrainzUser
+                                scrobbleListenBrainzConnected: window.scrobbleListenBrainzConnected
+                                scrobbleLibreFmEnabled: window.scrobbleLibreFmEnabled
+                                scrobbleLibreFmUser: window.scrobbleLibreFmUser
+                                scrobbleLibreFmConnected: window.scrobbleLibreFmConnected
 
-                        onAddLibraryFolderRequested: folderDialog.open()
-                        onRemoveLibraryFolderRequested: path => library.removeFolder(path)
-                        onBackRequested: page = "home"
-                        onResumeQueueOnLaunchSelected: value => window.resumeQueueOnLaunch = value
-                        onGlobalShortcutsEnabledSelected: value => { window.globalShortcutsEnabled = value }
-                        onGlobalShortcutSelected: (action, shortcut) => {
-                            if (globalShortcuts.setShortcut(action, shortcut)) {
-                                appSettings.setValue("ui/globalShortcut/" + action, globalShortcuts.shortcuts[action])
+                                onAddLibraryFolderRequested: folderDialog.open()
+                                onRemoveLibraryFolderRequested: path => library.removeFolder(path)
+                                onResumeQueueOnLaunchSelected: value => window.resumeQueueOnLaunch = value
+                                onGlobalShortcutsEnabledSelected: value => { window.globalShortcutsEnabled = value }
+                                onGlobalShortcutSelected: (action, shortcut) => {
+                                    if (globalShortcuts.setShortcut(action, shortcut)) {
+                                        appSettings.setValue("ui/globalShortcut/" + action, globalShortcuts.shortcuts[action])
+                                    }
+                                }
+                                onInAppShortcutSelected: (action, shortcut) => window.setInAppShortcut(action, shortcut)
+                                onMiniPlayerAlwaysOnTopSelected: value => window.miniPlayerAlwaysOnTop = value
+                                onAudioDeviceSelected: value => {
+                                    if (player.setAudioDevice(value)) appSettings.setValue("player/audioDeviceId", player.audioDeviceId)
+                                }
+                                onLyricsFontSizeSelected: value => window.lyricsFontSize = value
+                                onDefaultLaunchPageSelected: value => window.defaultLaunchPage = value
+                                onAddExcludeRequested: excludeFolderDialog.open()
+                                onRemoveExcludeRequested: path => window.excludedFolders = window.excludedFolders.filter(p => p !== path)
+                                onIgnoreShortClipsSelected: value => window.ignoreShortClips = value
+                                onSongSortSelected: value => window.songSortMetric = value
+                                onTrackDensitySelected: value => window.trackDensity = value
+                                onShowFormatBadgesSelected: value => window.showFormatBadges = value
+                                onAccentSelected: value => window.accentName = value
+                                onCustomAccentSelected: hex => {
+                                    window.customAccentColor = hex
+                                    window.accentName = "custom"
+                                }
+                                onAlbumArtRadiusSelected: value => window.albumArtRadius = value
+                                onNowPlayingBackdropSelected: value => window.nowPlayingBackdrop = value
+                                onShowRemainingTimeSelected: value => window.showRemainingTime = value
+                                onSleepTimerSelected: mode => window.startSleepTimer(mode)
+                                onSleepTimerCancelled: window.cancelSleepTimer()
+                                onSleepFadeOutSelected: value => window.sleepFadeOut = value
+                                onAutoplaySelected: value => window.autoplayEnabled = value
+                                onVolumeLimitSelected: value => { window.volumeLimitEnabled = value; window.enforceVolumeLimit() }
+                                onMaxVolumeSelected: value => { window.maxVolumePercent = value; window.enforceVolumeLimit() }
+                                onPreferLocalLyricsSelected: value => window.preferLocalLyrics = value
+                                onLyricsAlignmentSelected: value => window.lyricsAlignment = value
+                                onLyricsActiveStyleSelected: value => window.lyricsActiveStyle = value
+                                onOfflineBlackoutSelected: value => {
+                                    window.offlineBlackout = value
+                                }
+                                onServiceToggleRequested: (name, value) => {
+                                    if (name === "lrclib") window.svcLrclib = value
+                                    else if (name === "radio") window.svcRadio = value
+                                    else if (name === "deezer") window.svcDeezer = value
+                                    else if (name === "audiodb") window.svcAudiodb = value
+                                    else if (name === "wiki") window.svcWiki = value
+                                    if (!value) services.cancelNetworkRequests()
+                                }
+                                onOpenJellyfinRequested: page = "jellyfin"
+                                onOpenSubsonicRequested: page = "subsonic"
+                                onExportBackupRequested: exportBackupDialog.open()
+                                onImportBackupRequested: importBackupDialog.open()
+                                onCloseToTraySelected: value => window.closeToTray = value
+                                onStartMinimizedToTraySelected: value => window.startMinimizedToTray = value
+                                onNowPlayingNotificationsSelected: value => window.nowPlayingNotifications = value
+                                onScrobbleListenBrainzToggled: value => window.scrobbleListenBrainzEnabled = value
+                                onDisconnectListenBrainzRequested: {
+                                    services.disconnectListenBrainz()
+                                    window.scrobbleListenBrainzConnected = false
+                                    window.scrobbleListenBrainzUser = ""
+                                    window.scrobbleListenBrainzEnabled = false
+                                }
+                                onScrobbleLibreFmToggled: value => window.scrobbleLibreFmEnabled = value
+                                onDisconnectLibreFmRequested: {
+                                    services.disconnectLibreFm()
+                                    window.scrobbleLibreFmConnected = false
+                                    window.scrobbleLibreFmUser = ""
+                                    window.scrobbleLibreFmEnabled = false
+                                }
+                                onSectionSelected: section => {
+                                    window.settingsSection = section
+                                    appSettings.setValue("ui/settingsSection", section)
+                                }
                             }
-                        }
-                        onInAppShortcutSelected: (action, shortcut) => window.setInAppShortcut(action, shortcut)
-                        onMiniPlayerAlwaysOnTopSelected: value => window.miniPlayerAlwaysOnTop = value
-                        onAudioDeviceSelected: value => {
-                            if (player.setAudioDevice(value)) appSettings.setValue("player/audioDeviceId", player.audioDeviceId)
-                        }
-                        onLyricsFontSizeSelected: value => window.lyricsFontSize = value
-                        onDefaultLaunchPageSelected: value => window.defaultLaunchPage = value
-                        onAddExcludeRequested: excludeFolderDialog.open()
-                        onRemoveExcludeRequested: path => window.excludedFolders = window.excludedFolders.filter(p => p !== path)
-                        onIgnoreShortClipsSelected: value => window.ignoreShortClips = value
-                        onSongSortSelected: value => window.songSortMetric = value
-                        onTrackDensitySelected: value => window.trackDensity = value
-                        onShowFormatBadgesSelected: value => window.showFormatBadges = value
-                        onAccentSelected: value => window.accentName = value
-                        onCustomAccentSelected: hex => {
-                            window.customAccentColor = hex
-                            window.accentName = "custom"
-                        }
-                        onAlbumArtRadiusSelected: value => window.albumArtRadius = value
-                        onNowPlayingBackdropSelected: value => window.nowPlayingBackdrop = value
-                        onShowRemainingTimeSelected: value => window.showRemainingTime = value
-                        onSleepTimerSelected: mode => window.startSleepTimer(mode)
-                        onSleepTimerCancelled: window.cancelSleepTimer()
-                        onSleepFadeOutSelected: value => window.sleepFadeOut = value
-                        onAutoplaySelected: value => window.autoplayEnabled = value
-                        onVolumeLimitSelected: value => { window.volumeLimitEnabled = value; window.enforceVolumeLimit() }
-                        onMaxVolumeSelected: value => { window.maxVolumePercent = value; window.enforceVolumeLimit() }
-                        onPreferLocalLyricsSelected: value => window.preferLocalLyrics = value
-                        onLyricsAlignmentSelected: value => window.lyricsAlignment = value
-                        onLyricsActiveStyleSelected: value => window.lyricsActiveStyle = value
-                        onOfflineBlackoutSelected: value => {
-                            window.offlineBlackout = value
-                        }
-                        onServiceToggleRequested: (name, value) => {
-                            if (name === "lrclib") window.svcLrclib = value
-                            else if (name === "radio") window.svcRadio = value
-                            else if (name === "deezer") window.svcDeezer = value
-                            else if (name === "audiodb") window.svcAudiodb = value
-                            else if (name === "wiki") window.svcWiki = value
-                            if (!value) services.cancelNetworkRequests()
-                        }
-                        onOpenJellyfinRequested: page = "jellyfin"
-                        onOpenSubsonicRequested: page = "subsonic"
-                        onExportBackupRequested: exportBackupDialog.open()
-                        onImportBackupRequested: importBackupDialog.open()
-                        onCloseToTraySelected: value => window.closeToTray = value
-                        onStartMinimizedToTraySelected: value => window.startMinimizedToTray = value
-                        onNowPlayingNotificationsSelected: value => window.nowPlayingNotifications = value
-                    }
                         }
                     }
                 }
@@ -2675,7 +3098,7 @@ ApplicationWindow {
                     title: catalogDetailTitle
                     tracks: catalogDetailTracks
                     heroTrack: catalogDetailHeroTrack
-                    onBackRequested: catalogDetailOpen = false
+                    onBackRequested: closeCatalogDetail()
                     onAlbumRequested: function(name, track) {
                         openCatalogDetail("album", name, track)
                     }
@@ -2716,6 +3139,15 @@ ApplicationWindow {
                         font.pixelSize: 11
                         font.weight: Font.Bold
                     }
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                onWheel: wheel => {
+                    const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05
+                    setPlayerVolume(player.volume + step)
                 }
             }
 
@@ -2854,6 +3286,7 @@ ApplicationWindow {
                             paletteSource: window
                             iconName: "shuffle"
                             accented: player.shuffleEnabled
+                            tooltipText: player.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
                             onClicked: toggleQueueShuffle()
                         }
 
@@ -2862,6 +3295,7 @@ ApplicationWindow {
                             paletteSource: window
                             iconName: "skip-back"
                             iconColor: textPrimary
+                            tooltipText: "Previous"
                             onClicked: playPrevious()
                         }
 
@@ -2871,6 +3305,7 @@ ApplicationWindow {
                             iconName: playerVisuallyPlaying ? "pause" : "play"
                             accented: true
                             iconColor: recordRed
+                            tooltipText: playerVisuallyPlaying ? "Pause" : "Play"
                             onClicked: {
                                 if (!player.currentTrack.filePath && library.trackCount > 0) {
                                     shuffleAll()
@@ -2885,6 +3320,7 @@ ApplicationWindow {
                             paletteSource: window
                             iconName: "skip-forward"
                             iconColor: textPrimary
+                            tooltipText: "Next"
                             onClicked: playNext()
                         }
 
@@ -2894,6 +3330,7 @@ ApplicationWindow {
                             iconName: repeatMode === 2 ? "repeat-1" : "repeat"
                             accented: repeatMode > 0
                             iconColor: repeatMode > 0 ? recordRed : textPrimary
+                            tooltipText: repeatMode === 2 ? "Repeat Track" : (repeatMode === 1 ? "Repeat All" : "Repeat Off")
                             onClicked: toggleRepeat()
                         }
                     }
@@ -2922,6 +3359,7 @@ ApplicationWindow {
                         iconSize: 18
                         iconName: "heart"
                         tint: isFavorite(player.currentTrack.filePath) ? recordRed : silverDim
+                        tooltipText: isFavorite(player.currentTrack.filePath) ? "Remove from Favorites" : "Add to Favorites"
                         onClicked: toggleFavorite(player.currentTrack.filePath)
                     }
 
@@ -2930,7 +3368,7 @@ ApplicationWindow {
                         volume: player.volume
                         paletteSource: window
                         onVolumeAdjusted: newVol => {
-                            player.setVolume(newVol)
+                            setPlayerVolume(newVol)
                         }
                     }
 
@@ -2949,7 +3387,7 @@ ApplicationWindow {
                     PressDepthIconButton {
                         boxSize: 36
                         iconSize: 18
-                        iconName: "list-music"
+                        iconName: "list"
                         tint: nowPlayingMode === "queue" ? recordRed : silverDim
                         tooltipText: "Queue"
                         onClicked: {
@@ -2972,6 +3410,7 @@ ApplicationWindow {
                         iconSize: 18
                         iconName: nowPlayingOpen ? "chevron-down" : "audio-lines"
                         tint: nowPlayingOpen ? recordRed : silverDim
+                        tooltipText: nowPlayingOpen ? "Collapse Now Playing" : "Now Playing Deck"
                         onClicked: nowPlayingOpen = !nowPlayingOpen
                     }
                 }
@@ -3014,7 +3453,10 @@ ApplicationWindow {
             onReleased: mouse => mouse.accepted = true
             onClicked: mouse => mouse.accepted = true
             onDoubleClicked: mouse => mouse.accepted = true
-            onWheel: wheel => wheel.accepted = true
+            onWheel: wheel => {
+                const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05
+                setPlayerVolume(player.volume + step)
+            }
         }
 
         Item {
@@ -3032,7 +3474,7 @@ ApplicationWindow {
                 height: parent.height * 1.3
                 track: player.currentTrack
                 keepPreviousArtwork: true
-                cacheArtwork: false
+                cacheArtwork: true
                 stableSourceSize: 720
                 layer.enabled: true
                 layer.effect: MultiEffect {
@@ -3118,7 +3560,7 @@ ApplicationWindow {
                         radius: npArtworkCard.radius
                         keepPreviousArtwork: true
                         cacheArtwork: true
-                        stableSourceSize: 360
+                        showTonearm: true
                     }
 
                     MouseArea {
@@ -3174,6 +3616,9 @@ ApplicationWindow {
                             Label {
                                 Layout.fillWidth: true
                                 text: {
+                                    if (!player.currentTrack.title && !player.currentTrack.filePath) {
+                                        return "Select a track to start playback"
+                                    }
                                     let a = player.currentTrack.artist || "Unknown Artist"
                                     if (player.currentTrack.album) a += " • " + player.currentTrack.album
                                     return a
@@ -3256,7 +3701,7 @@ ApplicationWindow {
                                 Layout.preferredWidth: 160
                                 volume: player.volume
                                 paletteSource: window
-                                onVolumeAdjusted: newVol => player.setVolume(newVol)
+                                onVolumeAdjusted: newVol => setPlayerVolume(newVol)
                             }
                             Item { Layout.fillWidth: true }
                         }
@@ -3327,7 +3772,10 @@ ApplicationWindow {
             : Math.min(parent.height - 100, lyricSearchLoading || lyricSearchResults.length ? 560 : 300)
         padding: 0
         closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-        onClosed: lyricSearchOpen = false
+        onClosed: {
+            lyricSearchOpen = false
+            lyricsSelectionCallback = null
+        }
 
         Overlay.modal: Rectangle {
             color: "#B8000000"
@@ -3667,5 +4115,14 @@ ApplicationWindow {
             refreshRadio()
         }
         onClosed: radioRefineOpen = false
+    }
+
+    CoverSearchPopup {
+        id: coverSearchPopup
+    }
+
+    TrackMetadataDialog {
+        id: metadataDialog
+        appWindow: window
     }
 }

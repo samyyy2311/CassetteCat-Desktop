@@ -1,105 +1,91 @@
 import QtQuick
+import QtQuick.Controls
 
-Item {
+ToolTip {
     id: root
-    property string text: ""
-    property bool visibleTarget: false
+    property var visibleTarget: undefined
     property bool below: false
-    property int delay: 250
+    property Item targetItem: null
 
-    readonly property var rootWindow: Window.window
-
-    readonly property bool isAutoBelow: {
-        if (below) return true
-        if (!parent) return false
-        try {
-            const pos = parent.mapToItem(null, 0, 0)
-            return pos ? (pos.y < 60) : false
-        } catch (e) {
-            return false
-        }
+    readonly property bool isTargetHovered: {
+        if (visibleTarget !== undefined) return Boolean(visibleTarget)
+        if (targetItem && typeof targetItem.containsMouse !== "undefined") return targetItem.containsMouse
+        if (parent && typeof parent.containsMouse !== "undefined") return parent.containsMouse
+        return false
     }
 
-    // Automatically clamp horizontally so tooltips never spill off the window edge
-    readonly property real clampedHorizontalOffset: {
-        if (!parent || !rootWindow || rootWindow.width <= 0) return 0
-        try {
-            const pos = parent.mapToItem(null, 0, 0)
-            if (!pos) return 0
-            const centerGlobalX = pos.x + parent.width / 2
-            const halfPill = pill.width / 2
-            const minX = 12
-            const maxX = rootWindow.width - 12
+    visible: isTargetHovered && text.length > 0
+    delay: 350
+    timeout: 5000
 
-            if (centerGlobalX + halfPill > maxX) {
-                return (maxX - (centerGlobalX + halfPill))
-            } else if (centerGlobalX - halfPill < minX) {
-                return (minX - (centerGlobalX - halfPill))
+    padding: 6
+    topPadding: 5
+    bottomPadding: 5
+    leftPadding: 10
+    rightPadding: 10
+
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+
+    Component.onCompleted: {
+        if (targetItem) root.parent = targetItem
+    }
+    onTargetItemChanged: {
+        if (targetItem) root.parent = targetItem
+    }
+
+    function updateCoordinates() {
+        const p = root.parent
+        if (!p) return
+        try {
+            const globalPos = p.mapToItem(null, 0, 0)
+            const win = Window.window
+            const winWidth = win ? win.width : 1280
+            const placeBelow = root.below || (globalPos && globalPos.y < 55)
+            
+            root.y = placeBelow ? (p.height + 6) : (-root.implicitHeight - 6)
+            
+            let targetX = (p.width - root.implicitWidth) / 2
+            if (globalPos) {
+                const screenX = globalPos.x + targetX
+                if (screenX < 12) {
+                    targetX += (12 - screenX)
+                } else if (screenX + root.implicitWidth > winWidth - 12) {
+                    targetX -= (screenX + root.implicitWidth - (winWidth - 12))
+                }
             }
-            return 0
+            root.x = targetX
         } catch (e) {
-            return 0
+            root.x = (p.width - root.implicitWidth) / 2
+            root.y = p.height + 6
         }
     }
 
-    anchors.horizontalCenter: parent.horizontalCenter
-    anchors.horizontalCenterOffset: clampedHorizontalOffset
-    anchors.top: isAutoBelow ? parent.bottom : undefined
-    anchors.topMargin: isAutoBelow ? 8 : 0
-    anchors.bottom: isAutoBelow ? undefined : parent.top
-    anchors.bottomMargin: isAutoBelow ? 0 : 8
-    z: 9999
+    onAboutToShow: updateCoordinates()
 
-    width: pill.width
-    height: pill.height
-
-    property bool shouldShow: false
-
-    Timer {
-        id: delayTimer
-        interval: root.delay
-        running: root.visibleTarget && root.text.length > 0
-        onTriggered: root.shouldShow = true
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; duration: 120; easing.type: Easing.OutQuad }
+        NumberAnimation { property: "scale"; from: 0.95; to: 1.0; duration: 120; easing.type: Easing.OutQuad }
+    }
+    exit: Transition {
+        NumberAnimation { property: "opacity"; to: 0.0; duration: 80; easing.type: Easing.InQuad }
     }
 
-    onVisibleTargetChanged: {
-        if (!visibleTarget) {
-            delayTimer.stop()
-            root.shouldShow = false
-        }
-    }
-
-    opacity: root.shouldShow && root.visibleTarget ? 1.0 : 0.0
-    scale: root.shouldShow && root.visibleTarget ? 1.0 : 0.94
-    transformOrigin: isAutoBelow ? Item.Top : Item.Bottom
-    visible: opacity > 0.01
-
-    Behavior on opacity {
-        NumberAnimation { duration: 130; easing.type: Easing.OutQuad }
-    }
-    Behavior on scale {
-        NumberAnimation { duration: 130; easing.type: Easing.OutCubic }
-    }
-
-    rotation: parent ? -parent.rotation : 0
-
-    Rectangle {
-        id: pill
-        width: Math.max(36, label.implicitWidth + 20)
-        height: 28
+    background: Rectangle {
         radius: 8
         color: "#22201D"
         border.width: 1
         border.color: "#45FFFFFF"
+    }
 
-        Text {
-            id: label
-            anchors.centerIn: parent
-            text: root.text
-            font.family: (typeof displayFont !== "undefined" && displayFont.length > 0) ? displayFont : "Space Grotesk"
-            font.pixelSize: 11
-            font.weight: Font.DemiBold
-            color: "#FFFFFF"
-        }
+    contentItem: Text {
+        text: root.text
+        wrapMode: Text.WordWrap
+        maximumLineCount: 2
+        elide: Text.ElideRight
+        font.family: (typeof displayFont !== "undefined" && displayFont.length > 0) ? displayFont : "Space Grotesk"
+        font.pixelSize: 11
+        font.weight: Font.DemiBold
+        color: "#FFFFFF"
     }
 }
+

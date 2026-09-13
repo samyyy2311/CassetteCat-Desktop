@@ -219,7 +219,7 @@ Item {
 
                         Repeater {
                             model: [
-                                { title: "Lucide Icons", subtitle: "App logo & open-source iconography (lucide.dev, ISC License)", icon: "logo", preserveColor: false, url: "https://lucide.dev" },
+                                { title: "Lucide Icons", subtitle: "App logo & open-source iconography (lucide.dev, ISC License)", icon: "lucide", preserveColor: true, url: "https://lucide.dev" },
                                 { title: "Simple Icons", subtitle: "Authentic brand SVG icons (simpleicons.org, CC0 1.0)", icon: "simpleicons", preserveColor: true, url: "https://simpleicons.org" },
                                 { title: "IBM Plex (Sans & Mono)", subtitle: "Designed by Mike Abbink and Bold Monday for IBM (OFL 1.1)", icon: "ibm", preserveColor: true, url: "https://github.com/IBM/plex" },
                                 { title: "Space Grotesk", subtitle: "Proportional monospace display typeface by Florian Karsten (OFL 1.1)", icon: "quote", preserveColor: false, url: "https://github.com/floriankarsten/space-grotesk" }

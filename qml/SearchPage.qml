@@ -268,84 +268,15 @@ Item {
                 }
             }
 
-            delegate: Rectangle {
+            delegate: SongRow {
                 width: ListView.view.width - 24
-                height: 64
-                radius: 12
-                color: searchRowMouse.containsMouse ? surfaceElevated : (root.playerController.currentTrack.filePath === model.track.filePath ? surfaceCard : "#121110")
-                border.width: root.playerController.currentTrack.filePath === model.track.filePath ? 1 : 0
-                border.color: recordRed
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 16
-                    anchors.rightMargin: 16
-                    spacing: 12
-
-                    Cover {
-                        Layout.preferredWidth: 44
-                        Layout.preferredHeight: 44
-                        radius: 8
-                        track: model.track
-                    }
-
-                    ColumnLayout {
-                        Layout.fillWidth: true
-                        spacing: 2
-                        Label {
-                            Layout.fillWidth: true
-                            text: model.track.title || model.track.fileName
-                            color: root.playerController.currentTrack.filePath === model.track.filePath ? recordRed : textPrimary
-                            font.family: displayFont
-                            font.pixelSize: 15
-                            font.weight: Font.DemiBold
-                            elide: Text.ElideRight
-                        }
-                        Label {
-                            Layout.fillWidth: true
-                            text: (model.track.artist || "Unknown Artist") + " • " + (model.track.album || "Unknown Album")
-                            color: textSecondary
-                            font.family: bodyFont
-                            font.pixelSize: 12
-                            elide: Text.ElideRight
-                        }
-                    }
-
-                    Rectangle {
-                        visible: !!model.track.format
-                        Layout.preferredHeight: 20
-                        Layout.preferredWidth: formatText.implicitWidth + 10
-                        radius: 4
-                        color: "#18FFFFFF"
-                        border.width: 1
-                        border.color: "#30FFFFFF"
-
-                        Label {
-                            id: formatText
-                            anchors.centerIn: parent
-                            text: (model.track.format || "").toUpperCase()
-                            color: textSecondary
-                            font.family: monoFont
-                            font.pixelSize: 9
-                            font.weight: Font.Bold
-                        }
-                    }
-
-                    Label {
-                        text: model.track.duration || "—"
-                        color: silverDim
-                        font.family: monoFont
-                        font.pixelSize: 11
-                    }
-                }
-
-                MouseArea {
-                    id: searchRowMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.appWindow.playTrack(model.track)
-                }
+                track: model.track
+                showAlbum: true
+                showCover: true
+                showDuration: true
+                showHeart: true
+                onClicked: root.appWindow.playTrack(model.track)
+                onFavoriteClicked: root.appWindow.toggleFavorite(model.track.filePath)
             }
 
             EmptyState {

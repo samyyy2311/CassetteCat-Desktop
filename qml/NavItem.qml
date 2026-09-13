@@ -114,4 +114,11 @@ Item {
             root.appWindow.page = root.destination
         }
     }
+
+    AppToolTip {
+        targetItem: navMouse
+        text: root.label
+        visibleTarget: navMouse.containsMouse && root.sidebarCollapsed
+        delay: 250
+    }
 }

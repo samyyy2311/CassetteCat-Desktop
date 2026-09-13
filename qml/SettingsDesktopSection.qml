@@ -93,6 +93,7 @@ ColumnLayout {
             iconName: "volume-2"
             title: "Playback Device"
             subtitle: "Choose where CassetteCat sends audio"
+            forceMenu: true
             options: root.audioOutputs
             selectedValue: root.audioDeviceId
             onOptionSelected: value => root.audioDeviceSelected(String(value))

@@ -8,6 +8,8 @@ RowLayout {
     property string title: ""
     property string subtitle: ""
     property bool showDivider: false
+    property bool preserveIconColor: false
+    property int iconSize: 18
     default property alias control: trailing.data
 
     Layout.fillWidth: true
@@ -16,10 +18,11 @@ RowLayout {
 
     LucideIcon {
         visible: root.iconName.length > 0
-        Layout.preferredWidth: 17
-        Layout.preferredHeight: 17
+        Layout.preferredWidth: root.iconSize
+        Layout.preferredHeight: root.iconSize
         Layout.alignment: Qt.AlignVCenter
         icon: root.iconName
+        preserveColor: root.preserveIconColor
         color: silverDim
     }
 

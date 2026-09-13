@@ -2,58 +2,17 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-RowLayout {
+SettingRow {
     id: root
-    property string iconName: ""
-    property string title: ""
-    property string subtitle: ""
     property var options: []
     property var selectedValue: ""
-    readonly property bool useMenu: options.length > 3
+    property bool forceMenu: false
+    readonly property bool useMenu: forceMenu || options.length > 3
     signal optionSelected(var value)
 
-    Layout.fillWidth: true
-    spacing: 10
-
-    LucideIcon {
-        visible: root.iconName.length > 0
-        Layout.preferredWidth: 17
-        Layout.preferredHeight: 17
-        Layout.alignment: Qt.AlignVCenter
-        icon: root.iconName
-        color: silverDim
-    }
-
-    ColumnLayout {
-        Layout.fillWidth: true
-        Layout.alignment: Qt.AlignVCenter
-        spacing: 2
-
-        Label {
-            Layout.fillWidth: true
-            text: root.title
-            color: textPrimary
-            font.family: displayFont
-            font.pixelSize: 14
-            font.weight: Font.DemiBold
-            elide: Text.ElideRight
-        }
-
-        Label {
-            Layout.fillWidth: true
-            visible: root.subtitle.length > 0
-            text: root.subtitle
-            color: textSecondary
-            font.family: bodyFont
-            font.pixelSize: 12
-            wrapMode: Text.WordWrap
-        }
-    }
-
     Item {
-        Layout.alignment: Qt.AlignVCenter
-        Layout.preferredWidth: root.useMenu ? menuButton.implicitWidth : segmentedControl.implicitWidth
-        Layout.preferredHeight: root.useMenu ? menuButton.implicitHeight : segmentedControl.implicitHeight
+        implicitWidth: root.useMenu ? menuButton.implicitWidth : segmentedControl.implicitWidth
+        implicitHeight: root.useMenu ? menuButton.implicitHeight : segmentedControl.implicitHeight
 
         SettingSegmentedControl {
             id: segmentedControl
@@ -87,7 +46,7 @@ RowLayout {
         Menu {
             id: choiceMenu
             y: menuButton.height + 6
-            width: Math.max(menuButton.width, 180)
+            width: Math.max(menuButton.width, 220)
             padding: 6
 
             background: Rectangle {
@@ -115,6 +74,7 @@ RowLayout {
                         font.weight: isSelected ? Font.Bold : Font.Medium
                         verticalAlignment: Text.AlignVCenter
                         leftPadding: 10
+                        elide: Text.ElideRight
                     }
                     background: Rectangle {
                         radius: 7

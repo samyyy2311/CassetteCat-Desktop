@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.24)
 project(CassetteCat VERSION 0.1.0 LANGUAGES CXX)
 
+set(CASSETTECAT_PACKAGE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version used by installers and Linux packages")
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 6.10 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Concurrent QuickEffects Network Widgets)
@@ -32,6 +34,8 @@ qt_add_executable(CassetteCat
     src/services_controller.cpp
     src/services_lyrics.cpp
     src/services_artist.cpp
+    src/services_scrobble.cpp
+    src/services_covers.cpp
     src/credential_vault.h
     src/credential_vault.cpp
     src/streaming.h
@@ -59,6 +63,8 @@ if(WIN32)
 endif()
 set_target_properties(CassetteCat PROPERTIES AUTOMOC_COMPILER_PREDEFINES OFF)
 
+set_source_files_properties(qml/Main.qml PROPERTIES QT_QML_SKIP_CACHEGEN TRUE)
+
 qt_add_qml_module(CassetteCat
     URI CassetteCat
     VERSION 1.0
@@ -69,6 +75,9 @@ qt_add_qml_module(CassetteCat
         qml/NowPlayingLyricsView.qml
         qml/NowPlayingQueueView.qml
         qml/QueueTrackRow.qml
+        qml/TrackContextMenu.qml
+        qml/TrackMetadataDialog.qml
+        qml/ExpandableSearchBar.qml
         qml/LucideIcon.qml
         qml/HoverMarqueeLabel.qml
         qml/TransportButton.qml
@@ -90,6 +99,7 @@ qt_add_qml_module(CassetteCat
         qml/FolderCard.qml
         qml/HomeSectionHeader.qml
         qml/HomePage.qml
+        qml/ListeningRecordPage.qml
         qml/HomeSongCard.qml
         qml/LibraryPage.qml
         qml/LibraryPlaylistsView.qml
@@ -123,6 +133,8 @@ qt_add_qml_module(CassetteCat
         qml/SettingsShortcutsSection.qml
         qml/SettingsDesktopSection.qml
         qml/SettingsLyricsSection.qml
+        qml/SettingsScrobbleSection.qml
+        qml/CoverSearchPopup.qml
         qml/SettingsNetworkSection.qml
         qml/SettingsBackupSection.qml
         qml/ShortcutCaptureField.qml
@@ -138,6 +150,7 @@ qt_add_qml_module(CassetteCat
         qml/MiniPlayerVolumePill.qml
     RESOURCES
         qml/icons/external-link.svg
+        qml/icons/pencil.svg
         qml/icons/globe.svg
         qml/icons/info.svg
         qml/icons/shield.svg
@@ -175,6 +188,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/repeat.svg
         qml/icons/repeat-1.svg
         qml/icons/more-vertical.svg
+        qml/icons/list.svg
         qml/icons/list-music.svg
         qml/icons/quote.svg
         qml/icons/chevron-down.svg
@@ -186,6 +200,9 @@ qt_add_qml_module(CassetteCat
         qml/icons/panel-left.svg
         qml/icons/pin.svg
         qml/icons/pip.svg
+        qml/icons/plug.svg
+        qml/icons/log-out.svg
+        qml/icons/key-round.svg
         qml/icons/maximize-2.svg
         qml/icons/minus.svg
         qml/icons/jellyfin.svg
@@ -203,6 +220,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/ibm.svg
         qml/icons/gpl.svg
         qml/icons/simpleicons.svg
+        qml/icons/lucide.svg
         assets/01-orange-headphones.png
         assets/02-black-cat-cassette.png
         assets/cassettecat_icon.png
@@ -212,6 +230,8 @@ qt_add_qml_module(CassetteCat
         assets/05-tuxedo-cassette-tail.png
         assets/06-calico-player.png
         assets/cassettecat-pixel-cats-sheet.png
+        assets/vinyl_record.svg
+        assets/vinyl_tonearm.svg
         fonts/space_grotesk_variable.ttf
         fonts/ibm_plex_sans_variable.ttf
         fonts/ibm_plex_mono_regular.ttf
@@ -249,7 +269,9 @@ set(BUILD_TESTING OFF)
 set(BUILD_EXAMPLES OFF)
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_AUTOMOC OFF)
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME taglib-devel)
 FetchContent_MakeAvailable(taglib)
+set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME runtime)
 set(CMAKE_AUTOMOC "${CASSETTECAT_TAGLIB_AUTOMOC}")
 set(BUILD_TESTING "${CASSETTECAT_TAGLIB_BUILD_TESTING}")
 set(BUILD_EXAMPLES "${CASSETTECAT_TAGLIB_BUILD_EXAMPLES}")
@@ -308,6 +330,7 @@ include(GNUInstallDirs)
 install(TARGETS CassetteCat
     BUNDLE DESTINATION .
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    COMPONENT runtime
 )
 
 qt_generate_deploy_qml_app_script(
@@ -316,7 +339,30 @@ qt_generate_deploy_qml_app_script(
     NO_UNSUPPORTED_PLATFORM_ERROR
 )
 
-install(SCRIPT ${deploy_script})
+install(SCRIPT ${deploy_script} COMPONENT runtime)
+
+if(UNIX AND NOT APPLE)
+    install(FILES
+        packaging/linux/io.github.samyyy2311.CassetteCat.desktop
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+        COMPONENT runtime
+    )
+    install(FILES
+        packaging/linux/io.github.samyyy2311.CassetteCat.metainfo.xml
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/metainfo
+        COMPONENT runtime
+    )
+    install(FILES
+        assets/cassettecat_icon.png
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps
+        RENAME io.github.samyyy2311.CassetteCat.png
+        COMPONENT runtime
+    )
+endif()
+
+if(UNIX AND NOT APPLE)
+    include(cmake/Packaging.cmake)
+endif()
 
 if(WIN32)
     add_custom_target(deploy

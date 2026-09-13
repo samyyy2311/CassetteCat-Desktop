@@ -18,7 +18,8 @@ Item {
         sourceSize.height: Math.max(1, root.height * 2)
         fillMode: Image.PreserveAspectFit
         smooth: true
-        visible: root.preserveColor
+        visible: true
+        opacity: root.preserveColor ? 1 : 0
     }
 
     MultiEffect {

@@ -50,66 +50,92 @@ Item {
     property bool svcAudiodb: true
     property bool svcWiki: true
     property string backupStatus: ""
-    property bool creditsOpen: false
     property string currentSection: "library"
+    property bool scrobbleListenBrainzEnabled: false
+    property string scrobbleListenBrainzUser: ""
+    property bool scrobbleListenBrainzConnected: false
+    property bool scrobbleLibreFmEnabled: false
+    property string scrobbleLibreFmUser: ""
+    property bool scrobbleLibreFmConnected: false
 
     readonly property var categories: [
         { id: "library", label: "Music Library", icon: "folder" },
         { id: "appearance", label: "Appearance", icon: "sliders-horizontal" },
         { id: "playback", label: "Playback", icon: "play" },
         { id: "shortcuts", label: "Keyboard Shortcuts", icon: "zap" },
-        { id: "desktop", label: "Desktop", icon: "pip" },
-        { id: "lyrics", label: "Lyrics", icon: "quote" },
-        { id: "network", label: "Network & Privacy", icon: "shield" },
+        { id: "desktop", label: "Desktop & System", icon: "pip" },
+        { id: "lyrics", label: "Lyrics", icon: "mic" },
+        { id: "scrobble", label: "Scrobbling", icon: "audio-lines" },
+        { id: "network", label: "Network & Services", icon: "globe" },
         { id: "data", label: "Backup & Data", icon: "refresh-cw" },
-        { id: "credits", label: "Credits", icon: "info" }
+        { id: "credits", label: "Credits & Legal", icon: "info" }
     ]
+
+    readonly property real activeSectionHeight: {
+        switch (currentSection) {
+            case "library": return secLibrary.implicitHeight
+            case "appearance": return secAppearance.implicitHeight
+            case "playback": return secPlayback.implicitHeight
+            case "shortcuts": return secShortcuts.implicitHeight
+            case "desktop": return secDesktop.implicitHeight
+            case "lyrics": return secLyrics.implicitHeight
+            case "scrobble": return secScrobble.implicitHeight
+            case "network": return secNetwork.implicitHeight
+            case "data": return secBackup.implicitHeight
+            case "credits": return secCredits.implicitHeight
+            default: return 600
+        }
+    }
 
     signal addLibraryFolderRequested()
     signal removeLibraryFolderRequested(string path)
-    signal backRequested()
-    signal resumeQueueOnLaunchSelected(bool value)
-    signal globalShortcutsEnabledSelected(bool value)
-    signal globalShortcutSelected(string action, string shortcut)
-    signal inAppShortcutSelected(string action, string shortcut)
-    signal miniPlayerAlwaysOnTopSelected(bool value)
-    signal audioDeviceSelected(string value)
-    signal lyricsFontSizeSelected(int value)
-    signal defaultLaunchPageSelected(string value)
     signal addExcludeRequested()
     signal removeExcludeRequested(string path)
     signal ignoreShortClipsSelected(bool value)
+    signal defaultLaunchPageSelected(string value)
     signal songSortSelected(string value)
     signal trackDensitySelected(string value)
     signal showFormatBadgesSelected(bool value)
     signal accentSelected(string value)
-    signal customAccentSelected(string hexColor)
+    signal customAccentSelected(string value)
     signal albumArtRadiusSelected(int value)
     signal nowPlayingBackdropSelected(string value)
     signal showRemainingTimeSelected(bool value)
+    signal resumeQueueOnLaunchSelected(bool value)
+    signal autoplaySelected(bool value)
     signal sleepTimerSelected(string value)
     signal sleepTimerCancelled()
     signal sleepFadeOutSelected(bool value)
-    signal autoplaySelected(bool value)
     signal volumeLimitSelected(bool value)
     signal maxVolumeSelected(int value)
-    signal preferLocalLyricsSelected(bool value)
+    signal globalShortcutsEnabledSelected(bool value)
+    signal globalShortcutSelected(string action, string shortcut)
+    signal inAppShortcutSelected(string action, string shortcut)
+    signal lyricsFontSizeSelected(int value)
     signal lyricsAlignmentSelected(string value)
     signal lyricsActiveStyleSelected(string value)
+    signal preferLocalLyricsSelected(bool value)
     signal offlineBlackoutSelected(bool value)
-    signal serviceToggleRequested(string name, bool value)
+    signal serviceToggleRequested(string service, bool enabled)
     signal openJellyfinRequested()
     signal openSubsonicRequested()
     signal exportBackupRequested()
     signal importBackupRequested()
+    signal audioDeviceSelected(string id)
+    signal miniPlayerAlwaysOnTopSelected(bool value)
     signal closeToTraySelected(bool value)
     signal startMinimizedToTraySelected(bool value)
     signal nowPlayingNotificationsSelected(string value)
+    signal scrobbleListenBrainzToggled(bool value)
+    signal disconnectListenBrainzRequested()
+    signal scrobbleLibreFmToggled(bool value)
+    signal disconnectLibreFmRequested()
+    signal sectionSelected(string section)
 
     function chooseSection(id) {
-        creditsOpen = false
         currentSection = id
         contentScroll.contentItem.contentY = 0
+        sectionSelected(id)
     }
 
     Item {
@@ -198,7 +224,7 @@ Item {
                         anchors.rightMargin: 24
                         clip: true
                         contentWidth: availableWidth
-                        contentHeight: sectionContent.implicitHeight + 48
+                        contentHeight: root.activeSectionHeight + 48
                         ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
                         ScrollBar.vertical: SleekScrollBar {}
 
@@ -209,6 +235,7 @@ Item {
                             spacing: 18
 
                             SettingsLibrarySection {
+                                id: secLibrary
                                 visible: root.currentSection === "library"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 trackCount: root.trackCount
@@ -231,6 +258,7 @@ Item {
                             }
 
                             SettingsAppearanceSection {
+                                id: secAppearance
                                 visible: root.currentSection === "appearance"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 accentName: root.accentName
@@ -246,6 +274,7 @@ Item {
                             }
 
                             SettingsPlaybackSection {
+                                id: secPlayback
                                 visible: root.currentSection === "playback"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 resumeQueueOnLaunch: root.resumeQueueOnLaunch
@@ -265,6 +294,7 @@ Item {
                             }
 
                             SettingsShortcutsSection {
+                                id: secShortcuts
                                 visible: root.currentSection === "shortcuts"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 globalShortcutsEnabled: root.globalShortcutsEnabled
@@ -280,6 +310,7 @@ Item {
                             }
 
                             SettingsDesktopSection {
+                                id: secDesktop
                                 visible: root.currentSection === "desktop"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 closeToTray: root.closeToTray
@@ -297,6 +328,7 @@ Item {
                             }
 
                             SettingsLyricsSection {
+                                id: secLyrics
                                 visible: root.currentSection === "lyrics"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 lyricsFontSize: root.lyricsFontSize
@@ -309,7 +341,25 @@ Item {
                                 onPreferLocalLyricsSelected: value => root.preferLocalLyricsSelected(value)
                             }
 
+                            SettingsScrobbleSection {
+                                id: secScrobble
+                                visible: root.currentSection === "scrobble"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
+                                offlineBlackout: root.offlineBlackout
+                                listenBrainzEnabled: root.scrobbleListenBrainzEnabled
+                                listenBrainzUser: root.scrobbleListenBrainzUser
+                                listenBrainzConnected: root.scrobbleListenBrainzConnected
+                                libreFmEnabled: root.scrobbleLibreFmEnabled
+                                libreFmUser: root.scrobbleLibreFmUser
+                                libreFmConnected: root.scrobbleLibreFmConnected
+                                onListenBrainzEnabledToggled: value => root.scrobbleListenBrainzToggled(value)
+                                onDisconnectListenBrainzRequested: root.disconnectListenBrainzRequested()
+                                onLibreFmEnabledToggled: value => root.scrobbleLibreFmToggled(value)
+                                onDisconnectLibreFmRequested: root.disconnectLibreFmRequested()
+                            }
+
                             SettingsNetworkSection {
+                                id: secNetwork
                                 visible: root.currentSection === "network"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 offlineBlackout: root.offlineBlackout
@@ -325,6 +375,7 @@ Item {
                             }
 
                             SettingsBackupSection {
+                                id: secBackup
                                 visible: root.currentSection === "data"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 backupStatus: root.backupStatus
@@ -333,6 +384,7 @@ Item {
                             }
 
                             CreditsView {
+                                id: secCredits
                                 visible: root.currentSection === "credits"
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: visible ? implicitHeight : 0

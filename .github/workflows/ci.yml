@@ -50,8 +50,9 @@ jobs:
       - name: Package portable app
         shell: pwsh
         run: |
-          cmake --install build/ci --component runtime --prefix dist/CassetteCat
-          Compress-Archive -Path dist/CassetteCat -DestinationPath "CassetteCat-ci-${{ github.sha }}-windows-x64.zip"
+          $prefix = Join-Path $PWD 'dist\CassetteCat'
+          cmake --install build/ci --component runtime --prefix $prefix
+          Compress-Archive -Path $prefix -DestinationPath "CassetteCat-ci-${{ github.sha }}-windows-x64.zip"
 
       - name: Upload portable app
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

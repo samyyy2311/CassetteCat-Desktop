@@ -46,8 +46,9 @@ jobs:
         run: |
           $date = Get-Date -Format yyyyMMdd
           $sha = $env:NIGHTLY_SHA.Substring(0, 7)
-          cmake --install build/nightly --component runtime --prefix dist/CassetteCat
-          Compress-Archive -Path dist/CassetteCat -DestinationPath "CassetteCat-nightly-$date-$sha.windows-x64.zip"
+          $prefix = Join-Path $PWD 'dist\CassetteCat'
+          cmake --install build/nightly --component runtime --prefix $prefix
+          Compress-Archive -Path $prefix -DestinationPath "CassetteCat-nightly-$date-$sha.windows-x64.zip"
           Expand-Archive -Force "CassetteCat-nightly-$date-$sha.windows-x64.zip" -DestinationPath smoke
           .\smoke\CassetteCat\bin\CassetteCat.exe --self-check
       - name: Upload Windows nightly

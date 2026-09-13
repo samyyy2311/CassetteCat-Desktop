@@ -123,6 +123,10 @@ QHash<int, QByteArray> LibraryController::roleNames() const
 bool LibraryController::selfCheck()
 {
     LibraryController library;
+    const auto fail = [](const char *check) {
+        qWarning().noquote() << "Library self-check failed:" << check;
+        return false;
+    };
     const QString networkFilePath = "//server/music/Live Sets";
     const std::pair<QString, QString> folderUrls[] = {
         {"file:///home/music/Live%20Sets", "/home/music/Live Sets"},
@@ -135,7 +139,7 @@ bool LibraryController::selfCheck()
     for (const auto &[url, expected] : folderUrls) {
         QString path;
         if (!QMetaObject::invokeMethod(&library, "localPath", Q_RETURN_ARG(QString, path),
-                                       Q_ARG(QUrl, QUrl(url))) || path != expected) return false;
+                                       Q_ARG(QUrl, QUrl(url))) || path != expected) return fail("local path");
     }
     library.m_tracks = {
         QVariantMap{{"filePath", "C:/Music/keep.flac"}, {"title", "Keep"}, {"format", "FLAC"}, {"durationSeconds", 180}},
@@ -145,14 +149,14 @@ bool LibraryController::selfCheck()
     };
 
     library.setLibraryFilter({}, "ALL", {}, "title", true, {"C:/Music/hidden"}, true);
-    if (library.trackCount() != 2 || library.visibleTrackCount() != 2) return false;
-    if (library.data(library.index(0, 0), TrackRole).toMap().value("filePath").toString() != "C:/Music/alternate.wav") return false;
+    if (library.trackCount() != 2 || library.visibleTrackCount() != 2) return fail("library filter");
+    if (library.data(library.index(0, 0), TrackRole).toMap().value("filePath").toString() != "C:/Music/alternate.wav") return fail("library sort");
 
     library.setSearchFilter({}, "FLAC", {}, false);
     const QVariantMap groups = library.catalogGroups();
     if (!(library.trackCount() == 4 && library.visibleTrackCount() == 2
         && library.firstPlayableTrack().value("filePath").toString() == "C:/Music/keep.flac"
-        && groups.value("artists").toList().size() == 1 && groups.value("albums").toList().size() == 1)) return false;
+        && groups.value("artists").toList().size() == 1 && groups.value("albums").toList().size() == 1)) return fail("search filter");
 
     library.m_tracks = {
         QVariantMap{{"filePath", "/Music/Live/song.flac"}},
@@ -163,12 +167,12 @@ bool LibraryController::selfCheck()
     for (const QString &folder : {QString("/Music/Live"), QString("/Music/Live/")}) {
         library.setSearchFilter({}, "ALL", {folder}, false);
 #ifdef Q_OS_WIN
-        if (library.trackCount() != 1) return false;
+        if (library.trackCount() != 1) return fail("folder filter");
 #else
-        if (library.trackCount() != 2) return false;
+        if (library.trackCount() != 2) return fail("folder filter");
 #endif
-        if (library.firstPlayableTrack().value("filePath").toString() != "/Music/Live Sessions/song.flac") return false;
-        if (library.playbackTracks().size() != library.trackCount()) return false;
+        if (library.firstPlayableTrack().value("filePath").toString() != "/Music/Live Sessions/song.flac") return fail("folder sort");
+        if (library.playbackTracks().size() != library.trackCount()) return fail("playback tracks");
     }
     library.setSearchFilter({}, "ALL", {"/"}, false);
     return library.trackCount() == 0;

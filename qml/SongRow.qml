@@ -20,8 +20,12 @@ Rectangle {
     property real rowRadius: 10
     property real coverRadius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 8
     property bool showFormatBadge: (typeof window !== "undefined" && window.showFormatBadges !== undefined) ? window.showFormatBadges : true
+    property bool selectable: false
+    property bool selected: false
+    property bool showPlayCount: false
+    readonly property int playCount: (typeof window !== "undefined" && window.playCounts && root.track && root.track.filePath) ? (window.playCounts[root.track.filePath] || 0) : 0
 
-    signal clicked()
+    signal clicked(var modifiers)
     signal favoriteClicked()
 
     Drag.active: trackDrag.active
@@ -38,9 +42,9 @@ Rectangle {
 
     height: rowHeight
     radius: rowRadius
-    color: rowMouse.containsMouse ? hoverBg : (isCurrent ? activeBg : cardBg)
-    border.width: isCurrent ? 1 : 0
-    border.color: isCurrent ? recordRed : "transparent"
+    color: rowMouse.containsMouse ? hoverBg : (selected ? activeBg : (isCurrent ? activeBg : cardBg))
+    border.width: selected || isCurrent ? 1 : 0
+    border.color: selected ? recordRed : (isCurrent ? recordRed : "transparent")
 
     Behavior on color { ColorAnimation { duration: 120 } }
 
@@ -177,6 +181,19 @@ Rectangle {
             font.family: monoFont
             font.pixelSize: 12
         }
+
+        Label {
+            visible: showPlayCount && playCount > 0
+            text: playCount + " plays"
+            color: textSecondary
+            font.family: monoFont
+            font.pixelSize: 10
+        }
+    }
+
+    TrackContextMenu {
+        id: contextMenu
+        track: root.track
     }
 
     MouseArea {
@@ -184,7 +201,14 @@ Rectangle {
         anchors.fill: parent
         z: -1
         hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.clicked()
+        onClicked: mouse => {
+            if (mouse.button === Qt.RightButton) {
+                contextMenu.popup()
+            } else {
+                root.clicked(mouse.modifiers)
+            }
+        }
     }
 }

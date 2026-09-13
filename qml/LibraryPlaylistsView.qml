@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
@@ -13,92 +13,154 @@ Item {
         anchors.fill: parent
         anchors.leftMargin: 24
         anchors.rightMargin: 24
-        anchors.topMargin: 12
-        anchors.bottomMargin: 28
-        spacing: 16
+        anchors.topMargin: 8
+        anchors.bottomMargin: 24
+        spacing: 14
 
-        Rectangle {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: playlistStatus.visible ? 108 : 68
-            radius: 12
-            color: root.appWindow.surfaceCard
-            border.width: 1
-            border.color: root.appWindow.borderSubtle
+            spacing: 8
 
-            RowLayout {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.leftMargin: 16
-                anchors.rightMargin: 12
-                anchors.topMargin: 17
-                height: 34
-                spacing: 12
+            Rectangle {
+                Layout.preferredWidth: 260
+                Layout.preferredHeight: 32
+                radius: 16
+                color: root.appWindow.surfaceCard
+                border.width: 1
+                border.color: playlistName.activeFocus ? root.appWindow.recordRed : root.appWindow.borderSubtle
 
-                LucideIcon {
-                    Layout.preferredWidth: 20
-                    Layout.preferredHeight: 20
-                    icon: "list-music"
-                    color: root.appWindow.recordRed
-                }
+                Behavior on border.color { ColorAnimation { duration: 120 } }
 
-                TextField {
-                    id: playlistName
-                    Layout.fillWidth: true
-                    placeholderText: "New playlist name"
-                    color: root.appWindow.textPrimary
-                    placeholderTextColor: root.appWindow.silverDim
-                    font.family: root.appWindow.displayFont
-                    font.pixelSize: 13
-                    background: Rectangle {
-                        radius: 7
-                        color: root.appWindow.surfaceInput
-                        border.width: 1
-                        border.color: playlistName.activeFocus ? root.appWindow.recordRed : root.appWindow.borderSubtle
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 12
+                    anchors.rightMargin: 8
+                    spacing: 6
+
+                    LucideIcon {
+                        Layout.preferredWidth: 14
+                        Layout.preferredHeight: 14
+                        icon: "list"
+                        color: playlistName.activeFocus ? root.appWindow.recordRed : root.appWindow.silverDim
                     }
-                    leftPadding: 10
-                    rightPadding: 10
-                    onAccepted: createPlaylist()
-                }
 
-                SettingButton {
-                    text: "Create"
-                    iconName: "music"
-                    primary: true
-                    onClicked: createPlaylist()
-                }
+                    TextInput {
+                        id: playlistName
+                        Layout.fillWidth: true
+                        color: root.appWindow.textPrimary
+                        font.family: root.appWindow.displayFont
+                        font.pixelSize: 12
+                        selectByMouse: true
+                        onAccepted: createPlaylist()
 
-                SettingButton {
-                    text: "Save Queue"
-                    iconName: "list-music"
-                    enabled: playlistName.text.trim().length > 0
-                    opacity: enabled ? 1 : 0.45
-                    onClicked: {
-                        if (root.appWindow.saveQueueAsPlaylist(playlistName.text)) playlistName.text = ""
+                        Text {
+                            anchors.fill: parent
+                            visible: !playlistName.text && !playlistName.activeFocus
+                            text: "New playlist name..."
+                            color: root.appWindow.silverDim
+                            font.family: root.appWindow.displayFont
+                            font.pixelSize: 12
+                        }
                     }
-                }
 
-                SettingButton {
-                    text: "Import M3U"
-                    iconName: "folder"
-                    onClicked: root.appWindow.requestPlaylistImport()
+                    LucideIcon {
+                        visible: playlistName.text.length > 0
+                        Layout.preferredWidth: 12
+                        Layout.preferredHeight: 12
+                        icon: "x"
+                        color: root.appWindow.silverDim
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: playlistName.text = ""
+                        }
+                    }
                 }
             }
 
-            Label {
-                id: playlistStatus
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.leftMargin: 16
-                anchors.rightMargin: 16
-                anchors.bottomMargin: 10
+            SettingButton {
+                text: "Create"
+                iconName: "list"
+                primary: true
+                onClicked: createPlaylist()
+            }
+
+            RowLayout {
                 visible: root.appWindow.playlistStatus.length > 0
-                text: root.appWindow.playlistStatus
-                color: root.appWindow.textSecondary
-                font.family: root.appWindow.bodyFont
-                font.pixelSize: 11
-                elide: Text.ElideRight
+                Layout.leftMargin: 8
+                spacing: 6
+
+                LucideIcon {
+                    Layout.preferredWidth: 13
+                    Layout.preferredHeight: 13
+                    icon: "info"
+                    color: root.appWindow.recordRed
+                }
+
+                Label {
+                    text: root.appWindow.playlistStatus
+                    color: root.appWindow.textSecondary
+                    font.family: root.appWindow.monoFont
+                    font.pixelSize: 11
+                }
+            }
+
+            Item {
+                Layout.fillWidth: true
+            }
+
+            SettingButton {
+                text: "Save Queue"
+                iconName: "list"
+                onClicked: {
+                    const name = playlistName.text.trim() || ("Queue " + new Date().toLocaleDateString(Qt.locale(), "MMM d"))
+                    if (root.appWindow.saveQueueAsPlaylist(name)) playlistName.text = ""
+                }
+            }
+
+            SettingButton {
+                text: "Import M3U"
+                iconName: "folder"
+                onClicked: root.appWindow.requestPlaylistImport()
+            }
+        }
+
+        Flow {
+            Layout.fillWidth: true
+            spacing: 8
+
+            Label {
+                text: "SMART PLAYLISTS"
+                color: root.appWindow.silverDim
+                font.family: root.appWindow.monoFont
+                font.pixelSize: 10
+                font.weight: Font.Bold
+                rightPadding: 4
+            }
+
+            SettingButton {
+                text: "Favorites"
+                iconName: "heart"
+                onClicked: root.appWindow.createSmartPlaylist("Favorites", root.appWindow.availableTracks().filter(track => root.appWindow.favoriteTracks[track.filePath]))
+            }
+
+            SettingButton {
+                text: "Most Played"
+                iconName: "list"
+                onClicked: root.appWindow.createSmartPlaylist("Most Played", root.appWindow.heavyRotation)
+            }
+
+            SettingButton {
+                text: "Recently Added"
+                iconName: "clock"
+                onClicked: root.appWindow.createSmartPlaylist("Recently Added", root.appWindow.recentlyAdded)
+            }
+
+            SettingButton {
+                text: "Never Played"
+                iconName: "eye-off"
+                onClicked: root.appWindow.createSmartPlaylist("Never Played", root.appWindow.availableTracks().filter(track => !root.appWindow.playCounts[track.filePath]))
             }
         }
 
@@ -118,12 +180,23 @@ Item {
                 readonly property var tracks: root.appWindow.playlistTracks(modelData)
 
                 width: playlistList.width - 16
-                height: 74
-                radius: 12
+                height: 72
+                radius: 10
                 color: playlistMouse.containsMouse ? root.appWindow.surfaceElevated : root.appWindow.surfaceCard
                 border.width: 1
                 border.color: playlistDrop.containsDrag ? root.appWindow.recordRed
                     : (playlistMouse.containsMouse ? root.appWindow.borderVariant : root.appWindow.borderSubtle)
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+                Behavior on border.color { ColorAnimation { duration: 120 } }
+
+                MouseArea {
+                    id: playlistMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.appWindow.openCatalogDetail("playlist", playlistRow.modelData.name, playlistRow.tracks.length ? playlistRow.tracks[0] : ({}))
+                }
 
                 RowLayout {
                     anchors.fill: parent
@@ -163,7 +236,6 @@ Item {
                     }
 
                     PressDepthIconButton {
-                        z: 1
                         boxSize: 32
                         iconSize: 15
                         iconName: "play"
@@ -173,7 +245,6 @@ Item {
                     }
 
                     PressDepthIconButton {
-                        z: 1
                         boxSize: 32
                         iconSize: 15
                         iconName: "external-link"
@@ -183,7 +254,6 @@ Item {
                     }
 
                     PressDepthIconButton {
-                        z: 1
                         boxSize: 32
                         iconSize: 15
                         iconName: "x"
@@ -191,15 +261,6 @@ Item {
                         tooltipText: "Delete playlist"
                         onClicked: root.appWindow.deletePlaylist(playlistRow.modelData.id)
                     }
-                }
-
-                MouseArea {
-                    id: playlistMouse
-                    anchors.fill: parent
-                    enabled: playlistRow.tracks.length > 0
-                    hoverEnabled: true
-                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    onClicked: root.appWindow.playPlaylist(playlistRow.modelData)
                 }
 
                 DropArea {
@@ -220,12 +281,15 @@ Item {
                 visible: playlistList.count === 0
                 catImage: "qrc:/qt/qml/CassetteCat/assets/02-black-cat-cassette.png"
                 title: "No Playlists Yet"
-                subtitle: "Create one here, or save the active queue from Now Playing"
+                subtitle: "Create a custom playlist above, or save your active queue from Now Playing"
+                actionLabel: "Create Playlist"
+                onActionClicked: playlistName.forceActiveFocus()
             }
         }
     }
 
     function createPlaylist() {
-        if (root.appWindow.createPlaylist(playlistName.text, [])) playlistName.text = ""
+        const name = playlistName.text.trim() || ("Playlist " + (root.appWindow.playlists.length + 1))
+        if (root.appWindow.createPlaylist(name, [])) playlistName.text = ""
     }
 }

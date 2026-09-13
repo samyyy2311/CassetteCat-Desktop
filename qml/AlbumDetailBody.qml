@@ -1,40 +1,32 @@
 import QtQuick
 import QtQuick.Controls
 
-Column {
+ListView {
     id: root
     property var tracks: []
-    property real contentWidth: 0
     property var appWindow
 
-    width: parent.width
-    visible: root.tracks.length > 0
+    clip: true
     spacing: 4
+    model: root.tracks
+    ScrollBar.vertical: SleekScrollBar {}
 
-        Item { width: 1; height: 16 }
+    delegate: Item {
+        width: root.width
+        height: songRow.height
 
-        Label {
-            leftPadding: 36
-            rightPadding: 36
-            bottomPadding: 8
-            text: "Tracklist (" + root.tracks.length + ")"
-            color: "#FFFFFF"
-            font.family: "Space Grotesk"
-            font.pixelSize: 19
-            font.weight: Font.Bold
-            font.letterSpacing: -0.3
-        }
+        SongRow {
+            id: songRow
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.leftMargin: 36
+            anchors.rightMargin: 36
+            track: modelData
+            onFavoriteClicked: if (root.appWindow) root.appWindow.toggleFavorite(modelData.filePath)
 
-        Repeater {
-            model: root.tracks
-
-            SongRow {
-                width: root.contentWidth - 56
-                x: 28
-                track: modelData
-                showAlbum: false
-                onClicked: if (root.appWindow) root.appWindow.playTrack(modelData)
-                onFavoriteClicked: if (root.appWindow) root.appWindow.toggleFavorite(modelData.filePath)
+            TapHandler {
+                onTapped: root.appWindow.playTrack(modelData)
             }
         }
     }
+}

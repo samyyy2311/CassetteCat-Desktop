@@ -249,7 +249,7 @@ Item {
                                 subtitle: "Continue where you left off"
                                 tracks: recentlyPlayed
                                 onTrackSelected: track => root.appWindow.playTrack(track)
-                                onShuffleSelected: root.appWindow.startPlayback(root.appWindow.shuffledTracks(recentlyPlayed), 0, false)
+                                onShuffleSelected: root.appWindow.shufflePlayback(recentlyPlayed)
                             }
 
                             HomeTrackShelf {
@@ -257,7 +257,7 @@ Item {
                                 subtitle: "New to your library"
                                 tracks: recentlyAdded
                                 onTrackSelected: track => root.appWindow.playTrack(track)
-                                onShuffleSelected: root.appWindow.startPlayback(root.appWindow.shuffledTracks(recentlyAdded), 0, false)
+                                onShuffleSelected: root.appWindow.shufflePlayback(recentlyAdded)
                             }
 
                             HomeTrackShelf {
@@ -265,7 +265,7 @@ Item {
                                 subtitle: "Liked tracks waiting for another spin"
                                 tracks: forgottenFavs
                                 onTrackSelected: track => root.appWindow.playTrack(track)
-                                onShuffleSelected: root.appWindow.startPlayback(root.appWindow.shuffledTracks(forgottenFavs), 0, false)
+                                onShuffleSelected: root.appWindow.shufflePlayback(forgottenFavs)
                             }
 
                             Column {
@@ -296,7 +296,10 @@ Item {
                                         width: 150
                                         height: 225
 
+                                        HoverHandler { id: albumHover }
+
                                         ColumnLayout {
+                                            z: 1
                                             anchors.fill: parent
                                             spacing: 8
 
@@ -308,8 +311,8 @@ Item {
                                                 clip: true
                                                 color: surfaceCard
                                                 border.width: 1
-                                                border.color: albumCardMouse.containsMouse ? borderVariant : borderSubtle
-                                                scale: albumCardMouse.containsMouse ? 1.03 : 1.0
+                                                border.color: albumHover.hovered ? borderVariant : borderSubtle
+                                                scale: albumHover.hovered ? 1.03 : 1.0
 
                                                 Behavior on scale {
                                                     NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
@@ -329,8 +332,8 @@ Item {
                                                     iconName: "play"
                                                     accented: true
                                                     iconColor: recordRed
-                                                    opacity: albumCardMouse.containsMouse ? 1.0 : 0.0
-                                                    scale: albumCardMouse.containsMouse ? 1.0 : 0.6
+                                                    opacity: albumHover.hovered ? 1.0 : 0.0
+                                                    scale: albumHover.hovered ? 1.0 : 0.6
                                                     z: 10
 
                                                     Behavior on opacity { NumberAnimation { duration: 150 } }
@@ -366,7 +369,7 @@ Item {
                                             anchors.fill: parent
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
-                                            onClicked: root.appWindow.playTrack(modelData.track)
+                                            onClicked: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
                                         }
                                     }
                                 }

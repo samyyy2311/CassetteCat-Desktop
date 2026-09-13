@@ -87,11 +87,23 @@ Item {
         }
     }
 
+    TrackContextMenu {
+        id: contextMenu
+        track: root.track
+    }
+
     MouseArea {
         id: cardMouse
         anchors.fill: parent
         hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.clicked()
+        onClicked: mouse => {
+            if (mouse.button === Qt.RightButton) {
+                contextMenu.popup()
+            } else {
+                root.clicked()
+            }
+        }
     }
 }

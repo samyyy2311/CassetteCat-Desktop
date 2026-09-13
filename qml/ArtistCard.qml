@@ -32,132 +32,129 @@ Item {
     }
 
     Component.onCompleted: loadArtistImage()
+    onNameChanged: {
+        root.imageRequested = false
+        root.artistImageUrl = ""
+        loadArtistImage()
+    }
     onImageAllowedChanged: if (imageAllowed) loadArtistImage()
 
     Connections {
         target: typeof services !== "undefined" ? services : null
         function onArtistImageLoaded(artist, imageUrl) {
-            if (artist.trim().toLowerCase() === root.name.trim().toLowerCase()) {
+            const a = (artist || "").toLowerCase().replace(/[^a-z0-9]/g, "")
+            const b = (root.name || "").toLowerCase().replace(/[^a-z0-9]/g, "")
+            if (a.length > 0 && a === b) {
                 root.artistImageUrl = imageUrl
             }
         }
     }
 
-    Rectangle {
-        id: artistBg
+    ColumnLayout {
         anchors.fill: parent
-        radius: 16
-        color: artistMouse.containsMouse ? surfaceElevated : "transparent"
-        border.width: artistMouse.containsMouse ? 1.5 : 0
-        border.color: artistMouse.containsMouse ? recordRed : "transparent"
-        scale: artistMouse.containsMouse ? 1.03 : 1.0
+        spacing: 10
 
-        Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-        Behavior on border.color { ColorAnimation { duration: 120 } }
-        Behavior on color { ColorAnimation { duration: 120 } }
+        Item {
+            id: avatarItem
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: Math.min(root.cardWidth - 20, 140)
+            Layout.preferredHeight: width
+            scale: artistMouse.containsMouse ? 1.04 : 1.0
+
+            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+
+            Rectangle {
+                id: maskCircle
+                width: avatarItem.width
+                height: avatarItem.height
+                radius: width / 2
+                color: "#FFFFFF"
+                visible: false
+                layer.enabled: true
+                layer.smooth: true
+            }
+
+            Rectangle {
+                id: avatarCircle
+                anchors.fill: parent
+                radius: width / 2
+                color: surfaceCard
+                border.width: artistMouse.containsMouse ? 2 : 1
+                border.color: artistMouse.containsMouse ? recordRed : "#20FFFFFF"
+                z: 2
+
+                Behavior on border.color { ColorAnimation { duration: 120 } }
+
+                Cover {
+                    anchors.fill: parent
+                    track: root.track
+                    radius: avatarCircle.radius
+                    visible: artistPhoto.status !== Image.Ready || root.artistImageUrl === ""
+                }
+
+                Image {
+                    id: artistPhoto
+                    anchors.fill: parent
+                    source: root.artistImageUrl
+                    sourceSize.width: Math.max(140, Math.ceil(Math.max(width, 140) * Screen.devicePixelRatio))
+                    sourceSize.height: Math.max(140, Math.ceil(Math.max(height, 140) * Screen.devicePixelRatio))
+                    fillMode: Image.PreserveAspectCrop
+                    asynchronous: true
+                    cache: false
+                    visible: status === Image.Ready && source !== ""
+                    layer.enabled: true
+                    layer.effect: MultiEffect {
+                        maskEnabled: true
+                        maskSource: maskCircle
+                        maskThresholdMin: 0.5
+                        maskSpreadAtMin: 1.0
+                    }
+                }
+            }
+        }
 
         ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 10
-            spacing: 10
+            Layout.fillWidth: true
+            spacing: 3
 
-            Item {
-                id: avatarItem
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: Math.min(root.cardWidth - 28, 140)
-                Layout.preferredHeight: width
-
-                Rectangle {
-                    id: maskCircle
-                    width: avatarItem.width
-                    height: avatarItem.height
-                    radius: width / 2
-                    color: "#FFFFFF"
-                    visible: false
-                    layer.enabled: true
-                    layer.smooth: true
-                }
-
-                Rectangle {
-                    id: avatarCircle
-                    anchors.fill: parent
-                    radius: width / 2
-                    color: surfaceCard
-                    border.width: artistMouse.containsMouse ? 2 : 1
-                    border.color: artistMouse.containsMouse ? recordRed : "#20FFFFFF"
-                    z: 2
-
-                    Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                    Cover {
-                        anchors.fill: parent
-                        track: root.track
-                        radius: avatarCircle.radius
-                        visible: artistPhoto.status !== Image.Ready || root.artistImageUrl === ""
-                    }
-
-                    Image {
-                        id: artistPhoto
-                        anchors.fill: parent
-                        source: root.artistImageUrl
-                        sourceSize.width: Math.max(1, Math.ceil(width * Screen.devicePixelRatio))
-                        sourceSize.height: Math.max(1, Math.ceil(height * Screen.devicePixelRatio))
-                        fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
-                        cache: false
-                        visible: status === Image.Ready && source !== ""
-                        layer.enabled: true
-                        layer.effect: MultiEffect {
-                            maskEnabled: true
-                            maskSource: maskCircle
-                            maskThresholdMin: 0.5
-                            maskSpreadAtMin: 1.0
-                        }
-                    }
-                }
-            }
-
-            ColumnLayout {
+            Label {
                 Layout.fillWidth: true
-                spacing: 3
+                Layout.preferredWidth: 0
+                Layout.minimumWidth: 0
+                horizontalAlignment: Text.AlignHCenter
+                text: root.name
+                color: artistMouse.containsMouse ? recordRedHover : textPrimary
+                font.family: displayFont
+                font.pixelSize: 14
+                font.weight: Font.Bold
+                elide: Text.ElideRight
+                maximumLineCount: 1
+                clip: true
 
-                Label {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 0
-                    Layout.minimumWidth: 0
-                    horizontalAlignment: Text.AlignHCenter
-                    text: root.name
-                    color: artistMouse.containsMouse ? recordRedHover : textPrimary
-                    font.family: displayFont
-                    font.pixelSize: 14
-                    font.weight: Font.Bold
-                    elide: Text.ElideRight
-                    maximumLineCount: 1
-                    clip: true
-                }
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
 
-                Label {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: 0
-                    Layout.minimumWidth: 0
-                    horizontalAlignment: Text.AlignHCenter
-                    text: root.count + " songs"
-                    color: textSecondary
-                    font.family: monoFont
-                    font.pixelSize: 11
-                    elide: Text.ElideRight
-                    maximumLineCount: 1
-                    clip: true
-                }
+            Label {
+                Layout.fillWidth: true
+                Layout.preferredWidth: 0
+                Layout.minimumWidth: 0
+                horizontalAlignment: Text.AlignHCenter
+                text: root.count + " songs"
+                color: textSecondary
+                font.family: monoFont
+                font.pixelSize: 11
+                elide: Text.ElideRight
+                maximumLineCount: 1
+                clip: true
             }
         }
+    }
 
-        MouseArea {
-            id: artistMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.clicked()
-        }
+    MouseArea {
+        id: artistMouse
+        anchors.fill: parent
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.clicked()
     }
 }

@@ -92,7 +92,16 @@ Item {
         id: albumCardMouse
         anchors.fill: parent
         hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.clicked()
+        onClicked: mouse => {
+            if (mouse.button === Qt.RightButton) {
+                if (typeof window !== "undefined" && window.openCoverSearch) {
+                    window.openCoverSearch(root.name, root.artist, root.track ? root.track.filePath : "")
+                }
+            } else {
+                root.clicked()
+            }
+        }
     }
 }

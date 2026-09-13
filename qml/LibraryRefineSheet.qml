@@ -351,20 +351,20 @@ Rectangle {
                             ]
                             if (root.activeTab === "artists") return [
                                 { id: "name", label: "Artist Name", icon: "mic", isNumeric: false },
-                                { id: "count", label: "Song Count", icon: "list-music", isNumeric: true }
+                                { id: "count", label: "Song Count", icon: "list", isNumeric: true }
                             ]
                             if (root.activeTab === "albums") return [
                                 { id: "album", label: "Album Title", icon: "disc", isNumeric: false },
                                 { id: "artist", label: "Artist", icon: "mic", isNumeric: false },
-                                { id: "count", label: "Song Count", icon: "list-music", isNumeric: true }
+                                { id: "count", label: "Song Count", icon: "list", isNumeric: true }
                             ]
                             if (root.activeTab === "genres") return [
                                 { id: "name", label: "Genre Name", icon: "disc", isNumeric: false },
-                                { id: "count", label: "Song Count", icon: "list-music", isNumeric: true }
+                                { id: "count", label: "Song Count", icon: "list", isNumeric: true }
                             ]
                             return [
                                 { id: "name", label: "Folder Name", icon: "folder", isNumeric: false },
-                                { id: "count", label: "Song Count", icon: "list-music", isNumeric: true }
+                                { id: "count", label: "Song Count", icon: "list", isNumeric: true }
                             ]
                         }
 

@@ -38,6 +38,10 @@ jobs:
           flatpak-builder --force-clean --disable-rofiles-fuse --user --install-deps-from=flathub --default-branch="$FLATPAK_BRANCH" --repo=flatpak-repo build/flatpak packaging/flatpak/io.github.samyyy2311.CassetteCat.yml
           flatpak build-bundle flatpak-repo CassetteCat-flatpak-validation-x86_64.flatpak io.github.samyyy2311.CassetteCat "$FLATPAK_BRANCH"
           test -s CassetteCat-flatpak-validation-x86_64.flatpak
+      - name: Smoke-test Flatpak bundle
+        run: |
+          flatpak install --user --noninteractive -y ./CassetteCat-flatpak-validation-x86_64.flatpak
+          dbus-run-session -- flatpak run --env=QT_QPA_PLATFORM=offscreen --env=QT_QPA_OFFSCREEN_NO_GLX=1 io.github.samyyy2311.CassetteCat//ci --self-check
       - name: Upload validation bundle
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

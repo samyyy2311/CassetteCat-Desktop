@@ -1,1 +1,47 @@
-placeholder
+name: Flatpak validation
+
+on:
+  pull_request:
+    paths:
+      - 'packaging/flatpak/**'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/flatpak-validation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'packaging/flatpak/**'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/flatpak-validation.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flatpak-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flatpak:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Install Flatpak tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+      - name: Build Flatpak bundle
+        env:
+          FLATPAK_BRANCH: ci
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --force-clean --disable-rofiles-fuse --user --install-deps-from=flathub --default-branch="$FLATPAK_BRANCH" --repo=flatpak-repo build/flatpak packaging/flatpak/io.github.samyyy2311.CassetteCat.yml
+          flatpak build-bundle flatpak-repo CassetteCat-flatpak-validation-x86_64.flatpak io.github.samyyy2311.CassetteCat "$FLATPAK_BRANCH"
+          test -s CassetteCat-flatpak-validation-x86_64.flatpak
+      - name: Upload validation bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: flatpak-validation-${{ github.run_id }}
+          path: CassetteCat-flatpak-validation-x86_64.flatpak
+          if-no-files-found: error
+          retention-days: 7

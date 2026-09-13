@@ -254,9 +254,20 @@ int main(int argc, char *argv[])
     }
 
     if (argc == 2 && std::strcmp(argv[1], "--self-check") == 0) {
-        return (scanSelfCheck() && LibraryController::selfCheck() && streaming::runSelfChecks()
-                && GlobalShortcutController::selfCheck() && ServicesController::selfCheck()
-                && PlayerController::selfCheck() && singleInstanceSelfCheck()) ? 0 : 1;
+        bool passed = true;
+        const auto check = [&passed](bool result, const char *name) {
+            if (result) return;
+            qCritical().noquote() << "Self-check failed:" << name;
+            passed = false;
+        };
+        check(scanSelfCheck(), "library scan");
+        check(LibraryController::selfCheck(), "library controller");
+        check(streaming::runSelfChecks(), "streaming");
+        check(GlobalShortcutController::selfCheck(), "global shortcuts");
+        check(ServicesController::selfCheck(), "services");
+        check(PlayerController::selfCheck(), "player");
+        check(singleInstanceSelfCheck(), "single instance");
+        return passed ? 0 : 1;
     }
 
     QString openPath;

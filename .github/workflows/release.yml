@@ -144,7 +144,7 @@ jobs:
       - name: Build Flatpak bundle
         run: |
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          flatpak-builder --force-clean --disable-rofiles-fuse --user --install-deps-from=flathub --repo=flatpak-repo build/flatpak packaging/flatpak/io.github.samyyy2311.CassetteCat.yml
+          flatpak-builder --force-clean --disable-rofiles-fuse --user --install-deps-from=flathub --default-branch="${RELEASE_TAG#v}" --repo=flatpak-repo build/flatpak packaging/flatpak/io.github.samyyy2311.CassetteCat.yml
           flatpak build-bundle flatpak-repo "CassetteCat-${RELEASE_TAG}-x86_64.flatpak" io.github.samyyy2311.CassetteCat "${RELEASE_TAG#v}"
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

@@ -123,8 +123,9 @@ jobs:
           ctest --test-dir build/release --output-on-failure
       - name: Package Linux artifacts
         run: |
-          mkdir -p dist/CassetteCat
-          cmake --install build/release --component runtime --prefix dist/CassetteCat
+          prefix="$PWD/dist/CassetteCat"
+          mkdir -p "$prefix"
+          cmake --install build/release --component runtime --prefix "$prefix"
           tar -czf "CassetteCat-${RELEASE_TAG}-linux-x64.tar.gz" -C dist CassetteCat
           mkdir -p smoke && tar -xzf "CassetteCat-${RELEASE_TAG}-linux-x64.tar.gz" -C smoke
           smoke/CassetteCat/bin/CassetteCat --self-check

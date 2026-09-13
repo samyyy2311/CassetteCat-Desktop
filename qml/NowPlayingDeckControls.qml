@@ -31,11 +31,16 @@ Item {
         Label {
             Layout.fillWidth: true
             text: {
-                let artist = root.playerController.currentTrack.artist || "CassetteCat Audio"
+                if (!root.playerController.currentTrack.title && !root.playerController.currentTrack.filePath) {
+                    return "Select a track to start playback"
+                }
+                let artist = root.playerController.currentTrack.artist || "Unknown Artist"
                 if (root.playerController.currentTrack.album) artist += " • " + root.playerController.currentTrack.album
                 return artist
             }
-            color: root.appWindow.recordRed
+            color: (!root.playerController.currentTrack.title && !root.playerController.currentTrack.filePath)
+                ? root.appWindow.textSecondary
+                : root.appWindow.recordRed
             font.family: root.appWindow.displayFont
             font.pixelSize: 15
             font.weight: Font.DemiBold
@@ -47,10 +52,15 @@ Item {
                 anchors.fill: parent
                 enabled: !!root.playerController.currentTrack.album
                 hoverEnabled: true
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: {
-                    root.appWindow.nowPlayingOpen = false
-                    root.appWindow.openCatalogDetail("album", root.playerController.currentTrack.album, root.playerController.currentTrack)
+                onClicked: mouse => {
+                    if (mouse.button === Qt.RightButton) {
+                        root.appWindow.openCoverSearch(root.playerController.currentTrack.album, root.playerController.currentTrack.artist || "", root.playerController.currentTrack.filePath || "")
+                    } else {
+                        root.appWindow.nowPlayingOpen = false
+                        root.appWindow.openCatalogDetail("album", root.playerController.currentTrack.album, root.playerController.currentTrack)
+                    }
                 }
             }
         }
@@ -90,6 +100,7 @@ Item {
                 paletteSource: root.appWindow
                 iconName: "shuffle"
                 accented: root.playerController.shuffleEnabled
+                tooltipText: root.playerController.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
                 onClicked: root.appWindow.toggleQueueShuffle()
             }
 
@@ -98,6 +109,7 @@ Item {
                 paletteSource: root.appWindow
                 iconName: "skip-back"
                 iconColor: root.appWindow.textPrimary
+                tooltipText: "Previous"
                 onClicked: root.appWindow.playPrevious()
             }
 
@@ -107,6 +119,7 @@ Item {
                 iconName: root.appWindow.playerVisuallyPlaying ? "pause" : "play"
                 accented: true
                 iconColor: root.appWindow.recordRed
+                tooltipText: root.appWindow.playerVisuallyPlaying ? "Pause" : "Play"
                 onClicked: root.playerController.togglePlay()
             }
 
@@ -115,6 +128,7 @@ Item {
                 paletteSource: root.appWindow
                 iconName: "skip-forward"
                 iconColor: root.appWindow.textPrimary
+                tooltipText: "Next"
                 onClicked: root.appWindow.playNext()
             }
 
@@ -124,6 +138,7 @@ Item {
                 iconName: root.appWindow.repeatMode === 2 ? "repeat-1" : "repeat"
                 accented: root.appWindow.repeatMode > 0
                 iconColor: root.appWindow.repeatMode > 0 ? root.appWindow.recordRed : root.appWindow.textPrimary
+                tooltipText: root.appWindow.repeatMode === 2 ? "Repeat Track" : (root.appWindow.repeatMode === 1 ? "Repeat All" : "Repeat Off")
                 onClicked: root.appWindow.toggleRepeat()
             }
         }
@@ -144,7 +159,10 @@ Item {
             Layout.preferredWidth: 200
             paletteSource: root.appWindow
             volume: root.playerController.volume
-            onVolumeAdjusted: value => root.playerController.setVolume(value)
+            onVolumeAdjusted: value => {
+                if (root.appWindow && root.appWindow.setPlayerVolume) root.appWindow.setPlayerVolume(value)
+                else root.playerController.setVolume(value)
+            }
         }
 
         Item { Layout.fillWidth: true }

@@ -3,11 +3,23 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 Rectangle {
+    id: root
     required property var playerController
     required property color surfacePill
     required property color borderCard
     required property color accentColor
     required property color silverDim
+    property bool volumeLimitEnabled: false
+    property int maxVolumePercent: 100
+
+    function setVolume(val) {
+        let v = Math.max(0.0, Math.min(1.0, val))
+        if (volumeLimitEnabled) {
+            const limit = Math.max(0.05, maxVolumePercent / 100.0)
+            if (v > limit) v = limit
+        }
+        playerController.setVolume(v)
+    }
 
     width: 80
     height: 26
@@ -33,7 +45,7 @@ Rectangle {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: playerController.setVolume(playerController.volume > 0.001 ? 0.0 : 0.8)
+                onClicked: root.setVolume(playerController.volume > 0.001 ? 0.0 : 0.8)
             }
         }
 
@@ -75,10 +87,10 @@ Rectangle {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 preventStealing: true
-                onPressed: mouse => playerController.setVolume(Math.max(0.0, Math.min(1.0, mouse.x / trackItem.width)))
+                onPressed: mouse => root.setVolume(mouse.x / trackItem.width)
                 onPositionChanged: mouse => {
                     if (pressed)
-                        playerController.setVolume(Math.max(0.0, Math.min(1.0, mouse.x / trackItem.width)))
+                        root.setVolume(mouse.x / trackItem.width)
                 }
             }
         }

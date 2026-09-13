@@ -8,6 +8,10 @@ Item {
     property int iconSize: 18
     property color tint: textPrimary
     property color hoverTint: "#FFFFFF"
+    property color backgroundColor: surfaceCard
+    property color hoverBackgroundColor: surfaceElevated
+    property color borderColor: borderSubtle
+    property color hoverBorderColor: borderVariant
     property bool highlighted: false
     property string tooltipText: ""
     property real cornerRadius: Math.round(boxSize / 2)
@@ -22,9 +26,9 @@ Item {
     Rectangle {
         anchors.fill: parent
         radius: root.cornerRadius
-        color: root.isHovered ? surfaceElevated : surfaceCard
+        color: root.isHovered ? root.hoverBackgroundColor : root.backgroundColor
         border.width: root.highlighted ? 1.5 : 1.0
-        border.color: root.highlighted ? recordRed : (root.isHovered ? borderVariant : borderSubtle)
+        border.color: root.highlighted ? recordRed : (root.isHovered ? root.hoverBorderColor : root.borderColor)
 
         Behavior on color { ColorAnimation { duration: 130 } }
         Behavior on border.color { ColorAnimation { duration: 130 } }
@@ -57,6 +61,7 @@ Item {
     }
 
     AppToolTip {
+        targetItem: mouseArea
         text: root.tooltipText
         visibleTarget: mouseArea.containsMouse && root.tooltipText.length > 0
         delay: 350

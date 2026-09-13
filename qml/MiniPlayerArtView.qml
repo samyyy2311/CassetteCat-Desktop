@@ -10,9 +10,11 @@ Item {
 
     Cover {
         id: fullCover
-        anchors.fill: parent
+        anchors.centerIn: parent
+        width: Math.min(parent.width, parent.height)
+        height: width
         radius: 14
-        fillMode: Image.PreserveAspectCrop
+        fillMode: Image.PreserveAspectFit
         track: root.miniPlayer.playerController.currentTrack
         keepPreviousArtwork: true
         cacheArtwork: true
@@ -127,7 +129,7 @@ Item {
                     anchors.centerIn: parent
                     width: 12
                     height: 12
-                    icon: "pip"
+                    icon: "minimize-2"
                     color: artPopH.containsMouse ? "#FFFFFF" : "#D0FFFFFF"
                 }
                 MouseArea {
@@ -290,6 +292,26 @@ Item {
                         }
                     }
 
+                    Item {
+                        anchors.left: parent.left
+                        anchors.leftMargin: 32
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 28
+                        height: 28
+                        readonly property bool isFav: root.miniPlayer.playerController.currentTrack && root.miniPlayer.favoriteTracks && !!root.miniPlayer.favoriteTracks[root.miniPlayer.playerController.currentTrack.filePath]
+                        LucideIcon { anchors.centerIn: parent; width: 15; height: 15; icon: "heart"; color: parent.isFav ? root.miniPlayer.recordRed : (artFavM.containsMouse ? "#FFFFFF" : "#C0FFFFFF") }
+                        MouseArea {
+                            id: artFavM
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: {
+                                const track = root.miniPlayer.playerController.currentTrack
+                                if (track && track.filePath) root.miniPlayer.toggleFavorite(track.filePath)
+                            }
+                        }
+                    }
+
                     Row {
                         anchors.centerIn: parent
                         spacing: 20
@@ -363,24 +385,23 @@ Item {
                         }
                     }
 
-                    Item {
+                    Row {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        width: 28
-                        height: 28
-                        LucideIcon {
-                            anchors.centerIn: parent
-                            width: 15
-                            height: 15
-                            icon: "pip"
-                            color: artToCompM.containsMouse ? "#FFFFFF" : "#C0FFFFFF"
+                        spacing: 6
+
+                        Item {
+                            width: 28
+                            height: 28
+                            LucideIcon { anchors.centerIn: parent; width: 15; height: 15; icon: "quote"; color: root.miniPlayer.mode === "lyrics" ? root.miniPlayer.recordRed : (artLyricsM.containsMouse ? "#FFFFFF" : "#C0FFFFFF") }
+                            MouseArea { id: artLyricsM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.miniPlayer.mode = "lyrics" }
                         }
-                        MouseArea {
-                            id: artToCompM
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.miniPlayer.mode = "compact"
+
+                        Item {
+                            width: 28
+                            height: 28
+                            LucideIcon { anchors.centerIn: parent; width: 15; height: 15; icon: "list"; color: root.miniPlayer.mode === "queue" ? root.miniPlayer.recordRed : (artQueueM.containsMouse ? "#FFFFFF" : "#C0FFFFFF") }
+                            MouseArea { id: artQueueM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.miniPlayer.mode = "queue" }
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
@@ -170,6 +170,8 @@ Item {
                     borderCard: miniPlayer.borderCard
                     accentColor: miniPlayer.recordRed
                     silverDim: miniPlayer.silverDim
+                    volumeLimitEnabled: miniPlayer.volumeLimitEnabled
+                    maxVolumePercent: miniPlayer.maxVolumePercent
                     visible: opacity > 0.001
                     opacity: (miniPlayer.mode === "queue" && miniPlayer.volumePillVisible) ? 1.0 : 0.0
                     Behavior on opacity { NumberAnimation { duration: 120 } }
@@ -233,7 +235,7 @@ Item {
                         height: 28
                         radius: 4
                         color: "transparent"
-                        LucideIcon { anchors.centerIn: parent; width: 16; height: 16; icon: "list-music"; color: miniPlayer.recordRed }
+                        LucideIcon { anchors.centerIn: parent; width: 16; height: 16; icon: "list"; color: miniPlayer.recordRed }
                         MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: miniPlayer.mode = "compact" }
                     }
                 }

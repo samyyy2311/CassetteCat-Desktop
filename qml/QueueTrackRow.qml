@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
@@ -27,11 +27,13 @@ Item {
     readonly property color borderVariant: paletteSource && paletteSource.borderVariant ? paletteSource.borderVariant : "#403B35"
     readonly property color borderSubtle: paletteSource && paletteSource.borderSubtle ? paletteSource.borderSubtle : "#2A2723"
 
-    implicitHeight: header ? (compact ? 22 : 30) : (compact ? 40 : 52)
+    readonly property bool isCompactDensity: compact || (typeof window !== "undefined" && window.trackDensity === "compact")
+
+    implicitHeight: header ? (isCompactDensity ? 22 : 30) : (isCompactDensity ? 40 : 52)
 
     Rectangle {
         anchors.fill: parent
-        radius: root.compact ? 5 : 8
+        radius: root.isCompactDensity ? 5 : 8
         color: root.header ? "transparent" : (rowMouse.containsMouse
             ? root.paletteSource.surfaceElevated
             : (root.current ? (root.compact ? "#1E1C1A" : "#1C1A18") : "transparent"))
@@ -84,7 +86,7 @@ Item {
                     Layout.fillWidth: true
                     text: root.compact
                         ? (root.entry.artist || "Unknown Artist")
-                        : ((root.entry.artist || "Unknown Artist") + " â€¢ " + (root.entry.album || "Unknown Album"))
+                        : ((root.entry.artist || "Unknown Artist") + " • " + (root.entry.album || "Unknown Album"))
                     color: root.paletteSource.textSecondary
                     font.family: root.paletteSource.bodyFont
                     font.pixelSize: root.compact ? 9 : 11
@@ -94,7 +96,7 @@ Item {
 
             Label {
                 visible: !root.removeEnabled && !root.playNextEnabled
-                text: root.entry.duration || (root.compact ? "" : "â€”")
+                text: root.entry.duration || (root.compact ? "" : "—")
                 color: root.paletteSource.silverDim
                 font.family: root.paletteSource.monoFont
                 font.pixelSize: root.compact ? 9 : 11
@@ -124,13 +126,25 @@ Item {
             }
         }
 
+        TrackContextMenu {
+            id: contextMenu
+            track: root.track
+        }
+
         MouseArea {
             id: rowMouse
             anchors.fill: parent
             enabled: !root.header && (!root.current || root.allowCurrentActivation)
             hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: root.trackActivated(root.track)
+            onClicked: mouse => {
+                if (mouse.button === Qt.RightButton) {
+                    contextMenu.popup()
+                } else {
+                    root.trackActivated(root.track)
+                }
+            }
         }
     }
 }

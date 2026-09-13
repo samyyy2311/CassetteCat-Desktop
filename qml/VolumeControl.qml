@@ -68,6 +68,12 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.toggleMute()
             }
+
+            AppToolTip {
+                targetItem: iconMouse
+                text: root.volume <= 0.001 ? "Unmute" : "Mute"
+                visibleTarget: iconMouse.containsMouse
+            }
         }
 
         Item {

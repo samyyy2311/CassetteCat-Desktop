@@ -1,0 +1,50 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+ <defs>
+  <radialGradient id="vinyl"><stop stop-color="#252628"/><stop offset=".55" stop-color="#121315"/><stop offset=".97" stop-color="#202123"/><stop offset="1" stop-color="#090a0b"/></radialGradient>
+  <linearGradient id="reflection" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff" stop-opacity=".12"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#fff" stop-opacity=".07"/></linearGradient>
+ </defs>
+ <circle cx="200" cy="200" r="197" fill="#08090a" stroke="#444548" stroke-width="1"/>
+ <circle cx="200" cy="200" r="193" fill="url(#vinyl)"/>
+ <g transform="translate(200 200)" fill="none" stroke="#65666a" stroke-opacity=".18" stroke-width=".6">
+ <circle r="120"/>
+<circle r="122"/>
+<circle r="124"/>
+<circle r="126"/>
+<circle r="128"/>
+<circle r="130"/>
+<circle r="132"/>
+<circle r="134"/>
+<circle r="136"/>
+<circle r="138"/>
+<circle r="140"/>
+<circle r="142"/>
+<circle r="144"/>
+<circle r="146"/>
+<circle r="148"/>
+<circle r="150"/>
+<circle r="152"/>
+<circle r="154"/>
+<circle r="156"/>
+<circle r="158"/>
+<circle r="160"/>
+<circle r="162"/>
+<circle r="164"/>
+<circle r="166"/>
+<circle r="168"/>
+<circle r="170"/>
+<circle r="172"/>
+<circle r="174"/>
+<circle r="176"/>
+<circle r="178"/>
+<circle r="180"/>
+<circle r="182"/>
+ <circle r="114"/><circle r="109"/><circle r="103"/><circle r="98"/><circle r="93"/>
+ </g>
+ <path d="M200 200 54 73A193 193 0 0 1 150 13Z M200 200 346 327A193 193 0 0 1 250 387Z" fill="url(#reflection)"/>
+ <circle cx="200" cy="200" r="61" fill="#a83c32" stroke="#732d27" stroke-width="1"/>
+ <circle cx="200" cy="200" r="54" fill="none" stroke="#e7b0a0" stroke-opacity=".2" stroke-width=".7"/>
+ <path d="M163 178h74M177 184h46" stroke="#edd7c7" stroke-opacity=".65" stroke-width="2"/>
+ <path d="M183 225h34M188 230h24" stroke="#edd7c7" stroke-opacity=".4" stroke-width="1"/>
+ <circle cx="200" cy="200" r="17" fill="none" stroke="#6d2925" stroke-width=".8"/>
+ <circle cx="200" cy="200" r="5" fill="#090a0b" stroke="#bbbcb9" stroke-width="1.5"/>
+</svg>

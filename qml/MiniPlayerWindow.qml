@@ -17,17 +17,27 @@ Window {
 
     property string mode: "compact"
 
-    readonly property int artDimension: 380
+    readonly property int artDimension: 360
 
     width: mode === "art" ? (artDimension + 12) : 362
     height: mode === "art" ? (artDimension + 12) : (mode === "compact" ? 158 : 492)
-    minimumWidth: mode === "art" ? 332 : 332
-    maximumWidth: mode === "art" ? 512 : 412
-    minimumHeight: mode === "art" ? 332 : (mode === "compact" ? 158 : 432)
-    maximumHeight: mode === "art" ? 512 : (mode === "compact" ? 158 : 652)
+    minimumWidth: mode === "art" ? (artDimension + 12) : 332
+    maximumWidth: mode === "art" ? (artDimension + 12) : 412
+    minimumHeight: mode === "art" ? (artDimension + 12) : (mode === "compact" ? 158 : 432)
+    maximumHeight: mode === "art" ? (artDimension + 12) : (mode === "compact" ? 158 : 652)
 
     onModeChanged: {
         volumePillVisible = false
+        if (mode === "art") {
+            root.width = artDimension + 12
+            root.height = artDimension + 12
+        } else if (mode === "compact") {
+            root.width = 362
+            root.height = 158
+        } else {
+            root.width = 362
+            root.height = 492
+        }
         if (Screen.desktopAvailableHeight > 0 && y + height > Screen.desktopAvailableHeight - 30) {
             y = Math.max(20, Screen.desktopAvailableHeight - height - 30)
         }
@@ -61,6 +71,10 @@ Window {
     property var lyricDisplayItems: []
     property int activeLyricDisplayIndex: -1
     property string lyricsActiveStyle: "white"
+    property string lyricsAlignment: "left"
+    property int lyricsFontSize: 28
+    property bool volumeLimitEnabled: false
+    property int maxVolumePercent: 100
 
     property bool volumePillVisible: false
     property bool showRemainingTime: true
@@ -222,12 +236,18 @@ Window {
                 Item {
                     width: 18; height: 18
                     LucideIcon { anchors.centerIn: parent; width: 11; height: 11; icon: "pin"; color: root.alwaysOnTop ? root.recordRed : root.silverDim }
-                    MouseArea { id: pinWinM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleAlwaysOnTop() }
+                    MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleAlwaysOnTop() }
+                }
+
+                Item {
+                    width: 18; height: 18
+                    Label { anchors.centerIn: parent; text: "—"; color: root.silverDim; font.pixelSize: 11; font.weight: Font.DemiBold }
+                    MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.showMinimized() }
                 }
                 Item {
                     width: 18; height: 18
                     LucideIcon { anchors.centerIn: parent; width: 11; height: 11; icon: "maximize-2"; color: root.silverDim }
-                    MouseArea { id: restoreWinM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.restoreRequested() }
+                    MouseArea { id: restoreWinM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.mode = "art" }
                 }
                 Item {
                     width: 18; height: 18
@@ -260,6 +280,8 @@ Window {
                             anchors.fill: parent
                             track: player.currentTrack
                             radius: 8
+                            keepPreviousArtwork: true
+                            cacheArtwork: true
                             fillMode: Image.PreserveAspectCrop
                             visible: !!(player.currentTrack && player.currentTrack.filePath)
                         }
@@ -449,11 +471,7 @@ Window {
                             }
                             MouseArea {
                                 id: favBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (player.currentTrack && player.currentTrack.filePath) {
-                                        root.toggleFavorite(player.currentTrack.filePath)
-                                    }
-                                }
+                                onClicked: if (player.currentTrack && player.currentTrack.filePath) root.toggleFavorite(player.currentTrack.filePath)
                             }
                         }
                     }
@@ -468,6 +486,8 @@ Window {
                         borderCard: root.borderCard
                         accentColor: root.recordRed
                         silverDim: root.silverDim
+                        volumeLimitEnabled: root.volumeLimitEnabled
+                        maxVolumePercent: root.maxVolumePercent
                         visible: opacity > 0.001
                         opacity: root.volumePillVisible ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: 120 } }
@@ -533,7 +553,7 @@ Window {
                         Item {
                             width: 32; height: 32
                             LucideIcon {
-                                anchors.centerIn: parent; width: 16; height: 16; icon: "list-music"
+                                anchors.centerIn: parent; width: 16; height: 16; icon: "list"
                                 color: root.mode === "queue" ? root.recordRed : (qBtnM.containsMouse ? root.textPrimary : root.textSecondary)
                             }
                             MouseArea { id: qBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.mode = (root.mode === "queue" ? "compact" : "queue") }

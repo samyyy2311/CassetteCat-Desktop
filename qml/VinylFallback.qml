@@ -3,122 +3,70 @@ import QtQuick
 Item {
     id: root
 
-    property color accent: "#D14337"
     property bool playing: false
-    readonly property real discSize: Math.max(18, Math.min(width, height) * 0.76)
+    property bool showTonearm: false
+    property real progress: 0
 
     Item {
-        id: record
+        id: composition
         anchors.centerIn: parent
-        width: root.discSize
+        width: Math.min(root.width, root.height)
         height: width
 
-        Rectangle {
-            anchors.fill: parent
-            radius: width / 2
-            color: "#080807"
-            border.width: Math.max(1, width * 0.018)
-            border.color: "#4A4742"
-        }
-
-        Repeater {
-            model: 5
-
-            delegate: Rectangle {
-                anchors.centerIn: parent
-                width: parent.width * (0.86 - index * 0.12)
-                height: width
-                radius: width / 2
-                color: "transparent"
-                border.width: Math.max(1, parent.width * 0.008)
-                border.color: index % 2 ? "#211F1C" : "#302D29"
-            }
-        }
-
-        Rectangle {
+        Image {
+            id: record
             anchors.centerIn: parent
-            width: parent.width * 0.34
+            width: composition.width * 0.78
             height: width
-            radius: width / 2
-            color: "#2D2A26"
-            border.width: Math.max(1, parent.width * 0.012)
-            border.color: "#5A554D"
+            source: "qrc:/qt/qml/CassetteCat/assets/vinyl_record.svg"
+            sourceSize.width: Math.ceil(width * 2)
+            smooth: true
 
-            Rectangle {
+            Canvas {
+                id: labelCanvas
                 anchors.centerIn: parent
-                width: parent.width * 0.68
+                width: parent.width * 0.305
                 height: width
-                radius: width / 2
-                color: root.accent
+                property url fallbackArtwork: "qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png"
+                Component.onCompleted: loadImage(fallbackArtwork)
+                onWidthChanged: requestPaint()
+                onImageLoaded: requestPaint()
+                onPaint: {
+                    const ctx = getContext("2d")
+                    ctx.reset()
+                    ctx.beginPath()
+                    ctx.arc(width / 2, height / 2, width / 2, 0, Math.PI * 2)
+                    ctx.clip()
+                    if (isImageLoaded(fallbackArtwork)) ctx.drawImage(fallbackArtwork, 0, 0, width, height)
+                }
             }
-
-            Rectangle {
-                anchors.centerIn: parent
-                width: Math.max(2, parent.width * 0.16)
-                height: width
-                radius: width / 2
-                color: "#EEE8E0"
+            RotationAnimator on rotation {
+                from: 0
+                to: 360
+                duration: 8000
+                loops: Animation.Infinite
+                running: root.playing && root.visible
             }
         }
 
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.top: parent.top
-            anchors.topMargin: parent.height * 0.13
-            width: Math.max(1, parent.width * 0.08)
-            height: width
-            radius: width / 2
-            color: "#B8B0A6"
-            opacity: 0.55
-        }
-
-        RotationAnimation on rotation {
-            running: root.playing
-            from: 0
-            to: 360
-            duration: 3000
-            loops: Animation.Infinite
-        }
-    }
-
-    Item {
-        visible: root.discSize >= 72
-        anchors.fill: parent
-        transformOrigin: Item.TopRight
-        rotation: root.playing ? -5 : -27
-
-        Behavior on rotation { NumberAnimation { duration: 260; easing.type: Easing.OutCubic } }
-
-        Rectangle {
-            x: parent.width * 0.77
-            y: parent.height * 0.08
-            width: Math.max(8, parent.width * 0.12)
-            height: width
-            radius: width / 2
-            color: "#161514"
-            border.width: 1
-            border.color: "#787168"
-        }
-
-        Rectangle {
-            x: parent.width * 0.70
-            y: parent.height * 0.16
-            width: Math.max(2, parent.width * 0.026)
-            height: parent.height * 0.46
-            radius: width / 2
-            color: "#C1B9AF"
-            rotation: 24
-            transformOrigin: Item.Top
-        }
-
-        Rectangle {
-            x: parent.width * 0.52
-            y: parent.height * 0.53
-            width: Math.max(7, parent.width * 0.11)
-            height: Math.max(5, parent.height * 0.055)
-            radius: height / 2
-            color: "#D8D0C6"
-            rotation: 24
+        Image {
+            x: composition.width * 0.83
+            y: composition.height * 0.035
+            width: composition.width * 0.16
+            height: width * 310 / 80
+            source: "qrc:/qt/qml/CassetteCat/assets/vinyl_tonearm.svg"
+            sourceSize.width: Math.ceil(width * 2)
+            sourceSize.height: Math.ceil(height * 2)
+            smooth: true
+            visible: root.showTonearm && composition.width >= 64
+            transform: Rotation {
+                origin.x: composition.width * 0.08
+                origin.y: composition.width * 0.116
+                angle: root.playing ? 10 + 29 * Math.max(0, Math.min(1, root.progress)) : 0
+                Behavior on angle {
+                    NumberAnimation { duration: 450; easing.type: Easing.InOutQuad }
+                }
+            }
         }
     }
 }

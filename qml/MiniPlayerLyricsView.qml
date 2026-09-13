@@ -52,9 +52,13 @@ Item {
                         color: isCurrent
                             ? (root.miniPlayer.lyricsActiveStyle === "accent" ? root.miniPlayer.recordRedHover : "#FFFFFF")
                             : (lyricLineMouse.containsMouse ? root.miniPlayer.textPrimary : root.miniPlayer.silverDim)
-                        horizontalAlignment: Text.AlignLeft
+                        horizontalAlignment: root.miniPlayer.lyricsAlignment === "center" ? Text.AlignHCenter : Text.AlignLeft
                         font.family: root.miniPlayer.displayFont
-                        font.pixelSize: isCurrent ? 22 : 16
+                        font.pixelSize: {
+                            const base = root.miniPlayer.lyricsFontSize || 28
+                            const scale = base / 28.0
+                            return isCurrent ? Math.round(22 * scale) : Math.round(16 * scale)
+                        }
                         font.weight: isCurrent ? Font.Bold : Font.DemiBold
                         scale: isCurrent ? 1.03 : 1.0
                         opacity: isCurrent ? 1.0 : (lyricLineMouse.containsMouse ? 0.75 : 0.36)
@@ -224,6 +228,8 @@ Item {
                     borderCard: root.miniPlayer.borderCard
                     accentColor: root.miniPlayer.recordRed
                     silverDim: root.miniPlayer.silverDim
+                    volumeLimitEnabled: root.miniPlayer.volumeLimitEnabled
+                    maxVolumePercent: root.miniPlayer.maxVolumePercent
                     visible: opacity > 0.001
                     opacity: (root.miniPlayer.mode === "lyrics" && root.miniPlayer.volumePillVisible) ? 1.0 : 0.0
                     Behavior on opacity { NumberAnimation { duration: 120 } }
@@ -287,7 +293,7 @@ Item {
                         height: 28
                         radius: 4
                         color: "transparent"
-                        LucideIcon { anchors.centerIn: parent; width: 16; height: 16; icon: "list-music"; color: root.miniPlayer.silverDim }
+                        LucideIcon { anchors.centerIn: parent; width: 16; height: 16; icon: "list"; color: root.miniPlayer.silverDim }
                         MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.miniPlayer.mode = "queue" }
                     }
                 }

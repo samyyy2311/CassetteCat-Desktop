@@ -75,7 +75,8 @@ Item {
     }
 
     AppToolTip {
+        targetItem: mouseArea
         text: root.tooltipText
-        visibleTarget: mouseArea.containsMouse
+        visibleTarget: mouseArea.containsMouse && root.tooltipText.length > 0
     }
 }

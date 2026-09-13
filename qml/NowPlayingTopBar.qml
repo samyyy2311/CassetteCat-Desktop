@@ -101,6 +101,19 @@ Item {
             }
         }
 
+        PressDepthIconButton {
+            boxSize: 38
+            iconSize: 18
+            iconName: "pencil"
+            tint: root.appWindow.silverDim
+            backgroundColor: "#10FFFFFF"
+            hoverBackgroundColor: "#24FFFFFF"
+            borderColor: "#14FFFFFF"
+            hoverBorderColor: "#30FFFFFF"
+            tooltipText: "Edit metadata"
+            onClicked: root.appWindow.openTrackMetadataEditor()
+        }
+
         Rectangle {
             width: 38
             height: 38
@@ -176,7 +189,7 @@ Item {
                 anchors.centerIn: parent
                 width: 18
                 height: 18
-                icon: "list-music"
+                icon: "list"
                 color: root.appWindow.nowPlayingMode === "queue" ? root.appWindow.recordRedHover : (queueBtnMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.silverDim)
             }
 

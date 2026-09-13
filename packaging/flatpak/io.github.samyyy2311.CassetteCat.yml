@@ -11,11 +11,14 @@ finish-args:
   - --filesystem=host:ro
 modules:
   - name: cassettecat
-    buildsystem: cmake-ninja
-    config-opts:
-      - -DCMAKE_BUILD_TYPE=Release
-      - -DCASSETTECAT_BUILD_TESTING=OFF
-      - -DCASSETTECAT_TAGLIB_SOURCE_DIR=/run/build/cassettecat/taglib-src
+    buildsystem: simple
+    build-commands:
+      - cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCASSETTECAT_BUILD_TESTING=OFF -DCASSETTECAT_TAGLIB_SOURCE_DIR="$PWD/taglib-src"
+      - cmake --build build --parallel
+      - install -Dm755 build/bin/CassetteCat /app/bin/CassetteCat
+      - install -Dm644 packaging/linux/io.github.samyyy2311.CassetteCat.desktop /app/share/applications/io.github.samyyy2311.CassetteCat.desktop
+      - install -Dm644 packaging/linux/io.github.samyyy2311.CassetteCat.metainfo.xml /app/share/metainfo/io.github.samyyy2311.CassetteCat.metainfo.xml
+      - install -Dm644 assets/cassettecat_icon.png /app/share/icons/hicolor/256x256/apps/io.github.samyyy2311.CassetteCat.png
     sources:
       - type: dir
         path: ../..

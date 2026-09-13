@@ -2,11 +2,11 @@ name: CodeQL
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
   schedule:
-    - cron: '0 6 * * 1'
+    - cron: '30 2 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -16,17 +16,33 @@ permissions:
 
 jobs:
   analyze:
-    name: Analyze C++ security
     runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+      QT_QPA_OFFSCREEN_NO_GLX: "1"
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@60168efe1c415ce0f5521ea06d5c2062adbeed1b # v3.28.17
         with:
           languages: cpp
-          build-mode: none
+          build-mode: manual
 
-      - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v3
+      - name: Install Qt
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        with:
+          version: "6.10.*"
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtmultimedia qtquickeffectmaker
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build/codeql -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+
+      - name: Build
+        run: cmake --build build/codeql --parallel 2
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@60168efe1c415ce0f5521ea06d5c2062adbeed1b # v3.28.17

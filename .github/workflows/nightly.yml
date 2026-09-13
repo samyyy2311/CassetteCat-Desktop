@@ -8,48 +8,108 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+env:
+  NIGHTLY_SHA: ${{ github.sha }}
+
 jobs:
-  build:
+  windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
-
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Set up MSVC
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         with:
           arch: x64
-
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4.3.1
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
         with:
           version: "6.10.*"
           target: desktop
           arch: win64_msvc2022_64
           modules: qtmultimedia qtquickeffectmaker
           cache: true
-
       - name: Configure
         shell: pwsh
         run: cmake -S . -B build/nightly -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
-
       - name: Build
         run: cmake --build build/nightly --parallel 2
-
       - name: Run self-check
         run: .\build\nightly\CassetteCat.exe --self-check
-
       - name: Run tests
         run: ctest --test-dir build/nightly --output-on-failure
-
-      - name: Package portable app
+      - name: Package portable ZIP
         shell: pwsh
         run: |
-          cmake --install build/nightly --prefix dist/CassetteCat
-          Compress-Archive -Path dist/CassetteCat -DestinationPath "CassetteCat-nightly-${{ github.run_number }}-windows-x64.zip"
-
-      - name: Upload portable app
-        uses: actions/upload-artifact@v4
+          $date = Get-Date -Format yyyyMMdd
+          $sha = $env:NIGHTLY_SHA.Substring(0, 7)
+          cmake --install build/nightly --component runtime --prefix dist/CassetteCat
+          Compress-Archive -Path dist/CassetteCat -DestinationPath "CassetteCat-nightly-$date-$sha.windows-x64.zip"
+          Expand-Archive -Force "CassetteCat-nightly-$date-$sha.windows-x64.zip" -DestinationPath smoke
+          .\smoke\CassetteCat\bin\CassetteCat.exe --self-check
+      - name: Upload Windows nightly
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: CassetteCat-windows-nightly-${{ github.run_number }}
-          path: CassetteCat-nightly-${{ github.run_number }}-windows-x64.zip
-          retention-days: 30
+          name: CassetteCat-nightly-${{ github.run_id }}-windows-x64
+          path: CassetteCat-nightly-*.windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+      QT_QPA_OFFSCREEN_NO_GLX: "1"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Install Qt
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        with:
+          version: "6.10.*"
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtmultimedia qtquickeffectmaker
+          cache: true
+      - name: Install AppImage tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
+          curl -fsSL -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy.AppImage
+      - name: Configure
+        run: cmake -S . -B build/nightly -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCASSETTECAT_PACKAGE_VERSION=0.0.0
+      - name: Build
+        run: cmake --build build/nightly --parallel 2
+      - name: Run self-check
+        run: ./build/nightly/bin/CassetteCat --self-check
+      - name: Run tests
+        run: ctest --test-dir build/nightly --output-on-failure
+      - name: Package Linux artifacts
+        run: |
+          NIGHTLY_DATE=$(date -u +%Y%m%d)
+          NIGHTLY_SHA_SHORT=${NIGHTLY_SHA:0:7}
+          cmake --install build/nightly --component runtime --prefix dist/CassetteCat
+          tar -czf "CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-x64.tar.gz" -C dist CassetteCat
+          cpack --config build/nightly/CPackConfig.cmake -G DEB
+          cpack --config build/nightly/CPackConfig.cmake -G RPM
+          deb=$(find . -maxdepth 1 -name '*.deb' -print -quit)
+          rpm=$(find . -maxdepth 1 -name '*.rpm' -print -quit)
+          test -n "$deb" && mv "$deb" "CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-amd64.deb"
+          test -n "$rpm" && mv "$rpm" "CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-x86_64.rpm"
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          ./linuxdeploy.AppImage --appdir AppDir --executable dist/CassetteCat/bin/CassetteCat --desktop-file packaging/linux/io.github.samyyy2311.CassetteCat.desktop --icon-file assets/cassettecat_icon.png --output appimage
+          mv CassetteCat*.AppImage "CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-x86_64.AppImage"
+          mkdir -p smoke && tar -xzf "CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-x64.tar.gz" -C smoke
+          smoke/CassetteCat/bin/CassetteCat --self-check
+          chmod +x "CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-x86_64.AppImage"
+          "./CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-x86_64.AppImage" --self-check
+      - name: Upload Linux nightly
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: CassetteCat-nightly-${{ github.run_id }}-linux-x86_64
+          path: CassetteCat-nightly-*
+          if-no-files-found: error
+          retention-days: 14

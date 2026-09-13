@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
@@ -10,108 +10,230 @@ on:
         required: true
         type: string
 
-permissions:
-  contents: write
-
 env:
-  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  windows:
-    runs-on: windows-latest
+  validate-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v5
+      - name: Validate release tag
+        env:
+          TAG: ${{ env.RELEASE_TAG }}
+        run: [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]]
+
+  build-windows:
+    needs: validate-tag
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ inputs.tag || github.ref }}
-
-      - name: Check release tag
-        shell: pwsh
-        run: if ($env:RELEASE_TAG -notmatch '^v.+') { throw 'Release tags must start with v.' }
-
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
       - name: Set up MSVC
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         with:
           arch: x64
-
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4.3.1
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
         with:
           version: "6.10.*"
           target: desktop
           arch: win64_msvc2022_64
           modules: qtmultimedia qtquickeffectmaker
           cache: true
-
       - name: Configure
         shell: pwsh
-        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
-
+        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DCASSETTECAT_PACKAGE_VERSION="$($env:RELEASE_TAG.TrimStart('v'))"
       - name: Build
-        run: cmake --build build/release --parallel
-
-      - name: Run self-check
-        run: .\build\release\CassetteCat.exe --self-check
-
-      - name: Package
+        run: cmake --build build/release --parallel 2
+      - name: Run self-check and tests
         shell: pwsh
         run: |
-          cmake --install build/release --prefix dist/CassetteCat
+          .\build\release\CassetteCat.exe --self-check
+          ctest --test-dir build/release --output-on-failure
+      - name: Package Windows artifacts
+        shell: pwsh
+        run: |
+          Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
+          cmake --install build/release --component runtime --prefix dist/CassetteCat
           Compress-Archive -Path dist/CassetteCat -DestinationPath "CassetteCat-$env:RELEASE_TAG-windows-x64.zip"
-          (Get-FileHash "CassetteCat-$env:RELEASE_TAG-windows-x64.zip" -Algorithm SHA256).Hash | Set-Content "CassetteCat-$env:RELEASE_TAG-windows-x64.zip.sha256"
-
-      - name: Build installer
-        shell: pwsh
-        run: |
+          Expand-Archive -Force "CassetteCat-$env:RELEASE_TAG-windows-x64.zip" -DestinationPath smoke
+          if (-not (Test-Path smoke\CassetteCat\bin\CassetteCat.exe)) { throw 'Portable ZIP is missing CassetteCat.exe.' }
+          .\smoke\CassetteCat\bin\CassetteCat.exe --self-check
           choco install innosetup --no-progress --limit-output -y
           $version = $env:RELEASE_TAG.TrimStart('v')
           iscc.exe "/DAppVersion=$version" installer\CassetteCat.iss
-          Move-Item "dist\CassetteCat-$version-windows-x64-setup.exe" "CassetteCat-$env:RELEASE_TAG-windows-x64-setup.exe"
-          (Get-FileHash "CassetteCat-$env:RELEASE_TAG-windows-x64-setup.exe" -Algorithm SHA256).Hash | Set-Content "CassetteCat-$env:RELEASE_TAG-windows-x64-setup.exe.sha256"
+          $installer = Get-ChildItem dist -Filter 'CassetteCat-*-setup.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'Inno Setup did not produce an installer.' }
+          Move-Item $installer.FullName "CassetteCat-$env:RELEASE_TAG-windows-x64-setup.exe"
+          if ((Get-Item "CassetteCat-$env:RELEASE_TAG-windows-x64.zip").Length -le 0) { throw 'Portable ZIP is empty.' }
+          if ((Get-Item "CassetteCat-$env:RELEASE_TAG-windows-x64-setup.exe").Length -le 0) { throw 'Installer is empty.' }
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-windows
+          path: |
+            CassetteCat-${{ env.RELEASE_TAG }}-windows-x64.zip
+            CassetteCat-${{ env.RELEASE_TAG }}-windows-x64-setup.exe
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Publish release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release create "$env:RELEASE_TAG" "CassetteCat-$env:RELEASE_TAG-windows-x64.zip" "CassetteCat-$env:RELEASE_TAG-windows-x64.zip.sha256" "CassetteCat-$env:RELEASE_TAG-windows-x64-setup.exe" "CassetteCat-$env:RELEASE_TAG-windows-x64-setup.exe.sha256" --generate-notes --title "CassetteCat $env:RELEASE_TAG"
-
-  linux:
-    needs: windows
+  build-linux:
+    needs: validate-tag
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       QT_QPA_PLATFORM: offscreen
       QT_QPA_OFFSCREEN_NO_GLX: "1"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ inputs.tag || github.ref }}
-
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4.3.1
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
         with:
           version: "6.10.*"
           target: desktop
           arch: linux_gcc_64
           modules: qtmultimedia qtquickeffectmaker
           cache: true
-
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder rpm
+          curl -fsSL -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-x86_64.AppImage
+          chmod +x linuxdeploy.AppImage
       - name: Configure
-        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
-
+        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCASSETTECAT_PACKAGE_VERSION="${RELEASE_TAG#v}"
       - name: Build
         run: cmake --build build/release --parallel 2
-
-      - name: Run self-check
-        run: ./build/release/bin/CassetteCat --self-check
-
-      - name: Run tests
-        run: ctest --test-dir build/release --output-on-failure
-
-      - name: Package
+      - name: Run self-check and tests
         run: |
-          cmake --install build/release --prefix dist/CassetteCat
-          tar -czf "CassetteCat-$RELEASE_TAG-linux-x64.tar.gz" -C dist CassetteCat
-          sha256sum "CassetteCat-$RELEASE_TAG-linux-x64.tar.gz" > "CassetteCat-$RELEASE_TAG-linux-x64.tar.gz.sha256"
+          ./build/release/bin/CassetteCat --self-check
+          ctest --test-dir build/release --output-on-failure
+      - name: Package Linux artifacts
+        run: |
+          mkdir -p dist/CassetteCat
+          cmake --install build/release --component runtime --prefix dist/CassetteCat
+          tar -czf "CassetteCat-${RELEASE_TAG}-linux-x64.tar.gz" -C dist CassetteCat
+          mkdir -p smoke && tar -xzf "CassetteCat-${RELEASE_TAG}-linux-x64.tar.gz" -C smoke
+          smoke/CassetteCat/bin/CassetteCat --self-check
+          cpack --config build/release/CPackConfig.cmake -G DEB
+          cpack --config build/release/CPackConfig.cmake -G RPM
+          deb=$(find . -maxdepth 1 -name '*.deb' -print -quit)
+          rpm=$(find . -maxdepth 1 -name '*.rpm' -print -quit)
+          test -n "$deb" && mv "$deb" "CassetteCat-${RELEASE_TAG}-linux-amd64.deb"
+          test -n "$rpm" && mv "$rpm" "CassetteCat-${RELEASE_TAG}-linux-x86_64.rpm"
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          ./linuxdeploy.AppImage --appdir AppDir --executable dist/CassetteCat/bin/CassetteCat --desktop-file packaging/linux/io.github.samyyy2311.CassetteCat.desktop --icon-file assets/cassettecat_icon.png --output appimage
+          mv CassetteCat*.AppImage "CassetteCat-${RELEASE_TAG}-linux-x86_64.AppImage"
+          chmod +x "CassetteCat-${RELEASE_TAG}-linux-x86_64.AppImage"
+          "./CassetteCat-${RELEASE_TAG}-linux-x86_64.AppImage" --self-check
+      - name: Build Flatpak bundle
+        run: |
+          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak-builder --force-clean --disable-rofiles-fuse --repo=flatpak-repo build/flatpak packaging/flatpak/io.github.samyyy2311.CassetteCat.yml
+          flatpak build-bundle flatpak-repo "CassetteCat-${RELEASE_TAG}-x86_64.flatpak" io.github.samyyy2311.CassetteCat "${RELEASE_TAG#v}"
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-linux
+          path: |
+            CassetteCat-${{ env.RELEASE_TAG }}-linux-x86_64.AppImage
+            CassetteCat-${{ env.RELEASE_TAG }}-linux-x64.tar.gz
+            CassetteCat-${{ env.RELEASE_TAG }}-linux-amd64.deb
+            CassetteCat-${{ env.RELEASE_TAG }}-linux-x86_64.rpm
+            CassetteCat-${{ env.RELEASE_TAG }}-x86_64.flatpak
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Publish Linux release assets
+  verify-release:
+    needs: [validate-tag, build-windows, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Install package validators
+        run: sudo apt-get update && sudo apt-get install -y rpm
+      - name: Validate tag and release assets
+        env:
+          TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)\.[0-9]+)?$ ]] || { echo "Malformed release tag: $TAG"; exit 1; }
+          expected=(
+            "CassetteCat-${TAG}-windows-x64.zip"
+            "CassetteCat-${TAG}-windows-x64-setup.exe"
+            "CassetteCat-${TAG}-linux-x86_64.AppImage"
+            "CassetteCat-${TAG}-linux-x64.tar.gz"
+            "CassetteCat-${TAG}-linux-amd64.deb"
+            "CassetteCat-${TAG}-linux-x86_64.rpm"
+            "CassetteCat-${TAG}-x86_64.flatpak"
+          )
+          for file in "${expected[@]}"; do test -s "release-assets/$file" || { echo "Missing release asset: $file"; exit 1; }; done
+          chmod +x "release-assets/CassetteCat-${TAG}-linux-x86_64.AppImage"
+          test -x "release-assets/CassetteCat-${TAG}-linux-x86_64.AppImage"
+          dpkg-deb --info "release-assets/CassetteCat-${TAG}-linux-amd64.deb" >/dev/null
+          rpm -qip "release-assets/CassetteCat-${TAG}-linux-x86_64.rpm" >/dev/null
+          rpm -qlp "release-assets/CassetteCat-${TAG}-linux-x86_64.rpm" >/dev/null
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@f325610c9f50a54015d37c8d16cb3b0e2c8f4de0 # v0.18.0
+        with:
+          path: release-assets
+          format: spdx-json
+          output-file: release-assets/CassetteCat-${{ env.RELEASE_TAG }}.spdx.json
+      - name: Generate and verify checksums
+        run: |
+          rm -f release-assets/SHA256SUMS.txt
+          (cd release-assets && sha256sum * > SHA256SUMS.txt)
+          (cd release-assets && sha256sum -c SHA256SUMS.txt)
+      - name: Upload verified release bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-verified
+          path: release-assets
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-release:
+    needs: verify-release
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-verified
+          path: release-assets
+      - name: Attest verified release artifacts
+        uses: actions/attest-build-provenance@7668571508540a607bdfd90a87a560489fe372eb # v2.1.0
+        with:
+          subject-path: 'release-assets/*'
+      - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$RELEASE_TAG" "CassetteCat-$RELEASE_TAG-linux-x64.tar.gz" "CassetteCat-$RELEASE_TAG-linux-x64.tar.gz.sha256"
+          TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" release-assets/* --clobber
+          else
+            args=("$TAG" release-assets/* --title "CassetteCat $TAG" --generate-notes)
+            [[ "$TAG" == *-* ]] && args+=(--prerelease)
+            gh release create "${args[@]}"
+          fi

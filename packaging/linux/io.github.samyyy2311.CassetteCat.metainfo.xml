@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.samyyy2311.CassetteCat</id>
+  <name>CassetteCat</name>
+  <summary>Local-first desktop music player</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <url type="homepage">https://github.com/samyyy2311/CassetteCat-Desktop</url>
+  <developer id="io.github.samyyy2311">
+    <name>CassetteCat contributors</name>
+  </developer>
+  <description>
+    <p>Play and organise the music you already own.</p>
+  </description>
+  <launchable type="desktop-id">io.github.samyyy2311.CassetteCat.desktop</launchable>
+  <provides>
+    <binary>CassetteCat</binary>
+  </provides>
+  <categories>
+    <category>AudioVideo</category>
+    <category>Audio</category>
+    <category>Player</category>
+  </categories>
+</component>

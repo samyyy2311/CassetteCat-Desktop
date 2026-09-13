@@ -1,8 +1,8 @@
-name: Dependency Review
+name: Dependency review
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: [main]
 
 permissions:
   contents: read
@@ -11,5 +11,4 @@ jobs:
   dependency-review:
     runs-on: ubuntu-latest
     steps:
-      - name: Review dependency changes
-        uses: actions/dependency-review-action@v4
+      - uses: actions/dependency-review-action@38ecb5b593bf0eb19e335c03f97670f792489a8b # v4.7.0

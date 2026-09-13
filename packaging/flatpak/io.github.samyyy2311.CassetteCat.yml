@@ -1,0 +1,35 @@
+app-id: io.github.samyyy2311.CassetteCat
+runtime: org.kde.Platform
+runtime-version: '6.8'
+sdk: org.kde.Sdk
+command: CassetteCat
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=host:ro
+modules:
+  - name: taglib
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DBUILD_TESTING=OFF
+      - -DBUILD_EXAMPLES=OFF
+    sources:
+      - type: git
+        url: https://github.com/taglib/taglib.git
+        tag: v2.0.2
+    cleanup:
+      - /bin/taglib-config*
+      - /include
+      - /lib/cmake
+      - /lib/pkgconfig
+  - name: cassettecat
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DCASSETTECAT_BUILD_TESTING=OFF
+      - -DCASSETTECAT_TAGLIB_SOURCE_DIR=/run/build/taglib
+    sources:
+      - type: dir
+        path: ../..

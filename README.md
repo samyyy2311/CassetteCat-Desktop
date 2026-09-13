@@ -65,6 +65,19 @@
 
 ### Linux
 
+Choose the package that matches your distribution:
+
+1. **AppImage** — broad portable option; make it executable and run it.
+2. **Flatpak** — sandboxed option for distributions with Flatpak support.
+3. **DEB** — Debian, Ubuntu, Mint, Pop!_OS, and compatible systems.
+4. **RPM** — Fedora, RHEL-compatible, and compatible openSUSE systems.
+5. **tar.gz** — manual portable install.
+
+The release page contains all five formats for x86_64 Linux. Package support
+depends on the runtime libraries provided by the target distribution.
+
+For the portable archive:
+
 ```bash
 gh release download --repo samyyy2311/CassetteCat-Desktop --pattern '*linux-x64.tar.gz'
 tar -xzf CassetteCat-*-linux-x64.tar.gz

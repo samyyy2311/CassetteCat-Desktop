@@ -1,0 +1,33 @@
+windows:
+  - changed-files:
+      - any-glob-to-any-file: ['installer/**', 'src/*win*', 'src/*smtc*']
+linux:
+  - changed-files:
+      - any-glob-to-any-file: ['packaging/linux/**', 'packaging/flatpak/**', 'cmake/Packaging.cmake']
+packaging:
+  - changed-files:
+      - any-glob-to-any-file: ['packaging/**', 'installer/**', 'cmake/Packaging.cmake']
+github-actions:
+  - changed-files:
+      - any-glob-to-any-file: ['.github/workflows/**', '.github/dependabot.yml', '.github/labeler.yml']
+cpp:
+  - changed-files:
+      - any-glob-to-any-file: ['src/**', 'CMakeLists.txt', 'cmake/**']
+qml:
+  - changed-files:
+      - any-glob-to-any-file: ['qml/**']
+ui:
+  - changed-files:
+      - any-glob-to-any-file: ['qml/**', 'assets/**', 'fonts/**']
+audio:
+  - changed-files:
+      - any-glob-to-any-file: ['src/player_controller*', 'src/audio_*', 'src/*audio*']
+streaming:
+  - changed-files:
+      - any-glob-to-any-file: ['src/streaming*', 'src/remote_track_model*']
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: ['README.md', 'CONTRIBUTING.md', 'SECURITY.md', '.github/ISSUE_TEMPLATE/**']
+tests:
+  - changed-files:
+      - any-glob-to-any-file: ['tests/**']

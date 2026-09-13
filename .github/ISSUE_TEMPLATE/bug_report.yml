@@ -2,20 +2,44 @@ name: Bug report
 description: Report a reproducible problem
 labels: [bug]
 body:
-  - type: textarea
+  - type: input
+    id: version
     attributes:
-      label: What happened?
-      description: Include clear steps to reproduce the issue.
+      label: CassetteCat version
+      placeholder: v1.7.0 or development build
     validations:
       required: true
   - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS version; on Linux, include distribution and version and the package format used.
+      placeholder: Windows 11 24H2 / AppImage on Ubuntu 24.04
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest sequence that reliably shows the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
     attributes:
       label: Expected behavior
     validations:
       required: true
-  - type: input
+  - type: textarea
+    id: actual
     attributes:
-      label: Environment
-      description: OS, app version, and Qt version if known.
+      label: Actual behavior
     validations:
       required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Remove personal paths, credentials, and other sensitive data before posting.
+    validations:
+      required: false

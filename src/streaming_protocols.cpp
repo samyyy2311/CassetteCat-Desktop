@@ -235,8 +235,6 @@ QVariantMap jellyfinTrackMap(const QJsonObject &item)
         artId = albumId;
     } else if (!albumId.isEmpty()) {
         artId = albumId;
-    } else {
-        artId = id;
     }
     track.insert("remoteArtId", artId);
     return track;

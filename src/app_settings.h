@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QRecursiveMutex>
 #include <QSettings>
 #include <QUrl>
 #include <QVariant>
@@ -11,6 +12,11 @@ class SettingsController final : public QObject
 
 public:
     explicit SettingsController(QObject *parent = nullptr);
+    ~SettingsController() override;
+
+    static SettingsController *instance();
+    static QVariant globalValue(const QString &key, const QVariant &defaultValue = QVariant());
+    static void setGlobalValue(const QString &key, const QVariant &value);
 
     Q_INVOKABLE void setValue(const QString &key, const QVariant &value);
     Q_INVOKABLE void setValues(const QVariantMap &values);
@@ -19,7 +25,11 @@ public:
 
     Q_INVOKABLE bool exportTextFile(const QUrl &url, const QString &text);
     Q_INVOKABLE QString readTextFile(const QUrl &url) const;
+    Q_INVOKABLE void copyToClipboard(const QString &text);
+    Q_INVOKABLE void showInFolder(const QString &filePath);
 
 private:
+    static inline SettingsController *s_instance = nullptr;
+    mutable QRecursiveMutex m_mutex;
     mutable QSettings m_settings;
 };

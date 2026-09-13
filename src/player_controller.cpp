@@ -1,6 +1,7 @@
 #include "player_controller.h"
 
 #include "app_paths.h"
+#include "app_settings.h"
 #include "audio_metadata.h"
 #include "streaming.h"
 
@@ -108,6 +109,15 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     connect(m_player, &QMediaPlayer::mediaStatusChanged, this, [this](QMediaPlayer::MediaStatus status) {
         qInfo().noquote() << "[PLAYER] mediaStatus=" << static_cast<int>(status)
                           << "positionMs=" << m_player->position();
+        if (status == QMediaPlayer::LoadedMedia || status == QMediaPlayer::BufferedMedia) {
+            if (m_pendingRestorePositionMs > 0) {
+                const qint64 targetPos = m_pendingRestorePositionMs;
+                m_pendingRestorePositionMs = 0;
+                m_player->setPosition(targetPos);
+                m_position = targetPos;
+                emit positionChanged();
+            }
+        }
         if (status == QMediaPlayer::EndOfMedia) {
             emit trackEnded();
         }
@@ -121,6 +131,9 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     });
 
     connect(m_player, &QMediaPlayer::positionChanged, this, [this](qint64 pos) {
+        if (m_pendingRestorePositionMs > 0 && pos == 0) {
+            return;
+        }
         m_position = pos;
         emit positionChanged();
     });
@@ -145,10 +158,15 @@ float PlayerController::volume() const { return m_audioOutput ? m_audioOutput->v
 QVariantList PlayerController::audioOutputs() const
 {
     QVariantList outputs;
+    QVariantMap defaultDevice;
+    defaultDevice.insert(QStringLiteral("value"), QString());
+    defaultDevice.insert(QStringLiteral("label"), QStringLiteral("System Default"));
+    outputs.append(defaultDevice);
+
     for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
         QVariantMap output;
-        output.insert("value", QString::fromLatin1(device.id().toHex()));
-        output.insert("label", device.description());
+        output.insert(QStringLiteral("value"), QString::fromLatin1(device.id().toHex()));
+        output.insert(QStringLiteral("label"), device.description());
         outputs.append(output);
     }
     return outputs;
@@ -156,15 +174,30 @@ QVariantList PlayerController::audioOutputs() const
 
 QString PlayerController::audioDeviceId() const
 {
-    return m_audioOutput ? QString::fromLatin1(m_audioOutput->device().id().toHex()) : QString();
+    if (!m_audioOutput) return QString();
+    const QByteArray currentId = m_audioOutput->device().id();
+    if (currentId.isEmpty() || currentId == QMediaDevices::defaultAudioOutput().id()) {
+        return QString();
+    }
+    return QString::fromLatin1(currentId.toHex());
 }
 
 bool PlayerController::setAudioDevice(const QString &id)
 {
+    if (!m_audioOutput) return false;
+    if (id.isEmpty()) {
+        const QAudioDevice defaultDevice = QMediaDevices::defaultAudioOutput();
+        if (m_audioOutput->device().id() != defaultDevice.id()) {
+            m_audioOutput->setDevice(defaultDevice);
+        }
+        emit audioDeviceChanged();
+        return true;
+    }
     for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
         if (QString::fromLatin1(device.id().toHex()) != id) continue;
-        if (m_audioOutput->device().id() == device.id()) return true;
-        m_audioOutput->setDevice(device);
+        if (m_audioOutput->device().id() != device.id()) {
+            m_audioOutput->setDevice(device);
+        }
         emit audioDeviceChanged();
         return true;
     }
@@ -281,9 +314,8 @@ void PlayerController::setVolume(float vol)
 {
     if (m_audioOutput) {
         float clamped = std::clamp(vol, 0.0f, 1.0f);
-        QSettings limitSettings(settingsFilePath(), QSettings::IniFormat);
-        if (limitSettings.value("player/volumeLimitEnabled", false).toBool()) {
-            const int maxPercent = std::clamp(limitSettings.value("player/maxVolumePercent", 80).toInt(), 10, 100);
+        if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
+            const int maxPercent = std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
             clamped = (std::min)(clamped, maxPercent / 100.0f);
         }
         if (m_audioOutput->volume() != clamped) {
@@ -295,11 +327,14 @@ void PlayerController::setVolume(float vol)
 
 void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs)
 {
-    if (!loadTrack(track)) return;
+    m_pendingRestorePositionMs = positionMs;
+    if (!loadTrack(track)) {
+        m_pendingRestorePositionMs = 0;
+        return;
+    }
     m_pauseExpected = true;
     m_player->pause();
     if (positionMs > 0) {
-        m_player->setPosition(positionMs);
         m_position = positionMs;
         emit positionChanged();
     }
@@ -307,6 +342,7 @@ void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs)
 
 void PlayerController::playTrack(const QVariantMap &track)
 {
+    m_pendingRestorePositionMs = 0;
     if (!loadTrack(track)) return;
     m_pauseExpected = false;
     m_player->play();
@@ -327,7 +363,7 @@ bool PlayerController::loadTrack(const QVariantMap &track)
     if (m_currentTrack.value("artworkUrl").toString().isEmpty()
         && !StreamingController::isRemotePath(filePath)) {
         // ponytail: load embedded artwork only for the current track; add async thumbnailing if browsing embedded art needs it.
-        m_currentTrack.insert("artworkUrl", extractEmbeddedArtwork(filePath, 1024));
+        m_currentTrack.insert("artworkUrl", extractEmbeddedArtwork(filePath));
     }
     m_currentLyrics = track.value("lyrics").toString();
     if (m_currentLyrics.isEmpty() && !StreamingController::isRemotePath(filePath)) {
@@ -338,6 +374,8 @@ bool PlayerController::loadTrack(const QVariantMap &track)
 
     m_position = 0;
     emit positionChanged();
+    m_pauseExpected = true;
+    m_player->stop();
     m_player->setSource(mediaSource);
     m_player->setActiveVideoTrack(-1);
     return true;
@@ -377,6 +415,7 @@ void PlayerController::stop()
 
 void PlayerController::seek(qint64 positionMs)
 {
+    m_pendingRestorePositionMs = 0;
     m_player->setPosition(positionMs);
 }
 
@@ -407,8 +446,7 @@ QUrl PlayerController::resolveMediaSource(const QVariantMap &track) const
     }
     const QUrl url(filePath);
     if (isNetworkStream(url)) {
-        QSettings settings(settingsFilePath(), QSettings::IniFormat);
-        if (settings.value("network/offlineBlackout", false).toBool()) return {};
+        if (SettingsController::globalValue("network/offlineBlackout", false).toBool()) return {};
         return url;
     }
     return QUrl::fromLocalFile(filePath);
@@ -419,4 +457,19 @@ void PlayerController::setAudioLevel(qreal level)
     if (qAbs(m_audioLevel - level) < 0.01) return;
     m_audioLevel = level;
     emit audioLevelChanged();
+}
+
+void PlayerController::updateCurrentTrackArtwork(const QString &artworkPath)
+{
+    if (m_currentTrack.isEmpty()) return;
+    m_currentTrack.insert("artworkUrl", artworkPath);
+    emit currentTrackChanged();
+}
+
+void PlayerController::updateCurrentTrackMetadata(const QVariantMap &track)
+{
+    if (m_currentTrack.isEmpty() || track.value("filePath") != m_currentTrack.value("filePath")) return;
+    m_currentTrack = track;
+    setCurrentLyrics(track.value("lyrics").toString());
+    emit currentTrackChanged();
 }

@@ -33,15 +33,34 @@ public:
     Q_INVOKABLE void cancelNetworkRequests();
     Q_INVOKABLE void setBlackoutEnabled(bool enabled);
     Q_INVOKABLE void fetchArtistBio(const QString &artist);
+    Q_INVOKABLE void fetchAlbumBio(const QString &album, const QString &artist);
     Q_INVOKABLE void fetchArtistImage(const QString &artist);
     Q_INVOKABLE void openExternalUrl(const QString &url);
+    Q_INVOKABLE void validateListenBrainzToken(const QString &token);
+    Q_INVOKABLE void authenticateLibreFm(const QString &username, const QString &password);
+    Q_INVOKABLE void scrobbleNowPlaying(const QVariantMap &track);
+    Q_INVOKABLE void scrobbleTrack(const QVariantMap &track, qint64 timestampSec);
+    Q_INVOKABLE void saveListenBrainzSession(const QString &token, const QString &userName);
+    Q_INVOKABLE void disconnectListenBrainz();
+    Q_INVOKABLE void saveLibreFmSession(const QString &username, const QString &sessionKey);
+    Q_INVOKABLE void disconnectLibreFm();
+    Q_INVOKABLE bool hasListenBrainzSession();
+    Q_INVOKABLE bool hasLibreFmSession();
+    Q_INVOKABLE void searchAlbumCovers(const QString &album, const QString &artist = "");
+    Q_INVOKABLE void applyAlbumCover(const QString &album, const QString &artist, const QString &imageUrl, const QString &filePath = "");
 
 signals:
     void lyricsFetched(const QString &title, const QString &artist, const QString &lyrics, const QString &provider);
     void lyricsSearchResultsReady(const QVariantList &results);
+    void coverSearchResultsReady(const QVariantList &results);
+    void coverSearchFailed(const QString &error);
+    void coverApplied(const QString &album, const QString &artist, const QString &artworkPath, const QString &filePath);
     void radioStationsLoaded(const QVariantList &stations);
     void artistBioLoaded(const QString &artist, const QString &bio);
+    void albumBioLoaded(const QString &album, const QString &bio);
     void artistImageLoaded(const QString &artist, const QString &imageUrl);
+    void listenBrainzValidationFinished(bool valid, const QString &userName, const QString &error);
+    void libreFmAuthFinished(bool success, const QString &userName, const QString &sessionKey, const QString &error);
 
 private:
     static QString lyricsCacheKey(const QString &title, const QString &artist, const QString &album);
@@ -55,6 +74,9 @@ private:
     void fetchArtistImageFromAudioDb(const QString &artist);
     void fetchArtistBioFromWikipedia(const QString &artist, const QStringList &queries, int index);
     void fetchArtistBioFromAudioDb(const QString &artist);
+    void fetchAlbumBioFromWikipedia(const QString &album, const QStringList &queries, int index);
+    void initScrobbleCredentials();
+    static QString generateLibreFmApiSig(const QMap<QString, QString> &params);
 
     QNetworkAccessManager *m_net = nullptr;
     QHash<QString, QString> m_artistImages;
@@ -63,4 +85,8 @@ private:
     QList<QPointer<QNetworkReply>> m_pendingReplies;
     int m_radioRequestToken = 0;
     quint64 m_lyricsRequestToken = 0;
+    quint64 m_coverRequestToken = 0;
+    QString m_listenBrainzToken;
+    QString m_libreFmSessionKey;
+    bool m_scrobbleCredentialsLoaded = false;
 };

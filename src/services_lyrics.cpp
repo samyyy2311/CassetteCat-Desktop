@@ -1,6 +1,7 @@
 #include "services_controller.h"
 
 #include "app_paths.h"
+#include "app_settings.h"
 
 #include <QCryptographicHash>
 #include <QDir>
@@ -27,26 +28,25 @@ QString ServicesController::localLyricsFor(const QString &filePath) const
 
 void ServicesController::cacheLyrics(const QString &title, const QString &artist, const QString &album, const QString &syncedLyrics, const QString &plainLyrics, const QString &provider)
 {
-        const QString lyrics = !syncedLyrics.trimmed().isEmpty() ? syncedLyrics.trimmed() : plainLyrics.trimmed();
-        if (lyrics.isEmpty()) return;
-        QSettings settings(settingsFilePath(), QSettings::IniFormat);
-        const QString key = lyricsCacheKey(title, artist, album);
-        settings.setValue("lyrics/cache/" + key, lyrics);
-        settings.setValue("lyrics/provider/" + key, provider.isEmpty() ? "LRCLIB" : provider);
-    }
+    const QString lyrics = !syncedLyrics.trimmed().isEmpty() ? syncedLyrics.trimmed() : plainLyrics.trimmed();
+    if (lyrics.isEmpty()) return;
+    const QString key = lyricsCacheKey(title, artist, album);
+    SettingsController::setGlobalValue("lyrics/cache/" + key, lyrics);
+    SettingsController::setGlobalValue("lyrics/provider/" + key, provider.isEmpty() ? "LRCLIB" : provider);
+}
 
 void ServicesController::fetchLyrics(const QString &title, const QString &artist, const QString &album, int durationSeconds)
 {
-        if (title.isEmpty() || artist.isEmpty() || !serviceEnabled("lrclib")) return;
-        const quint64 requestToken = ++m_lyricsRequestToken;
+    if (title.isEmpty() || artist.isEmpty() || !serviceEnabled("lrclib")) return;
+    const quint64 requestToken = ++m_lyricsRequestToken;
 
-        QSettings settings(settingsFilePath(), QSettings::IniFormat);
-        const QString cached = settings.value("lyrics/cache/" + lyricsCacheKey(title, artist, album)).toString();
-        if (!cached.isEmpty()) {
-            emit lyricsFetched(title, artist, cached, settings.value("lyrics/provider/" + lyricsCacheKey(title, artist, album), "LRCLIB").toString());
-            return;
-        }
-        if (!onlineEnabled()) return;
+    const QString key = lyricsCacheKey(title, artist, album);
+    const QString cached = SettingsController::globalValue("lyrics/cache/" + key).toString();
+    if (!cached.isEmpty()) {
+        emit lyricsFetched(title, artist, cached, SettingsController::globalValue("lyrics/provider/" + key, "LRCLIB").toString());
+        return;
+    }
+    if (!onlineEnabled()) return;
 
         QUrl url("https://lrclib.net/api/get");
         QUrlQuery q;

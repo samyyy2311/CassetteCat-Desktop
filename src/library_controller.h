@@ -39,7 +39,10 @@ public:
     Q_INVOKABLE void removeFolder(const QString &path);
     Q_INVOKABLE QString localPath(const QUrl &url) const;
     Q_INVOKABLE QString artworkFor(const QString &filePath);
+    Q_INVOKABLE void setCustomArtwork(const QString &filePath, const QString &artworkPath);
+    Q_INVOKABLE void setAlbumArtwork(const QString &album, const QString &artist, const QString &artworkPath);
     Q_INVOKABLE QVariantMap trackForPath(const QString &filePath) const;
+    Q_INVOKABLE QVariantMap updateTrackMetadata(const QVariantMap &metadata);
     Q_INVOKABLE QVariantMap firstPlayableTrack() const;
     Q_INVOKABLE QVariantList playbackTracks() const;
     Q_INVOKABLE QVariantMap catalogGroups() const;

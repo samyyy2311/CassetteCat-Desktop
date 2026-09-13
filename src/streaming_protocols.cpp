@@ -131,10 +131,15 @@ QVariantMap subsonicTrackMap(const QJsonObject &song, const QString &albumName, 
     track.insert("filePath", "subsonic:" + id);
     track.insert("fileName", song.value("title").toString());
     track.insert("title", song.value("title").toString());
-    const QString artist = song.value("artist").toString();
-    track.insert("artist", artist.isEmpty() ? QString("Unknown Artist") : artist);
-    track.insert("album", albumName);
-    track.insert("genre", song.value("genre").toString());
+    QString artist = song.value("artist").toString().trimmed();
+    if (artist.isEmpty()) {
+        artist = "Unknown Artist";
+    }
+    track.insert("artist", artist);
+    const QString album = song.value("album").toString().trimmed();
+    track.insert("album", album.isEmpty() ? (albumName.isEmpty() ? QString("Unknown Album") : albumName) : album);
+    const QString genre = song.value("genre").toString().trimmed();
+    track.insert("genre", genre.isEmpty() ? QString("Soundtrack") : genre);
     track.insert("durationSeconds", secs);
     track.insert("duration", formatTrackDuration(secs));
     track.insert("format", song.value("suffix").toString().toUpper());
@@ -165,21 +170,75 @@ QVariantMap jellyfinTrackMap(const QJsonObject &item)
     track.insert("filePath", "jellyfin:" + id);
     track.insert("fileName", item.value("Name").toString());
     track.insert("title", item.value("Name").toString());
-    const QString artist = item.value("AlbumArtist").toString();
-    track.insert("artist", artist.isEmpty() ? QString("Unknown Artist") : artist);
-    const QString album = item.value("Album").toString();
+
+    QString artist;
+    const QJsonArray artistsArray = item.value("Artists").toArray();
+    if (!artistsArray.isEmpty()) {
+        QStringList names;
+        for (const auto &val : artistsArray) {
+            const QString n = val.toString().trimmed();
+            if (!n.isEmpty()) names << n;
+        }
+        artist = names.join(", ");
+    }
+    if (artist.isEmpty()) {
+        const QJsonArray artistItems = item.value("ArtistItems").toArray();
+        if (!artistItems.isEmpty()) {
+            QStringList names;
+            for (const auto &val : artistItems) {
+                const QString n = val.toObject().value("Name").toString().trimmed();
+                if (!n.isEmpty()) names << n;
+            }
+            artist = names.join(", ");
+        }
+    }
+    if (artist.isEmpty()) {
+        artist = item.value("AlbumArtist").toString().trimmed();
+    }
+    if (artist.isEmpty()) {
+        artist = "Unknown Artist";
+    }
+    track.insert("artist", artist);
+
+    const QString album = item.value("Album").toString().trimmed();
     track.insert("album", album.isEmpty() ? QString("Unknown Album") : album);
+
     const QJsonArray genres = item.value("Genres").toArray();
-    track.insert("genre", genres.isEmpty() ? QString() : genres.first().toString());
+    track.insert("genre", genres.isEmpty() ? QString("Soundtrack") : genres.first().toString().trimmed());
+
     track.insert("durationSeconds", secs);
     track.insert("duration", formatTrackDuration(secs));
-    track.insert("format", item.value("Container").toString().toUpper());
+
+    QString container = item.value("Container").toString().toUpper();
+    if (container.contains("M4A") || container.contains("AAC") || container.contains("MP4")) container = "M4A";
+    else if (container.contains("FLAC")) container = "FLAC";
+    else if (container.contains("MP3")) container = "MP3";
+    else if (container.contains("OPUS")) container = "OPUS";
+    else if (container.contains("OGG")) container = "OGG";
+    else if (container.contains("WAV")) container = "WAV";
+    else if (container.contains("ALAC")) container = "ALAC";
+    else if (container.contains(",")) container = container.section(',', 0, 0).trimmed();
+    track.insert("format", container.isEmpty() ? QString("AUDIO") : container);
+
     track.insert("source", QString("jellyfin"));
     track.insert("remoteId", id);
     track.insert("isFavorite", item.value("UserData").toObject().value("IsFavorite").toBool(false));
+
     const QJsonObject imageTags = item.value("ImageTags").toObject();
-    track.insert("remoteArtId", imageTags.contains("Primary") && !imageTags.value("Primary").isNull()
-        ? id : item.value("AlbumId").toString());
+    const bool hasPrimary = imageTags.contains("Primary") && !imageTags.value("Primary").isNull();
+    const QString albumId = item.value("AlbumId").toString();
+    const QString albumTag = item.value("AlbumPrimaryImageTag").toString();
+    QString artId;
+    if (hasPrimary) {
+        artId = id;
+    } else if (!albumId.isEmpty() && !albumTag.isEmpty()) {
+        artId = albumId;
+    } else if (!albumId.isEmpty()) {
+        artId = albumId;
+    } else {
+        artId = id;
+    }
+    track.insert("remoteArtId", artId);
     return track;
 }
 

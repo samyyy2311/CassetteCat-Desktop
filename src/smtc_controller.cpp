@@ -2,6 +2,7 @@
 #include "player_controller.h"
 
 #include <QDebug>
+#include <QDir>
 #include <QFileInfo>
 #include <QUrl>
 #include <algorithm>
@@ -452,7 +453,7 @@ void SmtcController::updateTrack(const QString &title, const QString &artist, co
         if (QFileInfo::exists(localArtworkPath)) {
             try {
                 const auto file = winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(
-                    localArtworkPath.toStdWString()).get();
+                    QDir::toNativeSeparators(localArtworkPath).toStdWString()).get();
                 const auto thumbnail = winrt::Windows::Storage::Streams::RandomAccessStreamReference::CreateFromFile(file);
                 updater->put_Thumbnail(winrt::get_abi(thumbnail));
             } catch (...) {

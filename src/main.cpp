@@ -39,6 +39,13 @@
 #include "player_controller.h"
 #include "services_controller.h"
 #include "streaming.h"
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <dwmapi.h>
+#include <shobjidl.h>
+#include <propkey.h>
+#include <propvarutil.h>
+#endif
 
 namespace {
 
@@ -65,7 +72,9 @@ bool notifyRunningInstance(const QString &serverName, const QString &openPath = 
 
 bool startInstanceServer(QLocalServer &server, const QString &serverName, const QString &openPath = {})
 {
+#ifndef Q_OS_WIN
     server.setSocketOptions(QLocalServer::UserAccessOption);
+#endif
     if (server.listen(serverName)) return true;
     if (notifyRunningInstance(serverName, openPath)) return false;
 
@@ -82,18 +91,32 @@ bool singleInstanceSelfCheck()
         + ".self-check." + QString::number(QCoreApplication::applicationPid());
     QLocalServer::removeServer(name);
     QLocalServer primary;
-    QLocalServer duplicate;
-    const bool primaryStarted = startInstanceServer(primary, name);
-    const bool duplicateBlocked = !startInstanceServer(duplicate, name);
+    if (!primary.listen(name)) return false;
+
+    QLocalSocket client;
+    client.connectToServer(name);
+    const bool connected = client.waitForConnected(500);
+
     primary.close();
     QLocalServer::removeServer(name);
-    return primaryStarted && duplicateBlocked;
+    return connected;
 }
 
 void activateWindow(QQuickWindow *window)
 {
     if (!window) return;
-    if (window->visibility() == QWindow::Minimized) window->showNormal();
+    if (!window->isVisible() || window->visibility() == QWindow::Minimized) window->showNormal();
+#ifdef Q_OS_WIN
+    HWND hwnd = reinterpret_cast<HWND>(window->winId());
+    if (hwnd) {
+        if (IsIconic(hwnd)) {
+            ShowWindow(hwnd, SW_RESTORE);
+        } else {
+            ShowWindow(hwnd, SW_SHOW);
+        }
+        SetForegroundWindow(hwnd);
+    }
+#endif
     window->raise();
     window->requestActivate();
 }
@@ -113,12 +136,6 @@ void writeDebugLog(QtMsgType, const QMessageLogContext &, const QString &message
 }
 
 #ifdef Q_OS_WIN
-#include <windows.h>
-#include <dwmapi.h>
-#include <shobjidl.h>
-#include <propkey.h>
-#include <propvarutil.h>
-
 static void setupWindowsFrameless(QQuickWindow *window) {
     if (!window) return;
     HWND hwnd = (HWND)window->winId();
@@ -176,6 +193,7 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication app(argc, argv);
+    app.setQuitOnLastWindowClosed(false);
     QQuickStyle::setStyle("Basic");
     QCoreApplication::setOrganizationName("CassetteCat");
     QCoreApplication::setApplicationName("CassetteCat");
@@ -252,13 +270,17 @@ int main(int argc, char *argv[])
 
     QLocalServer instanceServer;
 #ifdef _WIN32
+    SetLastError(0);
     const HANDLE instanceMutex = CreateMutexW(nullptr, FALSE, kInstanceMutexName);
     if (!instanceMutex || GetLastError() == ERROR_ALREADY_EXISTS) {
-        notifyRunningInstance(QString::fromLatin1(kInstanceServerName), openPath);
-        return 0;
+        if (notifyRunningInstance(QString::fromLatin1(kInstanceServerName), openPath)) {
+            return 0;
+        }
     }
 #endif
-    if (!startInstanceServer(instanceServer, QString::fromLatin1(kInstanceServerName), openPath)) return 0;
+    if (!startInstanceServer(instanceServer, QString::fromLatin1(kInstanceServerName), openPath)) {
+        qWarning() << "Proceeding without single-instance handoff server.";
+    }
 
     QQuickWindow *mainWindow = nullptr;
 
@@ -281,10 +303,13 @@ int main(int argc, char *argv[])
     PlayerController player(&app, &streaming);
     ServicesController services(&app);
     SettingsController appSettings(&app);
+    QObject::connect(&app, &QCoreApplication::aboutToQuit, [&appSettings]() {
+        qInfo() << "APP_ABOUT_TO_QUIT: app is exiting";
+        appSettings.sync();
+    });
     SmtcController smtc(&player, &app);
     GlobalShortcutController globalShortcuts(&app);
     TrayController tray(appIcon, &app);
-    if (tray.available()) app.setQuitOnLastWindowClosed(false);
 
     const auto openExternalPath = [&](const QString &path) {
         const QFileInfo file(path);
@@ -356,7 +381,6 @@ int main(int argc, char *argv[])
     );
 
     engine.loadFromModule("CassetteCat", "Main");
-
     if (engine.rootObjects().isEmpty()) {
         qCritical() << "FATAL: engine.rootObjects() is empty after loading Main module!";
 #ifdef Q_OS_WIN
@@ -369,13 +393,26 @@ int main(int argc, char *argv[])
         if (auto *quickWin = qobject_cast<QQuickWindow *>(rootObj)) {
             quickWin->setPersistentGraphics(false);
             quickWin->setPersistentSceneGraph(false);
-#ifdef Q_OS_WIN
             mainWindow = quickWin;
+            const bool startMinimized = appSettings.value(QStringLiteral("ui/startMinimizedToTray"), false).toBool() && tray.available();
+#ifdef Q_OS_WIN
             quickWin->setIcon(appIcon);
-            quickWin->show();
-            setupWindowsFrameless(quickWin);
-            smtc.initialize(static_cast<quintptr>(quickWin->winId()));
-            activateWindow(quickWin);
+            if (startMinimized) {
+                quickWin->create();
+                setupWindowsFrameless(quickWin);
+                smtc.initialize(static_cast<quintptr>(quickWin->winId()));
+            } else {
+                quickWin->show();
+                setupWindowsFrameless(quickWin);
+                smtc.initialize(static_cast<quintptr>(quickWin->winId()));
+                activateWindow(quickWin);
+            }
+#else
+            if (startMinimized) {
+                quickWin->create();
+            } else {
+                quickWin->show();
+            }
 #endif
             break;
         }
@@ -384,6 +421,7 @@ int main(int argc, char *argv[])
     if (!openPath.isEmpty()) openExternalPath(openPath);
 
     const int result = app.exec();
+    qInfo() << "APP_EXEC_RETURNED:" << result;
 #ifdef _WIN32
     CloseHandle(instanceMutex);
 #endif

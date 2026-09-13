@@ -13,6 +13,7 @@
 
 class QNetworkAccessManager;
 class QNetworkReply;
+class QJsonObject;
 class RemoteTrackModel;
 
 namespace streaming::detail {
@@ -31,6 +32,8 @@ class StreamingController final : public QObject
     Q_PROPERTY(bool jellyfinConnected READ jellyfinConnected NOTIFY statusChanged)
     Q_PROPERTY(QString subsonicStatus READ subsonicStatus NOTIFY statusChanged)
     Q_PROPERTY(QString jellyfinStatus READ jellyfinStatus NOTIFY statusChanged)
+    Q_PROPERTY(bool jellyfinQuickConnecting READ jellyfinQuickConnecting NOTIFY jellyfinQuickConnectChanged)
+    Q_PROPERTY(QString jellyfinQuickConnectCode READ jellyfinQuickConnectCode NOTIFY jellyfinQuickConnectChanged)
     Q_PROPERTY(bool remoteLibraryLoading READ remoteLibraryLoading NOTIFY remoteLibraryLoadingChanged)
     Q_PROPERTY(int remoteArtRevision READ remoteArtRevision NOTIFY remoteArtChanged)
     Q_PROPERTY(RemoteTrackModel *jellyfinModel READ jellyfinModel CONSTANT)
@@ -44,6 +47,8 @@ public:
     bool jellyfinConnected() const { return m_jellyfinConnected; }
     QString subsonicStatus() const { return m_subsonicStatus; }
     QString jellyfinStatus() const { return m_jellyfinStatus; }
+    bool jellyfinQuickConnecting() const { return m_jellyfinQuickConnecting; }
+    QString jellyfinQuickConnectCode() const { return m_jellyfinQuickConnectCode; }
     bool remoteLibraryLoading() const { return m_refreshing; }
     int remoteArtRevision() const { return m_remoteArtRevision; }
     RemoteTrackModel *jellyfinModel() const { return m_jellyfinModel; }
@@ -51,11 +56,14 @@ public:
 
     Q_INVOKABLE void connectSubsonic(const QString &serverUrl, const QString &username, const QString &password);
     Q_INVOKABLE void connectJellyfin(const QString &serverUrl, const QString &username, const QString &password);
+    Q_INVOKABLE void startJellyfinQuickConnect(const QString &serverUrl);
+    Q_INVOKABLE void cancelJellyfinQuickConnect();
     Q_INVOKABLE void disconnectServer(const QString &protocol);
     Q_INVOKABLE void refreshLibrary();
     Q_INVOKABLE void setBlackoutEnabled(bool enabled);
     Q_INVOKABLE void setServerFavorite(const QString &filePath, bool favorite);
     Q_INVOKABLE QString remoteArtwork(const QString &filePath);
+    Q_INVOKABLE void fetchJellyfinLyrics(const QString &filePath, const QString &remoteId);
 
     // C++-only: build an authenticated stream URL for playback. Never exposed to QML.
     QUrl streamSourceFor(const QString &source, const QString &remoteId) const;
@@ -73,7 +81,9 @@ signals:
     void remoteLibraryLoadingChanged();
     void serverConnected(const QString &protocol, const QString &displayName);
     void serverFailed(const QString &protocol, const QString &message);
+    void jellyfinQuickConnectChanged();
     void serverFavoriteFailed(const QString &filePath);
+    void jellyfinLyricsFetched(const QString &filePath, const QString &lyrics);
 
 private:
     void updateStatusTexts();
@@ -99,6 +109,7 @@ private:
     void refreshJellyfin(const QString &base, const QString &userId, const QString &accessToken, int tokenSnapshot);
     void fetchJellyfinPage(const QString &base, const QString &userId, const QString &accessToken,
                            int startIndex, std::shared_ptr<QVariantList> out, int tokenSnapshot);
+    void completeJellyfinLogin(const QString &base, const QJsonObject &result);
 
     QString m_settingsPath;
     QVariantList m_remoteTracks;
@@ -117,6 +128,9 @@ private:
     int m_refreshToken = 0;
     bool m_refreshing = false;
     bool m_refreshQueued = false;
+    bool m_jellyfinQuickConnecting = false;
+    QString m_jellyfinQuickConnectCode;
+    int m_jellyfinQuickConnectToken = 0;
     int m_pendingStages = 0;
     QNetworkAccessManager *m_net = nullptr;
     RemoteTrackModel *m_jellyfinModel = nullptr;

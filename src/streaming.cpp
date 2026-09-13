@@ -1,4 +1,6 @@
 #include "streaming.h"
+
+#include "app_paths.h"
 #include "remote_track_model.h"
 #include "credential_vault.h"
 #include "image_cache.h"
@@ -56,6 +58,13 @@ StreamingController::StreamingController(const QString &settingsPath, QObject *p
     if (m_jellyfinConnected && settings.value("stream/jellyfinUrl").toString().isEmpty()) {
         m_jellyfinConnected = false;
     }
+    const QJsonDocument cachedDocument = QJsonDocument::fromJson(
+        settings.value("stream/cachedTracks").toString().toUtf8());
+    if (cachedDocument.isArray()) {
+        m_remoteTracks = cachedDocument.array().toVariantList();
+        m_jellyfinModel->setTracks(m_remoteTracks);
+        m_subsonicModel->setTracks(m_remoteTracks);
+    }
     updateStatusTexts();
 }
 
@@ -77,6 +86,7 @@ QString StreamingController::deviceId()
     if (id.isEmpty()) {
         id = QUuid::createUuid().toString(QUuid::WithoutBraces);
         settings.setValue("stream/deviceId", id);
+        settings.sync();
     }
     return id;
 }
@@ -84,6 +94,10 @@ QString StreamingController::deviceId()
 void StreamingController::setRemoteTracks(const QVariantList &tracks)
 {
     m_remoteTracks = tracks;
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    settings.setValue("stream/cachedTracks", QString::fromUtf8(
+        QJsonDocument::fromVariant(tracks).toJson(QJsonDocument::Compact)));
+    settings.sync();
     m_jellyfinModel->setTracks(tracks);
     m_subsonicModel->setTracks(tracks);
     emit remoteTracksChanged();
@@ -318,6 +332,7 @@ void StreamingController::disconnectServer(const QString &protocol)
         setStatus("jellyfin", false, QString("Not connected"));
         removeProviderTracks("jellyfin:");
     }
+    settings.sync();
 }
 
 void StreamingController::setServerFavorite(const QString &filePath, bool favorite)
@@ -374,6 +389,53 @@ void StreamingController::setServerFavorite(const QString &filePath, bool favori
         });
         return;
     }
+}
+
+void StreamingController::fetchJellyfinLyrics(const QString &filePath, const QString &remoteId)
+{
+    if (!filePath.startsWith("jellyfin:") || remoteId.isEmpty()) {
+        emit jellyfinLyricsFetched(filePath, QString());
+        return;
+    }
+
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    CredentialVault vault;
+    const QString base = settings.value("stream/jellyfinUrl").toString();
+    const QString token = vault.loadSecret("jellyfin");
+    if (base.isEmpty() || token.isEmpty()) {
+        emit jellyfinLyricsFetched(filePath, QString());
+        return;
+    }
+
+    QNetworkRequest request(QUrl(base + "/Audio/" + remoteId + "/Lyrics"));
+    request.setTransferTimeout(streaming::detail::requestTimeoutMs);
+    const QString header = jellyfinAuthHeader(deviceId(), token);
+    request.setRawHeader("Authorization", header.toUtf8());
+    request.setRawHeader("X-Emby-Authorization", header.toUtf8());
+    request.setRawHeader("X-Emby-Token", token.toUtf8());
+    QNetworkReply *reply = trackReply(m_net->get(request));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, filePath] {
+        QString result;
+        if (reply->error() == QNetworkReply::NoError) {
+            const QJsonArray lines = QJsonDocument::fromJson(reply->readAll()).object().value("Lyrics").toArray();
+            for (const QJsonValue &value : lines) {
+                const QJsonObject line = value.toObject();
+                const QString text = line.value("Text").toString();
+                if (text.isEmpty()) continue;
+                const qint64 startMs = line.value("Start").toVariant().toLongLong() / 10000;
+                if (startMs > 0) {
+                    result += QString("[%1:%2.%3]%4\n")
+                        .arg(startMs / 60000, 2, 10, QLatin1Char('0'))
+                        .arg((startMs / 1000) % 60, 2, 10, QLatin1Char('0'))
+                        .arg((startMs % 1000) / 10, 2, 10, QLatin1Char('0'))
+                        .arg(text);
+                } else {
+                    result += text + QLatin1Char('\n');
+                }
+            }
+        }
+        emit jellyfinLyricsFetched(filePath, result.trimmed());
+    });
 }
 
 QString StreamingController::remoteArtwork(const QString &filePath)

@@ -1,5 +1,7 @@
 #include "streaming.h"
 
+#include "app_paths.h"
+
 #include "credential_vault.h"
 #include "streaming_protocols.h"
 
@@ -10,8 +12,10 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSettings>
+#include <QTimer>
 #include <QUrlQuery>
 
+#include <functional>
 #include <memory>
 
 using namespace streaming::protocol;
@@ -66,6 +70,7 @@ void StreamingController::connectSubsonic(const QString &serverUrl, const QStrin
         settings.setValue("stream/subsonicUrl", base);
         settings.setValue("stream/subsonicUsername", user);
         settings.setValue("stream/subsonicConnected", true);
+        settings.sync();
         setStatus("subsonic", true, QString());
         updateStatusTexts();
         emit serverConnected("subsonic", user);
@@ -166,7 +171,7 @@ void StreamingController::fetchSubsonicAlbum(const QString &base, const QString 
                     const QString artId = track.value("remoteArtId").toString();
                     if (!artId.isEmpty()) {
                         m_remoteArtSource.insert(track.value("filePath").toString(),
-                                                 subsonicUrl(base, "getCoverArt.view", user, token, salt, {{"id", artId}}).toString());
+                                                 subsonicUrl(base, "getCoverArt.view", user, token, salt, {{"id", artId}, {"size", "500"}}).toString());
                     }
                     out->append(track);
                 }
@@ -219,23 +224,145 @@ void StreamingController::connectJellyfin(const QString &serverUrl, const QStrin
             emit serverFailed("jellyfin", message);
             return;
         }
-        CredentialVault vault;
-        if (!vault.saveSecret("jellyfin", accessToken)) {
-            const QString message = QString("Connected, but the access token couldn't be saved securely.");
+        completeJellyfinLogin(base, result);
+    });
+}
+
+void StreamingController::completeJellyfinLogin(const QString &base, const QJsonObject &result)
+{
+    const QString accessToken = result.value("AccessToken").toString();
+    const QJsonObject user = result.value("User").toObject();
+    const QString userId = user.value("Id").toString();
+    if (accessToken.isEmpty() || userId.isEmpty()) {
+        const QString message = QString("Login failed. Check the username and password.");
+        setStatus("jellyfin", false, message);
+        emit serverFailed("jellyfin", message);
+        return;
+    }
+
+    CredentialVault vault;
+    if (!vault.saveSecret("jellyfin", accessToken)) {
+        const QString message = QString("Connected, but the access token couldn't be saved securely.");
+        setStatus("jellyfin", false, message);
+        emit serverFailed("jellyfin", message);
+        return;
+    }
+
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    settings.setValue("stream/jellyfinUrl", base);
+    settings.setValue("stream/jellyfinUsername", user.value("Name").toString());
+    settings.setValue("stream/jellyfinUserId", userId);
+    settings.setValue("stream/jellyfinConnected", true);
+    settings.sync();
+    m_jellyfinQuickConnecting = false;
+    m_jellyfinQuickConnectCode.clear();
+    emit jellyfinQuickConnectChanged();
+    setStatus("jellyfin", true, QString());
+    updateStatusTexts();
+    emit serverConnected("jellyfin", user.value("Name").toString());
+    refreshLibrary();
+}
+
+void StreamingController::startJellyfinQuickConnect(const QString &serverUrl)
+{
+    cancelJellyfinQuickConnect();
+    if (blackoutEnabled()) {
+        emit serverFailed("jellyfin", QString("Offline Blackout Mode is enabled."));
+        return;
+    }
+
+    const QString base = normalizeServerUrl(serverUrl, 8096);
+    if (base.isEmpty()) {
+        emit serverFailed("jellyfin", QString("Enter a Jellyfin server URL."));
+        return;
+    }
+
+    const int attempt = ++m_jellyfinQuickConnectToken;
+    m_jellyfinQuickConnecting = true;
+    m_jellyfinQuickConnectCode.clear();
+    emit jellyfinQuickConnectChanged();
+
+    QNetworkRequest request(QUrl(base + "/QuickConnect/Initiate"));
+    request.setTransferTimeout(streaming::detail::requestTimeoutMs);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    const QString header = jellyfinAuthHeader(deviceId(), {});
+    request.setRawHeader("Authorization", header.toUtf8());
+    request.setRawHeader("X-Emby-Authorization", header.toUtf8());
+    QNetworkReply *reply = trackReply(m_net->post(request, QByteArray("{}")));
+    connect(reply, &QNetworkReply::finished, this, [=, this] {
+        if (attempt != m_jellyfinQuickConnectToken) return;
+        if (reply->error() != QNetworkReply::NoError) {
+            m_jellyfinQuickConnecting = false;
+            emit jellyfinQuickConnectChanged();
+            const QString message = friendlyError(reply, QString("Quick Connect is unavailable on this server."));
             setStatus("jellyfin", false, message);
             emit serverFailed("jellyfin", message);
             return;
         }
-        QSettings settings(m_settingsPath, QSettings::IniFormat);
-        settings.setValue("stream/jellyfinUrl", base);
-        settings.setValue("stream/jellyfinUsername", userObj.value("Name").toString(user));
-        settings.setValue("stream/jellyfinUserId", userObj.value("Id").toString());
-        settings.setValue("stream/jellyfinConnected", true);
-        setStatus("jellyfin", true, QString());
-        updateStatusTexts();
-        emit serverConnected("jellyfin", userObj.value("Name").toString(user));
-        refreshLibrary();
+
+        const QJsonObject result = QJsonDocument::fromJson(reply->readAll()).object();
+        const QString secret = result.value("Secret").toString();
+        const QString code = result.value("Code").toString();
+        if (secret.isEmpty() || code.isEmpty()) {
+            m_jellyfinQuickConnecting = false;
+            emit jellyfinQuickConnectChanged();
+            const QString message = QString("Quick Connect is disabled or unavailable on this server.");
+            setStatus("jellyfin", false, message);
+            emit serverFailed("jellyfin", message);
+            return;
+        }
+
+        m_jellyfinQuickConnectCode = code;
+        emit jellyfinQuickConnectChanged();
+
+        const auto poll = std::make_shared<std::function<void(int)>>();
+        *poll = [this, base, secret, attempt, poll](int count) {
+            if (attempt != m_jellyfinQuickConnectToken || count >= 120) {
+                if (attempt == m_jellyfinQuickConnectToken) cancelJellyfinQuickConnect();
+                return;
+            }
+            QTimer::singleShot(2000, this, [this, base, secret, attempt, count, poll] {
+                if (attempt != m_jellyfinQuickConnectToken) return;
+                QNetworkRequest check(QUrl(base + "/QuickConnect/Connect?Secret=" + QUrl::toPercentEncoding(secret)));
+                check.setTransferTimeout(streaming::detail::requestTimeoutMs);
+                QNetworkReply *statusReply = trackReply(m_net->get(check));
+                connect(statusReply, &QNetworkReply::finished, this, [=, this] {
+                    if (attempt != m_jellyfinQuickConnectToken) return;
+                    const QJsonObject status = QJsonDocument::fromJson(statusReply->readAll()).object();
+                    if (statusReply->error() == QNetworkReply::NoError && status.value("Authenticated").toBool()) {
+                        QNetworkRequest auth(QUrl(base + "/Users/AuthenticateWithQuickConnect"));
+                        auth.setTransferTimeout(streaming::detail::requestTimeoutMs);
+                        auth.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+                        const QJsonObject payload{{"Secret", secret}};
+                        QNetworkReply *authReply = trackReply(m_net->post(auth, QJsonDocument(payload).toJson(QJsonDocument::Compact)));
+                        connect(authReply, &QNetworkReply::finished, this, [=, this] {
+                            if (attempt != m_jellyfinQuickConnectToken) return;
+                            if (authReply->error() != QNetworkReply::NoError) {
+                                cancelJellyfinQuickConnect();
+                                const QString message = friendlyError(authReply, QString("Quick Connect authorization failed."));
+                                setStatus("jellyfin", false, message);
+                                emit serverFailed("jellyfin", message);
+                                return;
+                            }
+                            completeJellyfinLogin(base, QJsonDocument::fromJson(authReply->readAll()).object());
+                        });
+                    } else {
+                        (*poll)(count + 1);
+                    }
+                });
+            });
+        };
+        (*poll)(0);
     });
+}
+
+void StreamingController::cancelJellyfinQuickConnect()
+{
+    ++m_jellyfinQuickConnectToken;
+    if (!m_jellyfinQuickConnecting && m_jellyfinQuickConnectCode.isEmpty()) return;
+    m_jellyfinQuickConnecting = false;
+    m_jellyfinQuickConnectCode.clear();
+    emit jellyfinQuickConnectChanged();
 }
 
 void StreamingController::refreshJellyfin(const QString &base, const QString &userId, const QString &accessToken,
@@ -254,7 +381,7 @@ void StreamingController::fetchJellyfinPage(const QString &base, const QString &
     q.addQueryItem("IncludeItemTypes", "Audio");
     q.addQueryItem("Recursive", "true");
     q.addQueryItem("SortBy", "SortName");
-    q.addQueryItem("Fields", "Genres,ProductionYear");
+    q.addQueryItem("Fields", "Genres,ProductionYear,Artists,ArtistItems,AlbumArtist,Album,AlbumId,AlbumPrimaryImageTag,ImageTags,MediaSources,UserData");
     q.addQueryItem("StartIndex", QString::number(startIndex));
     q.addQueryItem("Limit", QString::number(kJellyfinPageSize));
     url.setQuery(q);
@@ -288,6 +415,10 @@ void StreamingController::fetchJellyfinPage(const QString &base, const QString &
                 QUrl artUrl(base + "/Items/" + artItem + "/Images/Primary");
                 QUrlQuery aq;
                 aq.addQueryItem("api_key", accessToken);
+                aq.addQueryItem("fillWidth", "500");
+                aq.addQueryItem("fillHeight", "500");
+                aq.addQueryItem("cropWhitespace", "true");
+                aq.addQueryItem("quality", "90");
                 artUrl.setQuery(aq);
                 m_remoteArtSource.insert(track.value("filePath").toString(), artUrl.toString());
             }
@@ -308,4 +439,3 @@ void StreamingController::fetchJellyfinPage(const QString &base, const QString &
         fetchJellyfinPage(base, userId, accessToken, startIndex + kJellyfinPageSize, out, tokenSnapshot);
     });
 }
-

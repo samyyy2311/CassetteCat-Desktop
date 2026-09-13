@@ -94,6 +94,5 @@ bool scanSelfCheck()
 
     const QVariantMap trackMap = tracks.first().toMap();
     return trackMap.value("title").toString() == "CassetteCat Check"
-        && trackMap.value("artist").toString() == "Unknown Artist"
-        && trackMap.value("album").toString() == "Unknown Album";
+        && trackMap.value("fileName").toString() == "CassetteCat Check.wav";
 }

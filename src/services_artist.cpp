@@ -1,6 +1,7 @@
 #include "services_controller.h"
 
 #include "app_paths.h"
+#include "app_settings.h"
 #include "image_cache.h"
 
 #include <QFileInfo>
@@ -92,11 +93,58 @@ QString ServicesController::canonicalArtistName(const QString &artist)
 
 void ServicesController::publishArtistImage(const QString &artist, const QString &imageUrl)
 {
-        const QString key = canonicalArtistName(artist);
-        m_artistImages.insert(key, imageUrl);
-        QSettings s(settingsFilePath(), QSettings::IniFormat);
-        s.setValue("artist_images/" + key, imageUrl);
-        emit artistImageLoaded(artist, imageUrl);
+    const QString key = canonicalArtistName(artist);
+    m_artistImages.insert(key, imageUrl);
+    SettingsController::setGlobalValue("artist_images/" + key, imageUrl);
+    emit artistImageLoaded(artist, imageUrl);
+}
+
+void ServicesController::fetchAlbumBio(const QString &album, const QString &artist)
+{
+    if (!onlineEnabled() || !serviceEnabled("wiki")) return;
+    const QString albumName = album.trimmed();
+    if (albumName.isEmpty()) return;
+    const QString artistName = artist.trimmed();
+    const QStringList queries = artistName.isEmpty()
+        ? QStringList{albumName + " (album)"}
+        : QStringList{albumName + " (" + artistName + " album)", albumName + " (album)"};
+    fetchAlbumBioFromWikipedia(albumName, queries, 0);
+}
+
+void ServicesController::fetchAlbumBioFromWikipedia(const QString &album, const QStringList &queries, int index)
+{
+    if (!onlineEnabled() || !serviceEnabled("wiki") || index >= queries.size()) return;
+
+    QUrl url("https://en.wikipedia.org/w/api.php");
+    QUrlQuery q;
+    q.addQueryItem("action", "query");
+    q.addQueryItem("format", "json");
+    q.addQueryItem("prop", "extracts");
+    q.addQueryItem("exintro", "true");
+    q.addQueryItem("explaintext", "true");
+    q.addQueryItem("redirects", "true");
+    q.addQueryItem("titles", queries.at(index));
+    url.setQuery(q);
+
+    QNetworkRequest request(url);
+    request.setTransferTimeout(services::detail::requestTimeoutMs);
+    request.setHeader(QNetworkRequest::UserAgentHeader, "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
+    auto *reply = trackReply(m_net->get(request));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, album, queries, index]() {
+        reply->deleteLater();
+        if (!onlineEnabled() || !serviceEnabled("wiki")) return;
+        if (reply->error() == QNetworkReply::NoError) {
+            const auto pages = QJsonDocument::fromJson(reply->readAll()).object().value("query").toObject().value("pages").toObject();
+            for (const auto &key : pages.keys()) {
+                const QString extract = pages.value(key).toObject().value("extract").toString().trimmed();
+                if (!extract.isEmpty()) {
+                    emit albumBioLoaded(album, extract);
+                    return;
+                }
+            }
+        }
+        fetchAlbumBioFromWikipedia(album, queries, index + 1);
+    });
 }
 
 void ServicesController::downloadArtistImage(const QString &artist, const QString &imageUrl, const QString &service)

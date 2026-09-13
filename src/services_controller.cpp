@@ -1,12 +1,10 @@
 #include "services_controller.h"
 
 #include "app_paths.h"
+#include "app_settings.h"
 #include "image_cache.h"
 #include "network_requests.h"
-
-#include <QCryptographicHash>
 #include <QDesktopServices>
-#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -27,7 +25,9 @@ ServicesController::ServicesController(QObject *parent)
     s.beginGroup("artist_images");
     for (const QString &key : s.childKeys()) {
         const QString imageUrl = s.value(key).toString();
-        if (QUrl(imageUrl).isLocalFile() && QFileInfo::exists(QUrl(imageUrl).toLocalFile())) {
+        if (imageUrl.startsWith("http://", Qt::CaseInsensitive) || imageUrl.startsWith("https://", Qt::CaseInsensitive)) {
+            m_artistImages.insert(key, imageUrl);
+        } else if (QUrl(imageUrl).isLocalFile() && QFileInfo::exists(QUrl(imageUrl).toLocalFile())) {
             m_artistImages.insert(key, imageUrl);
         }
     }
@@ -36,14 +36,12 @@ ServicesController::ServicesController(QObject *parent)
 
 bool ServicesController::onlineEnabled() const
 {
-    QSettings settings(settingsFilePath(), QSettings::IniFormat);
-    return !settings.value("network/offlineBlackout", false).toBool();
+    return !SettingsController::globalValue("network/offlineBlackout", false).toBool();
 }
 
 bool ServicesController::serviceEnabled(const QString &service) const
 {
-    QSettings settings(settingsFilePath(), QSettings::IniFormat);
-    return serviceEnabled(settings, service);
+    return SettingsController::globalValue("services/" + service, true).toBool();
 }
 
 bool ServicesController::serviceEnabled(const QSettings &settings, const QString &service)

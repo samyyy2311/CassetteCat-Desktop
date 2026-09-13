@@ -1,6 +1,7 @@
 #include "library_controller.h"
 
 #include "app_paths.h"
+#include "app_settings.h"
 #include "audio_metadata.h"
 #include "library_scanner.h"
 
@@ -68,10 +69,15 @@ LibraryController::LibraryController(QObject *parent)
         QVariantList tracks;
         tracks.reserve(m_scannedTracks.size());
         for (const QVariant &value : std::as_const(m_scannedTracks)) {
-            const QString path = value.toMap().value("filePath").toString();
+            QVariantMap track = value.toMap();
+            const QString path = track.value("filePath").toString();
             if (!path.isEmpty() && !seenPaths.contains(path)) {
                 seenPaths.insert(path);
-                tracks.append(value);
+                const QString custom = SettingsController::globalValue("artwork/custom/" + path).toString();
+                if (!custom.isEmpty()) {
+                    track.insert("artworkUrl", custom);
+                }
+                tracks.append(track);
             }
         }
 
@@ -85,9 +91,8 @@ LibraryController::LibraryController(QObject *parent)
         emit visibleTracksChanged();
     });
 
-    QSettings settings(settingsFilePath(), QSettings::IniFormat);
-    QStringList savedFolders = settings.value("library/folders").toStringList();
-    if (savedFolders.isEmpty()) savedFolders = {settings.value("library/folder").toString()};
+    QStringList savedFolders = SettingsController::globalValue("library/folders").toStringList();
+    if (savedFolders.isEmpty()) savedFolders = {SettingsController::globalValue("library/folder").toString()};
     savedFolders.removeAll(QString());
     if (!savedFolders.isEmpty()) {
         QTimer::singleShot(100, this, [this, savedFolders] {
@@ -200,9 +205,52 @@ QString LibraryController::artworkFor(const QString &filePath)
 {
     const auto cached = m_artworkUrls.constFind(filePath);
     if (cached != m_artworkUrls.cend()) return *cached;
-    const QString artworkUrl = extractEmbeddedArtwork(filePath, 256);
+    const QString custom = SettingsController::globalValue("artwork/custom/" + filePath).toString();
+    const QString local = custom.startsWith("file:") ? QUrl(custom).toLocalFile() : custom;
+    if (!custom.isEmpty() && QFileInfo::exists(local)) {
+        m_artworkUrls.insert(filePath, custom);
+        return custom;
+    }
+    const QString artworkUrl = extractEmbeddedArtwork(filePath);
     m_artworkUrls.insert(filePath, artworkUrl);
     return artworkUrl;
+}
+
+void LibraryController::setCustomArtwork(const QString &filePath, const QString &artworkPath)
+{
+    if (filePath.isEmpty() || artworkPath.isEmpty()) return;
+    m_artworkUrls.insert(filePath, artworkPath);
+    SettingsController::setGlobalValue("artwork/custom/" + filePath, artworkPath);
+    for (int i = 0; i < m_tracks.size(); ++i) {
+        QVariantMap track = m_tracks[i].toMap();
+        if (track.value("filePath").toString() == filePath) {
+            track.insert("artworkUrl", artworkPath);
+            m_tracks[i] = track;
+            break;
+        }
+    }
+    emit tracksChanged();
+}
+
+void LibraryController::setAlbumArtwork(const QString &album, const QString &artist, const QString &artworkPath)
+{
+    if (album.isEmpty() || artworkPath.isEmpty()) return;
+    bool changed = false;
+    SettingsController::setGlobalValue("artwork/album/" + album.trimmed().toLower(), artworkPath);
+    for (int i = 0; i < m_tracks.size(); ++i) {
+        QVariantMap track = m_tracks[i].toMap();
+        if (track.value("album").toString().trimmed().compare(album.trimmed(), Qt::CaseInsensitive) == 0) {
+            if (artist.isEmpty() || track.value("artist").toString().trimmed().compare(artist.trimmed(), Qt::CaseInsensitive) == 0) {
+                const QString path = track.value("filePath").toString();
+                track.insert("artworkUrl", artworkPath);
+                m_artworkUrls.insert(path, artworkPath);
+                SettingsController::setGlobalValue("artwork/custom/" + path, artworkPath);
+                m_tracks[i] = track;
+                changed = true;
+            }
+        }
+    }
+    if (changed) emit tracksChanged();
 }
 
 QVariantMap LibraryController::trackForPath(const QString &filePath) const
@@ -212,6 +260,36 @@ QVariantMap LibraryController::trackForPath(const QString &filePath) const
         if (track.value("filePath").toString() == filePath) return track;
     }
     return {};
+}
+
+QVariantMap LibraryController::updateTrackMetadata(const QVariantMap &metadata)
+{
+    const QString filePath = metadata.value("filePath").toString();
+    if (filePath.isEmpty() || filePath.contains(':') && !QFileInfo::exists(filePath)) return {};
+
+    QString error;
+    if (!writeTrackInfo(metadata, &error)) {
+        qWarning().noquote() << "METADATA_UPDATE_FAILED:" << error;
+        return {};
+    }
+
+    const TrackInfo info = readTrackInfo(filePath);
+    for (int i = 0; i < m_tracks.size(); ++i) {
+        QVariantMap track = m_tracks.at(i).toMap();
+        if (track.value("filePath").toString() != filePath) continue;
+        const QString artwork = track.value("artworkUrl").toString();
+        track = info.toMap();
+        if (!artwork.isEmpty()) track.insert("artworkUrl", artwork);
+        m_tracks[i] = track;
+        beginResetModel();
+        rebuildVisibleRows();
+        endResetModel();
+        emit changed();
+        emit tracksChanged();
+        emit visibleTracksChanged();
+        return track;
+    }
+    return info.toMap();
 }
 
 QVariantMap LibraryController::firstPlayableTrack() const
@@ -443,9 +521,8 @@ void LibraryController::setFolderPaths(QStringList paths)
 
     m_scannedTracks.clear();
     m_pendingScanPaths = m_folders;
-    QSettings settings(settingsFilePath(), QSettings::IniFormat);
-    settings.setValue("library/folders", m_folders);
-    settings.setValue("library/folder", m_folders.isEmpty() ? QString() : m_folders.first());
+    SettingsController::setGlobalValue("library/folders", m_folders);
+    SettingsController::setGlobalValue("library/folder", m_folders.isEmpty() ? QString() : m_folders.first());
     if (m_scanProcess.state() != QProcess::NotRunning) m_scanProcess.kill();
     else if (!m_pendingScanPaths.isEmpty()) startScan();
 }

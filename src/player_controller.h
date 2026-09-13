@@ -65,6 +65,8 @@ public:
     Q_INVOKABLE void stop();
     Q_INVOKABLE void seek(qint64 positionMs);
     Q_INVOKABLE void setWindowAlwaysOnTop(QQuickWindow *win, bool onTop);
+    Q_INVOKABLE void updateCurrentTrackArtwork(const QString &artworkPath);
+    Q_INVOKABLE void updateCurrentTrackMetadata(const QVariantMap &track);
 
 signals:
     void currentTrackChanged();
@@ -101,6 +103,7 @@ private:
     qreal m_audioLevel = 0.0;
     qint64 m_position = 0;
     qint64 m_duration = 0;
+    qint64 m_pendingRestorePositionMs = 0;
     QString m_error;
     bool m_pauseExpected = false;
 };

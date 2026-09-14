@@ -28,7 +28,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
         with:
-          version: "6.10.*"
+          version: "6.10.3"
           target: desktop
           arch: win64_msvc2022_64
           modules: qtmultimedia qtquickeffectmaker
@@ -73,7 +73,7 @@ jobs:
       - name: Validate Windows installer
         shell: pwsh
         run: |
-          choco install innosetup --no-progress --limit-output -y
+          choco install innosetup --version=6.7.1 --no-progress --limit-output -y
           iscc.exe "/DAppVersion=0.0.0-ci" installer\CassetteCat.iss
           $installer = 'dist\CassetteCat-0.0.0-ci-windows-x64-setup.exe'
           if (-not (Test-Path $installer)) { throw 'Inno Setup did not produce the installer.' }
@@ -101,7 +101,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
         with:
-          version: "6.10.*"
+          version: "6.10.3"
           target: desktop
           arch: linux_gcc_64
           modules: qtmultimedia qtquickeffectmaker

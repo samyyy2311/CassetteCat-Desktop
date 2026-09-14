@@ -44,7 +44,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
         with:
-          version: "6.10.*"
+          version: "6.10.3"
           target: desktop
           arch: win64_msvc2022_64
           modules: qtmultimedia qtquickeffectmaker
@@ -69,7 +69,7 @@ jobs:
           Expand-Archive -Force "CassetteCat-$env:RELEASE_TAG-windows-x64.zip" -DestinationPath smoke
           if (-not (Test-Path smoke\CassetteCat\bin\CassetteCat.exe)) { throw 'Portable ZIP is missing CassetteCat.exe.' }
           .\smoke\CassetteCat\bin\CassetteCat.exe --self-check
-          choco install innosetup --no-progress --limit-output -y
+          choco install innosetup --version=6.7.1 --no-progress --limit-output -y
           $version = $env:RELEASE_TAG.TrimStart('v')
           iscc.exe "/DAppVersion=$version" installer\CassetteCat.iss
           $installer = Get-ChildItem dist -Filter 'CassetteCat-*-setup.exe' | Select-Object -First 1
@@ -102,7 +102,7 @@ jobs:
       - name: Install Qt
         uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
         with:
-          version: "6.10.*"
+          version: "6.10.3"
           target: desktop
           arch: linux_gcc_64
           modules: qtmultimedia qtquickeffectmaker

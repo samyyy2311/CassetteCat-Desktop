@@ -20,6 +20,16 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
+      - name: Verify changed C++ formatting
+        run: |
+          base="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if git rev-parse --verify "$base" >/dev/null 2>&1; then
+            mapfile -t files < <(git diff --diff-filter=ACMRT --name-only "$base" "$GITHUB_SHA" -- '*.cpp' '*.h')
+            if ((${#files[@]})); then
+              clang-format -i "${files[@]}"
+              git diff --exit-code -- "${files[@]}"
+            fi
+          fi
       - name: Install analysis tools
         run: sudo apt-get update && sudo apt-get install -y clang-tidy clang-format
       - name: Install Qt
@@ -39,14 +49,4 @@ jobs:
           mapfile -t files < <(git ls-files 'src/*.cpp')
           if ((${#files[@]})); then
             clang-tidy -p build/analysis --config-file=.clang-tidy "${files[@]}"
-          fi
-      - name: Verify changed C++ formatting
-        run: |
-          base="${{ github.event.pull_request.base.sha || github.event.before }}"
-          if git rev-parse --verify "$base" >/dev/null 2>&1; then
-            mapfile -t files < <(git diff --diff-filter=ACMRT --name-only "$base" "$GITHUB_SHA" -- '*.cpp' '*.h')
-            if ((${#files[@]})); then
-              clang-format -i "${files[@]}"
-              git diff --exit-code -- "${files[@]}"
-            fi
           fi

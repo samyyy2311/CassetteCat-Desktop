@@ -44,6 +44,6 @@ jobs:
         run: |
           base="${{ github.event.pull_request.base.sha || github.event.before }}"
           if git rev-parse --verify "$base" >/dev/null 2>&1; then
-            mapfile -t files < <(git diff --diff-filter=A --name-only "$base" "$GITHUB_SHA" -- '*.cpp' '*.h')
+            mapfile -t files < <(git diff --diff-filter=ACMRT --name-only "$base" "$GITHUB_SHA" -- '*.cpp' '*.h')
             if ((${#files[@]})); then clang-format --dry-run --Werror "${files[@]}"; fi
           fi

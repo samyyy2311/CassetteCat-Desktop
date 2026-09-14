@@ -6,11 +6,13 @@
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <url type="homepage">https://github.com/samyyy2311/CassetteCat-Desktop</url>
+  <url type="bugtracker">https://github.com/samyyy2311/CassetteCat-Desktop/issues</url>
   <developer id="io.github.samyyy2311">
     <name>CassetteCat contributors</name>
   </developer>
   <description>
-    <p>Play and organise the music you already own.</p>
+    <p>CassetteCat is a local-first desktop music player for music you already own.</p>
+    <p>It supports local libraries, playlists, lyrics, internet radio, and optional Jellyfin and Subsonic servers.</p>
   </description>
   <launchable type="desktop-id">io.github.samyyy2311.CassetteCat.desktop</launchable>
   <provides>
@@ -21,4 +23,10 @@
     <category>Audio</category>
     <category>Player</category>
   </categories>
+  <releases>
+    <release version="0.5.1" date="2026-09-14">
+      <url type="details">https://github.com/samyyy2311/CassetteCat-Desktop/releases/tag/v0.5.1</url>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1" />
 </component>

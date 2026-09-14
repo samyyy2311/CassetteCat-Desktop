@@ -1,3 +1,7 @@
+#ifdef CASSETTECAT_HAVE_LIBSECRET
+#include <libsecret/secret.h>
+#endif
+
 #include "credential_vault.h"
 
 #include <QDebug>
@@ -7,8 +11,6 @@
 #define NOMINMAX
 #include <windows.h>
 #include <wincred.h>
-#elif defined(CASSETTECAT_HAVE_LIBSECRET)
-#include <libsecret/secret.h>
 #endif
 
 namespace {

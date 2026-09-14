@@ -264,7 +264,7 @@ include(FetchContent)
 FetchContent_Declare(
     taglib
     GIT_REPOSITORY https://github.com/taglib/taglib.git
-    GIT_TAG v2.0.2
+    GIT_TAG 8ee4a727d365c773abff1d1fdbb84fa347aea177 # v2.0.2
 )
 if(CASSETTECAT_TAGLIB_SOURCE_DIR)
     set(FETCHCONTENT_SOURCE_DIR_TAGLIB "${CASSETTECAT_TAGLIB_SOURCE_DIR}")

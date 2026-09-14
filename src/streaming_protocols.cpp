@@ -1,6 +1,7 @@
 #include "streaming_protocols.h"
 
 #include <QCryptographicHash>
+#include <QHostAddress>
 #include <QJsonDocument>
 #include <QRandomGenerator>
 #include <QUrlQuery>
@@ -21,6 +22,43 @@ QString formatTrackDuration(int totalSeconds)
     return QString("%1:%2").arg(totalSeconds / 60).arg(totalSeconds % 60, 2, 10, QChar('0'));
 }
 
+bool isPrivateOrLocalHost(const QString &host)
+{
+    const QString value = host.trimmed();
+    if (value.compare("localhost", Qt::CaseInsensitive) == 0
+        || value.endsWith(".local", Qt::CaseInsensitive)) {
+        return true;
+    }
+
+    QHostAddress address;
+    if (!address.setAddress(value)) {
+        return false;
+    }
+    if (address.isLoopback()) {
+        return true;
+    }
+
+    bool isIpv4 = false;
+    const quint32 ipv4 = address.toIPv4Address(&isIpv4);
+    if (isIpv4) {
+        const quint8 first = static_cast<quint8>(ipv4 >> 24);
+        const quint8 second = static_cast<quint8>((ipv4 >> 16) & 0xff);
+        return first == 10
+            || (first == 172 && second >= 16 && second <= 31)
+            || (first == 192 && second == 168)
+            || (first == 169 && second == 254);
+    }
+
+    const Q_IPV6ADDR ipv6 = address.toIPv6Address();
+    return (ipv6[0] & 0xfe) == 0xfc
+        || (ipv6[0] == 0xfe && (ipv6[1] & 0xc0) == 0x80);
+}
+
+QString hostFromUnschemedUrl(const QString &value)
+{
+    return QUrl("http://" + value).host();
+}
+
 } // namespace
 
 QString normalizeServerUrl(const QString &raw, int defaultPort)
@@ -33,28 +71,16 @@ QString normalizeServerUrl(const QString &raw, int defaultPort)
         return {};
     }
     if (!url.startsWith("http://", Qt::CaseInsensitive) && !url.startsWith("https://", Qt::CaseInsensitive)) {
-        const bool isLocal = url.startsWith("192.168.") || url.startsWith("10.") ||
-                             url.startsWith("172.") || url.startsWith("127.") ||
-                             url.startsWith("localhost", Qt::CaseInsensitive) ||
-                             url.contains(".local", Qt::CaseInsensitive) ||
-                             url.contains(":8096") || url.contains(":4533") ||
-                             url.contains(":8080") || url.contains(":8000");
-        url.prepend(isLocal ? "http://" : "https://");
+        const QString host = hostFromUnschemedUrl(url);
+        url.prepend(isPrivateOrLocalHost(host) ? "http://" : "https://");
     }
     if (defaultPort > 0) {
         QUrl parsed(url);
-        if (parsed.port() == -1) {
-            const QString host = parsed.host();
-            const bool isLocalHost = host.startsWith("192.168.") || host.startsWith("10.") ||
-                                     host.startsWith("172.") || host.startsWith("127.") ||
-                                     host.compare("localhost", Qt::CaseInsensitive) == 0 ||
-                                     host.endsWith(".local", Qt::CaseInsensitive);
-            if (isLocalHost) {
-                parsed.setPort(defaultPort);
-                url = parsed.toString();
-                while (url.endsWith('/')) {
-                    url.chop(1);
-                }
+        if (parsed.port() == -1 && isPrivateOrLocalHost(parsed.host())) {
+            parsed.setPort(defaultPort);
+            url = parsed.toString();
+            while (url.endsWith('/')) {
+                url.chop(1);
             }
         }
     }

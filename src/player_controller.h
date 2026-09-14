@@ -98,6 +98,7 @@ private:
     StreamingController *m_streaming = nullptr;
     QVariantMap m_currentTrack;
     QString m_currentLyrics;
+    QString m_selectedAudioDeviceId;
     bool m_isPlaying = false;
     bool m_shuffleEnabled = false;
     bool m_followSystemDefaultAudio = true;

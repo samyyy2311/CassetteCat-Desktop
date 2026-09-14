@@ -21,7 +21,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install analysis tools
-        run: sudo apt-get update && sudo apt-get install -y clang-tidy clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-tidy clang-format libsecret-1-dev
       - name: Verify changed C++ formatting
         run: |
           base="${{ github.event.pull_request.base.sha || github.event.before }}"

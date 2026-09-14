@@ -14,8 +14,7 @@
 namespace {
 
 #ifdef CASSETTECAT_HAVE_LIBSECRET
-const SecretSchema *credentialSchema()
-{
+const SecretSchema *credentialSchema() {
     static const SecretSchema schema = {
         "io.github.samyyy2311.CassetteCat.Credential",
         SECRET_SCHEMA_NONE,
@@ -27,8 +26,7 @@ const SecretSchema *credentialSchema()
     return &schema;
 }
 
-void logSecretServiceError(const char *operation, GError *error)
-{
+void logSecretServiceError(const char *operation, GError *error) {
     if (!error) {
         return;
     }
@@ -39,8 +37,7 @@ void logSecretServiceError(const char *operation, GError *error)
 
 } // namespace
 
-bool CredentialVault::saveSecret(const QString &key, const QString &secret)
-{
+bool CredentialVault::saveSecret(const QString &key, const QString &secret) {
     if (key.isEmpty() || secret.isEmpty()) {
         return false;
     }
@@ -64,9 +61,9 @@ bool CredentialVault::saveSecret(const QString &key, const QString &secret)
     const QByteArray secretUtf8 = secret.toUtf8();
     const QByteArray labelUtf8 = (QStringLiteral("CassetteCat ") + key).toUtf8();
     GError *error = nullptr;
-    const gboolean stored = secret_password_store_sync(
-        credentialSchema(), SECRET_COLLECTION_DEFAULT, labelUtf8.constData(), secretUtf8.constData(), nullptr, &error,
-        "key", keyUtf8.constData(), nullptr);
+    const gboolean stored =
+        secret_password_store_sync(credentialSchema(), SECRET_COLLECTION_DEFAULT, labelUtf8.constData(),
+                                   secretUtf8.constData(), nullptr, &error, "key", keyUtf8.constData(), nullptr);
     if (error) {
         logSecretServiceError("write", error);
         return false;
@@ -79,8 +76,7 @@ bool CredentialVault::saveSecret(const QString &key, const QString &secret)
 #endif
 }
 
-QString CredentialVault::loadSecret(const QString &key) const
-{
+QString CredentialVault::loadSecret(const QString &key) const {
     if (key.isEmpty()) {
         return {};
     }
@@ -91,15 +87,15 @@ QString CredentialVault::loadSecret(const QString &key) const
     if (CredReadW(target.c_str(), CRED_TYPE_GENERIC, 0, &credential) == FALSE) {
         return {};
     }
-    const QString secret = QString::fromWCharArray(
-        reinterpret_cast<const wchar_t *>(credential->CredentialBlob),
-        credential->CredentialBlobSize / sizeof(wchar_t));
+    const QString secret = QString::fromWCharArray(reinterpret_cast<const wchar_t *>(credential->CredentialBlob),
+                                                   credential->CredentialBlobSize / sizeof(wchar_t));
     CredFree(credential);
     return secret;
 #elif defined(CASSETTECAT_HAVE_LIBSECRET)
     const QByteArray keyUtf8 = key.toUtf8();
     GError *error = nullptr;
-    gchar *password = secret_password_lookup_sync(credentialSchema(), nullptr, &error, "key", keyUtf8.constData(), nullptr);
+    gchar *password =
+        secret_password_lookup_sync(credentialSchema(), nullptr, &error, "key", keyUtf8.constData(), nullptr);
     if (error) {
         logSecretServiceError("read", error);
         return {};
@@ -116,8 +112,7 @@ QString CredentialVault::loadSecret(const QString &key) const
 #endif
 }
 
-bool CredentialVault::clearSecret(const QString &key)
-{
+bool CredentialVault::clearSecret(const QString &key) {
     if (key.isEmpty()) {
         return false;
     }
@@ -143,14 +138,15 @@ bool CredentialVault::clearSecret(const QString &key)
 #endif
 }
 
-QString CredentialVault::redactSecrets(const QString &text)
-{
+QString CredentialVault::redactSecrets(const QString &text) {
     QString out = text;
     out.replace(QRegularExpression("(Token=\")[^\"]*(\")", QRegularExpression::CaseInsensitiveOption),
                 "\\1[redacted]\\2");
     out.replace(QRegularExpression("((?:^|[?&\\s])(?:api_key|access_token|token|t|s)=)[^&\\s\"]*",
-                                   QRegularExpression::CaseInsensitiveOption), "\\1[redacted]");
+                                   QRegularExpression::CaseInsensitiveOption),
+                "\\1[redacted]");
     out.replace(QRegularExpression("((?:Authorization|X-Emby-Token):\\s*)[^\\r\\n]+",
-                                   QRegularExpression::CaseInsensitiveOption), "\\1[redacted]");
+                                   QRegularExpression::CaseInsensitiveOption),
+                "\\1[redacted]");
     return out;
 }

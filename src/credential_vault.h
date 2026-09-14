@@ -6,11 +6,10 @@
 // OS credential store wrapper.
 // Windows uses Credential Manager and Linux uses Secret Service via libsecret.
 // Secrets must not be persisted in QSettings or exposed to QML.
-class CredentialVault final : public QObject
-{
+class CredentialVault final : public QObject {
     Q_OBJECT
 
-public:
+  public:
     using QObject::QObject;
 
     Q_INVOKABLE bool saveSecret(const QString &key, const QString &secret);

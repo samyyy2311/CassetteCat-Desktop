@@ -65,8 +65,6 @@ void ServicesController::saveListenBrainzSession(const QString &token, const QSt
     CredentialVault vault;
     SettingsController::setGlobalValue("scrobble_secure/listenbrainz_token", QVariant());
     if (value.isEmpty() || !vault.saveSecret("scrobble/listenbrainz_token", value)) {
-        m_listenBrainzToken.clear();
-        SettingsController::setGlobalValue("scrobble/listenbrainz_enabled", false);
         qWarning() << "ListenBrainz credential could not be saved securely.";
         return;
     }
@@ -91,8 +89,6 @@ void ServicesController::saveLibreFmSession(const QString &username, const QStri
     CredentialVault vault;
     SettingsController::setGlobalValue("scrobble_secure/librefm_session_key", QVariant());
     if (value.isEmpty() || !vault.saveSecret("scrobble/librefm_session_key", value)) {
-        m_libreFmSessionKey.clear();
-        SettingsController::setGlobalValue("scrobble/librefm_enabled", false);
         qWarning() << "Libre.fm credential could not be saved securely.";
         return;
     }
@@ -159,7 +155,8 @@ void ServicesController::validateListenBrainzToken(const QString &token) {
         const QString userName = root.value("user_name").toString();
         if (valid && !userName.isEmpty()) {
             saveListenBrainzSession(trimmed, userName);
-            if (hasListenBrainzSession()) {
+            CredentialVault vault;
+            if (vault.loadSecret("scrobble/listenbrainz_token") == trimmed) {
                 emit listenBrainzValidationFinished(true, userName, {});
             } else {
                 emit listenBrainzValidationFinished(
@@ -247,7 +244,8 @@ void ServicesController::authenticateLibreFm(const QString &username, const QStr
 
         if (!sessionKey.isEmpty()) {
             saveLibreFmSession(sessionName, sessionKey);
-            if (hasLibreFmSession()) {
+            CredentialVault vault;
+            if (vault.loadSecret("scrobble/librefm_session_key") == sessionKey) {
                 emit libreFmAuthFinished(true, sessionName, sessionKey, {});
             } else {
                 emit libreFmAuthFinished(

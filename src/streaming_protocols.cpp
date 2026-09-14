@@ -14,19 +14,16 @@ constexpr char kSubsonicVersion[] = "1.16.1";
 constexpr char kClientName[] = "CassetteCat";
 constexpr char kJellyfinVersion[] = "2.0.0";
 
-QString formatTrackDuration(int totalSeconds)
-{
+QString formatTrackDuration(int totalSeconds) {
     if (totalSeconds <= 0) {
         return {};
     }
     return QString("%1:%2").arg(totalSeconds / 60).arg(totalSeconds % 60, 2, 10, QChar('0'));
 }
 
-bool isPrivateOrLocalHost(const QString &host)
-{
+bool isPrivateOrLocalHost(const QString &host) {
     const QString value = host.trimmed();
-    if (value.compare("localhost", Qt::CaseInsensitive) == 0
-        || value.endsWith(".local", Qt::CaseInsensitive)) {
+    if (value.compare("localhost", Qt::CaseInsensitive) == 0 || value.endsWith(".local", Qt::CaseInsensitive)) {
         return true;
     }
 
@@ -43,26 +40,21 @@ bool isPrivateOrLocalHost(const QString &host)
     if (isIpv4) {
         const quint8 first = static_cast<quint8>(ipv4 >> 24);
         const quint8 second = static_cast<quint8>((ipv4 >> 16) & 0xff);
-        return first == 10
-            || (first == 172 && second >= 16 && second <= 31)
-            || (first == 192 && second == 168)
-            || (first == 169 && second == 254);
+        return first == 10 || (first == 172 && second >= 16 && second <= 31) || (first == 192 && second == 168) ||
+               (first == 169 && second == 254);
     }
 
     const Q_IPV6ADDR ipv6 = address.toIPv6Address();
-    return (ipv6.c[0] & 0xfe) == 0xfc
-        || (ipv6.c[0] == 0xfe && (ipv6.c[1] & 0xc0) == 0x80);
+    return (ipv6.c[0] & 0xfe) == 0xfc || (ipv6.c[0] == 0xfe && (ipv6.c[1] & 0xc0) == 0x80);
 }
 
-QString hostFromUnschemedUrl(const QString &value)
-{
+QString hostFromUnschemedUrl(const QString &value) {
     return QUrl("http://" + value).host();
 }
 
 } // namespace
 
-QString normalizeServerUrl(const QString &raw, int defaultPort)
-{
+QString normalizeServerUrl(const QString &raw, int defaultPort) {
     QString url = raw.trimmed();
     while (url.endsWith('/')) {
         url.chop(1);
@@ -87,14 +79,11 @@ QString normalizeServerUrl(const QString &raw, int defaultPort)
     return url;
 }
 
-QString md5Hex(const QString &input)
-{
-    return QString::fromLatin1(
-        QCryptographicHash::hash(input.toUtf8(), QCryptographicHash::Md5).toHex());
+QString md5Hex(const QString &input) {
+    return QString::fromLatin1(QCryptographicHash::hash(input.toUtf8(), QCryptographicHash::Md5).toHex());
 }
 
-QString randomSalt()
-{
+QString randomSalt() {
     QString salt;
     salt.reserve(12);
     static const char digits[] = "0123456789abcdef";
@@ -104,10 +93,8 @@ QString randomSalt()
     return salt;
 }
 
-QUrl subsonicUrl(const QString &base, const QString &endpoint, const QString &username,
-                 const QString &token, const QString &salt,
-                 const QList<QPair<QString, QString>> &extra)
-{
+QUrl subsonicUrl(const QString &base, const QString &endpoint, const QString &username, const QString &token,
+                 const QString &salt, const QList<QPair<QString, QString>> &extra) {
     QUrl url(base + "/rest/" + endpoint);
     QUrlQuery q;
     q.addQueryItem("u", username);
@@ -123,8 +110,7 @@ QUrl subsonicUrl(const QString &base, const QString &endpoint, const QString &us
     return url;
 }
 
-QJsonArray jsonArrayTolerant(const QJsonObject &object, const char *key)
-{
+QJsonArray jsonArrayTolerant(const QJsonObject &object, const char *key) {
     const QJsonValue value = object.value(QLatin1String(key));
     if (value.isArray()) {
         return value.toArray();
@@ -135,8 +121,7 @@ QJsonArray jsonArrayTolerant(const QJsonObject &object, const char *key)
     return {};
 }
 
-QJsonObject parseSubsonicBody(const QByteArray &body)
-{
+QJsonObject parseSubsonicBody(const QByteArray &body) {
     const QJsonDocument doc = QJsonDocument::fromJson(body);
     if (!doc.isObject()) {
         return {{"_error", QString("Unreadable server response")}};
@@ -149,8 +134,7 @@ QJsonObject parseSubsonicBody(const QByteArray &body)
     return response;
 }
 
-QVariantMap subsonicTrackMap(const QJsonObject &song, const QString &albumName, const QString &albumCover)
-{
+QVariantMap subsonicTrackMap(const QJsonObject &song, const QString &albumName, const QString &albumCover) {
     const QString id = song.value("id").toString();
     const int secs = song.value("duration").toVariant().toLongLong();
     QVariantMap track;
@@ -177,8 +161,7 @@ QVariantMap subsonicTrackMap(const QJsonObject &song, const QString &albumName, 
     return track;
 }
 
-QString jellyfinAuthHeader(const QString &deviceId, const QString &accessToken)
-{
+QString jellyfinAuthHeader(const QString &deviceId, const QString &accessToken) {
     QString header = QString("MediaBrowser Client=\"%1\", Device=\"Desktop\", DeviceId=\"%2\", Version=\"%3\"")
                          .arg(kClientName, deviceId, kJellyfinVersion);
     if (!accessToken.isEmpty()) {
@@ -187,8 +170,7 @@ QString jellyfinAuthHeader(const QString &deviceId, const QString &accessToken)
     return header;
 }
 
-QVariantMap jellyfinTrackMap(const QJsonObject &item)
-{
+QVariantMap jellyfinTrackMap(const QJsonObject &item) {
     const QString id = item.value("Id").toString();
     const long long ticks = item.value("RunTimeTicks").toVariant().toLongLong();
     const int secs = static_cast<int>(ticks / 10000000LL);
@@ -203,7 +185,8 @@ QVariantMap jellyfinTrackMap(const QJsonObject &item)
         QStringList names;
         for (const auto &val : artistsArray) {
             const QString n = val.toString().trimmed();
-            if (!n.isEmpty()) names << n;
+            if (!n.isEmpty())
+                names << n;
         }
         artist = names.join(", ");
     }
@@ -213,7 +196,8 @@ QVariantMap jellyfinTrackMap(const QJsonObject &item)
             QStringList names;
             for (const auto &val : artistItems) {
                 const QString n = val.toObject().value("Name").toString().trimmed();
-                if (!n.isEmpty()) names << n;
+                if (!n.isEmpty())
+                    names << n;
             }
             artist = names.join(", ");
         }
@@ -236,14 +220,22 @@ QVariantMap jellyfinTrackMap(const QJsonObject &item)
     track.insert("duration", formatTrackDuration(secs));
 
     QString container = item.value("Container").toString().toUpper();
-    if (container.contains("M4A") || container.contains("AAC") || container.contains("MP4")) container = "M4A";
-    else if (container.contains("FLAC")) container = "FLAC";
-    else if (container.contains("MP3")) container = "MP3";
-    else if (container.contains("OPUS")) container = "OPUS";
-    else if (container.contains("OGG")) container = "OGG";
-    else if (container.contains("WAV")) container = "WAV";
-    else if (container.contains("ALAC")) container = "ALAC";
-    else if (container.contains(",")) container = container.section(',', 0, 0).trimmed();
+    if (container.contains("M4A") || container.contains("AAC") || container.contains("MP4"))
+        container = "M4A";
+    else if (container.contains("FLAC"))
+        container = "FLAC";
+    else if (container.contains("MP3"))
+        container = "MP3";
+    else if (container.contains("OPUS"))
+        container = "OPUS";
+    else if (container.contains("OGG"))
+        container = "OGG";
+    else if (container.contains("WAV"))
+        container = "WAV";
+    else if (container.contains("ALAC"))
+        container = "ALAC";
+    else if (container.contains(","))
+        container = container.section(',', 0, 0).trimmed();
     track.insert("format", container.isEmpty() ? QString("AUDIO") : container);
 
     track.insert("source", QString("jellyfin"));

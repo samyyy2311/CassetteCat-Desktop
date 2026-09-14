@@ -44,8 +44,39 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     , m_player(new QMediaPlayer(this))
 {
     m_player->setAudioOutput(m_audioOutput);
+    m_audioOutput->setDevice(QAudioDevice());
+    m_audioOutput->setMuted(false);
     m_audioOutput->setVolume(1.0f);
+
+    connect(m_audioOutput, &QAudioOutput::deviceChanged, this, [this] {
+        qInfo().noquote() << "[PLAYER] audio output="
+                          << (m_followSystemDefaultAudio ? QStringLiteral("System Default")
+                                                       : m_audioOutput->device().description())
+                          << "muted=" << m_audioOutput->isMuted()
+                          << "volume=" << m_audioOutput->volume();
+        emit audioDeviceChanged();
+    });
+
     connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged, this, [this] {
+        if (m_followSystemDefaultAudio) {
+            m_audioOutput->setDevice(QAudioDevice());
+        } else {
+            bool selectedDeviceAvailable = false;
+            for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
+                if (QString::fromLatin1(device.id().toHex()) == m_selectedAudioDeviceId) {
+                    selectedDeviceAvailable = true;
+                    break;
+                }
+            }
+            if (!selectedDeviceAvailable) {
+                qWarning() << "[PLAYER] selected audio output is no longer available; using System Default";
+                m_followSystemDefaultAudio = true;
+                m_selectedAudioDeviceId.clear();
+                m_audioOutput->setDevice(QAudioDevice());
+                SettingsController::setGlobalValue(QStringLiteral("player/audioDeviceId"), QString());
+            }
+        }
+        m_audioOutput->setMuted(false);
         emit audioOutputsChanged();
         emit audioDeviceChanged();
     });
@@ -174,33 +205,43 @@ QVariantList PlayerController::audioOutputs() const
 
 QString PlayerController::audioDeviceId() const
 {
-    if (!m_audioOutput) return QString();
-    const QByteArray currentId = m_audioOutput->device().id();
-    if (currentId.isEmpty() || currentId == QMediaDevices::defaultAudioOutput().id()) {
-        return QString();
-    }
-    return QString::fromLatin1(currentId.toHex());
+    return m_followSystemDefaultAudio ? QString() : m_selectedAudioDeviceId;
 }
 
 bool PlayerController::setAudioDevice(const QString &id)
 {
     if (!m_audioOutput) return false;
+
     if (id.isEmpty()) {
-        const QAudioDevice defaultDevice = QMediaDevices::defaultAudioOutput();
-        if (m_audioOutput->device().id() != defaultDevice.id()) {
-            m_audioOutput->setDevice(defaultDevice);
-        }
+        m_followSystemDefaultAudio = true;
+        m_selectedAudioDeviceId.clear();
+        m_audioOutput->setDevice(QAudioDevice());
+        m_audioOutput->setMuted(false);
+        qInfo() << "[PLAYER] audio output set to System Default";
         emit audioDeviceChanged();
         return true;
     }
+
     for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
         if (QString::fromLatin1(device.id().toHex()) != id) continue;
+        m_followSystemDefaultAudio = false;
+        m_selectedAudioDeviceId = id;
         if (m_audioOutput->device().id() != device.id()) {
             m_audioOutput->setDevice(device);
         }
+        m_audioOutput->setMuted(false);
+        qInfo().noquote() << "[PLAYER] audio output set to" << device.description();
         emit audioDeviceChanged();
         return true;
     }
+
+    qWarning() << "[PLAYER] saved audio output is unavailable; using System Default";
+    m_followSystemDefaultAudio = true;
+    m_selectedAudioDeviceId.clear();
+    m_audioOutput->setDevice(QAudioDevice());
+    m_audioOutput->setMuted(false);
+    SettingsController::setGlobalValue(QStringLiteral("player/audioDeviceId"), QString());
+    emit audioDeviceChanged();
     return false;
 }
 QString PlayerController::error() const { return m_error; }
@@ -218,6 +259,8 @@ bool PlayerController::selfCheck()
     QBuffer source;
     PlayerController player;
     if (player.audioMeterEnabled()) return false;
+    if (player.m_audioOutput->isMuted()) return false;
+    if (!player.setAudioDevice(QString()) || !player.audioDeviceId().isEmpty()) return false;
     if (!isNetworkStream(QUrl(QStringLiteral("https://radio.example/live")))) return false;
     if (isNetworkStream(QUrl::fromLocalFile(QStringLiteral("C:/music/track.flac")))) return false;
 
@@ -278,6 +321,7 @@ bool PlayerController::selfCheck()
     const qint64 position = player.position();
     player.setAudioMeterEnabled(false);
     if (!waitFor([&] { return player.position() > position + 100; })) return false;
+    player.m_audioOutput->setMuted(false);
     return player.audioLevel() == 0.0 && player.error().isEmpty()
         && player.m_player->audioOutput() == player.m_audioOutput;
 }

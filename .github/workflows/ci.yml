@@ -54,6 +54,22 @@ jobs:
           cmake --install build/ci --component runtime --prefix $prefix
           Compress-Archive -Path $prefix -DestinationPath "CassetteCat-ci-${{ github.sha }}-windows-x64.zip"
 
+      - name: Check installer audio formats
+        shell: pwsh
+        run: |
+          $scanner = Get-Content 'src\library_scanner.cpp' -Raw
+          $installer = Get-Content 'installer\CassetteCat.iss' -Raw
+          $scannerFormats = @([regex]::Matches($scanner, '"\*\.(?<ext>[A-Za-z0-9]+)"') | ForEach-Object { $_.Groups['ext'].Value.ToLowerInvariant() } | Sort-Object -Unique)
+          $installerFormats = @([regex]::Matches($installer, 'Software\\Classes\\\.(?<ext>[A-Za-z0-9]+)\\OpenWithProgids') | ForEach-Object { $_.Groups['ext'].Value.ToLowerInvariant() } | Sort-Object -Unique)
+          if ($scannerFormats.Count -eq 0 -or $installerFormats.Count -eq 0) { throw 'Could not detect scanner or installer audio formats.' }
+          $difference = Compare-Object -ReferenceObject $scannerFormats -DifferenceObject $installerFormats
+          if ($difference) {
+            Write-Host "Scanner formats: $($scannerFormats -join ', ')"
+            Write-Host "Installer formats: $($installerFormats -join ', ')"
+            $difference | Format-Table | Out-String | Write-Host
+            throw 'Installer Open with formats do not match the library scanner.'
+          }
+
       - name: Validate Windows installer
         shell: pwsh
         run: |

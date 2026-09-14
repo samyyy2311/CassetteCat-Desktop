@@ -5,6 +5,7 @@
 
 #include <QCryptographicHash>
 #include <QDateTime>
+#include <QDebug>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -19,20 +20,33 @@ constexpr auto kLibreFmApiUrl = "https://libre.fm/2.0/";
 constexpr auto kLibreFmApiKey = "cassettecat";
 constexpr auto kLibreFmSecret = "cassettecat_secret";
 constexpr auto kListenBrainzBaseUrl = "https://api.listenbrainz.org/1";
+
+QString loadScrobbleSecret(CredentialVault &vault, const QString &key, const QString &legacySetting)
+{
+    QString secret = vault.loadSecret(key);
+    const QString legacy = SettingsController::globalValue(legacySetting).toString().trimmed();
+    if (legacy.isEmpty()) {
+        return secret;
+    }
+
+    if (secret.isEmpty() && vault.saveSecret(key, legacy)) {
+        secret = legacy;
+    } else if (secret.isEmpty()) {
+        qWarning() << "Legacy scrobble credential could not be migrated to secure storage.";
+    }
+    SettingsController::setGlobalValue(legacySetting, QVariant());
+    return secret;
+}
 }
 
 void ServicesController::initScrobbleCredentials()
 {
     if (m_scrobbleCredentialsLoaded) return;
     CredentialVault vault;
-    m_listenBrainzToken = vault.loadSecret("scrobble/listenbrainz_token");
-    if (m_listenBrainzToken.isEmpty()) {
-        m_listenBrainzToken = SettingsController::globalValue("scrobble_secure/listenbrainz_token").toString();
-    }
-    m_libreFmSessionKey = vault.loadSecret("scrobble/librefm_session_key");
-    if (m_libreFmSessionKey.isEmpty()) {
-        m_libreFmSessionKey = SettingsController::globalValue("scrobble_secure/librefm_session_key").toString();
-    }
+    m_listenBrainzToken = loadScrobbleSecret(
+        vault, QStringLiteral("scrobble/listenbrainz_token"), QStringLiteral("scrobble_secure/listenbrainz_token"));
+    m_libreFmSessionKey = loadScrobbleSecret(
+        vault, QStringLiteral("scrobble/librefm_session_key"), QStringLiteral("scrobble_secure/librefm_session_key"));
     m_scrobbleCredentialsLoaded = true;
 }
 
@@ -51,11 +65,16 @@ bool ServicesController::hasLibreFmSession()
 void ServicesController::saveListenBrainzSession(const QString &token, const QString &userName)
 {
     initScrobbleCredentials();
-    m_listenBrainzToken = token.trimmed();
+    const QString value = token.trimmed();
     CredentialVault vault;
-    if (!vault.saveSecret("scrobble/listenbrainz_token", m_listenBrainzToken)) {
-        SettingsController::setGlobalValue("scrobble_secure/listenbrainz_token", m_listenBrainzToken);
+    SettingsController::setGlobalValue("scrobble_secure/listenbrainz_token", QVariant());
+    if (value.isEmpty() || !vault.saveSecret("scrobble/listenbrainz_token", value)) {
+        m_listenBrainzToken.clear();
+        SettingsController::setGlobalValue("scrobble/listenbrainz_enabled", false);
+        qWarning() << "ListenBrainz credential could not be saved securely.";
+        return;
     }
+    m_listenBrainzToken = value;
     SettingsController::setGlobalValue("scrobble/listenbrainz_user", userName.trimmed());
     SettingsController::setGlobalValue("scrobble/listenbrainz_enabled", true);
 }
@@ -74,11 +93,16 @@ void ServicesController::disconnectListenBrainz()
 void ServicesController::saveLibreFmSession(const QString &username, const QString &sessionKey)
 {
     initScrobbleCredentials();
-    m_libreFmSessionKey = sessionKey.trimmed();
+    const QString value = sessionKey.trimmed();
     CredentialVault vault;
-    if (!vault.saveSecret("scrobble/librefm_session_key", m_libreFmSessionKey)) {
-        SettingsController::setGlobalValue("scrobble_secure/librefm_session_key", m_libreFmSessionKey);
+    SettingsController::setGlobalValue("scrobble_secure/librefm_session_key", QVariant());
+    if (value.isEmpty() || !vault.saveSecret("scrobble/librefm_session_key", value)) {
+        m_libreFmSessionKey.clear();
+        SettingsController::setGlobalValue("scrobble/librefm_enabled", false);
+        qWarning() << "Libre.fm credential could not be saved securely.";
+        return;
     }
+    m_libreFmSessionKey = value;
     SettingsController::setGlobalValue("scrobble/librefm_user", username.trimmed());
     SettingsController::setGlobalValue("scrobble/librefm_enabled", true);
 }
@@ -142,7 +166,11 @@ void ServicesController::validateListenBrainzToken(const QString &token)
         const QString userName = root.value("user_name").toString();
         if (valid && !userName.isEmpty()) {
             saveListenBrainzSession(trimmed, userName);
-            emit listenBrainzValidationFinished(true, userName, {});
+            if (hasListenBrainzSession()) {
+                emit listenBrainzValidationFinished(true, userName, {});
+            } else {
+                emit listenBrainzValidationFinished(false, {}, QStringLiteral("Token is valid, but secure credential storage is unavailable"));
+            }
         } else {
             emit listenBrainzValidationFinished(false, {}, QStringLiteral("Invalid user token or unauthorized"));
         }
@@ -220,7 +248,11 @@ void ServicesController::authenticateLibreFm(const QString &username, const QStr
 
         if (!sessionKey.isEmpty()) {
             saveLibreFmSession(sessionName, sessionKey);
-            emit libreFmAuthFinished(true, sessionName, sessionKey, {});
+            if (hasLibreFmSession()) {
+                emit libreFmAuthFinished(true, sessionName, sessionKey, {});
+            } else {
+                emit libreFmAuthFinished(false, {}, {}, QStringLiteral("Login succeeded, but secure credential storage is unavailable"));
+            }
         } else {
             emit libreFmAuthFinished(false, {}, {}, QStringLiteral("Invalid username or password"));
         }

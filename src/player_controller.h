@@ -12,8 +12,7 @@ class QMediaPlayer;
 class QQuickWindow;
 class StreamingController;
 
-class PlayerController final : public QObject
-{
+class PlayerController final : public QObject {
     Q_OBJECT
     Q_PROPERTY(QVariantMap currentTrack READ currentTrack NOTIFY currentTrackChanged)
     Q_PROPERTY(bool isPlaying READ isPlaying NOTIFY isPlayingChanged)
@@ -31,7 +30,7 @@ class PlayerController final : public QObject
 
     Q_PROPERTY(QString currentLyrics READ currentLyrics NOTIFY currentLyricsChanged)
 
-public:
+  public:
     explicit PlayerController(QObject *parent = nullptr, StreamingController *streaming = nullptr);
     static bool selfCheck();
 
@@ -68,7 +67,7 @@ public:
     Q_INVOKABLE void updateCurrentTrackArtwork(const QString &artworkPath);
     Q_INVOKABLE void updateCurrentTrackMetadata(const QVariantMap &track);
 
-signals:
+  signals:
     void currentTrackChanged();
     void currentLyricsChanged();
     void isPlayingChanged();
@@ -83,7 +82,7 @@ signals:
     void errorChanged();
     void trackEnded();
 
-private:
+  private:
     // Local files resolve to file URLs; remote tracks resolve to an
     // authenticated stream URL built in C++ so secrets never reach QML.
     // Returns an empty URL when a remote track cannot be resolved.

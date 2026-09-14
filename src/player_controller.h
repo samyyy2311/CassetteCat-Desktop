@@ -100,6 +100,7 @@ private:
     QString m_currentLyrics;
     bool m_isPlaying = false;
     bool m_shuffleEnabled = false;
+    bool m_followSystemDefaultAudio = true;
     qreal m_audioLevel = 0.0;
     qint64 m_position = 0;
     qint64 m_duration = 0;

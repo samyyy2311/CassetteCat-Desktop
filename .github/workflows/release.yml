@@ -78,7 +78,7 @@ jobs:
           if ((Get-Item "CassetteCat-$env:RELEASE_TAG-windows-x64.zip").Length -le 0) { throw 'Portable ZIP is empty.' }
           if ((Get-Item "CassetteCat-$env:RELEASE_TAG-windows-x64-setup.exe").Length -le 0) { throw 'Installer is empty.' }
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-windows
           path: |
@@ -147,7 +147,7 @@ jobs:
           flatpak-builder --force-clean --disable-rofiles-fuse --user --install-deps-from=flathub --default-branch="${RELEASE_TAG#v}" --repo=flatpak-repo build/flatpak packaging/flatpak/io.github.samyyy2311.CassetteCat.yml
           flatpak build-bundle flatpak-repo "CassetteCat-${RELEASE_TAG}-x86_64.flatpak" io.github.samyyy2311.CassetteCat "${RELEASE_TAG#v}"
       - name: Upload Linux artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-linux
           path: |
@@ -204,7 +204,7 @@ jobs:
           (cd release-assets && sha256sum -- * > SHA256SUMS.txt)
           (cd release-assets && sha256sum -c SHA256SUMS.txt)
       - name: Upload verified release bundle
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: release-verified
           path: release-assets

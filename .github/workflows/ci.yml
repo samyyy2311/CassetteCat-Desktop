@@ -95,8 +95,8 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Install multimedia runtime
-        run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-0
+      - name: Install Linux dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-0 libsecret-1-dev
 
       - name: Install Qt
         uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1

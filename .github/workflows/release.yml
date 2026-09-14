@@ -231,6 +231,7 @@ jobs:
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ env.RELEASE_TAG }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then

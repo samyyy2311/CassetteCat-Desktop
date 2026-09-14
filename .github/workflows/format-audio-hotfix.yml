@@ -1,0 +1,24 @@
+name: Format audio hotfix
+
+on:
+  push:
+    branches: [fix/windows-audio-output]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Print formatted sources
+        run: |
+          echo '===PLAYER_CONTROLLER_CPP_BEGIN==='
+          clang-format src/player_controller.cpp
+          echo '===PLAYER_CONTROLLER_CPP_END==='
+          echo '===PLAYER_CONTROLLER_H_BEGIN==='
+          clang-format src/player_controller.h
+          echo '===PLAYER_CONTROLLER_H_END==='

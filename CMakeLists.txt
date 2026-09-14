@@ -6,6 +6,10 @@ set(CASSETTECAT_PACKAGE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version used 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 6.10 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Concurrent QuickEffects Network Widgets)
+if(UNIX AND NOT APPLE)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBSECRET REQUIRED IMPORTED_TARGET libsecret-1)
+endif()
 
 qt_standard_project_setup(REQUIRES 6.10)
 
@@ -281,6 +285,10 @@ if(TARGET tag)
 endif()
 
 target_link_libraries(CassetteCat PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent Qt6::QuickEffects Qt6::Network Qt6::Widgets tag)
+if(UNIX AND NOT APPLE)
+    target_link_libraries(CassetteCat PRIVATE PkgConfig::LIBSECRET)
+    target_compile_definitions(CassetteCat PRIVATE CASSETTECAT_HAVE_LIBSECRET=1)
+endif()
 if(WIN32)
     target_compile_definitions(CassetteCat PRIVATE NOMINMAX)
     target_link_libraries(CassetteCat PRIVATE dwmapi ole32 shell32 shlwapi propsys runtimeobject)

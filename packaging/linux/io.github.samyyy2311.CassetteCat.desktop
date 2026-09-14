@@ -7,4 +7,4 @@ Icon=io.github.samyyy2311.CassetteCat
 Terminal=false
 Categories=AudioVideo;Audio;Player;
 StartupNotify=true
-MimeType=audio/flac;audio/mpeg;audio/mp4;audio/ogg;audio/wav;audio/x-wav;
+MimeType=audio/aac;audio/flac;audio/mpeg;audio/mp4;audio/ogg;audio/opus;audio/wav;audio/x-aiff;audio/x-m4a;audio/x-ms-wma;audio/x-wav;

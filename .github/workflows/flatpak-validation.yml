@@ -4,12 +4,16 @@ on:
   pull_request:
     paths:
       - 'packaging/flatpak/**'
+      - 'packaging/linux/**'
+      - 'assets/cassettecat_icon.png'
       - '.github/workflows/release.yml'
       - '.github/workflows/flatpak-validation.yml'
   push:
     branches: [main]
     paths:
       - 'packaging/flatpak/**'
+      - 'packaging/linux/**'
+      - 'assets/cassettecat_icon.png'
       - '.github/workflows/release.yml'
       - '.github/workflows/flatpak-validation.yml'
   workflow_dispatch:
@@ -29,7 +33,11 @@ jobs:
       - name: Install Flatpak tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder
+          sudo apt-get install -y appstream desktop-file-utils flatpak flatpak-builder
+      - name: Validate desktop metadata
+        run: |
+          desktop-file-validate packaging/linux/io.github.samyyy2311.CassetteCat.desktop
+          appstreamcli validate --no-net packaging/linux/io.github.samyyy2311.CassetteCat.metainfo.xml
       - name: Build Flatpak bundle
         env:
           FLATPAK_BRANCH: ci

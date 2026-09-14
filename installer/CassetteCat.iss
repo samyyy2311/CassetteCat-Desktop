@@ -38,6 +38,9 @@ Source: "..\dist\CassetteCat\*"; DestDir: "{app}"; Flags: ignoreversion recurses
 Name: "{autoprograms}\CassetteCat"; Filename: "{app}\bin\CassetteCat.exe"
 Name: "{autodesktop}\CassetteCat"; Filename: "{app}\bin\CassetteCat.exe"; Tasks: desktopicon
 
+[Run]
+Filename: "{app}\bin\CassetteCat.exe"; Description: "Launch CassetteCat"; Flags: nowait postinstall skipifsilent
+
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\CassetteCat.Audio"; ValueType: string; ValueName: ""; ValueData: "CassetteCat Audio File"; Flags: uninsdeletekeyifempty; Tasks: associateAudio
 Root: HKCU; Subkey: "Software\Classes\CassetteCat.Audio\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\bin\CassetteCat.exe,0"; Tasks: associateAudio

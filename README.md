@@ -97,7 +97,7 @@ Expand-Archive $archive.FullName .\CassetteCat
 
 ## Build from source
 
-You need Qt 6.10 or newer with Qt Quick and Qt Quick Controls 2, CMake 3.24 or newer, and Ninja.
+You need Qt 6.10 or newer with Qt Quick and Qt Quick Controls 2, CMake 3.24 or newer, and Ninja. Linux builds also require libsecret development headers, such as `libsecret-1-dev` on Debian and Ubuntu.
 
 ```powershell
 cmake --preset dev

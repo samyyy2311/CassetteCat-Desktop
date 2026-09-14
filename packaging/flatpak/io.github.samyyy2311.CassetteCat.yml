@@ -27,5 +27,5 @@ modules:
         path: ../..
       - type: git
         url: https://github.com/taglib/taglib.git
-        tag: v2.0.2
+        commit: 8ee4a727d365c773abff1d1fdbb84fa347aea177
         dest: taglib-src

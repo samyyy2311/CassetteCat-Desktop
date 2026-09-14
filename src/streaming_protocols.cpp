@@ -50,8 +50,8 @@ bool isPrivateOrLocalHost(const QString &host)
     }
 
     const Q_IPV6ADDR ipv6 = address.toIPv6Address();
-    return (ipv6[0] & 0xfe) == 0xfc
-        || (ipv6[0] == 0xfe && (ipv6[1] & 0xc0) == 0x80);
+    return (ipv6.c[0] & 0xfe) == 0xfc
+        || (ipv6.c[0] == 0xfe && (ipv6.c[1] & 0xc0) == 0x80);
 }
 
 QString hostFromUnschemedUrl(const QString &value)

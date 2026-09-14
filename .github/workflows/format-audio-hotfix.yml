@@ -5,7 +5,7 @@ on:
     branches: [fix/windows-audio-output]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   format:
@@ -14,11 +14,14 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: Install clang-format
         run: sudo apt-get update && sudo apt-get install -y clang-format
-      - name: Print formatted sources
+      - name: Format sources
         run: |
-          echo '===PLAYER_CONTROLLER_CPP_BEGIN==='
-          clang-format src/player_controller.cpp
-          echo '===PLAYER_CONTROLLER_CPP_END==='
-          echo '===PLAYER_CONTROLLER_H_BEGIN==='
-          clang-format src/player_controller.h
-          echo '===PLAYER_CONTROLLER_H_END==='
+          clang-format -i src/player_controller.cpp src/player_controller.h
+          if git diff --quiet -- src/player_controller.cpp src/player_controller.h; then
+            exit 0
+          fi
+          git config user.name "Samarth Lad"
+          git config user.email "142334685+samyyy2311@users.noreply.github.com"
+          git add src/player_controller.cpp src/player_controller.h
+          git commit -m "Format Windows audio output changes"
+          git push origin HEAD:fix/windows-audio-output

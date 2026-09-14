@@ -53,13 +53,19 @@ jobs:
           $prefix = Join-Path $PWD 'dist\CassetteCat'
           cmake --install build/ci --component runtime --prefix $prefix
           $requiredAudioRuntime = @(
-            'bin\Qt6Multimedia.dll',
-            'plugins\multimedia\ffmpegmediaplugin.dll',
-            'plugins\multimedia\windowsmediaplugin.dll'
+            @('bin\Qt6Multimediad.dll', 'bin\Qt6Multimedia.dll'),
+            @('plugins\multimedia\ffmpegmediaplugind.dll', 'plugins\multimedia\ffmpegmediaplugin.dll'),
+            @('plugins\multimedia\windowsmediaplugind.dll', 'plugins\multimedia\windowsmediaplugin.dll')
           )
-          foreach ($relativePath in $requiredAudioRuntime) {
-            $path = Join-Path $prefix $relativePath
-            if (-not (Test-Path $path)) { throw "Missing Windows audio runtime: $relativePath" }
+          foreach ($candidates in $requiredAudioRuntime) {
+            $found = $false
+            foreach ($relativePath in $candidates) {
+              if (Test-Path (Join-Path $prefix $relativePath)) {
+                $found = $true
+                break
+              }
+            }
+            if (-not $found) { throw "Missing Windows audio runtime: $($candidates -join ' or ')" }
           }
           & (Join-Path $prefix 'bin\CassetteCat.exe') --self-check
           if ($LASTEXITCODE -ne 0) { throw 'Packaged Windows self-check failed.' }

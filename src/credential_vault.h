@@ -3,10 +3,9 @@
 #include <QObject>
 #include <QString>
 
-// OS credential store wrapper (Windows Credential Manager; stubs elsewhere).
-// Single responsibility: save/load/clear secrets plus log redaction.
-// Secrets never touch QSettings or QML; QML receives metadata only.
-// Preserves exact behavior from streaming.h.
+// OS credential store wrapper.
+// Windows uses Credential Manager and Linux uses Secret Service via libsecret.
+// Secrets must not be persisted in QSettings or exposed to QML.
 class CredentialVault final : public QObject
 {
     Q_OBJECT

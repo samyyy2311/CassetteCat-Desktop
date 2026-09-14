@@ -15,8 +15,7 @@ const QStringList kCredentialKeys = {
     QStringLiteral("scrobble/librefm_session_key"),
 };
 
-int roundTripProbe()
-{
+int roundTripProbe() {
     CredentialVault vault;
     const QString suffix = QUuid::createUuid().toString(QUuid::WithoutBraces);
     QStringList storedKeys;
@@ -26,13 +25,15 @@ int roundTripProbe()
         const QString value = QStringLiteral("probe-%1-%2").arg(baseKey, suffix);
         if (!vault.saveSecret(key, value)) {
             std::cerr << "vault save failed for " << baseKey.toStdString() << '\n';
-            for (const QString &storedKey : storedKeys) vault.clearSecret(storedKey);
+            for (const QString &storedKey : storedKeys)
+                vault.clearSecret(storedKey);
             return 1;
         }
         storedKeys.append(key);
         if (vault.loadSecret(key) != value) {
             std::cerr << "vault roundtrip failed for " << baseKey.toStdString() << '\n';
-            for (const QString &storedKey : storedKeys) vault.clearSecret(storedKey);
+            for (const QString &storedKey : storedKeys)
+                vault.clearSecret(storedKey);
             return 1;
         }
     }
@@ -46,11 +47,10 @@ int roundTripProbe()
     return 0;
 }
 
-int unavailableProbe()
-{
+int unavailableProbe() {
     CredentialVault vault;
-    const QString key = QStringLiteral("__selfcheck__/unavailable/%1")
-                            .arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
+    const QString key =
+        QStringLiteral("__selfcheck__/unavailable/%1").arg(QUuid::createUuid().toString(QUuid::WithoutBraces));
     const QString value = QStringLiteral("probe-unavailable");
 
     if (vault.saveSecret(key, value)) {
@@ -71,8 +71,7 @@ int unavailableProbe()
 
 } // namespace
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     QCoreApplication app(argc, argv);
     const QStringList args = app.arguments();
     return args.contains(QStringLiteral("--expect-unavailable")) ? unavailableProbe() : roundTripProbe();

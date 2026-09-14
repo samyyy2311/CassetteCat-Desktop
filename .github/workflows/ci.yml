@@ -54,6 +54,15 @@ jobs:
           cmake --install build/ci --component runtime --prefix $prefix
           Compress-Archive -Path $prefix -DestinationPath "CassetteCat-ci-${{ github.sha }}-windows-x64.zip"
 
+      - name: Validate Windows installer
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress --limit-output -y
+          iscc.exe "/DAppVersion=0.0.0-ci" installer\CassetteCat.iss
+          $installer = 'dist\CassetteCat-0.0.0-ci-windows-x64-setup.exe'
+          if (-not (Test-Path $installer)) { throw 'Inno Setup did not produce the installer.' }
+          if ((Get-Item $installer).Length -le 0) { throw 'Installer is empty.' }
+
       - name: Upload portable app
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

@@ -52,6 +52,17 @@ jobs:
         run: |
           $prefix = Join-Path $PWD 'dist\CassetteCat'
           cmake --install build/ci --component runtime --prefix $prefix
+          $requiredAudioRuntime = @(
+            'bin\Qt6Multimedia.dll',
+            'plugins\multimedia\ffmpegmediaplugin.dll',
+            'plugins\multimedia\windowsmediaplugin.dll'
+          )
+          foreach ($relativePath in $requiredAudioRuntime) {
+            $path = Join-Path $prefix $relativePath
+            if (-not (Test-Path $path)) { throw "Missing Windows audio runtime: $relativePath" }
+          }
+          & (Join-Path $prefix 'bin\CassetteCat.exe') --self-check
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged Windows self-check failed.' }
           Compress-Archive -Path $prefix -DestinationPath "CassetteCat-ci-${{ github.sha }}-windows-x64.zip"
 
       - name: Check installer audio formats
@@ -79,11 +90,13 @@ jobs:
           if (-not (Test-Path $installer)) { throw 'Inno Setup did not produce the installer.' }
           if ((Get-Item $installer).Length -le 0) { throw 'Installer is empty.' }
 
-      - name: Upload portable app
+      - name: Upload Windows test artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: CassetteCat-windows-ci-${{ github.sha }}
-          path: CassetteCat-ci-${{ github.sha }}-windows-x64.zip
+          path: |
+            CassetteCat-ci-${{ github.sha }}-windows-x64.zip
+            dist/CassetteCat-0.0.0-ci-windows-x64-setup.exe
           if-no-files-found: error
           retention-days: 7
 

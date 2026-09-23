@@ -19,8 +19,11 @@ Item {
         border.width: 1
         border.color: backMouse.containsMouse ? "#30FFFFFF" : "#14FFFFFF"
 
+        scale: backMouse.pressed ? 0.94 : 1.0
+
         Behavior on color { ColorAnimation { duration: 160 } }
         Behavior on border.color { ColorAnimation { duration: 160 } }
+        Behavior on scale { NumberAnimation { duration: 90 } }
 
         LucideIcon {
             anchors.centerIn: parent
@@ -36,6 +39,12 @@ Item {
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: root.appWindow.nowPlayingOpen = false
+        }
+
+        AppToolTip {
+            text: "Close Now Playing"
+            visibleTarget: backMouse.containsMouse
+            delay: 350
         }
     }
 
@@ -121,9 +130,11 @@ Item {
             color: npPipMouse.containsMouse ? "#24FFFFFF" : "#10FFFFFF"
             border.width: 1
             border.color: npPipMouse.containsMouse ? "#30FFFFFF" : "#14FFFFFF"
+            scale: npPipMouse.pressed ? 0.94 : 1.0
 
             Behavior on color { ColorAnimation { duration: 160 } }
             Behavior on border.color { ColorAnimation { duration: 160 } }
+            Behavior on scale { NumberAnimation { duration: 90 } }
 
             LucideIcon {
                 anchors.centerIn: parent
@@ -140,27 +151,37 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.appWindow.toggleMiniPlayer()
             }
+
+            AppToolTip {
+                text: "Open MiniPlayer"
+                visibleTarget: npPipMouse.containsMouse
+                delay: 350
+            }
         }
 
         Rectangle {
             width: 38
             height: 38
             radius: 19
-            color: lyricsBtnMouse.containsMouse ? "#24FFFFFF" : "#10FFFFFF"
+            color: root.appWindow.nowPlayingMode === "lyrics"
+                ? root.appWindow.recordRed
+                : (lyricsBtnMouse.containsMouse ? "#24FFFFFF" : "#10FFFFFF")
             border.width: 1
             border.color: root.appWindow.nowPlayingMode === "lyrics"
                 ? root.appWindow.recordRed
                 : (lyricsBtnMouse.containsMouse ? "#30FFFFFF" : "#14FFFFFF")
+            scale: lyricsBtnMouse.pressed ? 0.94 : 1.0
 
             Behavior on color { ColorAnimation { duration: 160 } }
             Behavior on border.color { ColorAnimation { duration: 160 } }
+            Behavior on scale { NumberAnimation { duration: 90 } }
 
             LucideIcon {
                 anchors.centerIn: parent
                 width: 18
                 height: 18
                 icon: "quote"
-                color: root.appWindow.nowPlayingMode === "lyrics" ? root.appWindow.recordRedHover : (lyricsBtnMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.silverDim)
+                color: root.appWindow.nowPlayingMode === "lyrics" ? "#FFFFFF" : (lyricsBtnMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.silverDim)
             }
 
             MouseArea {
@@ -170,27 +191,37 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.appWindow.nowPlayingMode = root.appWindow.nowPlayingMode === "lyrics" ? "controls" : "lyrics"
             }
+
+            AppToolTip {
+                text: root.appWindow.nowPlayingMode === "lyrics" ? "Hide lyrics" : "Show lyrics"
+                visibleTarget: lyricsBtnMouse.containsMouse
+                delay: 350
+            }
         }
 
         Rectangle {
             width: 38
             height: 38
             radius: 19
-            color: queueBtnMouse.containsMouse ? "#24FFFFFF" : "#10FFFFFF"
+            color: root.appWindow.nowPlayingMode === "queue"
+                ? root.appWindow.recordRed
+                : (queueBtnMouse.containsMouse ? "#24FFFFFF" : "#10FFFFFF")
             border.width: 1
             border.color: root.appWindow.nowPlayingMode === "queue"
                 ? root.appWindow.recordRed
                 : (queueBtnMouse.containsMouse ? "#30FFFFFF" : "#14FFFFFF")
+            scale: queueBtnMouse.pressed ? 0.94 : 1.0
 
             Behavior on color { ColorAnimation { duration: 160 } }
             Behavior on border.color { ColorAnimation { duration: 160 } }
+            Behavior on scale { NumberAnimation { duration: 90 } }
 
             LucideIcon {
                 anchors.centerIn: parent
                 width: 18
                 height: 18
                 icon: "list"
-                color: root.appWindow.nowPlayingMode === "queue" ? root.appWindow.recordRedHover : (queueBtnMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.silverDim)
+                color: root.appWindow.nowPlayingMode === "queue" ? "#FFFFFF" : (queueBtnMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.silverDim)
             }
 
             MouseArea {
@@ -199,6 +230,12 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.appWindow.nowPlayingMode = root.appWindow.nowPlayingMode === "queue" ? "controls" : "queue"
+            }
+
+            AppToolTip {
+                text: root.appWindow.nowPlayingMode === "queue" ? "Hide queue" : "Show queue"
+                visibleTarget: queueBtnMouse.containsMouse
+                delay: 350
             }
         }
 

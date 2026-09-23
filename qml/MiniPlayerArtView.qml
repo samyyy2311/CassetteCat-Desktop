@@ -71,93 +71,156 @@ Item {
             }
         }
 
-        Row {
+        Rectangle {
             anchors.top: parent.top
             anchors.right: parent.right
             anchors.topMargin: 10
-            anchors.rightMargin: 12
-            spacing: 8
+            anchors.rightMargin: 10
+            height: 28
+            radius: 14
+            color: "#D8141312"
+            border.width: 1
+            border.color: "#35FFFFFF"
+            z: 20
 
-            Rectangle {
-                width: 20
-                height: 20
-                radius: 4
-                color: "transparent"
-                LucideIcon {
-                    anchors.centerIn: parent
-                    width: 12
-                    height: 12
-                    icon: "pin"
-                    color: root.miniPlayer.alwaysOnTop ? root.miniPlayer.recordRed : (artPinH.containsMouse ? "#FFFFFF" : "#D0FFFFFF")
-                }
-                MouseArea {
-                    id: artPinH
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.miniPlayer.toggleAlwaysOnTop()
-                }
-            }
+            Row {
+                anchors.centerIn: parent
+                spacing: 2
+                padding: 2
 
-            Rectangle {
-                width: 20
-                height: 20
-                radius: 4
-                color: "transparent"
-                Label {
-                    anchors.centerIn: parent
-                    text: "—"
-                    color: artMinH.containsMouse ? "#FFFFFF" : "#D0FFFFFF"
-                    font.pixelSize: 11
-                    font.weight: Font.DemiBold
-                }
-                MouseArea {
-                    id: artMinH
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.miniPlayer.showMinimized()
-                }
-            }
+                Rectangle {
+                    width: 24; height: 24; radius: 12
+                    color: root.miniPlayer.alwaysOnTop ? root.miniPlayer.recordRed : (artPinH.containsMouse ? "#30FFFFFF" : "transparent")
+                    scale: artPinH.pressed ? 0.90 : 1.0
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on scale { NumberAnimation { duration: 80 } }
 
-            Rectangle {
-                width: 20
-                height: 20
-                radius: 4
-                color: "transparent"
-                LucideIcon {
-                    anchors.centerIn: parent
-                    width: 12
-                    height: 12
-                    icon: "minimize-2"
-                    color: artPopH.containsMouse ? "#FFFFFF" : "#D0FFFFFF"
+                    LucideIcon {
+                        anchors.centerIn: parent
+                        width: 12; height: 12
+                        icon: "pin"
+                        color: root.miniPlayer.alwaysOnTop ? "#FFFFFF" : (artPinH.containsMouse ? "#FFFFFF" : "#C0FFFFFF")
+                    }
+                    MouseArea {
+                        id: artPinH
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.miniPlayer.toggleAlwaysOnTop()
+                    }
+                    AppToolTip {
+                        text: root.miniPlayer.alwaysOnTop ? "Unpin from top" : "Keep on top"
+                        visibleTarget: artPinH.containsMouse
+                        delay: 350
+                    }
                 }
-                MouseArea {
-                    id: artPopH
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.miniPlayer.mode = "compact"
-                }
-            }
 
-            Rectangle {
-                width: 20
-                height: 20
-                radius: 4
-                color: "transparent"
-                Label {
-                    anchors.centerIn: parent
-                    text: "✕"
-                    color: artCloseH.containsMouse ? root.miniPlayer.recordRedHover : "#D0FFFFFF"
-                    font.pixelSize: 11
+                Rectangle {
+                    width: 24; height: 24; radius: 12
+                    color: artMinH.containsMouse ? "#30FFFFFF" : "transparent"
+                    scale: artMinH.pressed ? 0.90 : 1.0
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on scale { NumberAnimation { duration: 80 } }
+
+                    LucideIcon {
+                        anchors.centerIn: parent
+                        width: 12; height: 12
+                        icon: "minus"
+                        color: artMinH.containsMouse ? "#FFFFFF" : "#C0FFFFFF"
+                    }
+                    MouseArea {
+                        id: artMinH
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.miniPlayer.showMinimized()
+                    }
+                    AppToolTip {
+                        text: "Minimize"
+                        visibleTarget: artMinH.containsMouse
+                        delay: 350
+                    }
                 }
-                MouseArea {
-                    id: artCloseH
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.miniPlayer.closeRequested()
+
+                Rectangle {
+                    width: 24; height: 24; radius: 12
+                    color: artPopH.containsMouse ? "#30FFFFFF" : "transparent"
+                    scale: artPopH.pressed ? 0.90 : 1.0
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on scale { NumberAnimation { duration: 80 } }
+
+                    LucideIcon {
+                        anchors.centerIn: parent
+                        width: 12; height: 12
+                        icon: "pip"
+                        color: artPopH.containsMouse ? "#FFFFFF" : "#C0FFFFFF"
+                    }
+                    MouseArea {
+                        id: artPopH
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.miniPlayer.mode = "compact"
+                    }
+                    AppToolTip {
+                        text: "Compact mode"
+                        visibleTarget: artPopH.containsMouse
+                        delay: 350
+                    }
+                }
+
+                Rectangle {
+                    width: 24; height: 24; radius: 12
+                    color: artExpandH.containsMouse ? "#30FFFFFF" : "transparent"
+                    scale: artExpandH.pressed ? 0.90 : 1.0
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on scale { NumberAnimation { duration: 80 } }
+
+                    LucideIcon {
+                        anchors.centerIn: parent
+                        width: 12; height: 12
+                        icon: "maximize-2"
+                        color: artExpandH.containsMouse ? "#FFFFFF" : "#C0FFFFFF"
+                    }
+                    MouseArea {
+                        id: artExpandH
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.miniPlayer.restoreRequested()
+                    }
+                    AppToolTip {
+                        text: "Restore full player"
+                        visibleTarget: artExpandH.containsMouse
+                        delay: 350
+                    }
+                }
+
+                Rectangle {
+                    width: 24; height: 24; radius: 12
+                    color: artCloseH.containsMouse ? "#E53935" : "transparent"
+                    scale: artCloseH.pressed ? 0.90 : 1.0
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on scale { NumberAnimation { duration: 80 } }
+
+                    LucideIcon {
+                        anchors.centerIn: parent
+                        width: 12; height: 12
+                        icon: "x"
+                        color: artCloseH.containsMouse ? "#FFFFFF" : "#C0FFFFFF"
+                    }
+                    MouseArea {
+                        id: artCloseH
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.miniPlayer.closeRequested()
+                    }
+                    AppToolTip {
+                        text: "Close miniplayer"
+                        visibleTarget: artCloseH.containsMouse
+                        delay: 350
+                    }
                 }
             }
         }

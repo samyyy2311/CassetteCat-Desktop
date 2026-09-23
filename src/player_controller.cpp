@@ -101,8 +101,10 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
         double sum = 0.0;
         if (buffer.format().sampleFormat() == QAudioFormat::Float) {
             const auto *samples = buffer.constData<float>();
-            for (int i = 0; i < sampleCount; ++i)
-                sum += samples[i] * samples[i];
+            for (int i = 0; i < sampleCount; ++i) {
+                const double sample = samples[i];
+                sum += sample * sample;
+            }
         } else if (buffer.format().sampleFormat() == QAudioFormat::Int16) {
             const auto *samples = buffer.constData<qint16>();
             for (int i = 0; i < sampleCount; ++i) {

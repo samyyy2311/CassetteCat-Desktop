@@ -224,36 +224,133 @@ Window {
 
             HoverHandler { id: compactHoverHandler }
 
-            Row {
+            Rectangle {
                 anchors.top: parent.top
                 anchors.right: parent.right
-                anchors.topMargin: 10
-                anchors.rightMargin: 12
-                spacing: 6
-                z: 10
-                opacity: compactHoverHandler.hovered ? 1.0 : 0.0
-                Behavior on opacity { NumberAnimation { duration: 140 } }
+                anchors.topMargin: 8
+                anchors.rightMargin: 10
+                height: 26
+                radius: 13
+                color: compactHoverHandler.hovered ? "#22201E" : "#1A1918"
+                border.width: 1
+                border.color: compactHoverHandler.hovered ? "#35FFFFFF" : "#1AFFFFFF"
+                z: 20
 
-                Item {
-                    width: 18; height: 18
-                    LucideIcon { anchors.centerIn: parent; width: 11; height: 11; icon: "pin"; color: root.alwaysOnTop ? root.recordRed : root.silverDim }
-                    MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleAlwaysOnTop() }
-                }
+                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: 150 } }
 
-                Item {
-                    width: 18; height: 18
-                    Label { anchors.centerIn: parent; text: "—"; color: root.silverDim; font.pixelSize: 11; font.weight: Font.DemiBold }
-                    MouseArea { anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.showMinimized() }
-                }
-                Item {
-                    width: 18; height: 18
-                    LucideIcon { anchors.centerIn: parent; width: 11; height: 11; icon: "maximize-2"; color: root.silverDim }
-                    MouseArea { id: restoreWinM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.mode = "art" }
-                }
-                Item {
-                    width: 18; height: 18
-                    Label { anchors.centerIn: parent; text: "✕"; color: root.silverDim; font.pixelSize: 10 }
-                    MouseArea { id: closeWinM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.closeRequested() }
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 2
+                    padding: 2
+
+                    Rectangle {
+                        width: 22; height: 22; radius: 11
+                        color: root.alwaysOnTop ? root.recordRed : (pinHover.containsMouse ? "#25FFFFFF" : "transparent")
+                        scale: pinHover.pressed ? 0.90 : 1.0
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on scale { NumberAnimation { duration: 80 } }
+
+                        LucideIcon {
+                            anchors.centerIn: parent
+                            width: 12; height: 12
+                            icon: "pin"
+                            color: root.alwaysOnTop ? "#FFFFFF" : (pinHover.containsMouse ? root.textPrimary : root.silverDim)
+                        }
+                        MouseArea {
+                            id: pinHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.toggleAlwaysOnTop()
+                        }
+                        AppToolTip {
+                            text: root.alwaysOnTop ? "Unpin from top" : "Keep on top"
+                            visibleTarget: pinHover.containsMouse
+                            delay: 350
+                        }
+                    }
+
+                    Rectangle {
+                        width: 22; height: 22; radius: 11
+                        color: minHover.containsMouse ? "#25FFFFFF" : "transparent"
+                        scale: minHover.pressed ? 0.90 : 1.0
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on scale { NumberAnimation { duration: 80 } }
+
+                        LucideIcon {
+                            anchors.centerIn: parent
+                            width: 12; height: 12
+                            icon: "minus"
+                            color: minHover.containsMouse ? root.textPrimary : root.silverDim
+                        }
+                        MouseArea {
+                            id: minHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.showMinimized()
+                        }
+                        AppToolTip {
+                            text: "Minimize"
+                            visibleTarget: minHover.containsMouse
+                            delay: 350
+                        }
+                    }
+
+                    Rectangle {
+                        width: 22; height: 22; radius: 11
+                        color: expHover.containsMouse ? "#25FFFFFF" : "transparent"
+                        scale: expHover.pressed ? 0.90 : 1.0
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on scale { NumberAnimation { duration: 80 } }
+
+                        LucideIcon {
+                            anchors.centerIn: parent
+                            width: 12; height: 12
+                            icon: "maximize-2"
+                            color: expHover.containsMouse ? root.textPrimary : root.silverDim
+                        }
+                        MouseArea {
+                            id: expHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.restoreRequested()
+                        }
+                        AppToolTip {
+                            text: "Restore full player"
+                            visibleTarget: expHover.containsMouse
+                            delay: 350
+                        }
+                    }
+
+                    Rectangle {
+                        width: 22; height: 22; radius: 11
+                        color: closeHover.containsMouse ? "#E53935" : "transparent"
+                        scale: closeHover.pressed ? 0.90 : 1.0
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on scale { NumberAnimation { duration: 80 } }
+
+                        LucideIcon {
+                            anchors.centerIn: parent
+                            width: 12; height: 12
+                            icon: "x"
+                            color: closeHover.containsMouse ? "#FFFFFF" : root.silverDim
+                        }
+                        MouseArea {
+                            id: closeHover
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.closeRequested()
+                        }
+                        AppToolTip {
+                            text: "Close miniplayer"
+                            visibleTarget: closeHover.containsMouse
+                            delay: 350
+                        }
+                    }
                 }
             }
 
@@ -301,7 +398,7 @@ Window {
                             color: "#80000000"
                             opacity: coverHoverM.containsMouse ? 1.0 : 0.0
                             Behavior on opacity { NumberAnimation { duration: 140 } }
-                            LucideIcon { anchors.centerIn: parent; width: 13; height: 13; icon: "maximize-2"; color: "#FFFFFF" }
+                            LucideIcon { anchors.centerIn: parent; width: 14; height: 14; icon: "disc"; color: "#FFFFFF" }
                         }
 
                         MouseArea {
@@ -311,13 +408,19 @@ Window {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: root.mode = "art"
                         }
+
+                        AppToolTip {
+                            text: "Switch to artwork mode"
+                            visibleTarget: coverHoverM.containsMouse
+                            delay: 350
+                        }
                     }
 
                     ColumnLayout {
                         anchors.left: parent.left
                         anchors.right: parent.right
                         anchors.leftMargin: 60
-                        anchors.rightMargin: 60
+                        anchors.rightMargin: 115
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 2
 

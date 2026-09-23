@@ -2592,6 +2592,7 @@ ApplicationWindow {
             lyricDisplayItems: window.lyricDisplayItems
             activeLyricDisplayIndex: window.activeLyricDisplayIndex
             onRestoreRequested: {
+                miniPlayerWindow.visible = false
                 if (window.visibility === Window.Minimized) {
                     window.showNormal()
                 }
@@ -3828,6 +3829,7 @@ ApplicationWindow {
                         keepPreviousArtwork: true
                         cacheArtwork: true
                         showTonearm: true
+                        stableSourceSize: 512
                     }
 
                     MouseArea {

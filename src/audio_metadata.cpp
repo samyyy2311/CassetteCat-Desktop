@@ -298,6 +298,7 @@ QString extractEmbeddedLyrics(const QString &filePath)
     return {};
 }
 
+/// @copydoc extractReplayGain
 float extractReplayGain(const QString &filePath, bool albumMode)
 {
     if (filePath.isEmpty()) return 0.0f;
@@ -490,6 +491,7 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error)
     }
 }
 
+/// @copydoc parseM3uPlaylist
 QVariantList parseM3uPlaylist(const QString &playlistPath)
 {
     QFile file(playlistPath);
@@ -606,4 +608,3 @@ QVariantList parseM3uPlaylist(const QString &playlistPath)
 
     return tracks;
 }
-

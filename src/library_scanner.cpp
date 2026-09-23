@@ -64,6 +64,7 @@ QVariantList scanTracks(const QString &folder)
     return result;
 }
 
+/// Verifies library scanning and M3U parsing with temporary fixture files.
 bool scanSelfCheck()
 {
     QTemporaryDir folder;

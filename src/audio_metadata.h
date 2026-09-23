@@ -50,7 +50,9 @@ QString formatDuration(int totalSeconds);
 QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension = 0);
 QString extractEmbeddedArtwork(const QString &filePath, int maxDimension = 0);
 QString extractEmbeddedLyrics(const QString &filePath);
+/// Returns the track or album ReplayGain value stored in \p filePath.
 float extractReplayGain(const QString &filePath, bool albumMode = false);
 TrackInfo readTrackInfo(const QString &filePath);
 bool writeTrackInfo(const QVariantMap &metadata, QString *error = nullptr);
+/// Parses local tracks and HTTP streams from an M3U playlist.
 QVariantList parseM3uPlaylist(const QString &playlistPath);

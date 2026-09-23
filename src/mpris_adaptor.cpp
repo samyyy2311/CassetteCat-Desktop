@@ -8,47 +8,56 @@
 
 #ifdef CASSETTECAT_HAVE_DBUS
 
+/// @copydoc MediaPlayer2Adaptor::MediaPlayer2Adaptor
 MediaPlayer2Adaptor::MediaPlayer2Adaptor(MprisController *parent)
     : QDBusAbstractAdaptor(parent)
     , m_controller(parent)
 {
 }
 
+/// @copydoc MediaPlayer2Adaptor::canQuit
 bool MediaPlayer2Adaptor::canQuit() const
 {
     return true;
 }
 
+/// @copydoc MediaPlayer2Adaptor::canRaise
 bool MediaPlayer2Adaptor::canRaise() const
 {
     return true;
 }
 
+/// @copydoc MediaPlayer2Adaptor::canSetFullscreen
 bool MediaPlayer2Adaptor::canSetFullscreen() const
 {
     return false;
 }
 
+/// @copydoc MediaPlayer2Adaptor::hasTrackList
 bool MediaPlayer2Adaptor::hasTrackList() const
 {
     return false;
 }
 
+/// @copydoc MediaPlayer2Adaptor::identity
 QString MediaPlayer2Adaptor::identity() const
 {
     return QStringLiteral("CassetteCat");
 }
 
+/// @copydoc MediaPlayer2Adaptor::desktopEntry
 QString MediaPlayer2Adaptor::desktopEntry() const
 {
     return QStringLiteral("io.github.samyyy2311.CassetteCat");
 }
 
+/// @copydoc MediaPlayer2Adaptor::supportedUriSchemes
 QStringList MediaPlayer2Adaptor::supportedUriSchemes() const
 {
     return { QStringLiteral("file"), QStringLiteral("http"), QStringLiteral("https") };
 }
 
+/// @copydoc MediaPlayer2Adaptor::supportedMimeTypes
 QStringList MediaPlayer2Adaptor::supportedMimeTypes() const
 {
     return {
@@ -66,16 +75,19 @@ QStringList MediaPlayer2Adaptor::supportedMimeTypes() const
     };
 }
 
+/// @copydoc MediaPlayer2Adaptor::Raise
 void MediaPlayer2Adaptor::Raise()
 {
     if (m_controller) emit m_controller->raiseRequested();
 }
 
+/// @copydoc MediaPlayer2Adaptor::Quit
 void MediaPlayer2Adaptor::Quit()
 {
     if (m_controller) emit m_controller->quitRequested();
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::MediaPlayer2PlayerAdaptor
 MediaPlayer2PlayerAdaptor::MediaPlayer2PlayerAdaptor(MprisController *parent, PlayerController *player)
     : QDBusAbstractAdaptor(parent)
     , m_controller(parent)
@@ -83,6 +95,7 @@ MediaPlayer2PlayerAdaptor::MediaPlayer2PlayerAdaptor(MprisController *parent, Pl
 {
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::playbackStatus
 QString MediaPlayer2PlayerAdaptor::playbackStatus() const
 {
     const bool isPlaying = m_player && m_player->isPlaying();
@@ -90,12 +103,14 @@ QString MediaPlayer2PlayerAdaptor::playbackStatus() const
     return MprisController::playbackStatusString(isPlaying, hasTrack);
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::loopStatus
 QString MediaPlayer2PlayerAdaptor::loopStatus() const
 {
     const int mode = m_controller ? m_controller->repeatMode() : 0;
     return MprisController::loopStatusString(mode);
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::setLoopStatus
 void MediaPlayer2PlayerAdaptor::setLoopStatus(const QString &loopStatus)
 {
     if (m_controller) {
@@ -103,26 +118,31 @@ void MediaPlayer2PlayerAdaptor::setLoopStatus(const QString &loopStatus)
     }
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::rate
 double MediaPlayer2PlayerAdaptor::rate() const
 {
     return 1.0;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::setRate
 void MediaPlayer2PlayerAdaptor::setRate(double rate)
 {
     Q_UNUSED(rate);
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::shuffle
 bool MediaPlayer2PlayerAdaptor::shuffle() const
 {
     return m_player ? m_player->shuffleEnabled() : false;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::setShuffle
 void MediaPlayer2PlayerAdaptor::setShuffle(bool shuffle)
 {
     if (m_player) m_player->setShuffleEnabled(shuffle);
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::metadata
 QVariantMap MediaPlayer2PlayerAdaptor::metadata() const
 {
     const QVariantMap track = m_player ? m_player->currentTrack() : QVariantMap();
@@ -130,11 +150,13 @@ QVariantMap MediaPlayer2PlayerAdaptor::metadata() const
     return MprisController::buildMetadata(track, dur);
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::volume
 double MediaPlayer2PlayerAdaptor::volume() const
 {
     return m_player ? static_cast<double>(m_player->volume()) : 1.0;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::setVolume
 void MediaPlayer2PlayerAdaptor::setVolume(double volume)
 {
     if (m_player) {
@@ -143,51 +165,61 @@ void MediaPlayer2PlayerAdaptor::setVolume(double volume)
     }
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::position
 qlonglong MediaPlayer2PlayerAdaptor::position() const
 {
     return m_player ? (static_cast<qlonglong>(m_player->position()) * 1000) : 0;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::minimumRate
 double MediaPlayer2PlayerAdaptor::minimumRate() const
 {
     return 1.0;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::maximumRate
 double MediaPlayer2PlayerAdaptor::maximumRate() const
 {
     return 1.0;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::canGoNext
 bool MediaPlayer2PlayerAdaptor::canGoNext() const
 {
     return true;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::canGoPrevious
 bool MediaPlayer2PlayerAdaptor::canGoPrevious() const
 {
     return true;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::canPlay
 bool MediaPlayer2PlayerAdaptor::canPlay() const
 {
     return true;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::canPause
 bool MediaPlayer2PlayerAdaptor::canPause() const
 {
     return true;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::canSeek
 bool MediaPlayer2PlayerAdaptor::canSeek() const
 {
     return true;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::canControl
 bool MediaPlayer2PlayerAdaptor::canControl() const
 {
     return true;
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::notifyPropertiesChanged
 void MediaPlayer2PlayerAdaptor::notifyPropertiesChanged(const QVariantMap &changed)
 {
     if (changed.isEmpty() || !QDBusConnection::sessionBus().isConnected()) return;
@@ -202,36 +234,43 @@ void MediaPlayer2PlayerAdaptor::notifyPropertiesChanged(const QVariantMap &chang
     QDBusConnection::sessionBus().send(signal);
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::Next
 void MediaPlayer2PlayerAdaptor::Next()
 {
     if (m_controller) emit m_controller->nextRequested();
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::Previous
 void MediaPlayer2PlayerAdaptor::Previous()
 {
     if (m_controller) emit m_controller->previousRequested();
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::Pause
 void MediaPlayer2PlayerAdaptor::Pause()
 {
     if (m_player) m_player->pause();
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::PlayPause
 void MediaPlayer2PlayerAdaptor::PlayPause()
 {
     if (m_player) m_player->togglePlay();
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::Stop
 void MediaPlayer2PlayerAdaptor::Stop()
 {
     if (m_player) m_player->stop();
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::Play
 void MediaPlayer2PlayerAdaptor::Play()
 {
     if (m_player) m_player->play();
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::Seek
 void MediaPlayer2PlayerAdaptor::Seek(qlonglong offsetUs)
 {
     if (!m_player) return;
@@ -244,6 +283,7 @@ void MediaPlayer2PlayerAdaptor::Seek(qlonglong offsetUs)
     emit Seeked(targetMs * 1000);
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::SetPosition
 void MediaPlayer2PlayerAdaptor::SetPosition(const QDBusObjectPath &trackId, qlonglong positionUs)
 {
     Q_UNUSED(trackId);
@@ -253,6 +293,7 @@ void MediaPlayer2PlayerAdaptor::SetPosition(const QDBusObjectPath &trackId, qlon
     emit Seeked(targetMs * 1000);
 }
 
+/// @copydoc MediaPlayer2PlayerAdaptor::OpenUri
 void MediaPlayer2PlayerAdaptor::OpenUri(const QString &uri)
 {
     if (m_controller) emit m_controller->openUriRequested(uri);
@@ -264,6 +305,7 @@ struct LinuxMprisBackend {
     QString registeredServiceName;
 };
 
+/// @copydoc createLinuxMprisBackend
 void *createLinuxMprisBackend(MprisController *controller, PlayerController *player)
 {
     auto bus = QDBusConnection::sessionBus();
@@ -299,6 +341,7 @@ void *createLinuxMprisBackend(MprisController *controller, PlayerController *pla
     return backend;
 }
 
+/// @copydoc destroyLinuxMprisBackend
 void destroyLinuxMprisBackend(void *backend)
 {
     auto *b = static_cast<LinuxMprisBackend *>(backend);
@@ -313,6 +356,7 @@ void destroyLinuxMprisBackend(void *backend)
     delete b;
 }
 
+/// @copydoc notifyLinuxMprisTrackChanged
 void notifyLinuxMprisTrackChanged(void *backend)
 {
     auto *b = static_cast<LinuxMprisBackend *>(backend);
@@ -321,6 +365,7 @@ void notifyLinuxMprisTrackChanged(void *backend)
     }
 }
 
+/// @copydoc notifyLinuxMprisPlayingChanged
 void notifyLinuxMprisPlayingChanged(void *backend)
 {
     auto *b = static_cast<LinuxMprisBackend *>(backend);
@@ -329,6 +374,7 @@ void notifyLinuxMprisPlayingChanged(void *backend)
     }
 }
 
+/// @copydoc notifyLinuxMprisVolumeChanged
 void notifyLinuxMprisVolumeChanged(void *backend)
 {
     auto *b = static_cast<LinuxMprisBackend *>(backend);
@@ -337,6 +383,7 @@ void notifyLinuxMprisVolumeChanged(void *backend)
     }
 }
 
+/// @copydoc notifyLinuxMprisShuffleChanged
 void notifyLinuxMprisShuffleChanged(void *backend)
 {
     auto *b = static_cast<LinuxMprisBackend *>(backend);
@@ -345,6 +392,7 @@ void notifyLinuxMprisShuffleChanged(void *backend)
     }
 }
 
+/// @copydoc notifyLinuxMprisLoopStatusChanged
 void notifyLinuxMprisLoopStatusChanged(void *backend)
 {
     auto *b = static_cast<LinuxMprisBackend *>(backend);

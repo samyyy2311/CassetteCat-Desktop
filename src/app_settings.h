@@ -27,9 +27,13 @@ public:
     Q_INVOKABLE QString readTextFile(const QUrl &url) const;
     Q_INVOKABLE void copyToClipboard(const QString &text);
     Q_INVOKABLE void showInFolder(const QString &filePath);
+    /// Returns the file path used for application diagnostics.
     Q_INVOKABLE QString getLogFilePath() const;
+    /// Returns at most the newest \p maxLines lines from the debug log.
     Q_INVOKABLE QString readRecentLogs(int maxLines = 150) const;
+    /// Truncates the current log and removes its rotated predecessor.
     Q_INVOKABLE void clearLogs();
+    /// Opens the current debug log with the platform default handler.
     Q_INVOKABLE void openLogFile();
 
 private:

@@ -172,11 +172,13 @@ void SettingsController::showInFolder(const QString &filePath)
 #endif
 }
 
+/// @copydoc SettingsController::getLogFilePath
 QString SettingsController::getLogFilePath() const
 {
     return debugLogFilePath();
 }
 
+/// @copydoc SettingsController::readRecentLogs
 QString SettingsController::readRecentLogs(int maxLines) const
 {
     if (maxLines <= 0) {
@@ -221,6 +223,7 @@ QString SettingsController::readRecentLogs(int maxLines) const
     return lines.join('\n');
 }
 
+/// @copydoc SettingsController::clearLogs
 void SettingsController::clearLogs()
 {
     QFile file(debugLogFilePath());
@@ -233,6 +236,7 @@ void SettingsController::clearLogs()
     }
 }
 
+/// @copydoc SettingsController::openLogFile
 void SettingsController::openLogFile()
 {
     const QString path = debugLogFilePath();
@@ -240,4 +244,3 @@ void SettingsController::openLogFile()
         QDesktopServices::openUrl(QUrl::fromLocalFile(path));
     }
 }
-

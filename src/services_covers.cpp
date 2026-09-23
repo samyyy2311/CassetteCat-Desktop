@@ -11,6 +11,7 @@
 #include <QUrlQuery>
 #include <functional>
 
+/// @copydoc ServicesController::searchAlbumCovers
 void ServicesController::searchAlbumCovers(const QString &album, const QString &artist)
 {
     if (!onlineEnabled() || album.trimmed().isEmpty()) {
@@ -233,6 +234,7 @@ void ServicesController::searchAlbumCovers(const QString &album, const QString &
     });
 }
 
+/// @copydoc ServicesController::applyAlbumCover
 void ServicesController::applyAlbumCover(const QString &album, const QString &artist, const QString &imageUrl, const QString &filePath)
 {
     if (!onlineEnabled() || imageUrl.trimmed().isEmpty()) return;

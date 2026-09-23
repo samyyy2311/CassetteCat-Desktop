@@ -522,12 +522,8 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
     }
 }
 
-<<<<<<< HEAD
-QVariantList parseM3uPlaylist(const QString &playlistPath) {
-=======
 /// @copydoc parseM3uPlaylist
 QVariantList parseM3uPlaylist(const QString &playlistPath) {
->>>>>>> origin/feat/desktop-enhancements
     QFile file(playlistPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return {};

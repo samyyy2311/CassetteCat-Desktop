@@ -133,11 +133,20 @@ Item {
                         property bool isSelected: root.appWindow.songFilterMode === modelData.id
                         width: qPillLbl.implicitWidth + 20
                         height: 28
-                        radius: 14
-                        color: "transparent"
-                        border.width: isSelected ? 1.5 : 1
-                        border.color: isSelected ? recordRed : (qPillMouse.containsMouse ? "#45FFFFFF" : "#282828")
+                        radius: height / 2
+                        color: isSelected
+                            ? "#262320"
+                            : (qPillMouse.containsMouse ? surfaceElevated : surfaceTag)
+                        border.width: 1
+                        border.color: isSelected
+                            ? recordRed
+                            : (qPillMouse.containsMouse ? borderVariant : borderSubtle)
 
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: 120
+                            }
+                        }
                         Behavior on border.color {
                             ColorAnimation {
                                 duration: 120
@@ -347,7 +356,6 @@ Item {
                         track: model.track
                         selectable: true
                         selected: root.appWindow.isTrackSelected(model.track.filePath)
-                        showPlayCount: true
                         onClicked: modifiers => {
                             if (modifiers & Qt.ControlModifier) {
                                 root.appWindow.toggleTrackSelection(model.track.filePath)

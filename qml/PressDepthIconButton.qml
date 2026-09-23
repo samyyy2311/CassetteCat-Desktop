@@ -13,6 +13,7 @@ Item {
     property color borderColor: borderSubtle
     property color hoverBorderColor: borderVariant
     property bool highlighted: false
+    property alias accented: root.highlighted
     property string tooltipText: ""
     property real cornerRadius: Math.round(boxSize / 2)
     signal clicked()

@@ -95,7 +95,6 @@ Item {
                 width: root.width - 64
                 spacing: 10
 
-                // ---- Section 1: Services & Data ----
                 SectionLabel { text: "Services & Data" }
 
                 Rectangle {
@@ -149,7 +148,6 @@ Item {
                     }
                 }
 
-                // ---- Section 2: Core Audio & Architecture ----
                 SectionLabel { text: "Core Audio & Architecture" }
 
                 Rectangle {
@@ -170,7 +168,7 @@ Item {
 
                         Repeater {
                             model: [
-                                { title: "AutoEq", subtitle: "Calibrated headphone equalizer response curves by Jaakko Pasanen", icon: "autoeq", preserveColor: true, url: "https://github.com/jaakkopasanen/AutoEq" },
+                                { title: "AutoEq", subtitle: "Calibrated headphone equalizer response curves by Jaakko Pasanen (Planned)", icon: "autoeq", preserveColor: true, url: "https://github.com/jaakkopasanen/AutoEq" },
                                 { title: "Qt Multimedia", subtitle: "Hardware audio playback, streaming, and audio sinks", icon: "music", preserveColor: false, url: "https://doc.qt.io/qt-6/qtmultimedia-index.html" },
                                 { title: "Qt Network", subtitle: "High-performance HTTP/REST client for lyrics and data sync", icon: "globe", preserveColor: false, url: "https://doc.qt.io/qt-6/qtnetwork-index.html" },
                                 { title: "TagLib", subtitle: "Audio metadata and embedded ID3/MP4/FLAC tag parser", icon: "disc", preserveColor: false, url: "https://taglib.org" },
@@ -198,7 +196,6 @@ Item {
                     }
                 }
 
-                // ---- Section 3: Design & Typography ----
                 SectionLabel { text: "Design & Typography" }
 
                 Rectangle {
@@ -246,7 +243,6 @@ Item {
                     }
                 }
 
-                // ---- Section 4: Open Source License ----
                 SectionLabel { text: "Open Source License" }
 
                 Rectangle {

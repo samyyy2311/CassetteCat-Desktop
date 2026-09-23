@@ -107,7 +107,7 @@ Item {
                                     visible: false
                                     Rectangle {
                                         anchors.fill: parent
-                                        radius: 12
+                                        radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
                                         color: "white"
                                     }
                                 }
@@ -115,12 +115,12 @@ Item {
                                 Cover {
                                     anchors.fill: parent
                                     track: spotlightTrack || root.libraryModel.firstPlayableTrack()
-                                    radius: 12
+                                    radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
                                 }
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    radius: 12
+                                    radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
                                     gradient: Gradient {
                                         GradientStop { position: 0.0; color: "#40000000" }
                                         GradientStop { position: 0.45; color: "#A00E0D0C" }
@@ -307,7 +307,7 @@ Item {
                                                 id: albCoverBox
                                                 Layout.preferredWidth: 150
                                                 Layout.preferredHeight: 150
-                                                radius: 12
+                                                radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
                                                 clip: true
                                                 color: surfaceCard
                                                 border.width: 1
@@ -321,7 +321,7 @@ Item {
                                                 Cover {
                                                     anchors.fill: parent
                                                     track: modelData.track
-                                                    radius: 12
+                                                    radius: albCoverBox.radius
                                                 }
 
                                                 TransportButton {

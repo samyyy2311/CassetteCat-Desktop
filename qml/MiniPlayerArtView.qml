@@ -13,7 +13,7 @@ Item {
         anchors.centerIn: parent
         width: Math.min(parent.width, parent.height)
         height: width
-        radius: 14
+        radius: root.miniPlayer.albumArtRadius === 0 ? 0 : (root.miniPlayer.albumArtRadius <= 8 ? 8 : 14)
         fillMode: Image.PreserveAspectFit
         track: root.miniPlayer.playerController.currentTrack
         keepPreviousArtwork: true
@@ -22,7 +22,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: 14
+        radius: root.miniPlayer.albumArtRadius === 0 ? 0 : (root.miniPlayer.albumArtRadius <= 8 ? 8 : 14)
         color: root.miniPlayer.surfaceCard
         visible: !(root.miniPlayer.playerController.currentTrack && root.miniPlayer.playerController.currentTrack.filePath)
 

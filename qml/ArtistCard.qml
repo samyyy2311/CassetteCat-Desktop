@@ -12,6 +12,7 @@ Item {
     property real cardWidth: 170
     property real cardHeight: 230
     property string artistImageUrl: ""
+    property string subtitle: ""
     property bool imageAllowed: true
     property bool imageRequested: false
 
@@ -139,7 +140,7 @@ Item {
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
                 horizontalAlignment: Text.AlignHCenter
-                text: root.count + " songs"
+                text: root.subtitle.length > 0 ? root.subtitle : (root.count + (root.count === 1 ? " song" : " songs"))
                 color: textSecondary
                 font.family: monoFont
                 font.pixelSize: 11

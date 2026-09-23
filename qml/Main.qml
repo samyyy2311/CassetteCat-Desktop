@@ -137,6 +137,7 @@ ApplicationWindow {
     property bool autoplayEnabled: false
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 80
+    property string replayGainMode: "off"
     property bool preferLocalLyrics: true
     property string lyricsAlignment: "left"
     property string lyricsActiveStyle: "white"
@@ -146,6 +147,7 @@ ApplicationWindow {
     property bool svcDeezer: true
     property bool svcAudiodb: true
     property bool svcWiki: true
+    property bool svcArchive: true
     property bool scrobbleListenBrainzEnabled: false
     property string scrobbleListenBrainzUser: ""
     property bool scrobbleListenBrainzConnected: false
@@ -290,6 +292,9 @@ ApplicationWindow {
     }
 
     property var radioStations: []
+    property var radioFavoriteStations: []
+    property var radioRecentStations: []
+    property var radioCustomStations: []
     property string radioSearchQuery: ""
     property string radioActiveTag: "ALL"
     property string radioCountryFilter: ""
@@ -348,6 +353,35 @@ ApplicationWindow {
                 }
             }
         }
+        function onUpdateCheckFinished(updateAvailable, latestVersion, releaseUrl, releaseNotes, manual) {
+            updateChecking = false
+            updateAvailableState = updateAvailable
+            updateUrl = releaseUrl
+            if (updateAvailable) {
+                updateStatusText = "Update available: v" + latestVersion
+            } else {
+                updateStatusText = "CassetteCat is up to date (v0.5.1)"
+            }
+        }
+        function onUpdateCheckFailed(error, manual) {
+            updateChecking = false
+            updateStatusText = "Update check failed: " + error
+        }
+    }
+
+    property string updateStatusText: "Current version: v0.5.1"
+    property bool updateChecking: false
+    property bool updateAvailableState: false
+    property string updateUrl: ""
+
+    function checkForUpdates() {
+        updateChecking = true
+        updateStatusText = "Checking for updates..."
+        services.checkForUpdates(true)
+    }
+
+    function downloadUpdate() {
+        if (updateUrl) services.openExternalUrl(updateUrl)
     }
 
     Component.onCompleted: {
@@ -422,6 +456,8 @@ ApplicationWindow {
         sleepTimerMode = appSettings.value("player/sleepTimerMode", "off")
         volumeLimitEnabled = appSettings.value("player/volumeLimitEnabled", false)
         maxVolumePercent = appSettings.value("player/maxVolumePercent", 80)
+        replayGainMode = appSettings.value("player/replayGainMode", "off")
+        player.setReplayGainMode(replayGainMode)
         lyricsAlignment = appSettings.value("lyrics/alignment", "left")
         lyricsActiveStyle = appSettings.value("lyrics/activeStyle", "white")
         preferLocalLyrics = appSettings.value("lyrics/preferLocal", true)
@@ -431,6 +467,7 @@ ApplicationWindow {
         svcDeezer = appSettings.value("services/deezer", true)
         svcAudiodb = appSettings.value("services/audiodb", true)
         svcWiki = appSettings.value("services/wiki", true)
+        svcArchive = appSettings.value("services/archive", true)
         scrobbleListenBrainzEnabled = appSettings.value("scrobble/listenbrainz_enabled", false)
         scrobbleListenBrainzUser = appSettings.value("scrobble/listenbrainz_user", "")
         scrobbleListenBrainzConnected = services.hasListenBrainzSession()
@@ -469,6 +506,21 @@ ApplicationWindow {
             favoriteTracks = JSON.parse(favStr || "{}")
         } catch (e) {
             favoriteTracks = {}
+        }
+        try {
+            radioFavoriteStations = JSON.parse(appSettings.value("radio/favorites", "[]") || "[]")
+        } catch (e) {
+            radioFavoriteStations = []
+        }
+        try {
+            radioRecentStations = JSON.parse(appSettings.value("radio/recents", "[]") || "[]")
+        } catch (e) {
+            radioRecentStations = []
+        }
+        try {
+            radioCustomStations = JSON.parse(appSettings.value("radio/customStations", "[]") || "[]")
+        } catch (e) {
+            radioCustomStations = []
         }
         restorePlaylists()
         playCounts = numberMapFromSetting("library/playCounts")
@@ -727,19 +779,19 @@ ApplicationWindow {
     }
 
     function importM3u(url) {
-        const text = appSettings.readTextFile(url)
         const sourcePath = library.localPath(url)
-        if (!text || !sourcePath) {
+        if (!sourcePath) {
             playlistStatus = "Could not read playlist"
+            return
+        }
+        const parsedTracks = library.parseM3u(sourcePath)
+        if (!parsedTracks || !parsedTracks.length) {
+            playlistStatus = "No playable tracks found in playlist"
             return
         }
         const tracksByPath = {}
         playbackTracks().forEach(track => tracksByPath[normalizedPlaylistPath(track.filePath)] = track)
-        const tracks = text.split(/\r?\n/).map(line => tracksByPath[normalizedPlaylistPath(line)]).filter(track => !!track)
-        if (!tracks.length) {
-            playlistStatus = "No tracks from this playlist are in your library"
-            return
-        }
+        const tracks = parsedTracks.map(track => tracksByPath[normalizedPlaylistPath(track.filePath)] || track)
         const fileName = sourcePath.replace(/\\/g, "/").split("/").pop()
         const name = fileName.replace(/\.[^.]+$/, "") || "Imported playlist"
         createPlaylist(name, tracks)
@@ -973,6 +1025,10 @@ ApplicationWindow {
     onAutoplayEnabledChanged: saveSetting("player/autoplayEnabled", autoplayEnabled)
     onVolumeLimitEnabledChanged: saveSetting("player/volumeLimitEnabled", volumeLimitEnabled)
     onMaxVolumePercentChanged: saveSetting("player/maxVolumePercent", maxVolumePercent)
+    onReplayGainModeChanged: {
+        player.setReplayGainMode(replayGainMode)
+        saveSetting("player/replayGainMode", replayGainMode)
+    }
     onPreferLocalLyricsChanged: saveSetting("lyrics/preferLocal", preferLocalLyrics)
     onLyricsAlignmentChanged: saveSetting("lyrics/alignment", lyricsAlignment)
     onLyricsActiveStyleChanged: saveSetting("lyrics/activeStyle", lyricsActiveStyle)
@@ -987,6 +1043,7 @@ ApplicationWindow {
     onSvcDeezerChanged: saveSetting("services/deezer", svcDeezer)
     onSvcAudiodbChanged: saveSetting("services/audiodb", svcAudiodb)
     onSvcWikiChanged: saveSetting("services/wiki", svcWiki)
+    onSvcArchiveChanged: saveSetting("services/archive", svcArchive)
     onScrobbleListenBrainzEnabledChanged: saveSetting("scrobble/listenbrainz_enabled", scrobbleListenBrainzEnabled)
     onScrobbleLibreFmEnabledChanged: saveSetting("scrobble/librefm_enabled", scrobbleLibreFmEnabled)
     onLyricsSyncOffsetMsChanged: if (settingsInitialized) {
@@ -1058,7 +1115,12 @@ ApplicationWindow {
         if (settingsInitialized) appSettings.setValue("player/history", savedTrackPaths(playbackHistory))
         refreshHomeRecommendations()
     }
-    onRepeatModeChanged: if (settingsInitialized) appSettings.setValue("player/repeatMode", repeatMode)
+    onRepeatModeChanged: {
+        if (settingsInitialized) appSettings.setValue("player/repeatMode", repeatMode)
+        if (typeof mpris !== "undefined" && mpris && mpris.repeatMode !== repeatMode) {
+            mpris.repeatMode = repeatMode
+        }
+    }
 
     onVisibilityChanged: {
         if (window.visibility === Window.Hidden || window.visibility === Window.Minimized)
@@ -1150,12 +1212,14 @@ ApplicationWindow {
             "player/sleepTimerMode": sleepTimerMode,
             "player/volumeLimitEnabled": volumeLimitEnabled,
             "player/maxVolumePercent": maxVolumePercent,
+            "player/replayGainMode": replayGainMode,
             "network/offlineBlackout": offlineBlackout,
             "services/lrclib": svcLrclib,
             "services/radio": svcRadio,
             "services/deezer": svcDeezer,
             "services/audiodb": svcAudiodb,
             "services/wiki": svcWiki,
+            "services/archive": svcArchive,
             "scrobble/listenbrainz_enabled": scrobbleListenBrainzEnabled,
             "scrobble/listenbrainz_user": scrobbleListenBrainzUser,
             "scrobble/librefm_enabled": scrobbleLibreFmEnabled,
@@ -1331,6 +1395,85 @@ ApplicationWindow {
     function isFavorite(filePath) {
         if (!filePath) return false
         return !!(favoriteTracks[filePath] || favoriteTracks[normalizedPlaylistPath(filePath)])
+    }
+
+    function isRadioFavorite(streamUrl) {
+        if (!streamUrl) return false
+        return radioFavoriteStations.some(s => s.streamUrl === streamUrl)
+    }
+
+    function toggleRadioFavorite(station) {
+        if (!station || !station.streamUrl) return
+        const favs = (radioFavoriteStations || []).slice()
+        const idx = favs.findIndex(s => s.streamUrl === station.streamUrl)
+        if (idx >= 0) {
+            favs.splice(idx, 1)
+        } else {
+            favs.unshift({
+                id: station.id || "",
+                name: station.name || "Radio Station",
+                streamUrl: station.streamUrl,
+                favicon: station.favicon || "",
+                tags: station.tags || "",
+                country: station.country || "",
+                language: station.language || "",
+                bitrate: station.bitrate || 0
+            })
+        }
+        radioFavoriteStations = favs
+        if (settingsInitialized) appSettings.setValue("radio/favorites", JSON.stringify(favs))
+    }
+
+    function recordRadioRecent(station) {
+        if (!station || !station.streamUrl) return
+        const recents = (radioRecentStations || []).slice()
+        const idx = recents.findIndex(s => s.streamUrl === station.streamUrl)
+        if (idx >= 0) recents.splice(idx, 1)
+        recents.unshift({
+            id: station.id || "",
+            name: station.name || "Radio Station",
+            streamUrl: station.streamUrl,
+            favicon: station.favicon || "",
+            tags: station.tags || "",
+            country: station.country || "",
+            language: station.language || "",
+            bitrate: station.bitrate || 0
+        })
+        if (recents.length > 30) recents.length = 30
+        radioRecentStations = recents
+        if (settingsInitialized) appSettings.setValue("radio/recents", JSON.stringify(recents))
+    }
+
+    function isRadioCustom(streamUrl) {
+        if (!streamUrl) return false
+        return radioCustomStations.some(s => s.streamUrl === streamUrl)
+    }
+
+    function addCustomRadioStation(station) {
+        if (!station || !station.streamUrl) return
+        const custom = (radioCustomStations || []).slice()
+        const idx = custom.findIndex(s => s.streamUrl === station.streamUrl)
+        const entry = {
+            id: station.id || ("custom-" + Date.now()),
+            name: station.name || "Custom Stream",
+            streamUrl: station.streamUrl,
+            favicon: station.favicon || "",
+            tags: station.tags || "Custom",
+            country: station.country || "Direct Stream",
+            language: station.language || "",
+            bitrate: station.bitrate || 0
+        }
+        if (idx >= 0) custom[idx] = entry
+        else custom.unshift(entry)
+        radioCustomStations = custom
+        if (settingsInitialized) appSettings.setValue("radio/customStations", JSON.stringify(custom))
+    }
+
+    function removeCustomRadioStation(streamUrl) {
+        if (!streamUrl) return
+        const custom = (radioCustomStations || []).filter(s => s.streamUrl !== streamUrl)
+        radioCustomStations = custom
+        if (settingsInitialized) appSettings.setValue("radio/customStations", JSON.stringify(custom))
     }
 
     function toggleRepeat() {
@@ -1804,7 +1947,17 @@ ApplicationWindow {
         const index = Math.max(0, Math.min(startIndex, queue.length - 1))
         originalRadioPlaybackQueue = queue.slice()
         radioPlaybackQueue = queue.slice()
-        playQueuedTrack(radioPlaybackQueue[index])
+        const activeTrack = radioPlaybackQueue[index]
+        if (activeTrack) {
+            recordRadioRecent({
+                name: activeTrack.title,
+                streamUrl: activeTrack.filePath,
+                favicon: activeTrack.artworkUrl,
+                country: activeTrack.artist,
+                tags: activeTrack.album
+            })
+        }
+        playQueuedTrack(activeTrack)
     }
 
     function activePlaybackQueue() {
@@ -1858,6 +2011,22 @@ ApplicationWindow {
         const nextQueue = queue.slice()
         nextQueue.splice(index, 1)
         nextQueue.splice(currentIndex + 1, 0, track)
+        if (player.currentTrack && player.currentTrack.format === "STREAM") radioPlaybackQueue = nextQueue
+        else playbackQueue = nextQueue
+        queueRevision++
+    }
+
+    function reorderQueuedTrack(sourceTrack, targetTrack) {
+        if (!sourceTrack || !targetTrack || !sourceTrack.filePath || !targetTrack.filePath) return
+        if (trackIdentity(sourceTrack) === trackIdentity(targetTrack)) return
+        const queue = activePlaybackQueue()
+        const currentIndex = currentQueueIndex()
+        const fromIdx = queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(sourceTrack))
+        const toIdx = queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(targetTrack))
+        if (fromIdx < 0 || toIdx < 0 || fromIdx <= currentIndex || toIdx <= currentIndex) return
+        const nextQueue = queue.slice()
+        const [moved] = nextQueue.splice(fromIdx, 1)
+        nextQueue.splice(toIdx, 0, moved)
         if (player.currentTrack && player.currentTrack.format === "STREAM") radioPlaybackQueue = nextQueue
         else playbackQueue = nextQueue
         queueRevision++
@@ -1917,6 +2086,9 @@ ApplicationWindow {
 
     Connections {
         target: player
+        function onPlaybackRequested(tracks, startIndex) {
+            startPlayback(tracks, startIndex, false)
+        }
         function onTrackEnded() {
             if (sleepTimerMode === "track") {
                 triggerSleepTimerStop()
@@ -2041,6 +2213,7 @@ ApplicationWindow {
                 sleepFadeOut: window.sleepFadeOut,
                 volumeLimitEnabled: window.volumeLimitEnabled,
                 maxVolumePercent: window.maxVolumePercent,
+                replayGainMode: window.replayGainMode,
                 closeToTray: window.closeToTray,
                 startMinimizedToTray: window.startMinimizedToTray,
                 nowPlayingNotifications: window.nowPlayingNotifications,
@@ -2054,10 +2227,13 @@ ApplicationWindow {
                 svcDeezer: window.svcDeezer,
                 svcAudiodb: window.svcAudiodb,
                 svcWiki: window.svcWiki,
+                svcArchive: window.svcArchive,
                 favoriteTracks: window.favoriteTracks,
                 playlists: window.playlists,
                 playCounts: window.playCounts,
-                seenAt: window.seenAt
+                seenAt: window.seenAt,
+                radioFavorites: window.radioFavoriteStations,
+                radioCustomStations: window.radioCustomStations
             }
             const jsonText = JSON.stringify(backupData, null, 2)
             if (appSettings.exportTextFile(selectedFile, jsonText)) {
@@ -2107,6 +2283,7 @@ ApplicationWindow {
                     if (data.sleepFadeOut !== undefined) { window.sleepFadeOut = data.sleepFadeOut; appSettings.setValue("player/sleepFadeOut", data.sleepFadeOut) }
                     if (data.volumeLimitEnabled !== undefined) { window.volumeLimitEnabled = data.volumeLimitEnabled; appSettings.setValue("player/volumeLimitEnabled", data.volumeLimitEnabled) }
                     if (data.maxVolumePercent !== undefined) { window.maxVolumePercent = data.maxVolumePercent; appSettings.setValue("player/maxVolumePercent", data.maxVolumePercent) }
+                    if (data.replayGainMode !== undefined) { window.replayGainMode = data.replayGainMode; appSettings.setValue("player/replayGainMode", data.replayGainMode) }
                     if (data.closeToTray !== undefined) { window.closeToTray = data.closeToTray; appSettings.setValue("ui/closeToTray", data.closeToTray) }
                     if (data.startMinimizedToTray !== undefined) { window.startMinimizedToTray = data.startMinimizedToTray; appSettings.setValue("ui/startMinimizedToTray", data.startMinimizedToTray) }
                     if (data.nowPlayingNotifications) { window.nowPlayingNotifications = data.nowPlayingNotifications; appSettings.setValue("ui/nowPlayingNotifications", data.nowPlayingNotifications) }
@@ -2120,9 +2297,18 @@ ApplicationWindow {
                     if (data.svcDeezer !== undefined) window.svcDeezer = data.svcDeezer
                     if (data.svcAudiodb !== undefined) window.svcAudiodb = data.svcAudiodb
                     if (data.svcWiki !== undefined) window.svcWiki = data.svcWiki
+                    if (data.svcArchive !== undefined) window.svcArchive = data.svcArchive
                     if (data.favoriteTracks) {
                         window.favoriteTracks = data.favoriteTracks
                         appSettings.setValue("library/favorites", JSON.stringify(data.favoriteTracks))
+                    }
+                    if (Array.isArray(data.radioFavorites)) {
+                        window.radioFavoriteStations = data.radioFavorites
+                        appSettings.setValue("radio/favorites", JSON.stringify(data.radioFavorites))
+                    }
+                    if (Array.isArray(data.radioCustomStations)) {
+                        window.radioCustomStations = data.radioCustomStations
+                        appSettings.setValue("radio/customStations", JSON.stringify(data.radioCustomStations))
                     }
                     if (data.playCounts !== undefined) window.playCounts = numberMap(data.playCounts)
                     if (data.seenAt !== undefined) window.seenAt = numberMap(data.seenAt)
@@ -2166,6 +2352,19 @@ ApplicationWindow {
         }
         function onNextRequested() { window.playNext() }
         function onPreviousRequested() { window.playPrevious() }
+    }
+
+    // Linux MPRIS Media Controls & Keyboard Media Keys
+    Connections {
+        target: (typeof mpris !== "undefined") ? mpris : null
+        function onPlayRequested() { player.play() }
+        function onPauseRequested() { player.pause() }
+        function onPlayPauseRequested() { player.togglePlay() }
+        function onNextRequested() { window.playNext() }
+        function onPreviousRequested() { window.playPrevious() }
+        function onRepeatModeChanged(mode) {
+            if (window.repeatMode !== mode) window.repeatMode = mode
+        }
     }
 
     Connections {
@@ -2311,6 +2510,7 @@ ApplicationWindow {
 
         MiniPlayerWindow {
             playerVisuallyPlaying: window.playerVisuallyPlaying
+            albumArtRadius: window.albumArtRadius
             repeatMode: window.repeatMode
             favoriteTracks: window.favoriteTracks
             alwaysOnTop: miniPlayerAlwaysOnTop
@@ -2718,7 +2918,6 @@ ApplicationWindow {
                     color: borderSubtle
                 }
 
-                // Top Navigation Group
                 Column {
                     id: navTopColumn
                     anchors.top: parent.top
@@ -2736,7 +2935,6 @@ ApplicationWindow {
                     NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "stats"; iconName: "clock"; label: "Listening Record"; accessHintsVisible: window.accessHintsVisible; accessKey: "I" }
                 }
 
-                // Bottom Controls Group
                 Column {
                     id: navBottomColumn
                     anchors.bottom: parent.bottom
@@ -2896,7 +3094,6 @@ ApplicationWindow {
                         }
                     }
 
-                    // ---- Jellyfin Server View ----
                     Loader {
                         id: jellyfinPageLoader
                         Layout.fillWidth: true
@@ -2910,7 +3107,6 @@ ApplicationWindow {
                         }
                     }
 
-                    // ---- Subsonic Server View ----
                     Loader {
                         id: subsonicPageLoader
                         Layout.fillWidth: true
@@ -2984,6 +3180,7 @@ ApplicationWindow {
                                 autoplayEnabled: window.autoplayEnabled
                                 volumeLimitEnabled: window.volumeLimitEnabled
                                 maxVolumePercent: window.maxVolumePercent
+                                replayGainMode: window.replayGainMode
                                 preferLocalLyrics: window.preferLocalLyrics
                                 lyricsAlignment: window.lyricsAlignment
                                 lyricsActiveStyle: window.lyricsActiveStyle
@@ -2993,12 +3190,17 @@ ApplicationWindow {
                                 svcDeezer: window.svcDeezer
                                 svcAudiodb: window.svcAudiodb
                                 svcWiki: window.svcWiki
+                                svcArchive: window.svcArchive
                                 scrobbleListenBrainzEnabled: window.scrobbleListenBrainzEnabled
                                 scrobbleListenBrainzUser: window.scrobbleListenBrainzUser
                                 scrobbleListenBrainzConnected: window.scrobbleListenBrainzConnected
                                 scrobbleLibreFmEnabled: window.scrobbleLibreFmEnabled
                                 scrobbleLibreFmUser: window.scrobbleLibreFmUser
                                 scrobbleLibreFmConnected: window.scrobbleLibreFmConnected
+                                updateStatusText: window.updateStatusText
+                                updateChecking: window.updateChecking
+                                updateAvailable: window.updateAvailableState
+                                updateUrl: window.updateUrl
 
                                 onAddLibraryFolderRequested: folderDialog.open()
                                 onRemoveLibraryFolderRequested: path => library.removeFolder(path)
@@ -3036,6 +3238,7 @@ ApplicationWindow {
                                 onAutoplaySelected: value => window.autoplayEnabled = value
                                 onVolumeLimitSelected: value => { window.volumeLimitEnabled = value; window.enforceVolumeLimit() }
                                 onMaxVolumeSelected: value => { window.maxVolumePercent = value; window.enforceVolumeLimit() }
+                                onReplayGainModeSelected: value => window.replayGainMode = value
                                 onPreferLocalLyricsSelected: value => window.preferLocalLyrics = value
                                 onLyricsAlignmentSelected: value => window.lyricsAlignment = value
                                 onLyricsActiveStyleSelected: value => window.lyricsActiveStyle = value
@@ -3048,6 +3251,7 @@ ApplicationWindow {
                                     else if (name === "deezer") window.svcDeezer = value
                                     else if (name === "audiodb") window.svcAudiodb = value
                                     else if (name === "wiki") window.svcWiki = value
+                                    else if (name === "archive") window.svcArchive = value
                                     if (!value) services.cancelNetworkRequests()
                                 }
                                 onOpenJellyfinRequested: page = "jellyfin"
@@ -3071,6 +3275,8 @@ ApplicationWindow {
                                     window.scrobbleLibreFmUser = ""
                                     window.scrobbleLibreFmEnabled = false
                                 }
+                                onCheckUpdatesRequested: window.checkForUpdates()
+                                onDownloadUpdateRequested: window.downloadUpdate()
                                 onSectionSelected: section => {
                                     window.settingsSection = section
                                     appSettings.setValue("ui/settingsSection", section)
@@ -3195,7 +3401,7 @@ ApplicationWindow {
                     Rectangle {
                         Layout.preferredWidth: 52
                         Layout.preferredHeight: 52
-                        radius: 10
+                        radius: window.albumArtRadius === 0 ? 0 : (window.albumArtRadius <= 8 ? 6 : 10)
                         clip: true
                         color: surfaceCard
                         border.width: 1
@@ -3204,7 +3410,7 @@ ApplicationWindow {
                         Cover {
                             anchors.fill: parent
                             track: player.currentTrack
-                            radius: 10
+                            radius: parent.radius
                             keepPreviousArtwork: true
                             cacheArtwork: true
                             visible: !!player.currentTrack.filePath
@@ -3535,7 +3741,7 @@ ApplicationWindow {
                     y: npLeftColumn.targetArtY
                     width: npLeftColumn.currentArtSize
                     height: npLeftColumn.currentArtSize
-                    radius: npLeftColumn.compactPlayerMode ? 16 : 22
+                    radius: window.albumArtRadius === 0 ? 0 : (window.albumArtRadius <= 8 ? (npLeftColumn.compactPlayerMode ? 8 : 10) : (npLeftColumn.compactPlayerMode ? 16 : 22))
                     clip: true
                     color: surfaceCard
                     border.width: 1

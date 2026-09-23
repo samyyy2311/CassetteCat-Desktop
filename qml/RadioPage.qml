@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
@@ -21,11 +21,34 @@ Item {
                                                    ? "Offline Blackout Mode prevents Radio Browser from connecting"
                                                    : "Enable Radio Browser to discover and play live stations")
 
+    readonly property var displayedStations: {
+        let list = []
+        if (appWindow.radioActiveTag === "FAVORITES") {
+            list = appWindow.radioFavoriteStations || []
+        } else if (appWindow.radioActiveTag === "RECENTS") {
+            list = appWindow.radioRecentStations || []
+        } else if (appWindow.radioActiveTag === "CUSTOM") {
+            list = appWindow.radioCustomStations || []
+        } else {
+            list = appWindow.radioStations || []
+        }
+        const q = (appWindow.radioSearchQuery || "").trim().toLowerCase()
+        if (q.length > 0 && (appWindow.radioActiveTag === "FAVORITES" || appWindow.radioActiveTag === "RECENTS" || appWindow.radioActiveTag === "CUSTOM")) {
+            list = list.filter(s => {
+                const name = (s.name || "").toLowerCase()
+                const country = (s.country || "").toLowerCase()
+                const tags = (s.tags || "").toLowerCase()
+                return name.includes(q) || country.includes(q) || tags.includes(q)
+            })
+        }
+        return list
+    }
+
     function stationTrack(station) {
         return {
             title: station.name || "Live Radio Stream",
-            artist: station.country || "Radio Browser",
-            album: "Internet Radio Broadcast",
+            artist: station.country || (station.tags ? station.tags.split(",")[0].trim() : "Internet Radio"),
+            album: station.tags || "Internet Radio Broadcast",
             filePath: station.streamUrl,
             format: "STREAM",
             duration: "LIVE",
@@ -34,9 +57,10 @@ Item {
     }
 
     function playStation(station) {
-        const stations = appWindow.radioStations || []
+        const stations = root.displayedStations || []
         const index = stations.findIndex(candidate => candidate.streamUrl === station.streamUrl)
-        appWindow.startRadioPlayback(stations.map(candidate => root.stationTrack(candidate)), index)
+        appWindow.recordRadioRecent(station)
+        appWindow.startRadioPlayback(stations.map(candidate => root.stationTrack(candidate)), Math.max(0, index))
     }
 
     function toggleStation(station) {
@@ -51,16 +75,13 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // ----------------------------------------------------
-        // Top Toolbar
-        // ----------------------------------------------------
         RowLayout {
             z: 100
             Layout.fillWidth: true
             Layout.leftMargin: 28
             Layout.rightMargin: 28
             Layout.topMargin: 16
-            Layout.bottomMargin: 14
+            Layout.bottomMargin: 8
             spacing: 14
 
             Row {
@@ -103,7 +124,7 @@ Item {
                     Label {
                         id: countTagLbl
                         anchors.centerIn: parent
-                        text: root.appWindow.radioStations.length + " stations"
+                        text: root.displayedStations.length + " stations"
                         color: silverDim
                         font.family: monoFont
                         font.pixelSize: 10
@@ -117,25 +138,106 @@ Item {
             }
 
             Row {
-                spacing: 6
+                spacing: 8
                 Layout.alignment: Qt.AlignVCenter
 
+                ExpandableSearchBar {
+                    id: radSearchBar
+                    enabled: !root.radioUnavailable || (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS" || root.appWindow.radioActiveTag === "CUSTOM")
+                    boxSize: 34
+                    iconSize: 16
+                    expandedWidth: 175
+                    placeholder: "Search live stations..."
+                    text: root.appWindow.radioSearchQuery
+                    onTextChanged: root.appWindow.radioSearchQuery = text
+                    onSubmitted: {
+                        if (root.appWindow.radioActiveTag !== "FAVORITES" && root.appWindow.radioActiveTag !== "RECENTS" && root.appWindow.radioActiveTag !== "CUSTOM") {
+                            root.appWindow.refreshRadio()
+                        }
+                    }
+                    onCleared: {
+                        root.appWindow.radioSearchQuery = ""
+                        if (root.appWindow.radioActiveTag !== "FAVORITES" && root.appWindow.radioActiveTag !== "RECENTS" && root.appWindow.radioActiveTag !== "CUSTOM") {
+                            root.appWindow.refreshRadio()
+                        }
+                    }
+                }
+
+                PressDepthIconButton {
+                    boxSize: 34
+                    iconSize: 16
+                    iconName: "radio"
+                    tint: textPrimary
+                    tooltipText: "Add Custom Station"
+                    onClicked: customStationPopup.open()
+                }
+
+                PressDepthIconButton {
+                    boxSize: 34
+                    iconSize: 16
+                    iconName: root.appWindow.radioViewMode === "grid" ? "grid-2x2" : "list"
+                    tint: textPrimary
+                    tooltipText: root.appWindow.radioViewMode === "grid" ? "Detailed Grid View (Click for List)" : "List View (Click for Grid)"
+                    onClicked: root.appWindow.radioViewMode = (root.appWindow.radioViewMode === "grid" ? "list" : "grid")
+                }
+
+                PressDepthIconButton {
+                    boxSize: 34
+                    iconSize: 16
+                    iconName: "refresh-cw"
+                    enabled: !root.radioUnavailable
+                    tint: textPrimary
+                    tooltipText: "Refresh Stations"
+                    onClicked: root.appWindow.refreshRadio()
+                }
+
+                PressDepthIconButton {
+                    boxSize: 34
+                    iconSize: 16
+                    iconName: "sliders-horizontal"
+                    enabled: !root.radioUnavailable && root.appWindow.radioActiveTag !== "FAVORITES" && root.appWindow.radioActiveTag !== "RECENTS" && root.appWindow.radioActiveTag !== "CUSTOM"
+                    tint: textPrimary
+                    highlighted: root.appWindow.radioIsCustomized || root.appWindow.radioRefineOpen
+                    tooltipText: "Refine & Sort Stations"
+                    onClicked: root.appWindow.radioRefineOpen = !root.appWindow.radioRefineOpen
+                }
+            }
+        }
+
+        Flickable {
+            Layout.fillWidth: true
+            Layout.leftMargin: 28
+            Layout.rightMargin: 28
+            Layout.bottomMargin: 12
+            height: 32
+            contentWidth: pillsRow.implicitWidth
+            contentHeight: height
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            flickableDirection: Flickable.HorizontalFlick
+
+            Row {
+                id: pillsRow
+                spacing: 8
+                anchors.verticalCenter: parent.verticalCenter
+
                 Repeater {
-                    model: ["ALL", "pop", "rock", "electronic", "jazz", "lofi", "classical", "news", "ambient"]
+                    model: ["ALL", "FAVORITES", "RECENTS", "CUSTOM", "pop", "rock", "electronic", "jazz", "lofi", "classical", "news", "ambient"]
 
                     Rectangle {
                         id: qPill
                         property bool isSelected: root.appWindow.radioActiveTag === modelData
-                        width: qPillLbl.implicitWidth + 18
+                        width: qPillLbl.implicitWidth + 22
                         height: 28
                         radius: 14
-                        color: "transparent"
-                        border.width: isSelected ? 1.5 : 1
-                        border.color: isSelected ? recordRed : (qPillMouse.containsMouse ? "#45FFFFFF" : "#282828")
+                        color: isSelected
+                            ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#262320")
+                            : (qPillMouse.containsMouse ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#1C1A18") : (typeof surfaceInput !== "undefined" ? surfaceInput : "#141312"))
+                        border.width: 1
+                        border.color: isSelected ? recordRed : (qPillMouse.containsMouse ? borderVariant : borderSubtle)
 
-                        Behavior on border.color {
-                            ColorAnimation { duration: 100 }
-                        }
+                        Behavior on color { ColorAnimation { duration: 120 } }
+                        Behavior on border.color { ColorAnimation { duration: 120 } }
 
                         Label {
                             id: qPillLbl
@@ -143,8 +245,8 @@ Item {
                             text: modelData.toUpperCase()
                             color: qPill.isSelected ? recordRedHover : (qPillMouse.containsMouse ? textPrimary : textSecondary)
                             font.family: monoFont
-                            font.pixelSize: 10
-                            font.weight: qPill.isSelected ? Font.Bold : Font.DemiBold
+                            font.pixelSize: 11
+                            font.weight: qPill.isSelected ? Font.Bold : Font.Medium
                         }
 
                         MouseArea {
@@ -154,81 +256,29 @@ Item {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: {
                                 root.appWindow.radioActiveTag = modelData
-                                root.appWindow.refreshRadio()
+                                if (modelData !== "FAVORITES" && modelData !== "RECENTS" && modelData !== "CUSTOM") {
+                                    root.appWindow.refreshRadio()
+                                }
                             }
                         }
                     }
                 }
             }
-
-            // View Mode Toggle (Grid vs List)
-            PressDepthIconButton {
-                boxSize: 34
-                iconSize: 16
-                iconName: root.appWindow.radioViewMode === "grid" ? "grid-2x2" : "list"
-                tint: textPrimary
-                tooltipText: root.appWindow.radioViewMode === "grid" ? "Detailed Grid View (Click for List)" : "List View (Click for Grid)"
-                onClicked: root.appWindow.radioViewMode = (root.appWindow.radioViewMode === "grid" ? "list" : "grid")
-            }
-
-            // Refresh Button
-            PressDepthIconButton {
-                boxSize: 34
-                iconSize: 16
-                iconName: "refresh-cw"
-                enabled: !root.radioUnavailable
-                tint: textPrimary
-                tooltipText: "Refresh Stations"
-                onClicked: root.appWindow.refreshRadio()
-            }
-
-            // Expandable Search Bar
-            ExpandableSearchBar {
-                id: radSearchBar
-                enabled: !root.radioUnavailable
-                boxSize: 34
-                iconSize: 16
-                expandedWidth: 175
-                placeholder: "Search live stations..."
-                text: root.appWindow.radioSearchQuery
-                onTextChanged: root.appWindow.radioSearchQuery = text
-                onSubmitted: root.appWindow.refreshRadio()
-                onCleared: {
-                    root.appWindow.radioSearchQuery = ""
-                    root.appWindow.refreshRadio()
-                }
-            }
-
-            // Refine & Sort Drawer Button
-            PressDepthIconButton {
-                boxSize: 34
-                iconSize: 16
-                iconName: "sliders-horizontal"
-                enabled: !root.radioUnavailable
-                tint: textPrimary
-                highlighted: root.appWindow.radioIsCustomized || root.appWindow.radioRefineOpen
-                tooltipText: "Refine & Sort Stations"
-                onClicked: root.appWindow.radioRefineOpen = !root.appWindow.radioRefineOpen
-            }
         }
 
-        // ----------------------------------------------------
-        // Main Content Area (Grid View, List View & Empty State)
-        // ----------------------------------------------------
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            // 1. Grid View Mode (Consistent with SongCard & AlbumCard)
             GridView {
                 id: radGrid
-                visible: root.appWindow.radioViewMode === "grid" && root.appWindow.radioStations.length > 0
+                visible: root.appWindow.radioViewMode === "grid" && root.displayedStations.length > 0
                 anchors.fill: parent
                 anchors.leftMargin: 24
                 anchors.rightMargin: 8
                 bottomMargin: 32
                 clip: true
-                model: root.appWindow.radioStations
+                model: root.displayedStations
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: SleekScrollBar {}
                 readonly property int cols: Math.max(2, Math.floor((width - 16) / 185))
@@ -242,12 +292,19 @@ Item {
                     readonly property bool isCurrent: root.playerController.currentTrack && root.playerController.currentTrack.filePath === modelData.streamUrl
                     readonly property bool isPlaying: isCurrent && root.playerController.isPlaying
 
+                    MouseArea {
+                        id: cardMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.toggleStation(modelData)
+                    }
+
                     ColumnLayout {
                         anchors.fill: parent
                         anchors.margins: 7
                         spacing: 8
 
-                        // Square Artwork Container
                         Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: width
@@ -266,7 +323,6 @@ Item {
                                 Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
                                 Behavior on border.color { ColorAnimation { duration: 120 } }
 
-                                // Favicon Image
                                 Image {
                                     id: stationImg
                                     anchors.fill: parent
@@ -279,10 +335,8 @@ Item {
                                     mipmap: true
                                 }
 
-
                                 VinylFallback { anchors.fill: parent; visible: stationImg.status !== Image.Ready }
 
-                                // Subtle inner border
                                 Rectangle {
                                     anchors.fill: parent
                                     radius: parent.radius
@@ -291,7 +345,6 @@ Item {
                                     border.color: isCurrent ? recordRed : "#15FFFFFF"
                                 }
 
-                                // Hover / Active Transport Button
                                 TransportButton {
                                     anchors.right: parent.right
                                     anchors.bottom: parent.bottom
@@ -308,10 +361,37 @@ Item {
                                     tooltipText: isPlaying ? "Pause station" : "Play station"
                                     onClicked: root.toggleStation(modelData)
                                 }
+
+                                PressDepthIconButton {
+                                    anchors.left: parent.left
+                                    anchors.top: parent.top
+                                    anchors.margins: 8
+                                    boxSize: 32
+                                    iconSize: 14
+                                    iconName: "heart"
+                                    tint: root.appWindow.isRadioFavorite(modelData.streamUrl) ? recordRed : textPrimary
+                                    accented: root.appWindow.isRadioFavorite(modelData.streamUrl)
+                                    opacity: (cardMouse.containsMouse || root.appWindow.isRadioFavorite(modelData.streamUrl)) ? 1.0 : 0.0
+                                    tooltipText: root.appWindow.isRadioFavorite(modelData.streamUrl) ? "Remove from Favorites" : "Add to Favorites"
+                                    onClicked: root.appWindow.toggleRadioFavorite(modelData)
+                                }
+
+                                PressDepthIconButton {
+                                    anchors.right: parent.right
+                                    anchors.top: parent.top
+                                    anchors.margins: 8
+                                    boxSize: 32
+                                    iconSize: 14
+                                    iconName: "x"
+                                    tint: silverDim
+                                    visible: root.appWindow.isRadioCustom(modelData.streamUrl)
+                                    opacity: cardMouse.containsMouse ? 1.0 : 0.0
+                                    tooltipText: "Delete Station"
+                                    onClicked: root.appWindow.removeCustomRadioStation(modelData.streamUrl)
+                                }
                             }
                         }
 
-                        // Station Typography (Matches SongCard / AlbumCard)
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 2
@@ -334,7 +414,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 0
                                 Layout.minimumWidth: 0
-                                text: modelData.country ? (modelData.country + (modelData.bitrate ? (" â€¢ " + modelData.bitrate + " kbps") : (modelData.tags ? (" â€¢ " + modelData.tags.split(",")[0].trim()) : ""))) : (modelData.tags || "Internet Radio")
+                                text: modelData.country ? (modelData.country + (modelData.bitrate ? (" \u2022 " + modelData.bitrate + " kbps") : (modelData.tags ? (" \u2022 " + modelData.tags.split(",")[0].trim()) : ""))) : (modelData.tags || "Internet Radio")
                                 color: textSecondary
                                 font.family: bodyFont
                                 font.pixelSize: 11
@@ -344,27 +424,18 @@ Item {
                             }
                         }
                     }
-
-                    MouseArea {
-                        id: cardMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.toggleStation(modelData)
-                    }
                 }
             }
 
-            // 2. List View Mode (Consistent with SongRow)
             ListView {
                 id: radList
-                visible: root.appWindow.radioViewMode === "list" && root.appWindow.radioStations.length > 0
+                visible: root.appWindow.radioViewMode === "list" && root.displayedStations.length > 0
                 anchors.fill: parent
                 anchors.leftMargin: 24
                 anchors.rightMargin: 24
                 bottomMargin: 32
                 clip: true
-                model: root.appWindow.radioStations
+                model: root.displayedStations
                 spacing: 4
                 boundsBehavior: Flickable.StopAtBounds
                 ScrollBar.vertical: SleekScrollBar {}
@@ -383,13 +454,20 @@ Item {
 
                     Behavior on color { ColorAnimation { duration: 120 } }
 
+                    MouseArea {
+                        id: rowMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.toggleStation(modelData)
+                    }
+
                     RowLayout {
                         anchors.fill: parent
                         anchors.leftMargin: 14
                         anchors.rightMargin: 16
                         spacing: 12
 
-                        // Cover box
                         Rectangle {
                             Layout.preferredWidth: 40
                             Layout.preferredHeight: 40
@@ -413,7 +491,6 @@ Item {
                             VinylFallback { anchors.fill: parent; visible: listImg.status !== Image.Ready }
                         }
 
-                        // Title & Metadata
                         ColumnLayout {
                             Layout.fillWidth: true
                             Layout.preferredWidth: 0
@@ -438,7 +515,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 0
                                 Layout.minimumWidth: 0
-                                text: modelData.country ? (modelData.country + (modelData.tags ? (" â€¢ " + modelData.tags.split(",")[0].trim()) : "")) : (modelData.tags || "Internet Radio")
+                                text: modelData.country ? (modelData.country + (modelData.tags ? (" \u2022 " + modelData.tags.split(",")[0].trim()) : "")) : (modelData.tags || "Internet Radio")
                                 color: textSecondary
                                 font.family: bodyFont
                                 font.pixelSize: 11
@@ -446,7 +523,6 @@ Item {
                             }
                         }
 
-                        // Bitrate
                         Label {
                             visible: !!(modelData.bitrate && modelData.bitrate > 0)
                             text: modelData.bitrate + " kbps"
@@ -455,7 +531,6 @@ Item {
                             font.pixelSize: 10
                         }
 
-                        // Play Button
                         TransportButton {
                             buttonSize: 32
                             iconName: isPlaying ? "pause" : "play"
@@ -463,35 +538,240 @@ Item {
                             tooltipText: isPlaying ? "Pause station" : "Play station"
                             onClicked: root.toggleStation(modelData)
                         }
-                    }
 
-                    MouseArea {
-                        id: rowMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.toggleStation(modelData)
+                        PressDepthIconButton {
+                            boxSize: 32
+                            iconSize: 14
+                            iconName: "heart"
+                            tint: root.appWindow.isRadioFavorite(modelData.streamUrl) ? recordRed : textPrimary
+                            accented: root.appWindow.isRadioFavorite(modelData.streamUrl)
+                            tooltipText: root.appWindow.isRadioFavorite(modelData.streamUrl) ? "Remove from Favorites" : "Add to Favorites"
+                            onClicked: root.appWindow.toggleRadioFavorite(modelData)
+                        }
+
+                        PressDepthIconButton {
+                            visible: root.appWindow.isRadioCustom(modelData.streamUrl)
+                            boxSize: 32
+                            iconSize: 14
+                            iconName: "x"
+                            tint: silverDim
+                            tooltipText: "Delete Station"
+                            onClicked: root.appWindow.removeCustomRadioStation(modelData.streamUrl)
+                        }
                     }
                 }
             }
 
-            // 3. Empty State
             EmptyState {
                 anchors.fill: parent
-                visible: root.appWindow.radioStations.length === 0
+                visible: root.displayedStations.length === 0
                 catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
-                title: root.radioUnavailable ? root.unavailableTitle : "Loading Radio Stations..."
-                subtitle: root.radioUnavailable ? root.unavailableSubtitle : "Connecting to the global Radio Browser directory"
-                actionLabel: root.radioUnavailable
-                             ? (root.appWindow.offlineBlackout ? "Enable online services" : "Enable Radio Browser")
-                             : "Retry Connection"
+                readonly property bool hasQuery: (root.appWindow.radioSearchQuery || "").trim().length > 0
+                readonly property bool sourceEmpty: {
+                    if (root.appWindow.radioActiveTag === "FAVORITES") return (root.appWindow.radioFavoriteStations || []).length === 0
+                    if (root.appWindow.radioActiveTag === "RECENTS") return (root.appWindow.radioRecentStations || []).length === 0
+                    if (root.appWindow.radioActiveTag === "CUSTOM") return (root.appWindow.radioCustomStations || []).length === 0
+                    return false
+                }
+                title: {
+                    if (hasQuery && (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS" || root.appWindow.radioActiveTag === "CUSTOM") && !sourceEmpty) {
+                        return "No Matching Stations"
+                    }
+                    if (root.appWindow.radioActiveTag === "FAVORITES") return "No Favorite Stations"
+                    if (root.appWindow.radioActiveTag === "RECENTS") return "No Recent Stations"
+                    if (root.appWindow.radioActiveTag === "CUSTOM") return "No Custom Stations"
+                    if (root.radioUnavailable) return root.unavailableTitle
+                    return "No Radio Stations Found"
+                }
+                subtitle: {
+                    if (hasQuery && (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS" || root.appWindow.radioActiveTag === "CUSTOM") && !sourceEmpty) {
+                        return "No stations match \"" + root.appWindow.radioSearchQuery.trim() + "\""
+                    }
+                    if (root.appWindow.radioActiveTag === "FAVORITES") return "Click the heart icon on any station to bookmark it here"
+                    if (root.appWindow.radioActiveTag === "RECENTS") return "Stations you play will appear in your history"
+                    if (root.appWindow.radioActiveTag === "CUSTOM") return "Add your own direct Icecast, Shoutcast, or radio stream URLs"
+                    if (root.radioUnavailable) return root.unavailableSubtitle
+                    return "Try clearing filters or searching for another keyword"
+                }
+                actionLabel: {
+                    if (hasQuery && (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS" || root.appWindow.radioActiveTag === "CUSTOM") && !sourceEmpty) {
+                        return "Clear Search"
+                    }
+                    if (root.appWindow.radioActiveTag === "CUSTOM") return "Add Custom Station"
+                    if (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS") return "Browse All Stations"
+                    if (root.radioUnavailable) return (root.appWindow.offlineBlackout ? "Enable online services" : "Enable Radio Browser")
+                    return "Retry Connection"
+                }
                 onActionClicked: {
-                    if (root.radioUnavailable) {
+                    if (hasQuery && (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS" || root.appWindow.radioActiveTag === "CUSTOM") && !sourceEmpty) {
+                        root.appWindow.radioSearchQuery = ""
+                    } else if (root.appWindow.radioActiveTag === "CUSTOM") {
+                        customStationPopup.open()
+                    } else if (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS") {
+                        root.appWindow.radioActiveTag = "ALL"
+                        root.appWindow.refreshRadio()
+                    } else if (root.radioUnavailable) {
                         root.appWindow.offlineBlackout = false
                         root.appWindow.svcRadio = true
                         Qt.callLater(root.appWindow.refreshRadio)
                     } else {
                         root.appWindow.refreshRadio()
+                    }
+                }
+            }
+        }
+    }
+
+    Popup {
+        id: customStationPopup
+        parent: Overlay.overlay
+        modal: true
+        focus: true
+        x: Math.round((parent.width - width) / 2)
+        y: Math.round((parent.height - height) / 2)
+        width: Math.min(parent.width - 48, 440)
+        padding: 24
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        readonly property bool isUrlValid: {
+            const u = customUrlInput.text.trim()
+            const match = u.match(/^https?:\/\/([^/\s:]+)/i)
+            return match !== null && match[1].length > 0
+        }
+
+        Overlay.modal: Rectangle {
+            color: "#B8000000"
+        }
+
+        background: Rectangle {
+            radius: 14
+            color: surfaceCard
+            border.width: 1
+            border.color: borderSubtle
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 14
+
+            Label {
+                text: "Add Custom Station"
+                font.family: displayFont
+                font.pixelSize: 16
+                font.weight: Font.Bold
+                color: textPrimary
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                Label {
+                    text: "Station Name *"
+                    font.family: bodyFont
+                    font.pixelSize: 11
+                    color: textSecondary
+                }
+
+                RefineTextInput {
+                    id: customNameInput
+                    Layout.fillWidth: true
+                    placeholder: "e.g. Radio Paradise"
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                Label {
+                    text: "Stream URL (HTTP / HTTPS) *"
+                    font.family: bodyFont
+                    font.pixelSize: 11
+                    color: textSecondary
+                }
+
+                RefineTextInput {
+                    id: customUrlInput
+                    Layout.fillWidth: true
+                    placeholder: "https://stream.radioparadise.com/mp3-128"
+                }
+
+                Label {
+                    visible: customUrlInput.text.trim().length > 0 && !customStationPopup.isUrlValid
+                    text: "Must be a valid HTTP or HTTPS stream URL"
+                    font.family: bodyFont
+                    font.pixelSize: 11
+                    color: root.appWindow.recordRed
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                Label {
+                    text: "Genre / Tags (Optional)"
+                    font.family: bodyFont
+                    font.pixelSize: 11
+                    color: textSecondary
+                }
+
+                RefineTextInput {
+                    id: customTagsInput
+                    Layout.fillWidth: true
+                    placeholder: "e.g. eclectic, rock, indie"
+                }
+            }
+
+            ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 4
+
+                Label {
+                    text: "Favicon / Logo URL (Optional)"
+                    font.family: bodyFont
+                    font.pixelSize: 11
+                    color: textSecondary
+                }
+
+                RefineTextInput {
+                    id: customFaviconInput
+                    Layout.fillWidth: true
+                    placeholder: "https://example.com/logo.png"
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 8
+                spacing: 12
+
+                Item { Layout.fillWidth: true }
+
+                SettingButton {
+                    text: "Cancel"
+                    onClicked: customStationPopup.close()
+                }
+
+                SettingButton {
+                    text: "Add Station"
+                    primary: true
+                    enabled: customNameInput.text.trim().length > 0 && customStationPopup.isUrlValid
+                    onClicked: {
+                        const name = customNameInput.text.trim()
+                        const streamUrl = customUrlInput.text.trim()
+                        if (!name || !streamUrl || !customStationPopup.isUrlValid) return
+                        root.appWindow.addCustomRadioStation({
+                            name: name,
+                            streamUrl: streamUrl,
+                            tags: customTagsInput.text.trim(),
+                            favicon: customFaviconInput.text.trim()
+                        })
+                        customNameInput.text = ""
+                        customUrlInput.text = ""
+                        customTagsInput.text = ""
+                        customFaviconInput.text = ""
+                        customStationPopup.close()
+                        root.appWindow.radioActiveTag = "CUSTOM"
                     }
                 }
             }

@@ -57,6 +57,7 @@ Window {
     readonly property color silverDim: "#6B6762"
 
     property bool alwaysOnTop: true
+    property int albumArtRadius: 16
     property bool playerVisuallyPlaying: false
     property int repeatMode: 0
     property var favoriteTracks: ({})
@@ -270,7 +271,7 @@ Window {
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         width: 50; height: 50
-                        radius: 8
+                        radius: root.albumArtRadius === 0 ? 0 : (root.albumArtRadius <= 8 ? 5 : 8)
                         clip: true
                         color: root.surfaceCard
                         border.width: 1
@@ -279,7 +280,7 @@ Window {
                         Cover {
                             anchors.fill: parent
                             track: player.currentTrack
-                            radius: 8
+                            radius: parent.radius
                             keepPreviousArtwork: true
                             cacheArtwork: true
                             fillMode: Image.PreserveAspectCrop
@@ -296,7 +297,7 @@ Window {
 
                         Rectangle {
                             anchors.fill: parent
-                            radius: 8
+                            radius: parent.radius
                             color: "#80000000"
                             opacity: coverHoverM.containsMouse ? 1.0 : 0.0
                             Behavior on opacity { NumberAnimation { duration: 140 } }

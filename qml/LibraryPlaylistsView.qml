@@ -207,7 +207,9 @@ Item {
                     Cover {
                         Layout.preferredWidth: 48
                         Layout.preferredHeight: 48
-                        radius: 8
+                        radius: (root.appWindow && root.appWindow.albumArtRadius !== undefined)
+                                ? (root.appWindow.albumArtRadius === 0 ? 0 : (root.appWindow.albumArtRadius <= 8 ? 5 : 8))
+                                : 8
                         track: playlistRow.tracks.length ? playlistRow.tracks[0] : ({})
                         cacheArtwork: true
                     }

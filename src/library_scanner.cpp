@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QTemporaryDir>
+#include <QTextStream>
 #include <QUrl>
 #include <QVariantMap>
 
@@ -93,6 +94,38 @@ bool scanSelfCheck()
     }
 
     const QVariantMap trackMap = tracks.first().toMap();
-    return trackMap.value("title").toString() == "CassetteCat Check"
-        && trackMap.value("fileName").toString() == "CassetteCat Check.wav";
+    if (trackMap.value("title").toString() != "CassetteCat Check"
+        || trackMap.value("fileName").toString() != "CassetteCat Check.wav") {
+        return false;
+    }
+
+    QFile playlistFile(folder.filePath("playlist.m3u"));
+    if (!playlistFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return false;
+    }
+    QTextStream out(&playlistFile);
+    out << "#EXTM3U\n";
+    out << "#EXTINF:120,Sample Artist - Sample Title\n";
+    out << "CassetteCat Check.wav\n";
+    out << "#EXTINF:0,Online Stream\n";
+    out << "https://example.com/live\n";
+    out.flush();
+    playlistFile.close();
+
+    const QVariantList parsed = parseM3uPlaylist(playlistFile.fileName());
+    if (parsed.size() != 2) {
+        return false;
+    }
+    const QVariantMap localTrack = parsed.at(0).toMap();
+    if (localTrack.value("title").toString() != "Sample Title"
+        || localTrack.value("artist").toString() != "Sample Artist") {
+        return false;
+    }
+    const QVariantMap streamTrack = parsed.at(1).toMap();
+    if (streamTrack.value("format").toString() != "STREAM"
+        || streamTrack.value("title").toString() != "Online Stream") {
+        return false;
+    }
+
+    return true;
 }

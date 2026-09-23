@@ -11,6 +11,7 @@ ColumnLayout {
     property bool sleepFadeOut: true
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 80
+    property string replayGainMode: "off"
 
     signal resumeQueueOnLaunchSelected(bool value)
     signal autoplaySelected(bool value)
@@ -19,6 +20,7 @@ ColumnLayout {
     signal sleepFadeOutSelected(bool value)
     signal volumeLimitSelected(bool value)
     signal maxVolumeSelected(int value)
+    signal replayGainModeSelected(string value)
 
     Layout.fillWidth: true
     spacing: 16
@@ -126,6 +128,23 @@ ColumnLayout {
                 selectedValue: root.maxVolumePercent
                 onOptionSelected: val => root.maxVolumeSelected(Number(val))
             }
+        }
+    }
+
+    SectionLabel { text: "Loudness & Normalization" }
+
+    SettingCard {
+        SettingChoiceGroup {
+            iconName: "audio-lines"
+            title: "Volume Normalization (ReplayGain)"
+            subtitle: root.replayGainMode === "off" ? "Preserve original file loudness" : (root.replayGainMode === "track" ? "Track gain active: balance volume per song" : "Album gain active: preserve album dynamic range")
+            options: [
+                { value: "off", label: "OFF" },
+                { value: "track", label: "TRACK" },
+                { value: "album", label: "ALBUM" }
+            ]
+            selectedValue: root.replayGainMode
+            onOptionSelected: val => root.replayGainModeSelected(String(val))
         }
     }
 }

@@ -52,6 +52,7 @@ public:
                                       bool ignoreShortClips);
     Q_INVOKABLE void setSearchFilter(const QString &query, const QString &format,
                                      const QVariantList &excludedFolders, bool ignoreShortClips);
+    Q_INVOKABLE QVariantList parseM3u(const QString &filePath) const;
 
 signals:
     void changed();

@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QImageReader>
+#include <QTextStream>
 #include <QUrl>
 #include <QtEndian>
 
@@ -297,6 +298,37 @@ QString extractEmbeddedLyrics(const QString &filePath)
     return {};
 }
 
+float extractReplayGain(const QString &filePath, bool albumMode)
+{
+    if (filePath.isEmpty()) return 0.0f;
+    try {
+#ifdef _WIN32
+        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
+#else
+        TagLib::FileRef fileRef(filePath.toUtf8().constData());
+#endif
+        if (!fileRef.isNull() && fileRef.file() && fileRef.file()->isValid()) {
+            const TagLib::PropertyMap properties = fileRef.file()->properties();
+            const char *primaryKey = albumMode ? "REPLAYGAIN_ALBUM_GAIN" : "REPLAYGAIN_TRACK_GAIN";
+            if (properties.contains(primaryKey) && !properties[primaryKey].isEmpty()) {
+                QString val = QString::fromStdWString(properties[primaryKey].front().toWString());
+                val.remove("dB", Qt::CaseInsensitive);
+                bool ok = false;
+                const float db = val.trimmed().toFloat(&ok);
+                if (ok) return db;
+            }
+            if (albumMode && properties.contains("REPLAYGAIN_TRACK_GAIN") && !properties["REPLAYGAIN_TRACK_GAIN"].isEmpty()) {
+                QString val = QString::fromStdWString(properties["REPLAYGAIN_TRACK_GAIN"].front().toWString());
+                val.remove("dB", Qt::CaseInsensitive);
+                bool ok = false;
+                const float db = val.trimmed().toFloat(&ok);
+                if (ok) return db;
+            }
+        }
+    } catch (...) {}
+    return 0.0f;
+}
+
 TrackInfo readTrackInfo(const QString &filePath)
 {
     const QFileInfo fileInfo(filePath);
@@ -457,3 +489,121 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error)
         return false;
     }
 }
+
+QVariantList parseM3uPlaylist(const QString &playlistPath)
+{
+    QFile file(playlistPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return {};
+    }
+
+    const QFileInfo playlistFileInfo(playlistPath);
+    const QDir playlistDir = playlistFileInfo.dir();
+
+    QVariantList tracks;
+    int extDuration = 0;
+    QString extTitle;
+    QString extArtist;
+
+    QTextStream stream(&file);
+    while (!stream.atEnd()) {
+        const QString line = stream.readLine().trimmed();
+        if (line.isEmpty()) {
+            continue;
+        }
+
+        if (line.startsWith("#EXTINF:", Qt::CaseInsensitive)) {
+            const QString directive = line.mid(8).trimmed();
+            const int commaIdx = directive.indexOf(',');
+            if (commaIdx != -1) {
+                bool ok = false;
+                const int dur = directive.left(commaIdx).trimmed().toInt(&ok);
+                extDuration = ok ? qMax(0, dur) : 0;
+                const QString infoPart = directive.mid(commaIdx + 1).trimmed();
+                const int dashIdx = infoPart.indexOf(" - ");
+                if (dashIdx != -1) {
+                    extArtist = infoPart.left(dashIdx).trimmed();
+                    extTitle = infoPart.mid(dashIdx + 3).trimmed();
+                } else {
+                    extArtist.clear();
+                    extTitle = infoPart;
+                }
+            }
+            continue;
+        }
+
+        if (line.startsWith('#')) {
+            continue;
+        }
+
+        QString targetPath = line;
+        if (targetPath.startsWith("file:///", Qt::CaseInsensitive) || targetPath.startsWith("file://", Qt::CaseInsensitive)) {
+            targetPath = QUrl(targetPath).toLocalFile();
+        }
+
+        if (targetPath.startsWith("http://", Qt::CaseInsensitive) || targetPath.startsWith("https://", Qt::CaseInsensitive)) {
+            QVariantMap track;
+            track.insert("filePath", targetPath);
+            track.insert("fileName", targetPath.section('/', -1));
+            track.insert("title", extTitle.isEmpty() ? targetPath : extTitle);
+            track.insert("artist", extArtist.isEmpty() ? QStringLiteral("Radio Stream") : extArtist);
+            track.insert("album", QStringLiteral("Stream"));
+            track.insert("format", QStringLiteral("STREAM"));
+            track.insert("durationSeconds", extDuration);
+            track.insert("duration", formatDuration(extDuration));
+            tracks.append(track);
+
+            extDuration = 0;
+            extTitle.clear();
+            extArtist.clear();
+            continue;
+        }
+
+        targetPath.replace('\\', '/');
+        QFileInfo candidate(targetPath);
+        if (!candidate.isAbsolute()) {
+            targetPath = playlistDir.filePath(targetPath);
+            candidate.setFile(targetPath);
+        }
+
+        targetPath = QDir::cleanPath(targetPath);
+        candidate.setFile(targetPath);
+
+        if (candidate.exists() && candidate.isFile()) {
+            TrackInfo info = readTrackInfo(targetPath);
+            QVariantMap track = info.toMap();
+            if (!extTitle.isEmpty() && (info.title.isEmpty() || info.title == candidate.completeBaseName())) {
+                track["title"] = extTitle;
+            }
+            if (!extArtist.isEmpty() && (info.artist.trimmed().isEmpty() || info.artist == "Unknown Artist")) {
+                track["artist"] = extArtist;
+            }
+            if (info.durationSeconds <= 0 && extDuration > 0) {
+                track["durationSeconds"] = extDuration;
+                track["duration"] = formatDuration(extDuration);
+            }
+            if (track.value("artworkUrl").toString().isEmpty()) {
+                const QDir trackDir = candidate.dir();
+                static const QStringList coverNames = {
+                    "cover.jpg", "cover.jpeg", "cover.png",
+                    "folder.jpg", "folder.png", "front.jpg", "front.png"
+                };
+                for (const QString &coverName : coverNames) {
+                    const QString coverPath = trackDir.filePath(coverName);
+                    if (QFileInfo::exists(coverPath)) {
+                        track["artworkUrl"] = QUrl::fromLocalFile(coverPath).toString();
+                        break;
+                    }
+                }
+            }
+            tracks.append(track);
+        }
+
+        extDuration = 0;
+        extTitle.clear();
+        extArtist.clear();
+    }
+
+    return tracks;
+}
+

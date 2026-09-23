@@ -28,9 +28,8 @@ class PlayerController final : public QObject
     Q_PROPERTY(qreal audioLevel READ audioLevel NOTIFY audioLevelChanged)
     Q_PROPERTY(bool audioMeterEnabled READ audioMeterEnabled WRITE setAudioMeterEnabled NOTIFY audioMeterEnabledChanged)
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
-
     Q_PROPERTY(QString currentLyrics READ currentLyrics NOTIFY currentLyricsChanged)
-
+    Q_PROPERTY(QString replayGainMode READ replayGainMode WRITE setReplayGainMode NOTIFY replayGainModeChanged)
 public:
     explicit PlayerController(QObject *parent = nullptr, StreamingController *streaming = nullptr);
     static bool selfCheck();
@@ -50,12 +49,14 @@ public:
     QVariantList audioOutputs() const;
     QString audioDeviceId() const;
     QString error() const;
+    QString replayGainMode() const;
 
     Q_INVOKABLE QString getLyrics(const QString &filePath) const;
     Q_INVOKABLE void setCurrentLyrics(const QString &lyrics);
     Q_INVOKABLE void setShuffleEnabled(bool enabled);
     Q_INVOKABLE void toggleShuffle();
     Q_INVOKABLE void setVolume(float vol);
+    Q_INVOKABLE void setReplayGainMode(const QString &mode);
     Q_INVOKABLE bool setAudioDevice(const QString &id);
     Q_INVOKABLE void restoreTrack(const QVariantMap &track, qint64 positionMs = 0);
     Q_INVOKABLE void playTrack(const QVariantMap &track);
@@ -67,8 +68,10 @@ public:
     Q_INVOKABLE void setWindowAlwaysOnTop(QQuickWindow *win, bool onTop);
     Q_INVOKABLE void updateCurrentTrackArtwork(const QString &artworkPath);
     Q_INVOKABLE void updateCurrentTrackMetadata(const QVariantMap &track);
+    Q_INVOKABLE void requestPlayback(const QVariantList &tracks, int startIndex = 0);
 
 signals:
+    void playbackRequested(const QVariantList &tracks, int startIndex);
     void currentTrackChanged();
     void currentLyricsChanged();
     void isPlayingChanged();
@@ -81,6 +84,7 @@ signals:
     void audioLevelChanged();
     void audioMeterEnabledChanged();
     void errorChanged();
+    void replayGainModeChanged();
     void trackEnded();
 
 private:
@@ -90,6 +94,7 @@ private:
     QUrl resolveMediaSource(const QVariantMap &track) const;
     bool loadTrack(const QVariantMap &track);
     void setAudioLevel(qreal level);
+    void applyEffectiveVolume();
 
     QAudioOutput *m_audioOutput = nullptr;
     QMediaDevices *m_mediaDevices = nullptr;
@@ -106,4 +111,7 @@ private:
     qint64 m_pendingRestorePositionMs = 0;
     QString m_error;
     bool m_pauseExpected = false;
+    QString m_replayGainMode = QStringLiteral("off");
+    float m_currentReplayGainDb = 0.0f;
+    float m_baseVolume = 1.0f;
 };

@@ -2,6 +2,7 @@
 
 #include <QByteArray>
 #include <QString>
+#include <QVariantList>
 #include <QVariantMap>
 
 struct TrackInfo {
@@ -49,5 +50,7 @@ QString formatDuration(int totalSeconds);
 QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension = 0);
 QString extractEmbeddedArtwork(const QString &filePath, int maxDimension = 0);
 QString extractEmbeddedLyrics(const QString &filePath);
+float extractReplayGain(const QString &filePath, bool albumMode = false);
 TrackInfo readTrackInfo(const QString &filePath);
 bool writeTrackInfo(const QVariantMap &metadata, QString *error = nullptr);
+QVariantList parseM3uPlaylist(const QString &playlistPath);

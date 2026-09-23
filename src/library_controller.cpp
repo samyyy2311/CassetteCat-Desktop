@@ -180,6 +180,11 @@ QString LibraryController::localPath(const QUrl &url) const
     return url.toLocalFile();
 }
 
+QVariantList LibraryController::parseM3u(const QString &filePath) const
+{
+    return parseM3uPlaylist(filePath);
+}
+
 void LibraryController::loadFolder(const QUrl &url)
 {
     QString path = localPath(url);

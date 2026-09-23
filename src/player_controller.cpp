@@ -44,7 +44,13 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     , m_player(new QMediaPlayer(this))
 {
     m_player->setAudioOutput(m_audioOutput);
-    m_audioOutput->setVolume(1.0f);
+    m_replayGainMode = SettingsController::globalValue("player/replayGainMode", QStringLiteral("off")).toString();
+    m_baseVolume = std::clamp(SettingsController::globalValue("player/volume", 1.0f).toFloat(), 0.0f, 1.0f);
+    if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
+        const int maxPercent = std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
+        m_baseVolume = (std::min)(m_baseVolume, maxPercent / 100.0f);
+    }
+    applyEffectiveVolume();
     connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged, this, [this] {
         emit audioOutputsChanged();
         emit audioDeviceChanged();
@@ -154,7 +160,8 @@ qint64 PlayerController::position() const { return m_position; }
 qint64 PlayerController::duration() const { return m_duration; }
 QString PlayerController::formattedPosition() const { return formatDuration(static_cast<int>(m_position / 1000)); }
 QString PlayerController::formattedDuration() const { return formatDuration(static_cast<int>(m_duration / 1000)); }
-float PlayerController::volume() const { return m_audioOutput ? m_audioOutput->volume() : 1.0f; }
+float PlayerController::volume() const { return m_baseVolume; }
+QString PlayerController::replayGainMode() const { return m_replayGainMode; }
 QVariantList PlayerController::audioOutputs() const
 {
     QVariantList outputs;
@@ -240,6 +247,13 @@ bool PlayerController::selfCheck()
         if (player.audioMeterEnabled() || player.audioLevel() != 0.0) return false;
     }
     if (player.m_player->audioOutput() != player.m_audioOutput) return false;
+    player.setReplayGainMode(QStringLiteral("track"));
+    if (player.replayGainMode() != QStringLiteral("track")) return false;
+    player.setReplayGainMode(QStringLiteral("album"));
+    if (player.replayGainMode() != QStringLiteral("album")) return false;
+    player.setReplayGainMode(QStringLiteral("off"));
+    if (player.replayGainMode() != QStringLiteral("off")) return false;
+    if (extractReplayGain(QString()) != 0.0f) return false;
 
     QByteArray pcm(128000, '\x20');
     QByteArray wave;
@@ -312,17 +326,46 @@ void PlayerController::toggleShuffle()
 
 void PlayerController::setVolume(float vol)
 {
-    if (m_audioOutput) {
-        float clamped = std::clamp(vol, 0.0f, 1.0f);
-        if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
-            const int maxPercent = std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
-            clamped = (std::min)(clamped, maxPercent / 100.0f);
-        }
-        if (m_audioOutput->volume() != clamped) {
-            m_audioOutput->setVolume(clamped);
-            emit volumeChanged();
-        }
+    float clamped = std::clamp(vol, 0.0f, 1.0f);
+    if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
+        const int maxPercent = std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
+        clamped = (std::min)(clamped, maxPercent / 100.0f);
     }
+    if (!qFuzzyCompare(m_baseVolume, clamped)) {
+        m_baseVolume = clamped;
+        applyEffectiveVolume();
+        emit volumeChanged();
+    }
+}
+
+void PlayerController::applyEffectiveVolume()
+{
+    if (!m_audioOutput) return;
+    float factor = 1.0f;
+    if (m_replayGainMode != QStringLiteral("off") && !qFuzzyIsNull(m_currentReplayGainDb)) {
+        factor = std::pow(10.0f, m_currentReplayGainDb / 20.0f);
+        factor = std::clamp(factor, 0.05f, 2.0f);
+    }
+    float maxCeiling = 1.0f;
+    if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
+        const int maxPercent = std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
+        maxCeiling = maxPercent / 100.0f;
+    }
+    m_audioOutput->setVolume(std::clamp(m_baseVolume * factor, 0.0f, maxCeiling));
+}
+
+void PlayerController::setReplayGainMode(const QString &mode)
+{
+    if (m_replayGainMode == mode) return;
+    m_replayGainMode = mode;
+    const QString filePath = m_currentTrack.value("filePath").toString();
+    if (m_replayGainMode != QStringLiteral("off") && !filePath.isEmpty() && !StreamingController::isRemotePath(filePath)) {
+        m_currentReplayGainDb = extractReplayGain(filePath, m_replayGainMode == QStringLiteral("album"));
+    } else {
+        m_currentReplayGainDb = 0.0f;
+    }
+    applyEffectiveVolume();
+    emit replayGainModeChanged();
 }
 
 void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs)
@@ -374,6 +417,12 @@ bool PlayerController::loadTrack(const QVariantMap &track)
 
     m_position = 0;
     emit positionChanged();
+    if (m_replayGainMode != QStringLiteral("off") && !StreamingController::isRemotePath(filePath)) {
+        m_currentReplayGainDb = extractReplayGain(filePath, m_replayGainMode == QStringLiteral("album"));
+    } else {
+        m_currentReplayGainDb = 0.0f;
+    }
+    applyEffectiveVolume();
     m_pauseExpected = true;
     m_player->stop();
     m_player->setSource(mediaSource);
@@ -473,3 +522,9 @@ void PlayerController::updateCurrentTrackMetadata(const QVariantMap &track)
     setCurrentLyrics(track.value("lyrics").toString());
     emit currentTrackChanged();
 }
+
+void PlayerController::requestPlayback(const QVariantList &tracks, int startIndex)
+{
+    emit playbackRequested(tracks, startIndex);
+}
+

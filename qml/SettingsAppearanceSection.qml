@@ -24,6 +24,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "sliders-horizontal"
+            iconColor: "#38BDF8"
             title: "Accent Colour"
             subtitle: "Applied to active navigation, selected controls, playback, seek bars, and volume"
         }
@@ -137,6 +138,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "disc"
+            iconColor: "#F59E0B"
             title: "Album Art Corners"
             subtitle: "Corner roundness for artwork thumbnails and cards"
 
@@ -155,6 +157,7 @@ ColumnLayout {
 
         SettingRow {
             iconName: "pip"
+            iconColor: "#EC4899"
             title: "Now Playing Backdrop"
             subtitle: "Visual style of the expanded player backdrop"
 
@@ -174,6 +177,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "clock"
+            iconColor: "#A5B4FC"
             title: "Time Display"
             subtitle: "Show remaining time countdown or total track duration"
 

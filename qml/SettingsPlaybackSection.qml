@@ -30,6 +30,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "play"
+            iconColor: "#10B981"
             title: "Resume Queue on Launch"
             subtitle: "Restore active track, queue, and playback position"
 
@@ -43,6 +44,7 @@ ColumnLayout {
 
         SettingRow {
             iconName: "repeat"
+            iconColor: "#38BDF8"
             title: "Autoplay"
             subtitle: "Shuffle music from library when queue reaches the end"
 
@@ -58,6 +60,7 @@ ColumnLayout {
     SettingCard {
         SettingChoiceGroup {
             iconName: "clock"
+            iconColor: "#A5B4FC"
             title: "Sleep Timer"
             subtitle: root.sleepTimerMode === "off" ? "Stop playback automatically after a duration or track" : ("Active countdown: " + root.sleepTimerStatus)
             options: [
@@ -82,6 +85,7 @@ ColumnLayout {
 
         SettingRow {
             iconName: "volume-1"
+            iconColor: "#96918A"
             title: "Gentle Fade-Out"
             subtitle: "Smoothly ramp down volume before stopping playback"
 
@@ -97,6 +101,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "volume-2"
+            iconColor: "#F59E0B"
             title: "Volume Limit"
             subtitle: "Cap the maximum output level to protect your hearing"
 
@@ -115,6 +120,7 @@ ColumnLayout {
 
             SettingChoiceGroup {
                 iconName: "sliders-horizontal"
+                iconColor: "#F59E0B"
                 title: "Maximum Volume Limit"
                 subtitle: "Ceiling threshold applied to the master volume slider"
                 options: [
@@ -136,6 +142,7 @@ ColumnLayout {
     SettingCard {
         SettingChoiceGroup {
             iconName: "audio-lines"
+            iconColor: "#C23B30"
             title: "Volume Normalization (ReplayGain)"
             subtitle: root.replayGainMode === "off" ? "Preserve original file loudness" : (root.replayGainMode === "track" ? "Track gain active: balance volume per song" : "Album gain active: preserve album dynamic range")
             options: [

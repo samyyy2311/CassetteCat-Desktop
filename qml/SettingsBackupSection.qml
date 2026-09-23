@@ -17,6 +17,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "refresh-cw"
+            iconColor: "#10B981"
             title: "Configuration Backup"
             subtitle: root.backupStatus.length > 0
                       ? root.backupStatus

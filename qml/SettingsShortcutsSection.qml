@@ -17,12 +17,12 @@ ColumnLayout {
     signal inAppShortcutSelected(string action, string shortcut)
 
     readonly property var globalActions: [
-        { action: "playPause", label: "Play / Pause", defaultKey: "Ctrl+Alt+Space", icon: "play" },
-        { action: "previous", label: "Previous Track", defaultKey: "Ctrl+Alt+Left", icon: "skip-back" },
-        { action: "next", label: "Next Track", defaultKey: "Ctrl+Alt+Right", icon: "skip-forward" },
-        { action: "favorite", label: "Toggle Favorite", defaultKey: "Ctrl+Alt+F", icon: "heart" },
-        { action: "search", label: "Focus Search", defaultKey: "Ctrl+Alt+S", icon: "search" },
-        { action: "miniPlayer", label: "Toggle Mini Player", defaultKey: "Ctrl+Alt+M", icon: "pip" }
+        { action: "playPause", label: "Play / Pause", defaultKey: "Ctrl+Alt+Space", icon: "play", iconColor: "#10B981" },
+        { action: "previous", label: "Previous Track", defaultKey: "Ctrl+Alt+Left", icon: "skip-back", iconColor: "#38BDF8" },
+        { action: "next", label: "Next Track", defaultKey: "Ctrl+Alt+Right", icon: "skip-forward", iconColor: "#38BDF8" },
+        { action: "favorite", label: "Toggle Favorite", defaultKey: "Ctrl+Alt+F", icon: "heart", iconColor: "#C23B30" },
+        { action: "search", label: "Focus Search", defaultKey: "Ctrl+Alt+S", icon: "search", iconColor: "#F59E0B" },
+        { action: "miniPlayer", label: "Toggle Mini Player", defaultKey: "Ctrl+Alt+M", icon: "pip", iconColor: "#A5B4FC" }
     ]
 
     Layout.fillWidth: true
@@ -33,6 +33,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "zap"
+            iconColor: "#F59E0B"
             title: "Enable Global Shortcuts"
             subtitle: root.globalShortcutsSupported ? root.globalShortcutStatus : "Not available on this platform"
 
@@ -59,6 +60,7 @@ ColumnLayout {
 
                     SettingRow {
                         iconName: modelData.icon || ""
+                        iconColor: modelData.iconColor || "transparent"
                         title: modelData.label
 
                         ShortcutCaptureField {
@@ -97,6 +99,7 @@ ColumnLayout {
 
                 SettingRow {
                     iconName: modelData.icon || ""
+                    iconColor: modelData.iconColor || "transparent"
                     title: modelData.label
 
                     ShortcutCaptureField {

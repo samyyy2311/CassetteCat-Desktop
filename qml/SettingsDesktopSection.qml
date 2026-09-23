@@ -34,6 +34,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "shield"
+            iconColor: "#10B981"
             title: "Close to System Tray"
             subtitle: "Keep CassetteCat running in the background when the window is closed"
 
@@ -48,6 +49,7 @@ ColumnLayout {
 
         SettingRow {
             iconName: "pip"
+            iconColor: "#A5B4FC"
             title: "Start Minimized"
             subtitle: "Launch silently in the system tray without showing the main window"
 
@@ -64,6 +66,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "disc"
+            iconColor: "#38BDF8"
             title: "Now-Playing Notifications"
             subtitle: "Show native system notification when the track changes"
 
@@ -84,6 +87,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "pip"
+            iconColor: "#F59E0B"
             title: "Keep Mini Player on Top"
             subtitle: "Float compact mini player above other application windows"
 
@@ -99,6 +103,7 @@ ColumnLayout {
     SettingCard {
         SettingChoiceGroup {
             iconName: "volume-2"
+            iconColor: "#F59E0B"
             title: "Playback Device"
             subtitle: "Choose where CassetteCat sends audio"
             forceMenu: true
@@ -113,6 +118,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "refresh-cw"
+            iconColor: "#38BDF8"
             title: "Check for Updates"
             subtitle: root.updateStatusText
 
@@ -138,6 +144,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "info"
+            iconColor: "#C4C4C0"
             title: "Application Logs"
             subtitle: appSettings.getLogFilePath()
 

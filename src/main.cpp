@@ -18,7 +18,6 @@
 #include <QSize>
 #include <QStandardPaths>
 #include <QStringList>
-#include <QTextStream>
 #include <QUrl>
 #include <QVariantList>
 #include <cstring>
@@ -52,6 +51,10 @@
 namespace {
 
 constexpr auto kInstanceServerName = "CassetteCat.Desktop.Instance";
+constexpr qint64 kMaxDebugLogBytes = 1024 * 1024;
+QMutex gDebugLogMutex;
+QString gDebugLogPath;
+qint64 gDebugLogBytes = 0;
 #ifdef _WIN32
 constexpr auto kInstanceMutexName = L"CassetteCat.AudioEngine.Desktop.InstanceMutex";
 #endif
@@ -123,15 +126,38 @@ void activateWindow(QQuickWindow *window)
     window->requestActivate();
 }
 
+void rotateDebugLogIfNeeded(qint64 incomingBytes)
+{
+    if (gDebugLogPath.isEmpty() || gDebugLogBytes + incomingBytes <= kMaxDebugLogBytes) return;
+
+    const QString rotatedPath = gDebugLogPath + ".1";
+    QFile::remove(rotatedPath);
+    if (QFile::exists(gDebugLogPath)) QFile::rename(gDebugLogPath, rotatedPath);
+    gDebugLogBytes = 0;
+}
+
+void initializeDebugLog()
+{
+    QMutexLocker locker(&gDebugLogMutex);
+    gDebugLogPath = debugLogFilePath();
+    gDebugLogBytes = QFileInfo(gDebugLogPath).size();
+    rotateDebugLogIfNeeded(0);
+}
+
 void writeDebugLog(QtMsgType, const QMessageLogContext &, const QString &message)
 {
-    static QMutex logMutex;
-    QMutexLocker locker(&logMutex);
+    QMutexLocker locker(&gDebugLogMutex);
     const QString redacted = CredentialVault::redactSecrets(message);
     std::cerr << redacted.toStdString() << std::endl;
-    QFile logFile(logFilePath());
-    if (logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-        QTextStream(&logFile) << redacted << '\n';
+    if (gDebugLogPath.isEmpty()) return;
+
+    const QByteArray line = redacted.toUtf8() + '\n';
+    rotateDebugLogIfNeeded(line.size());
+
+    QFile logFile(gDebugLogPath);
+    if (logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
+        const qint64 written = logFile.write(line);
+        if (written > 0) gDebugLogBytes += written;
     }
 }
 
@@ -199,6 +225,7 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle("Basic");
     QCoreApplication::setOrganizationName("CassetteCat");
     QCoreApplication::setApplicationName("CassetteCat");
+    initializeDebugLog();
 #ifdef Q_OS_WIN
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     registerWindowsAppIdentity();
@@ -418,7 +445,7 @@ int main(int argc, char *argv[])
     if (engine.rootObjects().isEmpty()) {
         qCritical() << "FATAL: engine.rootObjects() is empty after loading Main module!";
 #ifdef Q_OS_WIN
-        MessageBoxA(NULL, "FATAL: QML root object creation failed. Check debug.log for details.", "CassetteCat Error", MB_OK | MB_ICONERROR);
+        MessageBoxA(NULL, "FATAL: QML root object creation failed. Check the CassetteCat log for details.", "CassetteCat Error", MB_OK | MB_ICONERROR);
 #endif
         return 1;
     }

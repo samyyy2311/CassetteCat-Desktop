@@ -174,7 +174,7 @@ void SettingsController::showInFolder(const QString &filePath)
 
 QString SettingsController::getLogFilePath() const
 {
-    return logFilePath();
+    return debugLogFilePath();
 }
 
 QString SettingsController::readRecentLogs(int maxLines) const
@@ -182,7 +182,7 @@ QString SettingsController::readRecentLogs(int maxLines) const
     if (maxLines <= 0) {
         return QString();
     }
-    QFile file(logFilePath());
+    QFile file(debugLogFilePath());
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return QStringLiteral("No logs available.");
     }
@@ -223,15 +223,19 @@ QString SettingsController::readRecentLogs(int maxLines) const
 
 void SettingsController::clearLogs()
 {
-    QFile file(logFilePath());
+    QFile file(debugLogFilePath());
     if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         file.close();
+    }
+    const QString rotatedPath = debugLogFilePath() + ".1";
+    if (QFile::exists(rotatedPath)) {
+        QFile::remove(rotatedPath);
     }
 }
 
 void SettingsController::openLogFile()
 {
-    const QString path = logFilePath();
+    const QString path = debugLogFilePath();
     if (QFileInfo::exists(path)) {
         QDesktopServices::openUrl(QUrl::fromLocalFile(path));
     }

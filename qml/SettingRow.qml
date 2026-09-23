@@ -5,7 +5,7 @@ import QtQuick.Layouts
 RowLayout {
     id: root
     property string iconName: ""
-    property color iconColor: ""
+    property color iconColor: "transparent"
     property string title: ""
     property string subtitle: ""
     property bool showDivider: false
@@ -27,7 +27,7 @@ RowLayout {
         Layout.alignment: Qt.AlignVCenter
         icon: root.iconName
         preserveColor: root.preserveIconColor
-        color: root.preserveIconColor ? "transparent" : (root.iconColor != "" ? root.iconColor : root.accentHoverColor)
+        color: root.preserveIconColor ? "transparent" : (root.iconColor.a > 0 ? root.iconColor : root.accentHoverColor)
     }
 
     ColumnLayout {

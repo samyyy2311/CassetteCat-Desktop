@@ -28,11 +28,13 @@
 #include <QFontDatabase>
 
 #include "smtc_controller.h"
+#include "mpris_controller.h"
 #include "global_shortcut_controller.h"
 #include "tray_controller.h"
 
 #include "app_paths.h"
 #include "app_settings.h"
+#include "audio_metadata.h"
 #include "credential_vault.h"
 #include "library_controller.h"
 #include "library_scanner.h"
@@ -127,7 +129,7 @@ void writeDebugLog(QtMsgType, const QMessageLogContext &, const QString &message
     QMutexLocker locker(&logMutex);
     const QString redacted = CredentialVault::redactSecrets(message);
     std::cerr << redacted.toStdString() << std::endl;
-    QFile logFile("debug.log");
+    QFile logFile(logFilePath());
     if (logFile.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
         QTextStream(&logFile) << redacted << '\n';
     }
@@ -266,6 +268,7 @@ int main(int argc, char *argv[])
         check(GlobalShortcutController::selfCheck(), "global shortcuts");
         check(ServicesController::selfCheck(), "services");
         check(PlayerController::selfCheck(), "player");
+        check(MprisController::selfCheck(), "mpris");
         check(singleInstanceSelfCheck(), "single instance");
         return passed ? 0 : 1;
     }
@@ -319,6 +322,7 @@ int main(int argc, char *argv[])
         appSettings.sync();
     });
     SmtcController smtc(&player, &app);
+    MprisController mpris(&player, &app);
     GlobalShortcutController globalShortcuts(&app);
     TrayController tray(appIcon, &app);
 
@@ -329,15 +333,33 @@ int main(int argc, char *argv[])
             library.loadFolder(QUrl::fromLocalFile(file.absoluteFilePath()));
             return;
         }
-        QVariantMap track;
-        track.insert("filePath", file.absoluteFilePath());
-        track.insert("fileName", file.fileName());
-        track.insert("title", file.completeBaseName());
-        track.insert("artist", "Unknown Artist");
-        track.insert("album", "External file");
-        track.insert("format", file.suffix().toUpper());
-        player.playTrack(track);
+        const QString ext = file.suffix().toLower();
+        if (ext == "m3u" || ext == "m3u8") {
+            const QVariantList tracks = parseM3uPlaylist(file.absoluteFilePath());
+            if (!tracks.isEmpty()) {
+                player.requestPlayback(tracks, 0);
+            }
+            return;
+        }
+        TrackInfo info = readTrackInfo(file.absoluteFilePath());
+        if (info.album.isEmpty()) {
+            info.album = QStringLiteral("External file");
+        }
+        player.requestPlayback({info.toMap()}, 0);
     };
+
+    QObject::connect(&mpris, &MprisController::openUriRequested, [&](const QString &uri) {
+        const QUrl url(uri);
+        const QString path = url.isLocalFile() ? url.toLocalFile() : uri;
+        openExternalPath(path);
+    });
+    QObject::connect(&mpris, &MprisController::raiseRequested, [&]() {
+        activateWindow(mainWindow);
+    });
+    QObject::connect(&mpris, &MprisController::quitRequested, [&]() {
+        app.quit();
+    });
+    mpris.initialize();
 
     const auto handleInstanceSocket = [&](QLocalSocket *socket) {
         const auto processRequest = [&, socket] {
@@ -368,6 +390,7 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("services", &services);
     engine.rootContext()->setContextProperty("appSettings", &appSettings);
     engine.rootContext()->setContextProperty("smtc", &smtc);
+    engine.rootContext()->setContextProperty("mpris", &mpris);
     engine.rootContext()->setContextProperty("globalShortcuts", &globalShortcuts);
     engine.rootContext()->setContextProperty("tray", &tray);
 

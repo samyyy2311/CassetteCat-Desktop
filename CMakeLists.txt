@@ -9,6 +9,7 @@ find_package(Qt6 6.10 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Concur
 if(UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(LIBSECRET REQUIRED IMPORTED_TARGET libsecret-1)
+    find_package(Qt6 REQUIRED COMPONENTS DBus)
 endif()
 
 qt_standard_project_setup(REQUIRES 6.10)
@@ -16,6 +17,9 @@ qt_standard_project_setup(REQUIRES 6.10)
 set(CassetteCat_PLATFORM_SOURCES)
 if(WIN32)
     list(APPEND CassetteCat_PLATFORM_SOURCES src/app.rc)
+endif()
+if(UNIX AND NOT APPLE)
+    list(APPEND CassetteCat_PLATFORM_SOURCES src/mpris_adaptor.h src/mpris_adaptor.cpp)
 endif()
 
 qt_add_executable(CassetteCat
@@ -51,10 +55,13 @@ qt_add_executable(CassetteCat
     src/streaming_protocols.cpp
     src/smtc_controller.h
     src/smtc_controller.cpp
+    src/mpris_controller.h
+    src/mpris_controller.cpp
     src/tray_controller.h
     src/tray_controller.cpp
     src/global_shortcut_controller.h
     src/global_shortcut_controller.cpp
+    src/network_requests.h
     ${CassetteCat_PLATFORM_SOURCES}
 )
 if(MINGW)
@@ -98,7 +105,6 @@ qt_add_qml_module(CassetteCat
         qml/CatalogDetail.qml
         qml/ArtistDetailBody.qml
         qml/AlbumDetailBody.qml
-        qml/GenreDetailBody.qml
         qml/GenreCard.qml
         qml/FolderCard.qml
         qml/HomeSectionHeader.qml
@@ -114,13 +120,11 @@ qt_add_qml_module(CassetteCat
         qml/JellyfinPage.qml
         qml/SubsonicPage.qml
         qml/NavItem.qml
-        qml/SectionHeader.qml
         qml/SectionLabel.qml
         qml/LibraryRefineSheet.qml
         qml/RefineTextInput.qml
         qml/EmptyState.qml
         qml/SleekScrollBar.qml
-        qml/SettingsChoicePill.qml
         qml/SettingsNavigationItem.qml
         qml/SettingCard.qml
         qml/SettingRow.qml
@@ -286,8 +290,8 @@ endif()
 
 target_link_libraries(CassetteCat PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent Qt6::QuickEffects Qt6::Network Qt6::Widgets tag)
 if(UNIX AND NOT APPLE)
-    target_link_libraries(CassetteCat PRIVATE PkgConfig::LIBSECRET)
-    target_compile_definitions(CassetteCat PRIVATE CASSETTECAT_HAVE_LIBSECRET=1)
+    target_link_libraries(CassetteCat PRIVATE PkgConfig::LIBSECRET Qt6::DBus)
+    target_compile_definitions(CassetteCat PRIVATE CASSETTECAT_HAVE_LIBSECRET=1 CASSETTECAT_HAVE_DBUS=1)
 endif()
 if(WIN32)
     target_compile_definitions(CassetteCat PRIVATE NOMINMAX)

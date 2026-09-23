@@ -3,3 +3,4 @@
 #include <QString>
 
 QString settingsFilePath();
+QString logFilePath();

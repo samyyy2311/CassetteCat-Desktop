@@ -9,3 +9,11 @@ QString settingsFilePath()
     QDir().mkpath(configDir);
     return QDir(configDir).filePath("settings.ini");
 }
+
+QString logFilePath()
+{
+    const QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+    QDir().mkpath(configDir);
+    return QDir(configDir).filePath("debug.log");
+}
+

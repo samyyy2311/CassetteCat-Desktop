@@ -11,6 +11,7 @@
 #include <QGuiApplication>
 #include <QProcess>
 #include <QSaveFile>
+#include <QTextStream>
 #include <QMutexLocker>
 
 namespace {
@@ -170,3 +171,69 @@ void SettingsController::showInFolder(const QString &filePath)
     QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(filePath).absolutePath()));
 #endif
 }
+
+QString SettingsController::getLogFilePath() const
+{
+    return logFilePath();
+}
+
+QString SettingsController::readRecentLogs(int maxLines) const
+{
+    if (maxLines <= 0) {
+        return QString();
+    }
+    QFile file(logFilePath());
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return QStringLiteral("No logs available.");
+    }
+    const qint64 fileSize = file.size();
+    if (fileSize == 0) {
+        return QString();
+    }
+    const qint64 stepSize = qMax<qint64>(64 * 1024, static_cast<qint64>(maxLines) * 512);
+    qint64 endOffset = fileSize;
+    qint64 offset = qMax<qint64>(0, fileSize - stepSize);
+
+    QStringList lines;
+    while (true) {
+        file.seek(offset);
+        QTextStream in(&file);
+        if (offset > 0) {
+            in.readLine();
+        }
+        QStringList chunkLines;
+        while (in.pos() < endOffset && !in.atEnd()) {
+            chunkLines.append(in.readLine());
+        }
+        for (int i = chunkLines.size() - 1; i >= 0; --i) {
+            lines.prepend(chunkLines.at(i));
+        }
+        if (lines.size() > maxLines) {
+            lines = lines.mid(lines.size() - maxLines);
+        }
+        if (lines.size() >= maxLines || offset == 0) {
+            break;
+        }
+        endOffset = offset;
+        offset = qMax<qint64>(0, offset - stepSize);
+    }
+
+    return lines.join('\n');
+}
+
+void SettingsController::clearLogs()
+{
+    QFile file(logFilePath());
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        file.close();
+    }
+}
+
+void SettingsController::openLogFile()
+{
+    const QString path = logFilePath();
+    if (QFileInfo::exists(path)) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    }
+}
+

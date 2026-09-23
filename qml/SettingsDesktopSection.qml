@@ -11,12 +11,20 @@ ColumnLayout {
     property bool trayAvailable: true
     property var audioOutputs: []
     property string audioDeviceId: ""
+    property string updateStatusText: "Current version: v0.5.1"
+    property bool updateChecking: false
+    property bool updateAvailable: false
+    property string updateUrl: ""
+    property bool logsVisible: false
+    property string recentLogs: ""
 
     signal closeToTraySelected(bool value)
     signal startMinimizedToTraySelected(bool value)
     signal nowPlayingNotificationsSelected(string value)
     signal miniPlayerAlwaysOnTopSelected(bool value)
     signal audioDeviceSelected(string value)
+    signal checkUpdatesRequested()
+    signal downloadUpdateRequested()
 
     Layout.fillWidth: true
     spacing: 16
@@ -100,4 +108,103 @@ ColumnLayout {
         }
     }
 
+    SectionLabel { text: "Application Updates" }
+
+    SettingCard {
+        SettingRow {
+            iconName: "refresh-cw"
+            title: "Check for Updates"
+            subtitle: root.updateStatusText
+
+            SettingButton {
+                text: root.updateChecking ? "Checking..." : "Check Now"
+                iconName: "refresh-cw"
+                enabled: !root.updateChecking
+                onClicked: root.checkUpdatesRequested()
+            }
+
+            SettingButton {
+                visible: root.updateAvailable
+                text: "Download Update"
+                iconName: "external-link"
+                primary: true
+                onClicked: root.downloadUpdateRequested()
+            }
+        }
+    }
+
+    SectionLabel { text: "Diagnostics & Logs" }
+
+    SettingCard {
+        SettingRow {
+            iconName: "info"
+            title: "Application Logs"
+            subtitle: appSettings.getLogFilePath()
+
+            SettingButton {
+                text: root.logsVisible ? "Hide Logs" : "Logs"
+                iconName: "list"
+                onClicked: {
+                    root.logsVisible = !root.logsVisible
+                    if (root.logsVisible) {
+                        root.recentLogs = appSettings.readRecentLogs(150)
+                    }
+                }
+            }
+
+            SettingButton {
+                text: "Open"
+                iconName: "external-link"
+                onClicked: appSettings.openLogFile()
+            }
+
+            SettingButton {
+                text: "Copy"
+                onClicked: appSettings.copyToClipboard(appSettings.readRecentLogs(200))
+            }
+
+            SettingButton {
+                text: "Clear"
+                iconName: "x"
+                destructive: true
+                onClicked: {
+                    appSettings.clearLogs()
+                    root.recentLogs = appSettings.readRecentLogs(150)
+                }
+            }
+        }
+
+        Rectangle {
+            visible: root.logsVisible
+            Layout.fillWidth: true
+            Layout.preferredHeight: 180
+            radius: 8
+            color: "#121110"
+            border.width: 1
+            border.color: "#2C2926"
+            clip: true
+
+            Flickable {
+                anchors.fill: parent
+                anchors.margins: 10
+                contentWidth: logText.paintedWidth
+                contentHeight: logText.paintedHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                ScrollBar.vertical: SleekScrollBar {}
+                ScrollBar.horizontal: SleekScrollBar {}
+
+                TextEdit {
+                    id: logText
+                    readOnly: true
+                    selectByMouse: true
+                    text: root.recentLogs
+                    color: "#F5F0EC"
+                    font.family: (typeof monoFont !== "undefined") ? monoFont : "IBM Plex Mono"
+                    font.pixelSize: 11
+                }
+            }
+        }
+    }
 }

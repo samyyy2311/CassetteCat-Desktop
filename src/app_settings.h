@@ -27,6 +27,10 @@ public:
     Q_INVOKABLE QString readTextFile(const QUrl &url) const;
     Q_INVOKABLE void copyToClipboard(const QString &text);
     Q_INVOKABLE void showInFolder(const QString &filePath);
+    Q_INVOKABLE QString getLogFilePath() const;
+    Q_INVOKABLE QString readRecentLogs(int maxLines = 150) const;
+    Q_INVOKABLE void clearLogs();
+    Q_INVOKABLE void openLogFile();
 
 private:
     static inline SettingsController *s_instance = nullptr;

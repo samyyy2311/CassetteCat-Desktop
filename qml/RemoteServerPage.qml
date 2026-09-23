@@ -76,6 +76,7 @@ Item {
     property bool filterOpen: false
     property string formatFilter: "ALL"
     property bool stateLoaded: false
+    property bool trustCert: false
 
     function stateKey(name) {
         return "remote/" + root.protocol + "/" + name
@@ -104,6 +105,7 @@ Item {
         const saved = root.streamingController.serverConfigSnapshot()
         if (!serverUrl.text) serverUrl.text = saved[root.protocol + "/url"] || ""
         if (!serverUser.text) serverUser.text = saved[root.protocol + "/username"] || ""
+        root.trustCert = Boolean(saved[root.protocol + "/trustCert"])
     }
 
     anchors.fill: parent
@@ -130,8 +132,9 @@ Item {
         setError("")
         appSettings.setValue("stream/" + protocol + "Url", url)
         appSettings.setValue("stream/" + protocol + "Username", username)
-        if (protocol === "jellyfin") { appWindow.jellyfinConnecting = true; streamingController.connectJellyfin(url, username, password) }
-        else { appWindow.subsonicConnecting = true; streamingController.connectSubsonic(url, username, password) }
+        appSettings.setValue("stream/" + protocol + "TrustCert", root.trustCert)
+        if (protocol === "jellyfin") { appWindow.jellyfinConnecting = true; streamingController.connectJellyfin(url, username, password, root.trustCert) }
+        else { appWindow.subsonicConnecting = true; streamingController.connectSubsonic(url, username, password, root.trustCert) }
     }
 
     onActiveTabChanged: saveState("tab", activeTab)
@@ -715,6 +718,43 @@ Item {
                     }
                 }
 
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    SettingSwitch {
+                        id: trustCertSwitch
+                        checked: root.trustCert
+                        Accessible.name: "Trust self-signed certificate"
+                        onToggled: val => {
+                            root.trustCert = val
+                            appSettings.setValue("stream/" + root.protocol + "TrustCert", val)
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 1
+
+                        Label {
+                            text: "Trust self-signed certificate"
+                            color: textPrimary
+                            font.family: bodyFont
+                            font.pixelSize: 13
+                            font.weight: Font.Medium
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: "Allow connecting to servers with self-signed or private CA certificates"
+                            color: textSecondary
+                            font.family: bodyFont
+                            font.pixelSize: 11
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+                }
+
                 Label {
                     Layout.fillWidth: true
                     visible: root.errorText.length > 0
@@ -780,7 +820,10 @@ Item {
                         text: "Quick Connect"
                         iconName: "key-round"
                         accessibleName: "Connect with Jellyfin Quick Connect"
-                        onClicked: root.streamingController.startJellyfinQuickConnect(serverUrl.text)
+                        onClicked: {
+                            appSettings.setValue("stream/jellyfinTrustCert", root.trustCert)
+                            root.streamingController.startJellyfinQuickConnect(serverUrl.text, root.trustCert)
+                        }
                     }
 
                     Item { Layout.fillWidth: true }

@@ -19,6 +19,7 @@
 #include <QRegularExpression>
 #include <QSet>
 #include <QSettings>
+#include <QSslError>
 #include <QStandardPaths>
 #include <QTimer>
 #include <QTemporaryDir>
@@ -174,8 +175,32 @@ void StreamingController::updateStatusTexts()
     emit statusChanged();
 }
 
-QNetworkReply *StreamingController::trackReply(QNetworkReply *reply)
+QNetworkReply *StreamingController::trackReply(QNetworkReply *reply, bool allowSelfSigned)
 {
+    if (!reply) {
+        return nullptr;
+    }
+    if (allowSelfSigned || isServerCertTrusted(reply->url())) {
+        connect(reply, &QNetworkReply::sslErrors, reply, [reply](const QList<QSslError> &errors) {
+            QList<QSslError> ignorable;
+            for (const auto &err : errors) {
+                switch (err.error()) {
+                case QSslError::SelfSignedCertificate:
+                case QSslError::SelfSignedCertificateInChain:
+                case QSslError::UnableToGetLocalIssuerCertificate:
+                case QSslError::UnableToVerifyFirstCertificate:
+                case QSslError::CertificateUntrusted:
+                    ignorable.append(err);
+                    break;
+                default:
+                    return;
+                }
+            }
+            if (!ignorable.isEmpty()) {
+                reply->ignoreSslErrors(ignorable);
+            }
+        });
+    }
     m_pendingReplies.append(QPointer<QNetworkReply>(reply));
     QTimer::singleShot(streaming::detail::requestTimeoutMs, reply, [reply] {
         if (reply && reply->isRunning()) {
@@ -187,6 +212,29 @@ QNetworkReply *StreamingController::trackReply(QNetworkReply *reply)
         reply->deleteLater();
     });
     return reply;
+}
+
+bool StreamingController::isServerCertTrusted(const QUrl &url) const
+{
+    if (url.scheme() != QLatin1String("https")) {
+        return false;
+    }
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    if (settings.value("stream/subsonicTrustCert", false).toBool()) {
+        const QUrl subUrl(settings.value("stream/subsonicUrl").toString());
+        if (subUrl.isValid() && subUrl.host().compare(url.host(), Qt::CaseInsensitive) == 0
+            && (subUrl.port(443) == url.port(443))) {
+            return true;
+        }
+    }
+    if (settings.value("stream/jellyfinTrustCert", false).toBool()) {
+        const QUrl jellyUrl(settings.value("stream/jellyfinUrl").toString());
+        if (jellyUrl.isValid() && jellyUrl.host().compare(url.host(), Qt::CaseInsensitive) == 0
+            && (jellyUrl.port(443) == url.port(443))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 QString StreamingController::friendlyError(QNetworkReply *reply, const QString &fallback)
@@ -524,9 +572,11 @@ QVariantMap StreamingController::serverConfigSnapshot(const QString &settingsPat
     snapshot.insert("subsonic/url", settings.value("stream/subsonicUrl").toString());
     snapshot.insert("subsonic/username", settings.value("stream/subsonicUsername").toString());
     snapshot.insert("subsonic/connected", settings.value("stream/subsonicConnected", false).toBool());
+    snapshot.insert("subsonic/trustCert", settings.value("stream/subsonicTrustCert", false).toBool());
     snapshot.insert("jellyfin/url", settings.value("stream/jellyfinUrl").toString());
     snapshot.insert("jellyfin/username", settings.value("stream/jellyfinUsername").toString());
     snapshot.insert("jellyfin/connected", settings.value("stream/jellyfinConnected", false).toBool());
+    snapshot.insert("jellyfin/trustCert", settings.value("stream/jellyfinTrustCert", false).toBool());
     return snapshot;
 }
 
@@ -668,6 +718,11 @@ bool runSelfChecks(bool includeVaultProbe)
         settings.sync();
         const QVariantMap snapshot = StreamingController::serverConfigSnapshot(dir.filePath("s.ini"));
         check(snapshot.value("subsonic/url").toString() == "https://m.example.com", "snapshot-url");
+        check(snapshot.value("subsonic/trustCert").toBool() == false, "snapshot-trust-cert-default-false");
+        settings.setValue("stream/subsonicTrustCert", true);
+        settings.sync();
+        const QVariantMap snapshot2 = StreamingController::serverConfigSnapshot(dir.filePath("s.ini"));
+        check(snapshot2.value("subsonic/trustCert").toBool() == true, "snapshot-trust-cert-true");
         bool secretLeak = false;
         for (auto it = snapshot.cbegin(); it != snapshot.cend(); ++it) {
             const QString key = it.key().toLower();

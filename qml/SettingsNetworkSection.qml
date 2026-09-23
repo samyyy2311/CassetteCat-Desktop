@@ -10,6 +10,7 @@ ColumnLayout {
     property bool svcDeezer: true
     property bool svcAudiodb: true
     property bool svcWiki: true
+    property bool svcArchive: true
 
     signal offlineBlackoutSelected(bool value)
     signal serviceToggleRequested(string name, bool value)
@@ -22,6 +23,7 @@ ColumnLayout {
         if (id === "deezer") return root.svcDeezer
         if (id === "audiodb") return root.svcAudiodb
         if (id === "wiki") return root.svcWiki
+        if (id === "archive") return root.svcArchive
         return false
     }
 
@@ -52,23 +54,16 @@ ColumnLayout {
             iconName: "disc"
             title: "Streaming Server Integration"
             subtitle: "Configure credentials, stream audio catalogs, and manage server synchronization"
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.topMargin: 4
-            Layout.bottomMargin: 8
-            spacing: 12
 
             SettingButton {
-                text: "Open Jellyfin"
+                text: "Jellyfin"
                 iconName: "jellyfin"
                 preserveIconColor: true
                 onClicked: root.openJellyfinRequested()
             }
 
             SettingButton {
-                text: "Open Subsonic"
+                text: "Subsonic"
                 iconName: "subsonic"
                 preserveIconColor: true
                 onClicked: root.openSubsonicRequested()
@@ -85,7 +80,8 @@ ColumnLayout {
                 { id: "radio", title: "Radio Browser", subtitle: "Internet radio station discovery and streaming", icon: "radio", preserveColor: false, on: root.svcRadio },
                 { id: "deezer", title: "Deezer Artwork", subtitle: "High-resolution artist portraits and imagery", icon: "deezer", preserveColor: true, on: root.svcDeezer },
                 { id: "audiodb", title: "TheAudioDB", subtitle: "Artist imagery and biography metadata fallback", icon: "theaudiodb", preserveColor: true, on: root.svcAudiodb },
-                { id: "wiki", title: "Wikipedia", subtitle: "Artist biographies and summaries", icon: "wikipedia", preserveColor: true, on: root.svcWiki }
+                { id: "wiki", title: "Wikipedia", subtitle: "Artist biographies and summaries", icon: "wikipedia", preserveColor: true, on: root.svcWiki },
+                { id: "archive", title: "Cover Art Archive", subtitle: "Community-sourced album covers from MusicBrainz", icon: "archive", preserveColor: true, on: root.svcArchive }
             ]
             delegate: ColumnLayout {
                 Layout.fillWidth: true

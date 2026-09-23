@@ -54,9 +54,9 @@ public:
     RemoteTrackModel *jellyfinModel() const { return m_jellyfinModel; }
     RemoteTrackModel *subsonicModel() const { return m_subsonicModel; }
 
-    Q_INVOKABLE void connectSubsonic(const QString &serverUrl, const QString &username, const QString &password);
-    Q_INVOKABLE void connectJellyfin(const QString &serverUrl, const QString &username, const QString &password);
-    Q_INVOKABLE void startJellyfinQuickConnect(const QString &serverUrl);
+    Q_INVOKABLE void connectSubsonic(const QString &serverUrl, const QString &username, const QString &password, bool trustCert = false);
+    Q_INVOKABLE void connectJellyfin(const QString &serverUrl, const QString &username, const QString &password, bool trustCert = false);
+    Q_INVOKABLE void startJellyfinQuickConnect(const QString &serverUrl, bool trustCert = false);
     Q_INVOKABLE void cancelJellyfinQuickConnect();
     Q_INVOKABLE void disconnectServer(const QString &protocol);
     Q_INVOKABLE void refreshLibrary();
@@ -93,7 +93,8 @@ private:
     void setRemoteLibraryLoading(bool loading);
     bool blackoutEnabled() const;
     QString deviceId();
-    QNetworkReply *trackReply(QNetworkReply *reply);
+    QNetworkReply *trackReply(QNetworkReply *reply, bool allowSelfSigned = false);
+    bool isServerCertTrusted(const QUrl &url) const;
     QString friendlyError(QNetworkReply *reply, const QString &fallback);
     void beginRefresh();
     void finishRefreshStage();
@@ -109,7 +110,7 @@ private:
     void refreshJellyfin(const QString &base, const QString &userId, const QString &accessToken, int tokenSnapshot);
     void fetchJellyfinPage(const QString &base, const QString &userId, const QString &accessToken,
                            int startIndex, std::shared_ptr<QVariantList> out, int tokenSnapshot);
-    void completeJellyfinLogin(const QString &base, const QJsonObject &result);
+    void completeJellyfinLogin(const QString &base, const QJsonObject &result, bool trustCert = false);
 
     QString m_settingsPath;
     QVariantList m_remoteTracks;

@@ -66,7 +66,7 @@ bool ServicesController::selfCheck()
     if (!settingsDir.isValid()) return false;
     QSettings serviceSettings(settingsDir.filePath("settings.ini"), QSettings::IniFormat);
     serviceSettings.setValue("services/deezer", false);
-    if (serviceEnabled(serviceSettings, "deezer") || !serviceEnabled(serviceSettings, "wiki")) return false;
+    if (serviceEnabled(serviceSettings, "deezer") || !serviceEnabled(serviceSettings, "wiki") || !serviceEnabled(serviceSettings, "archive")) return false;
 
     PendingReply replies[8];
     for (auto &reply : replies) services.trackReply(&reply);
@@ -88,7 +88,12 @@ bool ServicesController::selfCheck()
         if (!reply.isFinished()) return false;
     }
     services.setBlackoutEnabled(true);
-    return services.m_pendingReplies.isEmpty();
+    if (!services.m_pendingReplies.isEmpty()) return false;
+
+    return compareVersions("0.5.2", "0.5.1") > 0
+        && compareVersions("0.5.1", "0.5.1") == 0
+        && compareVersions("0.5.0", "0.5.1") < 0
+        && compareVersions("v1.0.0", "0.9.9") > 0;
 }
 
 QNetworkReply *ServicesController::trackReply(QNetworkReply *reply)
@@ -180,7 +185,73 @@ void ServicesController::setBlackoutEnabled(bool enabled)
 
 void ServicesController::openExternalUrl(const QString &url)
 {
-        if (!onlineEnabled()) return;
-        QDesktopServices::openUrl(QUrl(url));
+    if (!onlineEnabled()) return;
+    QDesktopServices::openUrl(QUrl(url));
+}
+
+int ServicesController::compareVersions(const QString &v1, const QString &v2)
+{
+    const auto parseVersion = [](QString v) -> QList<int> {
+        if (v.startsWith('v', Qt::CaseInsensitive)) v = v.mid(1);
+        const QStringList parts = v.split('.');
+        QList<int> numbers;
+        for (const QString &part : parts) {
+            numbers.append(part.toInt());
+        }
+        while (numbers.size() < 3) numbers.append(0);
+        return numbers;
+    };
+    const QList<int> nums1 = parseVersion(v1);
+    const QList<int> nums2 = parseVersion(v2);
+    for (int i = 0; i < qMin(nums1.size(), nums2.size()); ++i) {
+        if (nums1[i] > nums2[i]) return 1;
+        if (nums1[i] < nums2[i]) return -1;
     }
+    return 0;
+}
+
+void ServicesController::checkForUpdates(bool manual)
+{
+    if (!onlineEnabled()) {
+        if (manual) {
+            emit updateCheckFailed(QStringLiteral("Offline blackout is enabled."), manual);
+        }
+        return;
+    }
+
+    const QUrl url(QStringLiteral("https://api.github.com/repos/samyyy2311/CassetteCat-Desktop/releases/latest"));
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("CassetteCat/0.5.1"));
+    request.setRawHeader("Accept", "application/vnd.github.v3+json");
+    request.setTransferTimeout(services::detail::requestTimeoutMs);
+
+    QNetworkReply *reply = trackReply(m_net->get(request));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, manual]() {
+        reply->deleteLater();
+        if (reply->error() != QNetworkReply::NoError) {
+            emit updateCheckFailed(reply->errorString(), manual);
+            return;
+        }
+
+        const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+        if (!doc.isObject()) {
+            emit updateCheckFailed(QStringLiteral("Invalid response from GitHub."), manual);
+            return;
+        }
+
+        const QJsonObject root = doc.object();
+        QString tag = root.value(QStringLiteral("tag_name")).toString();
+        const QString releaseUrl = root.value(QStringLiteral("html_url")).toString();
+        const QString body = root.value(QStringLiteral("body")).toString();
+
+        if (tag.startsWith('v', Qt::CaseInsensitive)) {
+            tag = tag.mid(1);
+        }
+
+        const QString currentVersion = QStringLiteral("0.5.1");
+        const bool updateAvailable = compareVersions(tag, currentVersion) > 0;
+        emit updateCheckFinished(updateAvailable, tag, releaseUrl, body, manual);
+    });
+}
+
 

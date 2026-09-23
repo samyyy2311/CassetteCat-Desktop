@@ -48,6 +48,8 @@ public:
     Q_INVOKABLE bool hasLibreFmSession();
     Q_INVOKABLE void searchAlbumCovers(const QString &album, const QString &artist = "");
     Q_INVOKABLE void applyAlbumCover(const QString &album, const QString &artist, const QString &imageUrl, const QString &filePath = "");
+    Q_INVOKABLE void checkForUpdates(bool manual = false);
+    static int compareVersions(const QString &v1, const QString &v2);
 
 signals:
     void lyricsFetched(const QString &title, const QString &artist, const QString &lyrics, const QString &provider);
@@ -61,6 +63,8 @@ signals:
     void artistImageLoaded(const QString &artist, const QString &imageUrl);
     void listenBrainzValidationFinished(bool valid, const QString &userName, const QString &error);
     void libreFmAuthFinished(bool success, const QString &userName, const QString &sessionKey, const QString &error);
+    void updateCheckFinished(bool updateAvailable, const QString &latestVersion, const QString &releaseUrl, const QString &releaseNotes, bool manual);
+    void updateCheckFailed(const QString &error, bool manual);
 
 private:
     static QString lyricsCacheKey(const QString &title, const QString &artist, const QString &album);

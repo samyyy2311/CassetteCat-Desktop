@@ -58,6 +58,15 @@ ColumnLayout {
                         Behavior on color { ColorAnimation { duration: 120 } }
                         Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
 
+                        LucideIcon {
+                            visible: root.accentName === modelData.id
+                            anchors.centerIn: parent
+                            width: 16
+                            height: 16
+                            icon: "check"
+                            color: "#FFFFFF"
+                        }
+
                         MouseArea {
                             id: swatchMouse
                             anchors.fill: parent
@@ -73,7 +82,7 @@ ColumnLayout {
                         color: root.accentName === modelData.id ? textPrimary : textSecondary
                         font.family: displayFont
                         font.pixelSize: 10
-                        font.weight: Font.Medium
+                        font.weight: root.accentName === modelData.id ? Font.Bold : Font.Medium
                     }
                 }
             }
@@ -97,8 +106,8 @@ ColumnLayout {
                         anchors.centerIn: parent
                         width: 16
                         height: 16
-                        icon: "sliders-horizontal"
-                        color: textPrimary
+                        icon: root.accentName === "custom" ? "check" : "sliders-horizontal"
+                        color: "#FFFFFF"
                     }
 
                     MouseArea {

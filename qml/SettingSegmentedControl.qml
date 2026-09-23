@@ -7,12 +7,15 @@ Rectangle {
     property var selectedValue: ""
     signal optionSelected(var value)
 
+    readonly property color accentColor: (typeof recordRed !== "undefined" ? recordRed : "#C23B30")
+    readonly property color accentHoverColor: (typeof recordRedHover !== "undefined" ? recordRedHover : "#D64337")
+
     implicitHeight: 32
     implicitWidth: rowLayout.implicitWidth + 8
-    radius: 16
-    color: "transparent"
-    border.width: activeFocus ? 2 : 1
-    border.color: activeFocus ? recordRedHover : borderSubtle
+    radius: height / 2
+    color: (typeof surfaceInput !== "undefined" ? surfaceInput : "#1A1917")
+    border.width: 1
+    border.color: (typeof borderSubtle !== "undefined" ? borderSubtle : "#22201D")
 
     activeFocusOnTab: true
     Accessible.role: Accessible.PageTabList
@@ -48,7 +51,7 @@ Rectangle {
     Row {
         id: rowLayout
         anchors.centerIn: parent
-        spacing: 2
+        spacing: 3
 
         Repeater {
             model: root.options
@@ -60,11 +63,13 @@ Rectangle {
 
                 height: 26
                 width: segLabel.implicitWidth + 16
-                radius: 13
-                color: segMouse.containsMouse ? "#262421" : "transparent"
+                radius: height / 2
+                color: isSelected
+                    ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#262320")
+                    : (segMouse.containsMouse ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#22201D") : "transparent")
                 border.width: isSelected ? 1 : 0
-                border.color: recordRed
-                scale: segMouse.pressed ? 0.96 : 1.0
+                border.color: root.accentColor
+                scale: segMouse.pressed ? 0.97 : 1.0
 
                 Behavior on color { ColorAnimation { duration: 120 } }
                 Behavior on border.color { ColorAnimation { duration: 120 } }
@@ -74,11 +79,15 @@ Rectangle {
                     id: segLabel
                     anchors.centerIn: parent
                     text: segItem.optLabel
-                    color: segItem.isSelected ? recordRedHover : (segMouse.containsMouse ? textPrimary : textSecondary)
-                    font.family: displayFont
+                    color: segItem.isSelected
+                        ? root.accentHoverColor
+                        : (segMouse.containsMouse ? textPrimary : textSecondary)
+                    font.family: (typeof monoFont !== "undefined" ? monoFont : "IBM Plex Mono")
                     font.pixelSize: 11
                     font.weight: segItem.isSelected ? Font.Bold : Font.Medium
-                    font.letterSpacing: 0.4
+                    font.letterSpacing: 0.3
+
+                    Behavior on color { ColorAnimation { duration: 120 } }
                 }
 
                 MouseArea {

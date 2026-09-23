@@ -32,6 +32,7 @@ Item {
     property bool autoplayEnabled: false
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 80
+    property string replayGainMode: "off"
     property bool closeToTray: false
     property bool startMinimizedToTray: false
     property string nowPlayingNotifications: "minimized"
@@ -49,6 +50,7 @@ Item {
     property bool svcDeezer: true
     property bool svcAudiodb: true
     property bool svcWiki: true
+    property bool svcArchive: true
     property string backupStatus: ""
     property string currentSection: "library"
     property bool scrobbleListenBrainzEnabled: false
@@ -57,6 +59,10 @@ Item {
     property bool scrobbleLibreFmEnabled: false
     property string scrobbleLibreFmUser: ""
     property bool scrobbleLibreFmConnected: false
+    property string updateStatusText: "Current version: v0.5.1"
+    property bool updateChecking: false
+    property bool updateAvailable: false
+    property string updateUrl: ""
 
     readonly property var categories: [
         { id: "library", label: "Music Library", icon: "folder" },
@@ -108,6 +114,7 @@ Item {
     signal sleepFadeOutSelected(bool value)
     signal volumeLimitSelected(bool value)
     signal maxVolumeSelected(int value)
+    signal replayGainModeSelected(string value)
     signal globalShortcutsEnabledSelected(bool value)
     signal globalShortcutSelected(string action, string shortcut)
     signal inAppShortcutSelected(string action, string shortcut)
@@ -130,6 +137,8 @@ Item {
     signal disconnectListenBrainzRequested()
     signal scrobbleLibreFmToggled(bool value)
     signal disconnectLibreFmRequested()
+    signal checkUpdatesRequested()
+    signal downloadUpdateRequested()
     signal sectionSelected(string section)
 
     function chooseSection(id) {
@@ -140,93 +149,142 @@ Item {
 
     Item {
         anchors.fill: parent
-            ColumnLayout {
-                anchors.fill: parent
-                spacing: 0
 
-                Item {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    readonly property bool compact: width < 840
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 28
+            anchors.rightMargin: 28
+            anchors.topMargin: 20
+            anchors.bottomMargin: 16
+            spacing: 16
 
-                    Flickable {
-                        id: compactNav
-                        visible: parent.compact
-                        anchors.top: parent.top
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.leftMargin: 24
-                        anchors.rightMargin: 24
-                        height: 48
-                        contentWidth: compactRow.implicitWidth
-                        clip: true
+            // Header matching SearchPage / LibraryPage / ListeningRecordPage
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 14
 
-                        Row {
-                            id: compactRow
-                            spacing: 6
+                ColumnLayout {
+                    spacing: 3
 
-                            Repeater {
-                                model: root.categories
-
-                                delegate: SettingsNavigationItem {
-                                    label: modelData.label
-                                    iconName: modelData.icon
-                                    compact: true
-                                    selected: root.currentSection === modelData.id
-                                    onClicked: root.chooseSection(modelData.id)
-                                }
-                            }
-                        }
+                    Label {
+                        text: "Preferences & Settings"
+                        color: textPrimary
+                        font.family: displayFont
+                        font.pixelSize: 22
+                        font.weight: Font.Bold
+                        font.letterSpacing: -0.3
                     }
 
-                    Column {
-                        id: navigation
-                        visible: !parent.compact
-                        anchors.top: parent.top
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                        anchors.leftMargin: 24
-                        anchors.topMargin: 16
-                        anchors.bottomMargin: 16
-                        width: 184
+                    Label {
+                        text: "Configure audio playback, library scanning, interface appearance, and services"
+                        color: textSecondary
+                        font.family: bodyFont
+                        font.pixelSize: 12
+                    }
+                }
+
+                Item { Layout.fillWidth: true }
+
+                Rectangle {
+                    Layout.preferredHeight: 24
+                    Layout.preferredWidth: versionBadgeText.implicitWidth + 16
+                    radius: 12
+                    color: Qt.rgba(recordRed.r, recordRed.g, recordRed.b, 0.12)
+                    border.width: 1
+                    border.color: Qt.rgba(recordRed.r, recordRed.g, recordRed.b, 0.3)
+
+                    Label {
+                        id: versionBadgeText
+                        anchors.centerIn: parent
+                        text: "v0.5.1"
+                        color: recordRedHover
+                        font.family: monoFont
+                        font.pixelSize: 11
+                        font.weight: Font.Bold
+                    }
+                }
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                readonly property bool compact: width < 840
+
+                Flickable {
+                    id: compactNav
+                    visible: parent.compact
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 48
+                    contentWidth: compactRow.implicitWidth
+                    clip: true
+
+                    Row {
+                        id: compactRow
                         spacing: 6
 
                         Repeater {
                             model: root.categories
 
                             delegate: SettingsNavigationItem {
-                                width: navigation.width
                                 label: modelData.label
                                 iconName: modelData.icon
+                                compact: true
                                 selected: root.currentSection === modelData.id
                                 onClicked: root.chooseSection(modelData.id)
                             }
                         }
                     }
+                }
 
-                    Rectangle {
-                        visible: !parent.compact
-                        anchors.top: parent.top
-                        anchors.bottom: parent.bottom
-                        anchors.left: navigation.right
-                        anchors.leftMargin: 20
-                        width: 1
-                        color: borderSubtle
+                Column {
+                    id: navigation
+                    visible: !parent.compact
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.left
+                    anchors.topMargin: 4
+                    anchors.bottomMargin: 8
+                    width: 184
+                    spacing: 6
+
+                    Repeater {
+                        model: root.categories
+
+                        delegate: SettingsNavigationItem {
+                            width: navigation.width
+                            label: modelData.label
+                            iconName: modelData.icon
+                            selected: root.currentSection === modelData.id
+                            onClicked: root.chooseSection(modelData.id)
+                        }
                     }
+                }
 
-                    ScrollView {
-                        id: contentScroll
-                        anchors.top: parent.compact ? compactNav.bottom : parent.top
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.compact ? parent.left : navigation.right
-                        anchors.leftMargin: parent.compact ? 24 : 40
-                        anchors.right: parent.right
-                        anchors.rightMargin: 24
-                        clip: true
-                        contentWidth: availableWidth
-                        contentHeight: root.activeSectionHeight + 48
-                        ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                        ScrollBar.vertical: SleekScrollBar {}
+                Rectangle {
+                    visible: !parent.compact
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.left: navigation.right
+                    anchors.leftMargin: 20
+                    width: 1
+                    color: borderSubtle
+                }
+
+                ScrollView {
+                    id: contentScroll
+                    anchors.top: parent.compact ? compactNav.bottom : parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.left: parent.compact ? parent.left : navigation.right
+                    anchors.leftMargin: parent.compact ? 0 : 32
+                    anchors.right: parent.right
+                    anchors.rightMargin: 0
+                    clip: true
+                    contentWidth: availableWidth
+                    contentHeight: Math.max(height, sectionContent.implicitHeight + 48)
+                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    ScrollBar.vertical: SleekScrollBar {}
 
                         ColumnLayout {
                             id: sectionContent
@@ -291,6 +349,8 @@ Item {
                                 onSleepFadeOutSelected: value => root.sleepFadeOutSelected(value)
                                 onVolumeLimitSelected: value => root.volumeLimitSelected(value)
                                 onMaxVolumeSelected: value => root.maxVolumeSelected(value)
+                                replayGainMode: root.replayGainMode
+                                onReplayGainModeSelected: value => root.replayGainModeSelected(value)
                             }
 
                             SettingsShortcutsSection {
@@ -320,11 +380,17 @@ Item {
                                 trayAvailable: root.trayAvailable
                                 audioOutputs: root.audioOutputs
                                 audioDeviceId: root.audioDeviceId
+                                updateStatusText: root.updateStatusText
+                                updateChecking: root.updateChecking
+                                updateAvailable: root.updateAvailable
+                                updateUrl: root.updateUrl
                                 onCloseToTraySelected: value => root.closeToTraySelected(value)
                                 onStartMinimizedToTraySelected: value => root.startMinimizedToTraySelected(value)
                                 onNowPlayingNotificationsSelected: value => root.nowPlayingNotificationsSelected(value)
                                 onMiniPlayerAlwaysOnTopSelected: value => root.miniPlayerAlwaysOnTopSelected(value)
                                 onAudioDeviceSelected: value => root.audioDeviceSelected(value)
+                                onCheckUpdatesRequested: root.checkUpdatesRequested()
+                                onDownloadUpdateRequested: root.downloadUpdateRequested()
                             }
 
                             SettingsLyricsSection {
@@ -368,6 +434,7 @@ Item {
                                 svcDeezer: root.svcDeezer
                                 svcAudiodb: root.svcAudiodb
                                 svcWiki: root.svcWiki
+                                svcArchive: root.svcArchive
                                 onOfflineBlackoutSelected: value => root.offlineBlackoutSelected(value)
                                 onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
                                 onOpenJellyfinRequested: root.openJellyfinRequested()

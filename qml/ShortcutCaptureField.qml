@@ -8,15 +8,18 @@ Rectangle {
     property bool allowPlainKey: false
     signal shortcutCaptured(string shortcut)
 
-    implicitWidth: 148
-    implicitHeight: 30
-    radius: 15
-    color: activeFocus ? "#1F1D1A" : "transparent"
-    border.width: activeFocus ? 1.5 : 1
-    border.color: activeFocus ? recordRed : borderSubtle
+    implicitHeight: 28
+    implicitWidth: Math.max(64, shortcutText.implicitWidth + 24)
+    radius: 14
+    color: activeFocus ? "#262320" : (fieldMouse.containsMouse ? "#262320" : "#1A1816")
+    border.width: 1
+    border.color: activeFocus ? recordRed : (fieldMouse.containsMouse ? borderVariant : "#2A2825")
     enabled: true
     Accessible.role: Accessible.Button
     Accessible.name: "Keyboard shortcut " + shortcut
+
+    Behavior on color { ColorAnimation { duration: 120 } }
+    Behavior on border.color { ColorAnimation { duration: 120 } }
 
     function keyName(key) {
         if (key >= Qt.Key_A && key <= Qt.Key_Z) return String.fromCharCode(key)
@@ -53,16 +56,19 @@ Rectangle {
     }
 
     Label {
+        id: shortcutText
         anchors.centerIn: parent
         text: root.activeFocus ? "Press keys..." : root.shortcut
-        color: root.activeFocus ? recordRedHover : textSecondary
+        color: root.activeFocus ? recordRedHover : (fieldMouse.containsMouse ? textPrimary : textSecondary)
         font.family: monoFont
-        font.pixelSize: 10
+        font.pixelSize: 11
         font.weight: Font.DemiBold
     }
 
     MouseArea {
+        id: fieldMouse
         anchors.fill: parent
+        hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.forceActiveFocus()
     }

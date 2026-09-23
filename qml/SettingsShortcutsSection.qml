@@ -17,12 +17,12 @@ ColumnLayout {
     signal inAppShortcutSelected(string action, string shortcut)
 
     readonly property var globalActions: [
-        { action: "playPause", label: "Play / Pause", defaultKey: "Ctrl+Alt+Space" },
-        { action: "previous", label: "Previous Track", defaultKey: "Ctrl+Alt+Left" },
-        { action: "next", label: "Next Track", defaultKey: "Ctrl+Alt+Right" },
-        { action: "favorite", label: "Toggle Favorite", defaultKey: "Ctrl+Alt+F" },
-        { action: "search", label: "Focus Search", defaultKey: "Ctrl+Alt+S" },
-        { action: "miniPlayer", label: "Toggle Mini Player", defaultKey: "Ctrl+Alt+M" }
+        { action: "playPause", label: "Play / Pause", defaultKey: "Ctrl+Alt+Space", icon: "play" },
+        { action: "previous", label: "Previous Track", defaultKey: "Ctrl+Alt+Left", icon: "skip-back" },
+        { action: "next", label: "Next Track", defaultKey: "Ctrl+Alt+Right", icon: "skip-forward" },
+        { action: "favorite", label: "Toggle Favorite", defaultKey: "Ctrl+Alt+F", icon: "heart" },
+        { action: "search", label: "Focus Search", defaultKey: "Ctrl+Alt+S", icon: "search" },
+        { action: "miniPlayer", label: "Toggle Mini Player", defaultKey: "Ctrl+Alt+M", icon: "pip" }
     ]
 
     Layout.fillWidth: true
@@ -58,9 +58,8 @@ ColumnLayout {
                     SettingDivider { visible: index > 0 }
 
                     SettingRow {
-                        iconName: ""
+                        iconName: modelData.icon || ""
                         title: modelData.label
-                        subtitle: "Works while CassetteCat is in the background"
 
                         ShortcutCaptureField {
                             shortcut: (root.globalShortcutBindings && root.globalShortcutBindings[modelData.action]) || modelData.defaultKey
@@ -76,13 +75,14 @@ ColumnLayout {
 
     SettingCard {
         Label {
+            visible: root.inAppShortcutStatus.length > 0
             Layout.fillWidth: true
             Layout.topMargin: 4
             Layout.bottomMargin: 8
-            text: root.inAppShortcutStatus || "These shortcuts work while CassetteCat is focused"
-            color: textSecondary
-            font.family: bodyFont
-            font.pixelSize: 12
+            text: root.inAppShortcutStatus
+            color: root.inAppShortcutStatus.toLowerCase().includes("already") ? "#FF5555" : recordRedHover
+            font.family: monoFont
+            font.pixelSize: 11
             wrapMode: Text.WordWrap
         }
 
@@ -96,9 +96,8 @@ ColumnLayout {
                 SettingDivider { visible: index > 0 }
 
                 SettingRow {
-                    iconName: ""
+                    iconName: modelData.icon || ""
                     title: modelData.label
-                    subtitle: "Available while CassetteCat is focused"
 
                     ShortcutCaptureField {
                         allowPlainKey: true

@@ -21,23 +21,16 @@ ColumnLayout {
             subtitle: root.backupStatus.length > 0
                       ? root.backupStatus
                       : "Export settings, favorites, saved queues, and filters as a JSON file"
-        }
-
-        RowLayout {
-            Layout.fillWidth: true
-            Layout.topMargin: 8
-            Layout.bottomMargin: 8
-            spacing: 12
 
             SettingButton {
-                text: "Export Backup"
+                text: "Export"
                 iconName: "refresh-cw"
                 primary: true
                 onClicked: root.exportBackupRequested()
             }
 
             SettingButton {
-                text: "Import Backup"
+                text: "Import"
                 iconName: "folder"
                 onClicked: root.importBackupRequested()
             }

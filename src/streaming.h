@@ -76,10 +76,13 @@ class StreamingController final : public QObject {
         return m_subsonicModel;
     }
 
+    /// Authenticates with a Subsonic server, optionally trusting its self-signed certificate.
     Q_INVOKABLE void connectSubsonic(const QString &serverUrl, const QString &username, const QString &password,
                                      bool trustCert = false);
+    /// Authenticates with a Jellyfin server, optionally trusting its self-signed certificate.
     Q_INVOKABLE void connectJellyfin(const QString &serverUrl, const QString &username, const QString &password,
                                      bool trustCert = false);
+    /// Starts Jellyfin Quick Connect for \p serverUrl.
     Q_INVOKABLE void startJellyfinQuickConnect(const QString &serverUrl, bool trustCert = false);
     Q_INVOKABLE void cancelJellyfinQuickConnect();
     Q_INVOKABLE void disconnectServer(const QString &protocol);
@@ -95,7 +98,9 @@ class StreamingController final : public QObject {
 
     // Non-secret server config snapshot for prefilling the connect sheet.
     // Tested to exclude secrets.
+    /// Returns the non-secret configuration for the current remote servers.
     Q_INVOKABLE QVariantMap serverConfigSnapshot() const;
+    /// Reads non-secret remote-server configuration from \p settingsPath.
     static QVariantMap serverConfigSnapshot(const QString &settingsPath);
 
   signals:
@@ -117,7 +122,9 @@ class StreamingController final : public QObject {
     void setRemoteLibraryLoading(bool loading);
     bool blackoutEnabled() const;
     QString deviceId();
+    /// Tracks \p reply and optionally accepts only its self-signed trust errors.
     QNetworkReply *trackReply(QNetworkReply *reply, bool allowSelfSigned = false);
+    /// Returns whether \p url matches a server configured for certificate trust.
     bool isServerCertTrusted(const QUrl &url, const QSslCertificate &cert = QSslCertificate()) const;
     QString friendlyError(QNetworkReply *reply, const QString &fallback);
     void beginRefresh();
@@ -127,12 +134,14 @@ class StreamingController final : public QObject {
     void fetchSubsonicAlbumIds(const QString &base, const QString &user, const QString &token, const QString &salt,
                                int offset, std::shared_ptr<QStringList> ids, std::shared_ptr<QVariantList> out,
                                int tokenSnapshot);
+    /// Fetches the next available Subsonic album into a shared result list.
     void fetchSubsonicAlbum(const QString &base, const QString &user, const QString &token, const QString &salt,
                             std::shared_ptr<QStringList> ids, std::shared_ptr<QVariantList> out,
                             std::shared_ptr<int> nextIndex, std::shared_ptr<int> activeRequests, int tokenSnapshot);
     void refreshJellyfin(const QString &base, const QString &userId, const QString &accessToken, int tokenSnapshot);
     void fetchJellyfinPage(const QString &base, const QString &userId, const QString &accessToken, int startIndex,
                            std::shared_ptr<QVariantList> out, int tokenSnapshot);
+    /// Persists a successful Jellyfin login and starts library refresh.
     void completeJellyfinLogin(const QString &base, const QJsonObject &result, bool trustCert = false);
 
     QString m_settingsPath;
@@ -166,6 +175,7 @@ namespace streaming {
 
 // Deterministic protocol/unit checks. The vault probe is opt-in because some
 // unattended Windows sessions cannot access Credential Manager.
+/// Runs deterministic streaming checks and optionally verifies the credential vault.
 bool runSelfChecks(bool includeVaultProbe = false);
 
 } // namespace streaming

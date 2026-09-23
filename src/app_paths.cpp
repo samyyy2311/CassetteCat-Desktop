@@ -10,6 +10,7 @@ QString settingsFilePath()
     return QDir(configDir).filePath("settings.ini");
 }
 
+/// @copydoc debugLogFilePath
 QString debugLogFilePath()
 {
     const QString logDir = QDir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation))
@@ -18,6 +19,7 @@ QString debugLogFilePath()
     return QDir(logDir).filePath("debug.log");
 }
 
+/// @copydoc logFilePath
 QString logFilePath()
 {
     return debugLogFilePath();

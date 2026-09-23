@@ -34,6 +34,7 @@ bool isNetworkStream(const QUrl &url) {
 
 } // namespace
 
+/// @copydoc PlayerController::PlayerController
 PlayerController::PlayerController(QObject *parent, StreamingController *streaming)
     : QObject(parent), m_streaming(streaming), m_audioOutput(new QAudioOutput(this)),
       m_mediaDevices(new QMediaDevices(this)), m_bufferOutput(new QAudioBufferOutput(this)),
@@ -183,9 +184,11 @@ QString PlayerController::formattedPosition() const {
 QString PlayerController::formattedDuration() const {
     return formatDuration(static_cast<int>(m_duration / 1000));
 }
+/// @copydoc PlayerController::volume
 float PlayerController::volume() const {
     return m_baseVolume;
 }
+/// @copydoc PlayerController::replayGainMode
 QString PlayerController::replayGainMode() const {
     return m_replayGainMode;
 }
@@ -250,6 +253,7 @@ void PlayerController::setAudioMeterEnabled(bool enabled) {
     emit audioMeterEnabledChanged();
 }
 
+/// @copydoc PlayerController::selfCheck
 bool PlayerController::selfCheck() {
     QBuffer source;
     PlayerController player;
@@ -364,6 +368,7 @@ void PlayerController::toggleShuffle() {
     setShuffleEnabled(!m_shuffleEnabled);
 }
 
+/// @copydoc PlayerController::setVolume
 void PlayerController::setVolume(float vol) {
     float clamped = std::clamp(vol, 0.0f, 1.0f);
     if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
@@ -379,6 +384,7 @@ void PlayerController::setVolume(float vol) {
     }
 }
 
+/// @copydoc PlayerController::applyEffectiveVolume
 void PlayerController::applyEffectiveVolume() {
     if (!m_audioOutput)
         return;
@@ -396,6 +402,7 @@ void PlayerController::applyEffectiveVolume() {
     m_audioOutput->setVolume(std::clamp(m_baseVolume * factor, 0.0f, maxCeiling));
 }
 
+/// @copydoc PlayerController::setReplayGainMode
 void PlayerController::setReplayGainMode(const QString &mode) {
     if (m_replayGainMode == mode)
         return;
@@ -433,6 +440,7 @@ void PlayerController::playTrack(const QVariantMap &track) {
     m_player->play();
 }
 
+/// @copydoc PlayerController::loadTrack
 bool PlayerController::loadTrack(const QVariantMap &track) {
     const QString filePath = track.value("filePath").toString();
     if (filePath.isEmpty())
@@ -553,6 +561,7 @@ void PlayerController::updateCurrentTrackArtwork(const QString &artworkPath) {
     emit currentTrackChanged();
 }
 
+/// @copydoc PlayerController::updateCurrentTrackMetadata
 void PlayerController::updateCurrentTrackMetadata(const QVariantMap &track) {
     if (m_currentTrack.isEmpty() || track.value("filePath") != m_currentTrack.value("filePath"))
         return;
@@ -561,6 +570,7 @@ void PlayerController::updateCurrentTrackMetadata(const QVariantMap &track) {
     emit currentTrackChanged();
 }
 
+/// @copydoc PlayerController::requestPlayback
 void PlayerController::requestPlayback(const QVariantList &tracks, int startIndex) {
     emit playbackRequested(tracks, startIndex);
 }

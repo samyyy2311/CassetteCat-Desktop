@@ -107,6 +107,7 @@ bool singleInstanceSelfCheck()
     return connected;
 }
 
+/// Restores, raises, and activates the application \p window.
 void activateWindow(QQuickWindow *window)
 {
     if (!window) return;
@@ -126,6 +127,7 @@ void activateWindow(QQuickWindow *window)
     window->requestActivate();
 }
 
+/// Rotates the debug log when appending \p incomingBytes would exceed its limit.
 void rotateDebugLogIfNeeded(qint64 incomingBytes)
 {
     if (gDebugLogPath.isEmpty() || gDebugLogBytes + incomingBytes <= kMaxDebugLogBytes) return;
@@ -136,6 +138,7 @@ void rotateDebugLogIfNeeded(qint64 incomingBytes)
     gDebugLogBytes = 0;
 }
 
+/// Initializes the debug-log path, size accounting, and startup rotation.
 void initializeDebugLog()
 {
     QMutexLocker locker(&gDebugLogMutex);
@@ -144,6 +147,7 @@ void initializeDebugLog()
     rotateDebugLogIfNeeded(0);
 }
 
+/// Redacts and writes a Qt diagnostic \p message to stderr and the debug log.
 void writeDebugLog(QtMsgType, const QMessageLogContext &, const QString &message)
 {
     QMutexLocker locker(&gDebugLogMutex);
@@ -206,6 +210,7 @@ static void registerWindowsAppIdentity()
 
 #endif
 
+/// Initializes the application, runs optional self-checks, and starts the UI.
 int main(int argc, char *argv[])
 {
     qInstallMessageHandler(writeDebugLog);

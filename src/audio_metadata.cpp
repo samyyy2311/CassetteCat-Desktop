@@ -311,6 +311,7 @@ QString extractEmbeddedLyrics(const QString &filePath) {
     return {};
 }
 
+/// @copydoc extractReplayGain
 float extractReplayGain(const QString &filePath, bool albumMode) {
     if (filePath.isEmpty())
         return 0.0f;
@@ -521,7 +522,12 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
     }
 }
 
+<<<<<<< HEAD
 QVariantList parseM3uPlaylist(const QString &playlistPath) {
+=======
+/// @copydoc parseM3uPlaylist
+QVariantList parseM3uPlaylist(const QString &playlistPath) {
+>>>>>>> origin/feat/desktop-enhancements
     QFile file(playlistPath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         return {};

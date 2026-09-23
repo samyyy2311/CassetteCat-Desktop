@@ -164,6 +164,7 @@ void StreamingController::updateStatusTexts() {
     emit statusChanged();
 }
 
+/// @copydoc StreamingController::trackReply
 QNetworkReply *StreamingController::trackReply(QNetworkReply *reply, bool allowSelfSigned) {
     if (!reply) {
         return nullptr;
@@ -232,6 +233,7 @@ QNetworkReply *StreamingController::trackReply(QNetworkReply *reply, bool allowS
     return reply;
 }
 
+/// @copydoc StreamingController::isServerCertTrusted
 bool StreamingController::isServerCertTrusted(const QUrl &url, const QSslCertificate &cert) const {
     if (url.scheme() != QLatin1String("https")) {
         return false;
@@ -595,6 +597,7 @@ QVariantMap StreamingController::serverConfigSnapshot() const {
     return serverConfigSnapshot(m_settingsPath);
 }
 
+/// @copydoc StreamingController::serverConfigSnapshot(const QString &)
 QVariantMap StreamingController::serverConfigSnapshot(const QString &settingsPath) {
     QSettings settings(settingsPath, QSettings::IniFormat);
     QVariantMap snapshot;
@@ -624,6 +627,7 @@ void check(bool condition, const char *name) {
 
 } // namespace
 
+/// @copydoc runSelfChecks
 bool runSelfChecks(bool includeVaultProbe) {
     g_failures = 0;
 

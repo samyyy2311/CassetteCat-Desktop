@@ -45,6 +45,7 @@ bool ServicesController::serviceEnabled(const QSettings &settings, const QString
     return settings.value("services/" + service, true).toBool();
 }
 
+/// @copydoc ServicesController::selfCheck
 bool ServicesController::selfCheck() {
     class PendingReply final : public QNetworkReply {
       public:
@@ -193,12 +194,14 @@ void ServicesController::setBlackoutEnabled(bool enabled) {
     cancelNetworkRequests();
 }
 
+/// @copydoc ServicesController::openExternalUrl
 void ServicesController::openExternalUrl(const QString &url) {
     if (!onlineEnabled())
         return;
     QDesktopServices::openUrl(QUrl(url));
 }
 
+/// @copydoc ServicesController::compareVersions
 int ServicesController::compareVersions(const QString &v1, const QString &v2) {
     const auto parseVersion = [](QString v) -> QList<int> {
         if (v.startsWith('v', Qt::CaseInsensitive))
@@ -226,6 +229,7 @@ int ServicesController::compareVersions(const QString &v1, const QString &v2) {
     return 0;
 }
 
+/// @copydoc ServicesController::checkForUpdates
 void ServicesController::checkForUpdates(bool manual) {
     if (!onlineEnabled()) {
         if (manual) {

@@ -27,6 +27,7 @@ constexpr int kJellyfinPageSize = 200;
 
 } // namespace
 
+/// @copydoc StreamingController::connectSubsonic
 void StreamingController::connectSubsonic(const QString &serverUrl, const QString &username, const QString &password,
                                           bool trustCert) {
     if (blackoutEnabled()) {
@@ -142,6 +143,7 @@ void StreamingController::fetchSubsonicAlbumIds(const QString &base, const QStri
     });
 }
 
+/// @copydoc StreamingController::fetchSubsonicAlbum
 void StreamingController::fetchSubsonicAlbum(const QString &base, const QString &user, const QString &token,
                                              const QString &salt, std::shared_ptr<QStringList> ids,
                                              std::shared_ptr<QVariantList> out, std::shared_ptr<int> nextIndex,
@@ -198,6 +200,7 @@ void StreamingController::fetchSubsonicAlbum(const QString &base, const QString 
     }
 }
 
+/// @copydoc StreamingController::connectJellyfin
 void StreamingController::connectJellyfin(const QString &serverUrl, const QString &username, const QString &password,
                                           bool trustCert) {
     if (blackoutEnabled()) {
@@ -245,6 +248,7 @@ void StreamingController::connectJellyfin(const QString &serverUrl, const QStrin
     });
 }
 
+/// @copydoc StreamingController::completeJellyfinLogin
 void StreamingController::completeJellyfinLogin(const QString &base, const QJsonObject &result, bool trustCert) {
     const QString accessToken = result.value("AccessToken").toString();
     const QJsonObject user = result.value("User").toObject();
@@ -290,6 +294,7 @@ void StreamingController::completeJellyfinLogin(const QString &base, const QJson
     refreshLibrary();
 }
 
+/// @copydoc StreamingController::startJellyfinQuickConnect
 void StreamingController::startJellyfinQuickConnect(const QString &serverUrl, bool trustCert) {
     cancelJellyfinQuickConnect();
     if (blackoutEnabled()) {

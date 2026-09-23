@@ -7,12 +7,11 @@ class QAction;
 class QMenu;
 class QSystemTrayIcon;
 
-class TrayController final : public QObject
-{
+class TrayController final : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool available READ available CONSTANT)
 
-public:
+  public:
     explicit TrayController(const QIcon &icon, QObject *parent = nullptr);
     ~TrayController() override;
 
@@ -23,14 +22,14 @@ public:
     Q_INVOKABLE void notifyHidden();
     Q_INVOKABLE void showNotification(const QString &title, const QString &message);
 
-signals:
+  signals:
     void showRequested();
     void playPauseRequested();
     void nextRequested();
     void previousRequested();
     void quitRequested();
 
-private:
+  private:
     QSystemTrayIcon *m_tray = nullptr;
     QMenu *m_menu = nullptr;
     QAction *m_playPauseAction = nullptr;

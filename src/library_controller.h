@@ -13,24 +13,25 @@
 #include <QVariantMap>
 #include <QVector>
 
-class LibraryController final : public QAbstractListModel
-{
+class LibraryController final : public QAbstractListModel {
     Q_OBJECT
     Q_PROPERTY(QStringList folders READ folders NOTIFY changed)
     Q_PROPERTY(int trackCount READ trackCount NOTIFY tracksChanged)
     Q_PROPERTY(int visibleTrackCount READ visibleTrackCount NOTIFY visibleTracksChanged)
 
-public:
+  public:
     explicit LibraryController(QObject *parent = nullptr);
     static bool selfCheck();
 
-    enum Role {
-        TrackRole = Qt::UserRole + 1
-    };
+    enum Role { TrackRole = Qt::UserRole + 1 };
 
     QStringList folders() const;
-    int trackCount() const { return m_trackCount; }
-    int visibleTrackCount() const { return m_visibleRows.size(); }
+    int trackCount() const {
+        return m_trackCount;
+    }
+    int visibleTrackCount() const {
+        return m_visibleRows.size();
+    }
     int rowCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     QHash<int, QByteArray> roleNames() const override;
@@ -46,28 +47,27 @@ public:
     Q_INVOKABLE QVariantMap firstPlayableTrack() const;
     Q_INVOKABLE QVariantList playbackTracks() const;
     Q_INVOKABLE QVariantMap catalogGroups() const;
-    Q_INVOKABLE void setLibraryFilter(const QString &query, const QString &filter,
-                                      const QVariantMap &favorites, const QString &sortMetric,
-                                      bool ascending, const QVariantList &excludedFolders,
+    Q_INVOKABLE void setLibraryFilter(const QString &query, const QString &filter, const QVariantMap &favorites,
+                                      const QString &sortMetric, bool ascending, const QVariantList &excludedFolders,
                                       bool ignoreShortClips);
-    Q_INVOKABLE void setSearchFilter(const QString &query, const QString &format,
-                                     const QVariantList &excludedFolders, bool ignoreShortClips);
+    Q_INVOKABLE void setSearchFilter(const QString &query, const QString &format, const QVariantList &excludedFolders,
+                                     bool ignoreShortClips);
     /// Parses \p filePath as an M3U playlist for direct playback.
     Q_INVOKABLE QVariantList parseM3u(const QString &filePath) const;
 
-signals:
+  signals:
     void changed();
     void tracksChanged();
     void visibleTracksChanged();
 
-private:
+  private:
     void setFolderPaths(QStringList paths);
     void startScan();
     void rescanFolder();
     void updateFolderWatch();
-    void setFilter(const QString &query, const QString &format, bool strictFormat,
-                   bool favoritesOnly, const QVariantMap &favorites, const QString &sortMetric,
-                   bool ascending, const QVariantList &excludedFolders, bool ignoreShortClips);
+    void setFilter(const QString &query, const QString &format, bool strictFormat, bool favoritesOnly,
+                   const QVariantMap &favorites, const QString &sortMetric, bool ascending,
+                   const QVariantList &excludedFolders, bool ignoreShortClips);
     void rebuildVisibleRows();
     bool isAvailable(const QVariantMap &track) const;
     bool matchesVisibleFilter(const QVariantMap &track) const;

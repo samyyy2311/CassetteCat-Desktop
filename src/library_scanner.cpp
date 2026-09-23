@@ -14,11 +14,9 @@
 
 #include <algorithm>
 
-QVariantList scanTracks(const QString &folder)
-{
-    const QStringList filters = {
-        "*.aac", "*.aiff", "*.alac", "*.flac", "*.m4a", "*.mp3", "*.ogg", "*.opus", "*.wav", "*.wma"
-    };
+QVariantList scanTracks(const QString &folder) {
+    const QStringList filters = {"*.aac", "*.aiff", "*.alac", "*.flac", "*.m4a",
+                                 "*.mp3", "*.ogg",  "*.opus", "*.wav",  "*.wma"};
     QList<TrackInfo> trackList;
     QHash<QString, QString> artworkByFolder;
     QDirIterator iterator(folder, filters, QDir::Files, QDirIterator::Subdirectories);
@@ -33,7 +31,8 @@ QVariantList scanTracks(const QString &folder)
         const QString folderPath = fileInfo.absolutePath();
         if (!artworkByFolder.contains(folderPath)) {
             const QDir trackFolder(folderPath);
-            const QStringList covers = {"cover.jpg", "cover.jpeg", "cover.png", "folder.jpg", "folder.png", "front.jpg", "front.png"};
+            const QStringList covers = {"cover.jpg",  "cover.jpeg", "cover.png", "folder.jpg",
+                                        "folder.png", "front.jpg",  "front.png"};
             QString cover;
 
             for (const QString &name : covers) {
@@ -65,8 +64,7 @@ QVariantList scanTracks(const QString &folder)
 }
 
 /// Verifies library scanning and M3U parsing with temporary fixture files.
-bool scanSelfCheck()
-{
+bool scanSelfCheck() {
     QTemporaryDir folder;
     QFile track(folder.filePath("CassetteCat Check.wav"));
     QFile dotTrack(folder.filePath(".trashed-12345.wav"));
@@ -81,8 +79,7 @@ bool scanSelfCheck()
     stream.writeRawData("RIFF", 4);
     stream << quint32(38);
     stream.writeRawData("WAVEfmt ", 8);
-    stream << quint32(16) << quint16(1) << quint16(1) << quint32(8000)
-           << quint32(16000) << quint16(2) << quint16(16);
+    stream << quint32(16) << quint16(1) << quint16(1) << quint32(8000) << quint32(16000) << quint16(2) << quint16(16);
     stream.writeRawData("data", 4);
     stream << quint32(2) << quint16(0);
     track.write(wav);
@@ -95,8 +92,8 @@ bool scanSelfCheck()
     }
 
     const QVariantMap trackMap = tracks.first().toMap();
-    if (trackMap.value("title").toString() != "CassetteCat Check"
-        || trackMap.value("fileName").toString() != "CassetteCat Check.wav") {
+    if (trackMap.value("title").toString() != "CassetteCat Check" ||
+        trackMap.value("fileName").toString() != "CassetteCat Check.wav") {
         return false;
     }
 
@@ -118,13 +115,13 @@ bool scanSelfCheck()
         return false;
     }
     const QVariantMap localTrack = parsed.at(0).toMap();
-    if (localTrack.value("title").toString() != "Sample Title"
-        || localTrack.value("artist").toString() != "Sample Artist") {
+    if (localTrack.value("title").toString() != "Sample Title" ||
+        localTrack.value("artist").toString() != "Sample Artist") {
         return false;
     }
     const QVariantMap streamTrack = parsed.at(1).toMap();
-    if (streamTrack.value("format").toString() != "STREAM"
-        || streamTrack.value("title").toString() != "Online Stream") {
+    if (streamTrack.value("format").toString() != "STREAM" ||
+        streamTrack.value("title").toString() != "Online Stream") {
         return false;
     }
 

@@ -7,15 +7,14 @@
 #include <QTimer>
 #include <QVariantMap>
 
-class GlobalShortcutController final : public QObject, public QAbstractNativeEventFilter
-{
+class GlobalShortcutController final : public QObject, public QAbstractNativeEventFilter {
     Q_OBJECT
     Q_PROPERTY(bool supported READ supported CONSTANT)
     Q_PROPERTY(bool enabled READ enabled NOTIFY enabledChanged)
     Q_PROPERTY(QString status READ status NOTIFY statusChanged)
     Q_PROPERTY(QVariantMap shortcuts READ shortcuts NOTIFY shortcutsChanged)
 
-public:
+  public:
     explicit GlobalShortcutController(QObject *parent = nullptr);
     ~GlobalShortcutController() override;
 
@@ -30,7 +29,7 @@ public:
 
     static bool selfCheck();
 
-signals:
+  signals:
     void enabledChanged();
     void statusChanged();
     void shortcutsChanged();
@@ -43,7 +42,7 @@ signals:
     void accessHintsRequested(bool visible);
     void accessKeyRequested(const QString &key);
 
-private:
+  private:
     bool registerShortcuts();
     void unregisterShortcuts();
     void setStatus(const QString &status);

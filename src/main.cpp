@@ -59,8 +59,7 @@ qint64 gDebugLogBytes = 0;
 constexpr auto kInstanceMutexName = L"CassetteCat.AudioEngine.Desktop.InstanceMutex";
 #endif
 
-bool notifyRunningInstance(const QString &serverName, const QString &openPath = {})
-{
+bool notifyRunningInstance(const QString &serverName, const QString &openPath = {}) {
     QLocalSocket socket;
     socket.connectToServer(serverName);
     if (!socket.waitForConnected(200)) {
@@ -68,35 +67,39 @@ bool notifyRunningInstance(const QString &serverName, const QString &openPath = 
         return false;
     }
     QJsonObject request{{"action", "activate"}};
-    if (!openPath.isEmpty()) request.insert("path", openPath);
+    if (!openPath.isEmpty())
+        request.insert("path", openPath);
     socket.write(QJsonDocument(request).toJson(QJsonDocument::Compact));
     const bool written = socket.waitForBytesWritten(200);
-    if (!written) qWarning() << "Instance handoff write failed:" << socket.errorString();
+    if (!written)
+        qWarning() << "Instance handoff write failed:" << socket.errorString();
     return written;
 }
 
-bool startInstanceServer(QLocalServer &server, const QString &serverName, const QString &openPath = {})
-{
+bool startInstanceServer(QLocalServer &server, const QString &serverName, const QString &openPath = {}) {
 #ifndef Q_OS_WIN
     server.setSocketOptions(QLocalServer::UserAccessOption);
 #endif
-    if (server.listen(serverName)) return true;
-    if (notifyRunningInstance(serverName, openPath)) return false;
+    if (server.listen(serverName))
+        return true;
+    if (notifyRunningInstance(serverName, openPath))
+        return false;
 
     QLocalServer::removeServer(serverName);
-    if (server.listen(serverName)) return true;
+    if (server.listen(serverName))
+        return true;
 
     qWarning() << "Single-instance server unavailable:" << server.errorString();
     return false;
 }
 
-bool singleInstanceSelfCheck()
-{
-    const QString name = QString::fromLatin1(kInstanceServerName)
-        + ".self-check." + QString::number(QCoreApplication::applicationPid());
+bool singleInstanceSelfCheck() {
+    const QString name =
+        QString::fromLatin1(kInstanceServerName) + ".self-check." + QString::number(QCoreApplication::applicationPid());
     QLocalServer::removeServer(name);
     QLocalServer primary;
-    if (!primary.listen(name)) return false;
+    if (!primary.listen(name))
+        return false;
 
     QLocalSocket client;
     client.connectToServer(name);
@@ -108,10 +111,11 @@ bool singleInstanceSelfCheck()
 }
 
 /// Restores, raises, and activates the application \p window.
-void activateWindow(QQuickWindow *window)
-{
-    if (!window) return;
-    if (!window->isVisible() || window->visibility() == QWindow::Minimized) window->showNormal();
+void activateWindow(QQuickWindow *window) {
+    if (!window)
+        return;
+    if (!window->isVisible() || window->visibility() == QWindow::Minimized)
+        window->showNormal();
 #ifdef Q_OS_WIN
     HWND hwnd = reinterpret_cast<HWND>(window->winId());
     if (hwnd) {
@@ -128,19 +132,19 @@ void activateWindow(QQuickWindow *window)
 }
 
 /// Rotates the debug log when appending \p incomingBytes would exceed its limit.
-void rotateDebugLogIfNeeded(qint64 incomingBytes)
-{
-    if (gDebugLogPath.isEmpty() || gDebugLogBytes + incomingBytes <= kMaxDebugLogBytes) return;
+void rotateDebugLogIfNeeded(qint64 incomingBytes) {
+    if (gDebugLogPath.isEmpty() || gDebugLogBytes + incomingBytes <= kMaxDebugLogBytes)
+        return;
 
     const QString rotatedPath = gDebugLogPath + ".1";
     QFile::remove(rotatedPath);
-    if (QFile::exists(gDebugLogPath)) QFile::rename(gDebugLogPath, rotatedPath);
+    if (QFile::exists(gDebugLogPath))
+        QFile::rename(gDebugLogPath, rotatedPath);
     gDebugLogBytes = 0;
 }
 
 /// Initializes the debug-log path, size accounting, and startup rotation.
-void initializeDebugLog()
-{
+void initializeDebugLog() {
     QMutexLocker locker(&gDebugLogMutex);
     gDebugLogPath = debugLogFilePath();
     gDebugLogBytes = QFileInfo(gDebugLogPath).size();
@@ -148,12 +152,12 @@ void initializeDebugLog()
 }
 
 /// Redacts and writes a Qt diagnostic \p message to stderr and the debug log.
-void writeDebugLog(QtMsgType, const QMessageLogContext &, const QString &message)
-{
+void writeDebugLog(QtMsgType, const QMessageLogContext &, const QString &message) {
     QMutexLocker locker(&gDebugLogMutex);
     const QString redacted = CredentialVault::redactSecrets(message);
     std::cerr << redacted.toStdString() << std::endl;
-    if (gDebugLogPath.isEmpty()) return;
+    if (gDebugLogPath.isEmpty())
+        return;
 
     const QByteArray line = redacted.toUtf8() + '\n';
     rotateDebugLogIfNeeded(line.size());
@@ -161,30 +165,33 @@ void writeDebugLog(QtMsgType, const QMessageLogContext &, const QString &message
     QFile logFile(gDebugLogPath);
     if (logFile.open(QIODevice::WriteOnly | QIODevice::Append)) {
         const qint64 written = logFile.write(line);
-        if (written > 0) gDebugLogBytes += written;
+        if (written > 0)
+            gDebugLogBytes += written;
     }
 }
 
-}
+} // namespace
 
 #ifdef Q_OS_WIN
 static void setupWindowsFrameless(QQuickWindow *window) {
-    if (!window) return;
+    if (!window)
+        return;
     HWND hwnd = (HWND)window->winId();
-    if (!hwnd) return;
+    if (!hwnd)
+        return;
 
     // A one-pixel client extension keeps DWM shadowing on a frameless window.
-    MARGINS margins = { 1, 1, 1, 1 };
+    MARGINS margins = {1, 1, 1, 1};
     DwmExtendFrameIntoClientArea(hwnd, &margins);
 }
 
-static void registerWindowsAppIdentity()
-{
-    const QString shortcutPath = QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation)
-        + "/CassetteCat.lnk";
+static void registerWindowsAppIdentity() {
+    const QString shortcutPath =
+        QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation) + "/CassetteCat.lnk";
     IShellLinkW *shellLink = nullptr;
-    if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER,
-                                IID_IShellLinkW, reinterpret_cast<void **>(&shellLink)))) return;
+    if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW,
+                                reinterpret_cast<void **>(&shellLink))))
+        return;
     const std::wstring target = QCoreApplication::applicationFilePath().toStdWString();
     const std::wstring shortcut = shortcutPath.toStdWString();
     shellLink->SetPath(target.c_str());
@@ -211,8 +218,7 @@ static void registerWindowsAppIdentity()
 #endif
 
 /// Initializes the application, runs optional self-checks, and starts the UI.
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     qInstallMessageHandler(writeDebugLog);
 
     if (argc == 3 && std::strcmp(argv[1], "--scan-library") == 0) {
@@ -247,12 +253,10 @@ int main(int argc, char *argv[])
     const struct FontEntry {
         QString path;
         QString *targetFamily;
-    } fontEntries[] = {
-        {":/qt/qml/CassetteCat/fonts/space_grotesk_variable.ttf", &displayFontFamily},
-        {":/qt/qml/CassetteCat/fonts/ibm_plex_sans_variable.ttf", &bodyFontFamily},
-        {":/qt/qml/CassetteCat/fonts/ibm_plex_mono_regular.ttf", &monoFontFamily},
-        {":/qt/qml/CassetteCat/fonts/ibm_plex_mono_semibold.ttf", nullptr}
-    };
+    } fontEntries[] = {{":/qt/qml/CassetteCat/fonts/space_grotesk_variable.ttf", &displayFontFamily},
+                       {":/qt/qml/CassetteCat/fonts/ibm_plex_sans_variable.ttf", &bodyFontFamily},
+                       {":/qt/qml/CassetteCat/fonts/ibm_plex_mono_regular.ttf", &monoFontFamily},
+                       {":/qt/qml/CassetteCat/fonts/ibm_plex_mono_semibold.ttf", nullptr}};
 
     for (const auto &entry : fontEntries) {
         int id = QFontDatabase::addApplicationFont(entry.path);
@@ -290,7 +294,8 @@ int main(int argc, char *argv[])
     if (argc == 2 && std::strcmp(argv[1], "--self-check") == 0) {
         bool passed = true;
         const auto check = [&passed](bool result, const char *name) {
-            if (result) return;
+            if (result)
+                return;
             qCritical().noquote() << "Self-check failed:" << name;
             passed = false;
         };
@@ -360,7 +365,8 @@ int main(int argc, char *argv[])
 
     const auto openExternalPath = [&](const QString &path) {
         const QFileInfo file(path);
-        if (!file.exists()) return;
+        if (!file.exists())
+            return;
         if (file.isDir()) {
             library.loadFolder(QUrl::fromLocalFile(file.absoluteFilePath()));
             return;
@@ -385,12 +391,8 @@ int main(int argc, char *argv[])
         const QString path = url.isLocalFile() ? url.toLocalFile() : uri;
         openExternalPath(path);
     });
-    QObject::connect(&mpris, &MprisController::raiseRequested, [&]() {
-        activateWindow(mainWindow);
-    });
-    QObject::connect(&mpris, &MprisController::quitRequested, [&]() {
-        app.quit();
-    });
+    QObject::connect(&mpris, &MprisController::raiseRequested, [&]() { activateWindow(mainWindow); });
+    QObject::connect(&mpris, &MprisController::quitRequested, [&]() { app.quit(); });
     mpris.initialize();
 
     const auto handleInstanceSocket = [&](QLocalSocket *socket) {
@@ -398,17 +400,20 @@ int main(int argc, char *argv[])
             const QJsonDocument request = QJsonDocument::fromJson(socket->readAll());
             const QString path = request.object().value("path").toString();
             qInfo() << "Instance handoff received:" << path;
-            if (!path.isEmpty()) openExternalPath(path);
+            if (!path.isEmpty())
+                openExternalPath(path);
             activateWindow(mainWindow);
             socket->disconnectFromServer();
         };
         QObject::connect(socket, &QLocalSocket::readyRead, &app, processRequest);
         QObject::connect(socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater);
-        if (socket->bytesAvailable()) processRequest();
+        if (socket->bytesAvailable())
+            processRequest();
     };
 
     const auto processInstanceConnections = [&] {
-        while (QLocalSocket *socket = instanceServer.nextPendingConnection()) handleInstanceSocket(socket);
+        while (QLocalSocket *socket = instanceServer.nextPendingConnection())
+            handleInstanceSocket(socket);
     };
     QObject::connect(&instanceServer, &QLocalServer::newConnection, &app, processInstanceConnections);
     processInstanceConnections();
@@ -427,30 +432,24 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty("tray", &tray);
 
     QObject::connect(
-        &engine,
-        &QQmlApplicationEngine::objectCreationFailed,
-        &app,
+        &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
         [](const QUrl &url) {
             qWarning() << "Failed to create QML root object from URL:" << url;
             QCoreApplication::exit(-1);
         },
-        Qt::QueuedConnection
-    );
-    QObject::connect(
-        &engine,
-        &QQmlApplicationEngine::warnings,
-        [](const QList<QQmlError> &warnings) {
-            for (const auto &w : warnings) {
-                qWarning() << "QML warning:" << w.toString();
-            }
+        Qt::QueuedConnection);
+    QObject::connect(&engine, &QQmlApplicationEngine::warnings, [](const QList<QQmlError> &warnings) {
+        for (const auto &w : warnings) {
+            qWarning() << "QML warning:" << w.toString();
         }
-    );
+    });
 
     engine.loadFromModule("CassetteCat", "Main");
     if (engine.rootObjects().isEmpty()) {
         qCritical() << "FATAL: engine.rootObjects() is empty after loading Main module!";
 #ifdef Q_OS_WIN
-        MessageBoxA(NULL, "FATAL: QML root object creation failed. Check the CassetteCat log for details.", "CassetteCat Error", MB_OK | MB_ICONERROR);
+        MessageBoxA(NULL, "FATAL: QML root object creation failed. Check the CassetteCat log for details.",
+                    "CassetteCat Error", MB_OK | MB_ICONERROR);
 #endif
         return 1;
     }
@@ -460,7 +459,8 @@ int main(int argc, char *argv[])
             quickWin->setPersistentGraphics(false);
             quickWin->setPersistentSceneGraph(false);
             mainWindow = quickWin;
-            const bool startMinimized = appSettings.value(QStringLiteral("ui/startMinimizedToTray"), false).toBool() && tray.available();
+            const bool startMinimized =
+                appSettings.value(QStringLiteral("ui/startMinimizedToTray"), false).toBool() && tray.available();
 #ifdef Q_OS_WIN
             quickWin->setIcon(appIcon);
             if (startMinimized) {
@@ -484,7 +484,8 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (!openPath.isEmpty()) openExternalPath(openPath);
+    if (!openPath.isEmpty())
+        openExternalPath(openPath);
 
     const int result = app.exec();
     qInfo() << "APP_EXEC_RETURNED:" << result;

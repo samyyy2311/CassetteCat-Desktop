@@ -5,16 +5,17 @@ import QtQuick.Layouts
 RowLayout {
     id: root
     property string iconName: ""
+    property color iconColor: ""
     property string title: ""
     property string subtitle: ""
     property bool showDivider: false
     property bool preserveIconColor: false
-    property int iconSize: 18
+    property int iconSize: 20
     default property alias control: trailing.data
 
     Layout.fillWidth: true
-    Layout.minimumHeight: 54
-    spacing: 12
+    Layout.minimumHeight: 56
+    spacing: 16
 
     readonly property color accentColor: (typeof recordRed !== "undefined" ? recordRed : "#C23B30")
     readonly property color accentHoverColor: (typeof recordRedHover !== "undefined" ? recordRedHover : "#D64337")
@@ -26,7 +27,7 @@ RowLayout {
         Layout.alignment: Qt.AlignVCenter
         icon: root.iconName
         preserveColor: root.preserveIconColor
-        color: root.preserveIconColor ? "transparent" : root.accentHoverColor
+        color: root.preserveIconColor ? "transparent" : (root.iconColor != "" ? root.iconColor : root.accentHoverColor)
     }
 
     ColumnLayout {

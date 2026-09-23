@@ -158,6 +158,7 @@ qt_add_qml_module(CassetteCat
         qml/MiniPlayerVolumePill.qml
     RESOURCES
         qml/icons/external-link.svg
+        qml/icons/check.svg
         qml/icons/pencil.svg
         qml/icons/globe.svg
         qml/icons/info.svg

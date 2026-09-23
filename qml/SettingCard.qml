@@ -6,8 +6,8 @@ Rectangle {
     default property alias content: inner.data
 
     Layout.fillWidth: true
-    implicitHeight: inner.implicitHeight + 24
-    radius: 12
+    implicitHeight: inner.implicitHeight + 12
+    radius: 16
     color: (typeof surfaceCard !== "undefined" ? surfaceCard : "#141312")
     border.width: 1
     border.color: (typeof borderVariant !== "undefined" ? borderVariant : "#2A2825")
@@ -21,8 +21,8 @@ Rectangle {
         anchors.top: parent.top
         anchors.leftMargin: 20
         anchors.rightMargin: 20
-        anchors.topMargin: 12
-        anchors.bottomMargin: 12
+        anchors.topMargin: 6
+        anchors.bottomMargin: 6
         spacing: 0
     }
 }

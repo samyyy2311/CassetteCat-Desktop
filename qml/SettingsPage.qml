@@ -167,19 +167,19 @@ Item {
                     spacing: 3
 
                     Label {
-                        text: "Preferences & Settings"
+                        text: "Settings"
                         color: textPrimary
                         font.family: displayFont
-                        font.pixelSize: 22
+                        font.pixelSize: 24
                         font.weight: Font.Bold
-                        font.letterSpacing: -0.3
+                        font.letterSpacing: -0.4
                     }
 
                     Label {
-                        text: "Configure audio playback, library scanning, interface appearance, and services"
+                        text: "Manage playback, library, hardware, services, and data"
                         color: textSecondary
                         font.family: bodyFont
-                        font.pixelSize: 12
+                        font.pixelSize: 13
                     }
                 }
 

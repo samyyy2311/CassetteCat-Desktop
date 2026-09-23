@@ -5,13 +5,13 @@ Rectangle {
     property bool checked: false
     signal toggled(bool checked)
 
-    implicitWidth: 42
-    implicitHeight: 24
-    radius: 12
-    color: root.checked ? (mouseArea.containsMouse ? recordRedHover : recordRed) : (mouseArea.containsMouse ? "#383531" : "#262421")
+    implicitWidth: 46
+    implicitHeight: 26
+    radius: 13
+    color: root.checked ? (mouseArea.containsMouse ? "#2E2A26" : "#262320") : (mouseArea.containsMouse ? "#1E1C1A" : "#141312")
     opacity: root.enabled ? 1.0 : 0.4
     border.width: root.activeFocus ? 2 : 1
-    border.color: root.activeFocus ? recordRedHover : (root.checked ? recordRedHover : (mouseArea.containsMouse ? "#4A4641" : borderVariant))
+    border.color: root.activeFocus ? recordRedHover : (root.checked ? recordRed : (mouseArea.containsMouse ? "#3A3632" : borderVariant))
 
     activeFocusOnTab: true
     Accessible.role: Accessible.CheckBox
@@ -32,12 +32,14 @@ Rectangle {
 
     Rectangle {
         id: thumb
-        y: 3
-        x: root.checked ? root.width - width - 3 : 3
+        y: 4
+        x: root.checked ? root.width - width - 4 : 4
         width: 18
         height: 18
         radius: 9
-        color: "#FFFFFF"
+        color: root.checked
+            ? (mouseArea.containsMouse ? recordRedHover : recordRed)
+            : (mouseArea.containsMouse ? "#B5B0AA" : "#96918A")
 
         Behavior on x {
             NumberAnimation {
@@ -45,6 +47,7 @@ Rectangle {
                 easing.type: Easing.OutCubic
             }
         }
+        Behavior on color { ColorAnimation { duration: 140 } }
     }
 
     MouseArea {

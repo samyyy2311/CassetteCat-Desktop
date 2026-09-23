@@ -18,32 +18,32 @@
 #include <winrt/Windows.Storage.Streams.h>
 
 // Authentic Windows 10/11 WinRT GUIDs
-static const GUID IID_ISystemMediaTransportControlsInterop =
-    { 0xddb0472d, 0xc911, 0x4a1f, { 0x86, 0xd9, 0xdc, 0x3d, 0x71, 0xa9, 0x5f, 0x5a } };
+static const GUID IID_ISystemMediaTransportControlsInterop = {
+    0xddb0472d, 0xc911, 0x4a1f, {0x86, 0xd9, 0xdc, 0x3d, 0x71, 0xa9, 0x5f, 0x5a}};
 
-static const GUID IID_ISystemMediaTransportControls =
-    { 0x99fa3ff4, 0x1742, 0x42a6, { 0x90, 0x2e, 0x08, 0x7d, 0x41, 0xf9, 0x65, 0xec } };
+static const GUID IID_ISystemMediaTransportControls = {
+    0x99fa3ff4, 0x1742, 0x42a6, {0x90, 0x2e, 0x08, 0x7d, 0x41, 0xf9, 0x65, 0xec}};
 
-static const GUID IID_ISystemMediaTransportControls2 =
-    { 0xea98d2f6, 0x7f3c, 0x4af2, { 0xa5, 0x86, 0x72, 0x88, 0x98, 0x08, 0xef, 0xb1 } };
+static const GUID IID_ISystemMediaTransportControls2 = {
+    0xea98d2f6, 0x7f3c, 0x4af2, {0xa5, 0x86, 0x72, 0x88, 0x98, 0x08, 0xef, 0xb1}};
 
-static const GUID IID_ISystemMediaTransportControlsDisplayUpdater =
-    { 0x8abbc53e, 0xfa55, 0x4ecf, { 0xad, 0x8e, 0xc9, 0x84, 0xe5, 0xdd, 0x15, 0x50 } };
+static const GUID IID_ISystemMediaTransportControlsDisplayUpdater = {
+    0x8abbc53e, 0xfa55, 0x4ecf, {0xad, 0x8e, 0xc9, 0x84, 0xe5, 0xdd, 0x15, 0x50}};
 
-static const GUID IID_IMusicDisplayProperties =
-    { 0x6bbf0c59, 0xd0a0, 0x4d26, { 0x92, 0xa0, 0xf9, 0x78, 0xe1, 0xd1, 0x8e, 0x7b } };
+static const GUID IID_IMusicDisplayProperties = {
+    0x6bbf0c59, 0xd0a0, 0x4d26, {0x92, 0xa0, 0xf9, 0x78, 0xe1, 0xd1, 0x8e, 0x7b}};
 
-static const GUID IID_IMusicDisplayProperties2 =
-    { 0x00368462, 0x97d3, 0x44b9, { 0xb0, 0x0f, 0x00, 0x8a, 0xfc, 0xef, 0xaf, 0x18 } };
+static const GUID IID_IMusicDisplayProperties2 = {
+    0x00368462, 0x97d3, 0x44b9, {0xb0, 0x0f, 0x00, 0x8a, 0xfc, 0xef, 0xaf, 0x18}};
 
-static const GUID IID_ISystemMediaTransportControlsTimelineProperties =
-    { 0x5125316a, 0xc3a2, 0x475b, { 0x85, 0x07, 0x93, 0x53, 0x4d, 0xc8, 0x8f, 0x15 } };
+static const GUID IID_ISystemMediaTransportControlsTimelineProperties = {
+    0x5125316a, 0xc3a2, 0x475b, {0x85, 0x07, 0x93, 0x53, 0x4d, 0xc8, 0x8f, 0x15}};
 
-static const GUID IID_ITypedEventHandler_ButtonPressed =
-    { 0x0557e996, 0x7b23, 0x5bae, { 0xaa, 0x81, 0xea, 0x0d, 0x67, 0x11, 0x43, 0xa4 } };
+static const GUID IID_ITypedEventHandler_ButtonPressed = {
+    0x0557e996, 0x7b23, 0x5bae, {0xaa, 0x81, 0xea, 0x0d, 0x67, 0x11, 0x43, 0xa4}};
 
-static const GUID IID_ITypedEventHandler_PlaybackPosition =
-    { 0x44e34f15, 0xbdc0, 0x50a7, { 0xac, 0xe4, 0x39, 0xe9, 0x1f, 0xb7, 0x53, 0xf1 } };
+static const GUID IID_ITypedEventHandler_PlaybackPosition = {
+    0x44e34f15, 0xbdc0, 0x50a7, {0xac, 0xe4, 0x39, 0xe9, 0x1f, 0xb7, 0x53, 0xf1}};
 
 // Enums
 enum MediaPlaybackStatus {
@@ -180,42 +180,49 @@ struct ISystemMediaTransportControls2 : public IInspectable {
     virtual HRESULT STDMETHODCALLTYPE put_ShuffleEnabled(boolean value) = 0;
     virtual HRESULT STDMETHODCALLTYPE get_PlaybackRate(double *value) = 0;
     virtual HRESULT STDMETHODCALLTYPE put_PlaybackRate(double value) = 0;
-    virtual HRESULT STDMETHODCALLTYPE UpdateTimelineProperties(ISystemMediaTransportControlsTimelineProperties *value) = 0;
-    virtual HRESULT STDMETHODCALLTYPE add_PlaybackPositionChangeRequested(IUnknown *handler, EventRegistrationToken *token) = 0;
+    virtual HRESULT STDMETHODCALLTYPE
+    UpdateTimelineProperties(ISystemMediaTransportControlsTimelineProperties *value) = 0;
+    virtual HRESULT STDMETHODCALLTYPE add_PlaybackPositionChangeRequested(IUnknown *handler,
+                                                                          EventRegistrationToken *token) = 0;
     virtual HRESULT STDMETHODCALLTYPE remove_PlaybackPositionChangeRequested(EventRegistrationToken token) = 0;
     virtual HRESULT STDMETHODCALLTYPE add_PlaybackRateChangeRequested(void *handler, EventRegistrationToken *token) = 0;
     virtual HRESULT STDMETHODCALLTYPE remove_PlaybackRateChangeRequested(EventRegistrationToken token) = 0;
-    virtual HRESULT STDMETHODCALLTYPE add_ShuffleEnabledChangeRequested(void *handler, EventRegistrationToken *token) = 0;
+    virtual HRESULT STDMETHODCALLTYPE add_ShuffleEnabledChangeRequested(void *handler,
+                                                                        EventRegistrationToken *token) = 0;
     virtual HRESULT STDMETHODCALLTYPE remove_ShuffleEnabledChangeRequested(EventRegistrationToken token) = 0;
-    virtual HRESULT STDMETHODCALLTYPE add_AutoRepeatModeChangeRequested(void *handler, EventRegistrationToken *token) = 0;
+    virtual HRESULT STDMETHODCALLTYPE add_AutoRepeatModeChangeRequested(void *handler,
+                                                                        EventRegistrationToken *token) = 0;
     virtual HRESULT STDMETHODCALLTYPE remove_AutoRepeatModeChangeRequested(EventRegistrationToken token) = 0;
 };
 
 // Function pointer types for combase.dll
-typedef HRESULT (WINAPI *RoInitializeFunc)(int);
-typedef HRESULT (WINAPI *RoGetActivationFactoryFunc)(HSTRING, REFIID, void**);
-typedef HRESULT (WINAPI *RoActivateInstanceFunc)(HSTRING, IInspectable**);
-typedef HRESULT (WINAPI *WindowsCreateStringFunc)(PCNZWCH, UINT32, HSTRING*);
-typedef HRESULT (WINAPI *WindowsDeleteStringFunc)(HSTRING);
+typedef HRESULT(WINAPI *RoInitializeFunc)(int);
+typedef HRESULT(WINAPI *RoGetActivationFactoryFunc)(HSTRING, REFIID, void **);
+typedef HRESULT(WINAPI *RoActivateInstanceFunc)(HSTRING, IInspectable **);
+typedef HRESULT(WINAPI *WindowsCreateStringFunc)(PCNZWCH, UINT32, HSTRING *);
+typedef HRESULT(WINAPI *WindowsDeleteStringFunc)(HSTRING);
 
 // Typed event handler COM interfaces
 struct ITypedEventHandler_ButtonPressed : public IUnknown {
-    virtual HRESULT STDMETHODCALLTYPE Invoke(ISystemMediaTransportControls *sender, ISystemMediaTransportControlsButtonPressedEventArgs *args) = 0;
+    virtual HRESULT STDMETHODCALLTYPE Invoke(ISystemMediaTransportControls *sender,
+                                             ISystemMediaTransportControlsButtonPressedEventArgs *args) = 0;
 };
 
 struct ITypedEventHandler_PlaybackPosition : public IUnknown {
-    virtual HRESULT STDMETHODCALLTYPE Invoke(ISystemMediaTransportControls2 *sender, IPlaybackPositionChangeRequestedEventArgs *args) = 0;
+    virtual HRESULT STDMETHODCALLTYPE Invoke(ISystemMediaTransportControls2 *sender,
+                                             IPlaybackPositionChangeRequestedEventArgs *args) = 0;
 };
 
 // Button handler COM implementation
 class ButtonHandler final : public ITypedEventHandler_ButtonPressed {
-public:
+  public:
     explicit ButtonHandler(SmtcController *parent) : m_parent(parent), m_ref(1) {}
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppv) override {
-        if (!ppv) return E_POINTER;
+        if (!ppv)
+            return E_POINTER;
         if (riid == IID_IUnknown || riid == IID_ITypedEventHandler_ButtonPressed) {
-            *ppv = static_cast<ITypedEventHandler_ButtonPressed*>(this);
+            *ppv = static_cast<ITypedEventHandler_ButtonPressed *>(this);
             AddRef();
             return S_OK;
         }
@@ -229,13 +236,16 @@ public:
 
     ULONG STDMETHODCALLTYPE Release() override {
         ULONG res = InterlockedDecrement(&m_ref);
-        if (res == 0) delete this;
+        if (res == 0)
+            delete this;
         return res;
     }
 
-    HRESULT STDMETHODCALLTYPE Invoke(ISystemMediaTransportControls *sender, ISystemMediaTransportControlsButtonPressedEventArgs *args) override {
+    HRESULT STDMETHODCALLTYPE Invoke(ISystemMediaTransportControls *sender,
+                                     ISystemMediaTransportControlsButtonPressedEventArgs *args) override {
         Q_UNUSED(sender);
-        if (!args || !m_parent) return S_OK;
+        if (!args || !m_parent)
+            return S_OK;
         SystemMediaTransportControlsButton btn;
         if (SUCCEEDED(args->get_Button(&btn))) {
             switch (btn) {
@@ -258,20 +268,21 @@ public:
         return S_OK;
     }
 
-private:
+  private:
     SmtcController *m_parent = nullptr;
     LONG m_ref = 1;
 };
 
 // Seek handler COM implementation
 class SeekHandler final : public ITypedEventHandler_PlaybackPosition {
-public:
+  public:
     explicit SeekHandler(SmtcController *parent) : m_parent(parent), m_ref(1) {}
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppv) override {
-        if (!ppv) return E_POINTER;
+        if (!ppv)
+            return E_POINTER;
         if (riid == IID_IUnknown || riid == IID_ITypedEventHandler_PlaybackPosition) {
-            *ppv = static_cast<ITypedEventHandler_PlaybackPosition*>(this);
+            *ppv = static_cast<ITypedEventHandler_PlaybackPosition *>(this);
             AddRef();
             return S_OK;
         }
@@ -285,13 +296,16 @@ public:
 
     ULONG STDMETHODCALLTYPE Release() override {
         ULONG res = InterlockedDecrement(&m_ref);
-        if (res == 0) delete this;
+        if (res == 0)
+            delete this;
         return res;
     }
 
-    HRESULT STDMETHODCALLTYPE Invoke(ISystemMediaTransportControls2 *sender, IPlaybackPositionChangeRequestedEventArgs *args) override {
+    HRESULT STDMETHODCALLTYPE Invoke(ISystemMediaTransportControls2 *sender,
+                                     IPlaybackPositionChangeRequestedEventArgs *args) override {
         Q_UNUSED(sender);
-        if (!args || !m_parent) return S_OK;
+        if (!args || !m_parent)
+            return S_OK;
         TimeSpan span;
         if (SUCCEEDED(args->get_RequestedPlaybackPosition(&span))) {
             const qint64 ms = span.Duration / 10000;
@@ -300,14 +314,14 @@ public:
         return S_OK;
     }
 
-private:
+  private:
     SmtcController *m_parent = nullptr;
     LONG m_ref = 1;
 };
 #endif
 
 class SmtcController::Private {
-public:
+  public:
 #ifdef Q_OS_WIN
     HMODULE hCombase = nullptr;
     RoInitializeFunc pRoInitialize = nullptr;
@@ -317,29 +331,32 @@ public:
     WindowsDeleteStringFunc pWindowsDeleteString = nullptr;
     ISystemMediaTransportControls *controls = nullptr;
     ISystemMediaTransportControls2 *controls2 = nullptr;
-    EventRegistrationToken buttonToken = { 0 };
-    EventRegistrationToken seekToken = { 0 };
+    EventRegistrationToken buttonToken = {0};
+    EventRegistrationToken seekToken = {0};
     bool initialized = false;
 
     bool loadCombase() {
-        if (hCombase) return true;
+        if (hCombase)
+            return true;
         hCombase = LoadLibraryW(L"combase.dll");
-        if (!hCombase) return false;
+        if (!hCombase)
+            return false;
         pRoInitialize = reinterpret_cast<RoInitializeFunc>(GetProcAddress(hCombase, "RoInitialize"));
-        pRoGetActivationFactory = reinterpret_cast<RoGetActivationFactoryFunc>(GetProcAddress(hCombase, "RoGetActivationFactory"));
+        pRoGetActivationFactory =
+            reinterpret_cast<RoGetActivationFactoryFunc>(GetProcAddress(hCombase, "RoGetActivationFactory"));
         pRoActivateInstance = reinterpret_cast<RoActivateInstanceFunc>(GetProcAddress(hCombase, "RoActivateInstance"));
-        pWindowsCreateString = reinterpret_cast<WindowsCreateStringFunc>(GetProcAddress(hCombase, "WindowsCreateString"));
-        pWindowsDeleteString = reinterpret_cast<WindowsDeleteStringFunc>(GetProcAddress(hCombase, "WindowsDeleteString"));
-        return pRoInitialize && pRoGetActivationFactory && pRoActivateInstance && pWindowsCreateString && pWindowsDeleteString;
+        pWindowsCreateString =
+            reinterpret_cast<WindowsCreateStringFunc>(GetProcAddress(hCombase, "WindowsCreateString"));
+        pWindowsDeleteString =
+            reinterpret_cast<WindowsDeleteStringFunc>(GetProcAddress(hCombase, "WindowsDeleteString"));
+        return pRoInitialize && pRoGetActivationFactory && pRoActivateInstance && pWindowsCreateString &&
+               pWindowsDeleteString;
     }
 #endif
 };
 
 SmtcController::SmtcController(PlayerController *player, QObject *parent)
-    : QObject(parent)
-    , d(new Private())
-    , m_player(player)
-{
+    : QObject(parent), d(new Private()), m_player(player) {
     if (m_player) {
         connect(m_player, &PlayerController::currentTrackChanged, this, &SmtcController::onTrackChanged);
         connect(m_player, &PlayerController::isPlayingChanged, this, &SmtcController::onPlayingChanged);
@@ -348,8 +365,7 @@ SmtcController::SmtcController(PlayerController *player, QObject *parent)
     }
 }
 
-SmtcController::~SmtcController()
-{
+SmtcController::~SmtcController() {
 #ifdef Q_OS_WIN
     if (d->controls2) {
         if (d->seekToken.value != 0) {
@@ -374,25 +390,29 @@ SmtcController::~SmtcController()
     delete d;
 }
 
-void SmtcController::initialize(quintptr hwnd)
-{
+void SmtcController::initialize(quintptr hwnd) {
 #ifdef Q_OS_WIN
-    if (!hwnd || d->initialized) return;
-    if (!d->loadCombase()) return;
+    if (!hwnd || d->initialized)
+        return;
+    if (!d->loadCombase())
+        return;
 
     d->pRoInitialize(1); // RO_INIT_MULTITHREADED
 
     HSTRING hsClassName = nullptr;
     const wchar_t className[] = L"Windows.Media.SystemMediaTransportControls";
     HRESULT hr = d->pWindowsCreateString(className, static_cast<UINT32>(wcslen(className)), &hsClassName);
-    if (FAILED(hr)) return;
+    if (FAILED(hr))
+        return;
 
     ISystemMediaTransportControlsInterop *interop = nullptr;
-    hr = d->pRoGetActivationFactory(hsClassName, IID_ISystemMediaTransportControlsInterop, reinterpret_cast<void**>(&interop));
+    hr = d->pRoGetActivationFactory(hsClassName, IID_ISystemMediaTransportControlsInterop,
+                                    reinterpret_cast<void **>(&interop));
     d->pWindowsDeleteString(hsClassName);
 
     if (SUCCEEDED(hr) && interop) {
-        hr = interop->GetForWindow(reinterpret_cast<HWND>(hwnd), IID_ISystemMediaTransportControls, reinterpret_cast<void**>(&d->controls));
+        hr = interop->GetForWindow(reinterpret_cast<HWND>(hwnd), IID_ISystemMediaTransportControls,
+                                   reinterpret_cast<void **>(&d->controls));
         interop->Release();
     }
 
@@ -408,7 +428,7 @@ void SmtcController::initialize(quintptr hwnd)
         d->controls->add_ButtonPressed(handler, &d->buttonToken);
         handler->Release();
 
-        hr = d->controls->QueryInterface(IID_ISystemMediaTransportControls2, reinterpret_cast<void**>(&d->controls2));
+        hr = d->controls->QueryInterface(IID_ISystemMediaTransportControls2, reinterpret_cast<void **>(&d->controls2));
         if (SUCCEEDED(hr) && d->controls2) {
             auto seekHandler = new SeekHandler(this);
             d->controls2->add_PlaybackPositionChangeRequested(seekHandler, &d->seekToken);
@@ -431,10 +451,11 @@ void SmtcController::initialize(quintptr hwnd)
 #endif
 }
 
-void SmtcController::updateTrack(const QString &title, const QString &artist, const QString &album, const QString &artworkPath)
-{
+void SmtcController::updateTrack(const QString &title, const QString &artist, const QString &album,
+                                 const QString &artworkPath) {
 #ifdef Q_OS_WIN
-    if (!d->controls || !d->initialized) return;
+    if (!d->controls || !d->initialized)
+        return;
 
     ISystemMediaTransportControlsDisplayUpdater *updater = nullptr;
     if (SUCCEEDED(d->controls->get_DisplayUpdater(&updater)) && updater) {
@@ -453,8 +474,10 @@ void SmtcController::updateTrack(const QString &title, const QString &artist, co
         if (QFileInfo::exists(localArtworkPath)) {
             try {
                 const auto file = winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(
-                    QDir::toNativeSeparators(localArtworkPath).toStdWString()).get();
-                const auto thumbnail = winrt::Windows::Storage::Streams::RandomAccessStreamReference::CreateFromFile(file);
+                                      QDir::toNativeSeparators(localArtworkPath).toStdWString())
+                                      .get();
+                const auto thumbnail =
+                    winrt::Windows::Storage::Streams::RandomAccessStreamReference::CreateFromFile(file);
                 updater->put_Thumbnail(winrt::get_abi(thumbnail));
             } catch (...) {
                 qWarning() << "[SMTC] Failed to load artwork:" << localArtworkPath;
@@ -478,7 +501,9 @@ void SmtcController::updateTrack(const QString &title, const QString &artist, co
 
             if (!wAlbum.empty()) {
                 IMusicDisplayProperties2 *props2 = nullptr;
-                if (SUCCEEDED(props->QueryInterface(IID_IMusicDisplayProperties2, reinterpret_cast<void**>(&props2))) && props2) {
+                if (SUCCEEDED(
+                        props->QueryInterface(IID_IMusicDisplayProperties2, reinterpret_cast<void **>(&props2))) &&
+                    props2) {
                     props2->put_AlbumTitle(hsAlbum);
                     props2->Release();
                 }
@@ -495,29 +520,32 @@ void SmtcController::updateTrack(const QString &title, const QString &artist, co
         updater->Release();
     }
 #else
-    Q_UNUSED(title); Q_UNUSED(artist); Q_UNUSED(album);
+    Q_UNUSED(title);
+    Q_UNUSED(artist);
+    Q_UNUSED(album);
 #endif
 }
 
-void SmtcController::updatePlaybackStatus(bool isPlaying)
-{
+void SmtcController::updatePlaybackStatus(bool isPlaying) {
 #ifdef Q_OS_WIN
-    if (!d->controls || !d->initialized) return;
+    if (!d->controls || !d->initialized)
+        return;
     d->controls->put_PlaybackStatus(isPlaying ? MediaPlaybackStatus_Playing : MediaPlaybackStatus_Paused);
 #else
     Q_UNUSED(isPlaying);
 #endif
 }
 
-void SmtcController::updateTimeline(qint64 positionMs, qint64 durationMs)
-{
+void SmtcController::updateTimeline(qint64 positionMs, qint64 durationMs) {
 #ifdef Q_OS_WIN
-    if (!d->controls2 || !d->initialized || durationMs <= 0) return;
+    if (!d->controls2 || !d->initialized || durationMs <= 0)
+        return;
 
     HSTRING hsTimelineClass = nullptr;
     const wchar_t className[] = L"Windows.Media.SystemMediaTransportControlsTimelineProperties";
     HRESULT hr = d->pWindowsCreateString(className, static_cast<UINT32>(wcslen(className)), &hsTimelineClass);
-    if (FAILED(hr)) return;
+    if (FAILED(hr))
+        return;
 
     IInspectable *insp = nullptr;
     hr = d->pRoActivateInstance(hsTimelineClass, &insp);
@@ -525,13 +553,14 @@ void SmtcController::updateTimeline(qint64 positionMs, qint64 durationMs)
 
     if (SUCCEEDED(hr) && insp) {
         ISystemMediaTransportControlsTimelineProperties *props = nullptr;
-        hr = insp->QueryInterface(IID_ISystemMediaTransportControlsTimelineProperties, reinterpret_cast<void**>(&props));
+        hr = insp->QueryInterface(IID_ISystemMediaTransportControlsTimelineProperties,
+                                  reinterpret_cast<void **>(&props));
         insp->Release();
 
         if (SUCCEEDED(hr) && props) {
-            TimeSpan zero = { 0 };
-            TimeSpan end = { std::max<qint64>(0, durationMs) * 10000 };
-            TimeSpan pos = { std::max<qint64>(0, std::min(positionMs, durationMs)) * 10000 };
+            TimeSpan zero = {0};
+            TimeSpan end = {std::max<qint64>(0, durationMs) * 10000};
+            TimeSpan pos = {std::max<qint64>(0, std::min(positionMs, durationMs)) * 10000};
 
             props->put_StartTime(zero);
             props->put_MinSeekTime(zero);
@@ -549,17 +578,16 @@ void SmtcController::updateTimeline(qint64 positionMs, qint64 durationMs)
 #endif
 }
 
-void SmtcController::onTrackChanged()
-{
-    if (!m_player) return;
+void SmtcController::onTrackChanged() {
+    if (!m_player)
+        return;
     const QVariantMap track = m_player->currentTrack();
     if (track.isEmpty()) {
         updateTrack(QString(), QString(), QString(), QString());
         return;
     }
-    const QString title = track.value("title").toString().isEmpty()
-        ? track.value("fileName").toString()
-        : track.value("title").toString();
+    const QString title = track.value("title").toString().isEmpty() ? track.value("fileName").toString()
+                                                                    : track.value("title").toString();
     const QString artist = track.value("artist").toString();
     const QString album = track.value("album").toString();
     const QString artworkPath = track.value("artworkUrl").toString();
@@ -570,18 +598,18 @@ void SmtcController::onTrackChanged()
     }
 }
 
-void SmtcController::onPlayingChanged()
-{
-    if (!m_player) return;
+void SmtcController::onPlayingChanged() {
+    if (!m_player)
+        return;
     updatePlaybackStatus(m_player->isPlaying());
     if (m_player->duration() > 0) {
         updateTimeline(m_player->position(), m_player->duration());
     }
 }
 
-void SmtcController::onPositionChanged()
-{
-    if (!m_player) return;
+void SmtcController::onPositionChanged() {
+    if (!m_player)
+        return;
     if (m_player->duration() > 0) {
         updateTimeline(m_player->position(), m_player->duration());
     }

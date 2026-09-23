@@ -3,14 +3,11 @@
 #include <QAbstractListModel>
 #include <QVariantList>
 
-class RemoteTrackModel final : public QAbstractListModel
-{
+class RemoteTrackModel final : public QAbstractListModel {
     Q_OBJECT
 
-public:
-    enum Role {
-        TrackRole = Qt::UserRole + 1
-    };
+  public:
+    enum Role { TrackRole = Qt::UserRole + 1 };
 
     explicit RemoteTrackModel(const QString &source, QObject *parent = nullptr);
 
@@ -20,7 +17,7 @@ public:
 
     void setTracks(const QVariantList &tracks);
 
-private:
+  private:
     QString m_source;
     QVariantList m_tracks;
 };

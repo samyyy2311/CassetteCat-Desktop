@@ -30,57 +30,143 @@ SettingRow {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: {
+                if (!root.options || root.options.length === 0) return "Choose"
                 for (let i = 0; i < root.options.length; ++i) {
                     const option = root.options[i]
                     const value = (option && typeof option === "object" && "value" in option) ? option.value : option
-                    if (root.selectedValue === value || String(root.selectedValue).toLowerCase() === String(value).toLowerCase())
+                    if (root.selectedValue === value || (root.selectedValue !== undefined && value !== undefined && String(root.selectedValue).toLowerCase() === String(value).toLowerCase()))
                         return (option && typeof option === "object" && "label" in option) ? option.label : String(option)
                 }
                 return "Choose"
             }
-            iconName: "chevron-down"
-            primary: true
-            onClicked: choiceMenu.open()
+            iconName: choicePopup.visible ? "chevron-up" : "chevron-down"
+            iconRight: true
+            onClicked: {
+                if (choicePopup.visible) {
+                    choicePopup.close()
+                } else {
+                    choicePopup.open()
+                }
+            }
         }
 
-        Menu {
-            id: choiceMenu
-            y: menuButton.height + 6
+        Popup {
+            id: choicePopup
+            parent: menuButton
+            x: Math.min(0, menuButton.width - width)
+            y: menuButton.height + 4
             width: Math.max(menuButton.width, 220)
+            implicitHeight: Math.min(260, Math.max(48, (root.options ? root.options.length * 38 : 0) + 12))
             padding: 6
+            modal: false
+            focus: true
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
 
-            background: Rectangle {
-                color: surfaceCard
-                radius: 10
-                border.width: 1
-                border.color: borderVariant
+            onOpened: {
+                let selIdx = 0
+                if (root.options) {
+                    for (let i = 0; i < root.options.length; ++i) {
+                        const opt = root.options[i]
+                        const val = (opt && typeof opt === "object" && "value" in opt) ? opt.value : opt
+                        if (root.selectedValue === val || (root.selectedValue !== undefined && val !== undefined && String(root.selectedValue).toLowerCase() === String(val).toLowerCase())) {
+                            selIdx = i
+                            break
+                        }
+                    }
+                }
+                optionList.currentIndex = selIdx
+                optionList.positionViewAtIndex(selIdx, ListView.Contain)
+                optionList.forceActiveFocus()
             }
 
-            Repeater {
+            background: Rectangle {
+                color: (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#1C1B18")
+                radius: 10
+                border.width: 1
+                border.color: (typeof borderVariant !== "undefined" ? borderVariant : "#2A2825")
+            }
+
+            contentItem: ListView {
+                id: optionList
+                implicitHeight: contentHeight
+                clip: true
                 model: root.options
-                delegate: MenuItem {
+                spacing: 2
+                boundsBehavior: Flickable.StopAtBounds
+                focus: true
+                keyNavigationWraps: true
+
+                Keys.onReturnPressed: event => activateCurrent(event)
+                Keys.onEnterPressed: event => activateCurrent(event)
+                Keys.onSpacePressed: event => activateCurrent(event)
+
+                function activateCurrent(event) {
+                    if (currentIndex >= 0 && currentIndex < count) {
+                        const item = model[currentIndex]
+                        const val = (item && typeof item === "object" && "value" in item) ? item.value : item
+                        root.optionSelected(val)
+                        choicePopup.close()
+                        event.accepted = true
+                    }
+                }
+
+                ScrollBar.vertical: SleekScrollBar {
+                    visible: optionList.contentHeight > optionList.height
+                }
+
+                delegate: Rectangle {
+                    id: optItem
                     readonly property var optionValue: (modelData && typeof modelData === "object" && "value" in modelData) ? modelData.value : modelData
                     readonly property string optionLabel: (modelData && typeof modelData === "object" && "label" in modelData) ? modelData.label : String(modelData)
-                    readonly property bool isSelected: root.selectedValue === optionValue || String(root.selectedValue).toLowerCase() === String(optionValue).toLowerCase()
-                    width: choiceMenu.width - choiceMenu.leftPadding - choiceMenu.rightPadding
-                    height: 34
-                    onTriggered: root.optionSelected(optionValue)
+                    readonly property bool isSelected: root.selectedValue !== undefined && optionValue !== undefined && (root.selectedValue === optionValue || String(root.selectedValue).toLowerCase() === String(optionValue).toLowerCase())
+                    readonly property bool isCurrent: ListView.isCurrentItem
 
-                    contentItem: Label {
-                        text: optionLabel
-                        color: isSelected ? recordRedHover : textPrimary
-                        font.family: displayFont
-                        font.pixelSize: 11
-                        font.weight: isSelected ? Font.Bold : Font.Medium
-                        verticalAlignment: Text.AlignVCenter
-                        leftPadding: 10
-                        elide: Text.ElideRight
+                    width: optionList.width
+                    height: 36
+                    radius: 7
+                    color: isSelected
+                        ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623")
+                        : (optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus) ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#282623") : "transparent")
+                    border.width: isSelected ? 1 : 0
+                    border.color: (typeof borderVariant !== "undefined" ? borderVariant : "#2C2926")
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 10
+                        spacing: 8
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: optItem.optionLabel
+                            color: optItem.isSelected
+                                ? textPrimary
+                                : (optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus) ? textPrimary : textSecondary)
+                            font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
+                            font.pixelSize: 12
+                            font.weight: optItem.isSelected ? Font.DemiBold : Font.Normal
+                            elide: Text.ElideRight
+                        }
+
+                        LucideIcon {
+                            visible: optItem.isSelected
+                            Layout.preferredWidth: 14
+                            Layout.preferredHeight: 14
+                            icon: "check"
+                            color: root.accentColor
+                        }
                     }
-                    background: Rectangle {
-                        radius: 7
-                        color: parent.highlighted ? "#2A2825" : "transparent"
-                        border.width: isSelected ? 1 : 0
-                        border.color: recordRed
+
+                    MouseArea {
+                        id: optMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            optionList.currentIndex = index
+                            root.optionSelected(optItem.optionValue)
+                            choicePopup.close()
+                        }
                     }
                 }
             }

@@ -11,12 +11,12 @@
 #include <QGuiApplication>
 #include <QProcess>
 #include <QSaveFile>
+#include <QTextStream>
 #include <QMutexLocker>
 
 namespace {
 
-QVariant coerceSettingsValue(const QVariant &val, const QVariant &defaultValue)
-{
+QVariant coerceSettingsValue(const QVariant &val, const QVariant &defaultValue) {
     if (!val.isValid()) {
         return defaultValue;
     }
@@ -66,28 +66,23 @@ QVariant coerceSettingsValue(const QVariant &val, const QVariant &defaultValue)
 } // namespace
 
 SettingsController::SettingsController(QObject *parent)
-    : QObject(parent)
-    , m_settings(settingsFilePath(), QSettings::IniFormat)
-{
+    : QObject(parent), m_settings(settingsFilePath(), QSettings::IniFormat) {
     s_instance = this;
     m_settings.sync();
 }
 
-SettingsController::~SettingsController()
-{
+SettingsController::~SettingsController() {
     if (s_instance == this) {
         s_instance = nullptr;
     }
     sync();
 }
 
-SettingsController *SettingsController::instance()
-{
+SettingsController *SettingsController::instance() {
     return s_instance;
 }
 
-QVariant SettingsController::globalValue(const QString &key, const QVariant &defaultValue)
-{
+QVariant SettingsController::globalValue(const QString &key, const QVariant &defaultValue) {
     if (s_instance) {
         return s_instance->value(key, defaultValue);
     }
@@ -95,8 +90,7 @@ QVariant SettingsController::globalValue(const QString &key, const QVariant &def
     return coerceSettingsValue(settings.value(key, defaultValue), defaultValue);
 }
 
-void SettingsController::setGlobalValue(const QString &key, const QVariant &value)
-{
+void SettingsController::setGlobalValue(const QString &key, const QVariant &value) {
     if (s_instance) {
         s_instance->setValue(key, value);
         return;
@@ -106,15 +100,13 @@ void SettingsController::setGlobalValue(const QString &key, const QVariant &valu
     settings.sync();
 }
 
-void SettingsController::setValue(const QString &key, const QVariant &value)
-{
+void SettingsController::setValue(const QString &key, const QVariant &value) {
     QMutexLocker locker(&m_mutex);
     m_settings.setValue(key, value);
     m_settings.sync();
 }
 
-void SettingsController::setValues(const QVariantMap &values)
-{
+void SettingsController::setValues(const QVariantMap &values) {
     QMutexLocker locker(&m_mutex);
     for (auto it = values.cbegin(); it != values.cend(); ++it) {
         m_settings.setValue(it.key(), it.value());
@@ -122,51 +114,129 @@ void SettingsController::setValues(const QVariantMap &values)
     m_settings.sync();
 }
 
-QVariant SettingsController::value(const QString &key, const QVariant &defaultValue) const
-{
+QVariant SettingsController::value(const QString &key, const QVariant &defaultValue) const {
     QMutexLocker locker(&m_mutex);
     return coerceSettingsValue(m_settings.value(key, defaultValue), defaultValue);
 }
 
-void SettingsController::sync()
-{
+void SettingsController::sync() {
     QMutexLocker locker(&m_mutex);
     m_settings.sync();
 }
 
-bool SettingsController::exportTextFile(const QUrl &url, const QString &text)
-{
+bool SettingsController::exportTextFile(const QUrl &url, const QString &text) {
     const QString path = url.toLocalFile();
-    if (path.isEmpty()) return false;
+    if (path.isEmpty())
+        return false;
     QSaveFile output(path);
-    if (!output.open(QIODevice::WriteOnly | QIODevice::Text)) return false;
-    if (output.write(text.toUtf8()) < 0) return false;
+    if (!output.open(QIODevice::WriteOnly | QIODevice::Text))
+        return false;
+    if (output.write(text.toUtf8()) < 0)
+        return false;
     return output.commit();
 }
 
-QString SettingsController::readTextFile(const QUrl &url) const
-{
+QString SettingsController::readTextFile(const QUrl &url) const {
     const QString path = url.toLocalFile();
-    if (path.isEmpty()) return {};
+    if (path.isEmpty())
+        return {};
     QFile input(path);
-    if (!input.open(QIODevice::ReadOnly | QIODevice::Text)) return {};
+    if (!input.open(QIODevice::ReadOnly | QIODevice::Text))
+        return {};
     return QString::fromUtf8(input.readAll());
 }
 
-void SettingsController::copyToClipboard(const QString &text)
-{
+void SettingsController::copyToClipboard(const QString &text) {
     if (auto *cb = QGuiApplication::clipboard()) {
         cb->setText(text);
     }
 }
 
-void SettingsController::showInFolder(const QString &filePath)
-{
-    if (filePath.isEmpty()) return;
+void SettingsController::showInFolder(const QString &filePath) {
+    if (filePath.isEmpty())
+        return;
     const QString native = QDir::toNativeSeparators(filePath);
 #if defined(Q_OS_WIN)
     QProcess::startDetached("explorer.exe", {"/select,", native});
 #else
     QDesktopServices::openUrl(QUrl::fromLocalFile(QFileInfo(filePath).absolutePath()));
 #endif
+}
+
+/// @copydoc SettingsController::getLogFilePath
+QString SettingsController::getLogFilePath() const {
+    return debugLogFilePath();
+}
+
+/// @copydoc SettingsController::readRecentLogs
+QString SettingsController::readRecentLogs(int maxLines) const {
+    if (maxLines <= 0) {
+        return QString();
+    }
+    QFile file(debugLogFilePath());
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return QStringLiteral("No logs available.");
+    }
+    const qint64 fileSize = file.size();
+    if (fileSize == 0) {
+        return QString();
+    }
+    const qint64 stepSize = qMax<qint64>(64 * 1024, static_cast<qint64>(maxLines) * 512);
+    qint64 endOffset = fileSize;
+    qint64 offset = qMax<qint64>(0, fileSize - stepSize);
+
+    QStringList lines;
+    while (true) {
+        bool skipFirstLine = false;
+        if (offset > 0) {
+            if (file.seek(offset - 1)) {
+                char prevByte = 0;
+                if (file.getChar(&prevByte) && prevByte != '\n') {
+                    skipFirstLine = true;
+                }
+            }
+        }
+        file.seek(offset);
+        QTextStream in(&file);
+        if (skipFirstLine) {
+            in.readLine();
+        }
+        QStringList chunkLines;
+        while (in.pos() < endOffset && !in.atEnd()) {
+            chunkLines.append(in.readLine());
+        }
+        for (int i = chunkLines.size() - 1; i >= 0; --i) {
+            lines.prepend(chunkLines.at(i));
+        }
+        if (lines.size() > maxLines) {
+            lines = lines.mid(lines.size() - maxLines);
+        }
+        if (lines.size() >= maxLines || offset == 0) {
+            break;
+        }
+        endOffset = offset;
+        offset = qMax<qint64>(0, offset - stepSize);
+    }
+
+    return lines.join('\n');
+}
+
+/// @copydoc SettingsController::clearLogs
+void SettingsController::clearLogs() {
+    QFile file(debugLogFilePath());
+    if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        file.close();
+    }
+    const QString rotatedPath = debugLogFilePath() + ".1";
+    if (QFile::exists(rotatedPath)) {
+        QFile::remove(rotatedPath);
+    }
+}
+
+/// @copydoc SettingsController::openLogFile
+void SettingsController::openLogFile() {
+    const QString path = debugLogFilePath();
+    if (QFileInfo::exists(path)) {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    }
 }

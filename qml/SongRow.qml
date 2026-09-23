@@ -18,7 +18,9 @@ Rectangle {
     property color activeBg: surfaceCard
     property real rowHeight: (typeof window !== "undefined" && window.trackDensity === "compact") ? 42 : 54
     property real rowRadius: 10
-    property real coverRadius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 8
+    property real coverRadius: (typeof window !== "undefined" && window.albumArtRadius !== undefined)
+                               ? (window.albumArtRadius === 0 ? 0 : (window.albumArtRadius <= 8 ? 5 : 8))
+                               : 8
     property bool showFormatBadge: (typeof window !== "undefined" && window.showFormatBadges !== undefined) ? window.showFormatBadges : true
     property bool selectable: false
     property bool selected: false
@@ -41,6 +43,7 @@ Rectangle {
     }
 
     height: rowHeight
+    implicitHeight: rowHeight
     radius: rowRadius
     color: rowMouse.containsMouse ? hoverBg : (selected ? activeBg : (isCurrent ? activeBg : cardBg))
     border.width: selected || isCurrent ? 1 : 0
@@ -174,20 +177,25 @@ Rectangle {
         }
 
         Label {
+            visible: showPlayCount && playCount > 0
+            Layout.alignment: Qt.AlignVCenter
+            Layout.preferredWidth: 60
+            horizontalAlignment: Text.AlignRight
+            text: playCount + (playCount === 1 ? " play" : " plays")
+            color: silverDim
+            font.family: monoFont
+            font.pixelSize: 11
+        }
+
+        Label {
             visible: showDuration
             Layout.alignment: Qt.AlignVCenter
+            Layout.preferredWidth: 44
+            horizontalAlignment: Text.AlignRight
             text: root.track ? (root.track.duration || "-") : "-"
             color: textSecondary
             font.family: monoFont
             font.pixelSize: 12
-        }
-
-        Label {
-            visible: showPlayCount && playCount > 0
-            text: playCount + " plays"
-            color: textSecondary
-            font.family: monoFont
-            font.pixelSize: 10
         }
     }
 

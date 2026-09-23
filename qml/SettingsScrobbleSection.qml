@@ -25,36 +25,6 @@ ColumnLayout {
     SectionLabel { text: "Open Scrobbler Services" }
 
     SettingCard {
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 6
-            Layout.leftMargin: 16
-            Layout.rightMargin: 16
-            Layout.topMargin: 12
-            Layout.bottomMargin: 12
-
-            Label {
-                text: "Sync your listening history"
-                color: textPrimary
-                font.family: displayFont
-                font.pixelSize: 15
-                font.weight: Font.DemiBold
-            }
-
-            Label {
-                Layout.fillWidth: true
-                text: "Automatically submit your listening history and live now-playing status to open community databases."
-                color: textSecondary
-                font.family: displayFont
-                font.pixelSize: 12
-                wrapMode: Text.WordWrap
-            }
-        }
-    }
-
-    SectionLabel { text: "ListenBrainz" }
-
-    SettingCard {
         SettingRow {
             iconName: "listenbrainz"
             preserveIconColor: true
@@ -85,7 +55,7 @@ ColumnLayout {
 
                 SettingButton {
                     visible: !root.listenBrainzConnected
-                    text: "Connect Account"
+                    text: "Connect"
                     primary: true
                     iconName: "plug"
                     enabled: !root.offlineBlackout
@@ -93,11 +63,9 @@ ColumnLayout {
                 }
             }
         }
-    }
 
-    SectionLabel { text: "Libre.fm" }
+        SettingDivider {}
 
-    SettingCard {
         SettingRow {
             iconName: "librefm"
             preserveIconColor: true
@@ -128,7 +96,7 @@ ColumnLayout {
 
                 SettingButton {
                     visible: !root.libreFmConnected
-                    text: "Connect Account"
+                    text: "Connect"
                     primary: true
                     iconName: "plug"
                     enabled: !root.offlineBlackout

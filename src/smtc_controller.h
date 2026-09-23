@@ -6,11 +6,10 @@
 
 class PlayerController;
 
-class SmtcController final : public QObject
-{
+class SmtcController final : public QObject {
     Q_OBJECT
 
-public:
+  public:
     explicit SmtcController(PlayerController *player, QObject *parent = nullptr);
     ~SmtcController() override;
 
@@ -19,19 +18,19 @@ public:
     void updatePlaybackStatus(bool isPlaying);
     void updateTimeline(qint64 positionMs, qint64 durationMs);
 
-signals:
+  signals:
     void playRequested();
     void pauseRequested();
     void nextRequested();
     void previousRequested();
     void seekRequested(qint64 positionMs);
 
-private slots:
+  private slots:
     void onTrackChanged();
     void onPlayingChanged();
     void onPositionChanged();
 
-private:
+  private:
     class Private;
     Private *d = nullptr;
     PlayerController *m_player = nullptr;

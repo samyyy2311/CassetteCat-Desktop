@@ -24,6 +24,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "sliders-horizontal"
+            iconColor: "#38BDF8"
             title: "Accent Colour"
             subtitle: "Applied to active navigation, selected controls, playback, seek bars, and volume"
         }
@@ -58,6 +59,15 @@ ColumnLayout {
                         Behavior on color { ColorAnimation { duration: 120 } }
                         Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
 
+                        LucideIcon {
+                            visible: root.accentName === modelData.id
+                            anchors.centerIn: parent
+                            width: 16
+                            height: 16
+                            icon: "check"
+                            color: "#FFFFFF"
+                        }
+
                         MouseArea {
                             id: swatchMouse
                             anchors.fill: parent
@@ -73,7 +83,7 @@ ColumnLayout {
                         color: root.accentName === modelData.id ? textPrimary : textSecondary
                         font.family: displayFont
                         font.pixelSize: 10
-                        font.weight: Font.Medium
+                        font.weight: root.accentName === modelData.id ? Font.Bold : Font.Medium
                     }
                 }
             }
@@ -97,8 +107,8 @@ ColumnLayout {
                         anchors.centerIn: parent
                         width: 16
                         height: 16
-                        icon: "sliders-horizontal"
-                        color: textPrimary
+                        icon: root.accentName === "custom" ? "check" : "sliders-horizontal"
+                        color: "#FFFFFF"
                     }
 
                     MouseArea {
@@ -128,14 +138,15 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "disc"
+            iconColor: "#F59E0B"
             title: "Album Art Corners"
             subtitle: "Corner roundness for artwork thumbnails and cards"
 
             SettingSegmentedControl {
                 options: [
-                    { value: 0, label: "SQUARE" },
-                    { value: 8, label: "SOFT" },
-                    { value: 16, label: "ROUNDED" }
+                    { value: 0, label: "Square" },
+                    { value: 8, label: "Soft" },
+                    { value: 16, label: "Rounded" }
                 ]
                 selectedValue: root.albumArtRadius
                 onOptionSelected: val => root.albumArtRadiusSelected(Number(val))
@@ -146,13 +157,14 @@ ColumnLayout {
 
         SettingRow {
             iconName: "pip"
+            iconColor: "#EC4899"
             title: "Now Playing Backdrop"
             subtitle: "Visual style of the expanded player backdrop"
 
             SettingSegmentedControl {
                 options: [
-                    { value: "tinted", label: "TINTED" },
-                    { value: "clean", label: "CLEAN" }
+                    { value: "tinted", label: "Tinted" },
+                    { value: "clean", label: "Clean" }
                 ]
                 selectedValue: root.nowPlayingBackdrop
                 onOptionSelected: val => root.nowPlayingBackdropSelected(val)
@@ -165,13 +177,14 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "clock"
+            iconColor: "#A5B4FC"
             title: "Time Display"
             subtitle: "Show remaining time countdown or total track duration"
 
             SettingSegmentedControl {
                 options: [
-                    { value: true, label: "REMAINING" },
-                    { value: false, label: "TOTAL" }
+                    { value: true, label: "Remaining" },
+                    { value: false, label: "Total" }
                 ]
                 selectedValue: root.showRemainingTime
                 onOptionSelected: val => root.showRemainingTimeSelected(Boolean(val))

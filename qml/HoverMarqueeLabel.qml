@@ -16,13 +16,14 @@ Item {
         id: label
         anchors.verticalCenter: parent.verticalCenter
         x: hover.containsMouse && implicitWidth > root.width ? root.width - implicitWidth : 0
-        width: implicitWidth
+        width: hover.containsMouse ? implicitWidth : root.width
         text: root.text
         color: root.textColor
         font.family: root.fontFamily
         font.pixelSize: root.pixelSize
         font.weight: root.weight
         wrapMode: Text.NoWrap
+        elide: hover.containsMouse ? Text.ElideNone : Text.ElideRight
 
         Behavior on x { NumberAnimation { duration: 900; easing.type: Easing.InOutQuad } }
     }

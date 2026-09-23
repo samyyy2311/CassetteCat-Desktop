@@ -11,6 +11,7 @@ ColumnLayout {
     property bool sleepFadeOut: true
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 80
+    property string replayGainMode: "off"
 
     signal resumeQueueOnLaunchSelected(bool value)
     signal autoplaySelected(bool value)
@@ -19,6 +20,7 @@ ColumnLayout {
     signal sleepFadeOutSelected(bool value)
     signal volumeLimitSelected(bool value)
     signal maxVolumeSelected(int value)
+    signal replayGainModeSelected(string value)
 
     Layout.fillWidth: true
     spacing: 16
@@ -28,6 +30,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "play"
+            iconColor: "#10B981"
             title: "Resume Queue on Launch"
             subtitle: "Restore active track, queue, and playback position"
 
@@ -41,6 +44,7 @@ ColumnLayout {
 
         SettingRow {
             iconName: "repeat"
+            iconColor: "#38BDF8"
             title: "Autoplay"
             subtitle: "Shuffle music from library when queue reaches the end"
 
@@ -56,15 +60,16 @@ ColumnLayout {
     SettingCard {
         SettingChoiceGroup {
             iconName: "clock"
+            iconColor: "#A5B4FC"
             title: "Sleep Timer"
             subtitle: root.sleepTimerMode === "off" ? "Stop playback automatically after a duration or track" : ("Active countdown: " + root.sleepTimerStatus)
             options: [
-                { value: "off", label: "OFF" },
-                { value: "15", label: "15 MIN" },
-                { value: "30", label: "30 MIN" },
-                { value: "45", label: "45 MIN" },
-                { value: "60", label: "60 MIN" },
-                { value: "track", label: "END OF TRACK" }
+                { value: "off", label: "Off" },
+                { value: "15", label: "15 min" },
+                { value: "30", label: "30 min" },
+                { value: "45", label: "45 min" },
+                { value: "60", label: "60 min" },
+                { value: "track", label: "End of track" }
             ]
             selectedValue: root.sleepTimerMode
             onOptionSelected: val => {
@@ -80,6 +85,7 @@ ColumnLayout {
 
         SettingRow {
             iconName: "volume-1"
+            iconColor: "#96918A"
             title: "Gentle Fade-Out"
             subtitle: "Smoothly ramp down volume before stopping playback"
 
@@ -95,6 +101,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "volume-2"
+            iconColor: "#F59E0B"
             title: "Volume Limit"
             subtitle: "Cap the maximum output level to protect your hearing"
 
@@ -113,6 +120,7 @@ ColumnLayout {
 
             SettingChoiceGroup {
                 iconName: "sliders-horizontal"
+                iconColor: "#F59E0B"
                 title: "Maximum Volume Limit"
                 subtitle: "Ceiling threshold applied to the master volume slider"
                 options: [
@@ -126,6 +134,24 @@ ColumnLayout {
                 selectedValue: root.maxVolumePercent
                 onOptionSelected: val => root.maxVolumeSelected(Number(val))
             }
+        }
+    }
+
+    SectionLabel { text: "Loudness & Normalization" }
+
+    SettingCard {
+        SettingChoiceGroup {
+            iconName: "audio-lines"
+            iconColor: "#C23B30"
+            title: "Volume Normalization (ReplayGain)"
+            subtitle: root.replayGainMode === "off" ? "Preserve original file loudness" : (root.replayGainMode === "track" ? "Track gain active: balance volume per song" : "Album gain active: preserve album dynamic range")
+            options: [
+                { value: "off", label: "Off" },
+                { value: "track", label: "Track" },
+                { value: "album", label: "Album" }
+            ]
+            selectedValue: root.replayGainMode
+            onOptionSelected: val => root.replayGainModeSelected(String(val))
         }
     }
 }

@@ -8,6 +8,7 @@ Item {
     property var track: ({})
     property real cardWidth: 150
     property real cardHeight: 225
+    property real coverRadius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
 
     signal clicked()
 
@@ -22,7 +23,7 @@ Item {
             id: coverBox
             Layout.preferredWidth: root.cardWidth
             Layout.preferredHeight: root.cardWidth
-            radius: 12
+            radius: root.coverRadius
             clip: true
             color: surfaceCard
             border.width: 1
@@ -36,7 +37,7 @@ Item {
             Cover {
                 anchors.fill: parent
                 track: root.track
-                radius: 12
+                radius: root.coverRadius
             }
 
             TransportButton {

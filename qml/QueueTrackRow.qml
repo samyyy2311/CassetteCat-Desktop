@@ -11,10 +11,13 @@ Item {
     property bool allowCurrentActivation: false
     property bool removeEnabled: false
     property bool playNextEnabled: false
+    property bool reorderEnabled: false
 
     signal trackActivated(var track)
     signal playNextRequested(var track)
     signal trackRemovalRequested(var track)
+    signal trackReorderRequested(var srcTrack, var targetTrack, int srcIndex, int targetIndex)
+    readonly property int queueIndex: entry && entry.queueIndex !== undefined ? entry.queueIndex : -1
 
     readonly property bool header: entry && entry.type === "header"
     readonly property bool current: entry && entry.type === "current"
@@ -39,6 +42,39 @@ Item {
             : (root.current ? (root.compact ? "#1E1C1A" : "#1C1A18") : "transparent"))
         border.width: root.current && root.compact ? 1 : 0
         border.color: root.paletteSource.borderCard
+        opacity: (root.reorderEnabled && gripMouse.drag.active) ? 0.35 : 1.0
+
+        DropArea {
+            id: dropArea
+            anchors.fill: parent
+            enabled: root.reorderEnabled
+            keys: ["queue-track"]
+            onDropped: drop => {
+                if (drop.source && drop.source.dragTrack) {
+                    root.trackReorderRequested(drop.source.dragTrack, root.track, drop.source.dragIndex !== undefined ? drop.source.dragIndex : -1, root.queueIndex)
+                }
+            }
+        }
+
+        Rectangle {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: 2
+            radius: 1
+            color: root.paletteSource && root.paletteSource.recordRed ? root.paletteSource.recordRed : "#D83B31"
+            visible: dropArea.containsDrag && !(root.reorderEnabled && gripMouse.drag.active)
+            z: 2
+        }
+
+        Item {
+            id: dragSourceItem
+            Drag.active: root.reorderEnabled && gripMouse.drag.active
+            Drag.source: dragSourceItem
+            Drag.keys: ["queue-track"]
+            property var dragTrack: root.track
+            property int dragIndex: root.queueIndex
+        }
 
         Label {
             anchors.left: parent.left
@@ -53,6 +89,22 @@ Item {
             font.letterSpacing: root.compact ? 0 : 1.0
         }
 
+        MouseArea {
+            id: rowMouse
+            anchors.fill: parent
+            enabled: !root.header && (!root.current || root.allowCurrentActivation)
+            hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onClicked: mouse => {
+                if (mouse.button === Qt.RightButton) {
+                    contextMenu.popup()
+                } else {
+                    root.trackActivated(root.track)
+                }
+            }
+        }
+
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: root.compact ? 6 : 12
@@ -63,7 +115,8 @@ Item {
             Cover {
                 Layout.preferredWidth: root.compact ? 28 : 38
                 Layout.preferredHeight: root.compact ? 28 : 38
-                radius: root.compact ? 4 : 6
+                radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined && window.albumArtRadius === 0)
+                        ? 0 : (root.compact ? 4 : 6)
                 track: root.track
                 cacheArtwork: root.compact
             }
@@ -124,27 +177,47 @@ Item {
                 tooltipText: "Remove from queue"
                 onClicked: root.trackRemovalRequested(root.track)
             }
+            Item {
+                id: dragGrip
+                visible: root.reorderEnabled
+                z: 1
+                Layout.preferredWidth: root.compact ? 24 : 28
+                Layout.preferredHeight: root.compact ? 24 : 28
+
+                LucideIcon {
+                    anchors.centerIn: parent
+                    icon: "arrow-up-down"
+                    color: gripMouse.containsMouse || gripMouse.drag.active
+                        ? (root.paletteSource ? root.paletteSource.textPrimary : "#F5F2ED")
+                        : (root.paletteSource ? root.paletteSource.silverDim : "#6E6C68")
+                    width: root.compact ? 13 : 15
+                    height: root.compact ? 13 : 15
+                }
+
+                MouseArea {
+                    id: gripMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    preventStealing: true
+                    cursorShape: Qt.SizeVerCursor
+                    drag.target: dragSourceItem
+                    drag.axis: Drag.YAxis
+                    onReleased: {
+                        if (dragSourceItem.Drag.active) {
+                            dragSourceItem.Drag.drop()
+                        }
+                        dragSourceItem.y = 0
+                    }
+                    onCanceled: {
+                        dragSourceItem.y = 0
+                    }
+                }
+            }
         }
 
         TrackContextMenu {
             id: contextMenu
             track: root.track
-        }
-
-        MouseArea {
-            id: rowMouse
-            anchors.fill: parent
-            enabled: !root.header && (!root.current || root.allowCurrentActivation)
-            hoverEnabled: true
-            acceptedButtons: Qt.LeftButton | Qt.RightButton
-            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-            onClicked: mouse => {
-                if (mouse.button === Qt.RightButton) {
-                    contextMenu.popup()
-                } else {
-                    root.trackActivated(root.track)
-                }
-            }
         }
     }
 }

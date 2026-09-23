@@ -6,8 +6,10 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QImageReader>
+#include <QTextStream>
 #include <QUrl>
 #include <QtEndian>
+#include <cmath>
 
 #include <taglib/audioproperties.h>
 #include <taglib/fileref.h>
@@ -23,8 +25,7 @@
 #include <flac/flacfile.h>
 #include <flac/flacpicture.h>
 
-QString formatDuration(int totalSeconds)
-{
+QString formatDuration(int totalSeconds) {
     if (totalSeconds <= 0) {
         return QString();
     }
@@ -33,30 +34,33 @@ QString formatDuration(int totalSeconds)
     return QString("%1:%2").arg(minutes).arg(seconds, 2, 10, QChar('0'));
 }
 
-QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension)
-{
-    if (image.isEmpty()) return {};
+QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension) {
+    if (image.isEmpty())
+        return {};
     QByteArray outputImage = image;
     if (maxDimension > 0) {
         QBuffer input(&outputImage);
-        if (!input.open(QIODevice::ReadOnly)) return {};
+        if (!input.open(QIODevice::ReadOnly))
+            return {};
         QImageReader reader(&input);
         const QSize sourceSize = reader.size();
-        if (!sourceSize.isValid()) return {};
+        if (!sourceSize.isValid())
+            return {};
         reader.setScaledSize(sourceSize.scaled(maxDimension, maxDimension, Qt::KeepAspectRatio));
         const QImage thumbnail = reader.read();
-        if (thumbnail.isNull()) return {};
+        if (thumbnail.isNull())
+            return {};
         outputImage.clear();
         QBuffer output(&outputImage);
-        if (!output.open(QIODevice::WriteOnly)
-            || !thumbnail.save(&output, png ? "PNG" : "JPEG", png ? -1 : 90)) return {};
+        if (!output.open(QIODevice::WriteOnly) || !thumbnail.save(&output, png ? "PNG" : "JPEG", png ? -1 : 90))
+            return {};
     }
     return saveCachedImage(outputImage, filePath + ':' + QString::number(maxDimension), png, "covers");
 }
 
-QString extractEmbeddedArtwork(const QString &filePath, int maxDimension)
-{
-    if (filePath.isEmpty()) return {};
+QString extractEmbeddedArtwork(const QString &filePath, int maxDimension) {
+    if (filePath.isEmpty())
+        return {};
     const QString suffix = QFileInfo(filePath).suffix().toLower();
 
     if (suffix == "m4a" || suffix == "mp4" || suffix == "alac") {
@@ -71,10 +75,12 @@ QString extractEmbeddedArtwork(const QString &filePath, int maxDimension)
                 if (!covers.isEmpty()) {
                     const TagLib::MP4::CoverArt cover = covers.front();
                     const TagLib::ByteVector data = cover.data();
-                    return saveArtwork(filePath, QByteArray(data.data(), data.size()), cover.format() == TagLib::MP4::CoverArt::PNG, maxDimension);
+                    return saveArtwork(filePath, QByteArray(data.data(), data.size()),
+                                       cover.format() == TagLib::MP4::CoverArt::PNG, maxDimension);
                 }
             }
-        } catch (...) {}
+        } catch (...) {
+        }
         return {};
     }
 
@@ -89,12 +95,12 @@ QString extractEmbeddedArtwork(const QString &filePath, int maxDimension)
             if (!picList.isEmpty()) {
                 const auto *pic = picList.front();
                 return saveArtwork(
-                    filePath,
-                    QByteArray(pic->data().data(), pic->data().size()),
-                    QString::fromStdWString(pic->mimeType().toWString()).contains("png", Qt::CaseInsensitive), maxDimension
-                );
+                    filePath, QByteArray(pic->data().data(), pic->data().size()),
+                    QString::fromStdWString(pic->mimeType().toWString()).contains("png", Qt::CaseInsensitive),
+                    maxDimension);
             }
-        } catch (...) {}
+        } catch (...) {
+        }
         return {};
     }
 
@@ -110,15 +116,15 @@ QString extractEmbeddedArtwork(const QString &filePath, int maxDimension)
                 if (!frames.isEmpty()) {
                     const auto *picture = dynamic_cast<TagLib::ID3v2::AttachedPictureFrame *>(frames.front());
                     if (picture && !picture->picture().isEmpty()) {
-                        return saveArtwork(
-                            filePath,
-                            QByteArray(picture->picture().data(), picture->picture().size()),
-                            QString::fromStdWString(picture->mimeType().toWString()).contains("png", Qt::CaseInsensitive), maxDimension
-                        );
+                        return saveArtwork(filePath, QByteArray(picture->picture().data(), picture->picture().size()),
+                                           QString::fromStdWString(picture->mimeType().toWString())
+                                               .contains("png", Qt::CaseInsensitive),
+                                           maxDimension);
                     }
                 }
             }
-        } catch (...) {}
+        } catch (...) {
+        }
         return {};
     }
 
@@ -155,32 +161,30 @@ QString extractEmbeddedArtwork(const QString &filePath, int maxDimension)
                 }
             }
         }
-    } catch (...) {}
+    } catch (...) {
+    }
 
     // Fallback: check track's directory for cover image files
     try {
         const QFileInfo fi(filePath);
         const QDir trackFolder = fi.absoluteDir();
-        const QStringList covers = {
-            "cover.jpg", "cover.jpeg", "cover.png",
-            "folder.jpg", "folder.jpeg", "folder.png",
-            "front.jpg", "front.jpeg", "front.png",
-            "album.jpg", "album.jpeg", "album.png"
-        };
+        const QStringList covers = {"cover.jpg", "cover.jpeg", "cover.png", "folder.jpg", "folder.jpeg", "folder.png",
+                                    "front.jpg", "front.jpeg", "front.png", "album.jpg",  "album.jpeg",  "album.png"};
         for (const QString &name : covers) {
             const QString candidate = trackFolder.filePath(name);
             if (QFileInfo::exists(candidate)) {
                 return QUrl::fromLocalFile(candidate).toString();
             }
         }
-    } catch (...) {}
+    } catch (...) {
+    }
 
     return {};
 }
 
-QString extractEmbeddedLyrics(const QString &filePath)
-{
-    if (filePath.isEmpty()) return {};
+QString extractEmbeddedLyrics(const QString &filePath) {
+    if (filePath.isEmpty())
+        return {};
 
     const QFileInfo fileInfo(filePath);
     const QString dirPath = fileInfo.absolutePath();
@@ -192,14 +196,16 @@ QString extractEmbeddedLyrics(const QString &filePath)
         QFile lrcFile(lrcPath);
         if (lrcFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QString content = QString::fromUtf8(lrcFile.readAll()).trimmed();
-            if (!content.isEmpty()) return content;
+            if (!content.isEmpty())
+                return content;
         }
     }
     if (QFileInfo::exists(txtPath)) {
         QFile txtFile(txtPath);
         if (txtFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QString content = QString::fromUtf8(txtFile.readAll()).trimmed();
-            if (!content.isEmpty()) return content;
+            if (!content.isEmpty())
+                return content;
         }
     }
 
@@ -223,12 +229,14 @@ QString extractEmbeddedLyrics(const QString &filePath)
                             for (const auto &s : strList) {
                                 lyrics += QString::fromStdWString(s.toWString()) + "\n";
                             }
-                            if (!lyrics.trimmed().isEmpty()) return lyrics.trimmed();
+                            if (!lyrics.trimmed().isEmpty())
+                                return lyrics.trimmed();
                         }
                     }
                 }
             }
-        } catch (...) {}
+        } catch (...) {
+        }
     }
 
     if (suffix == "mp3") {
@@ -243,7 +251,8 @@ QString extractEmbeddedLyrics(const QString &filePath)
                 for (auto *frame : usltFrames) {
                     if (auto *uslt = dynamic_cast<TagLib::ID3v2::UnsynchronizedLyricsFrame *>(frame)) {
                         QString text = QString::fromStdWString(uslt->text().toWString()).trimmed();
-                        if (!text.isEmpty()) return text;
+                        if (!text.isEmpty())
+                            return text;
                     }
                 }
 
@@ -255,11 +264,13 @@ QString extractEmbeddedLyrics(const QString &filePath)
                         for (const auto &item : synchedText) {
                             text += QString::fromStdWString(item.text.toWString()) + "\n";
                         }
-                        if (!text.trimmed().isEmpty()) return text.trimmed();
+                        if (!text.trimmed().isEmpty())
+                            return text.trimmed();
                     }
                 }
             }
-        } catch (...) {}
+        } catch (...) {
+        }
     }
 
     try {
@@ -277,7 +288,8 @@ QString extractEmbeddedLyrics(const QString &filePath)
                         for (const auto &s : list) {
                             text += QString::fromStdWString(s.toWString()) + "\n";
                         }
-                        if (!text.trimmed().isEmpty()) return text.trimmed();
+                        if (!text.trimmed().isEmpty())
+                            return text.trimmed();
                     }
                 }
                 if (properties.contains("UNSYNCEDLYRICS")) {
@@ -287,18 +299,60 @@ QString extractEmbeddedLyrics(const QString &filePath)
                         for (const auto &s : list) {
                             text += QString::fromStdWString(s.toWString()) + "\n";
                         }
-                        if (!text.trimmed().isEmpty()) return text.trimmed();
+                        if (!text.trimmed().isEmpty())
+                            return text.trimmed();
                     }
                 }
             }
         }
-    } catch (...) {}
+    } catch (...) {
+    }
 
     return {};
 }
 
-TrackInfo readTrackInfo(const QString &filePath)
-{
+/// @copydoc extractReplayGain
+float extractReplayGain(const QString &filePath, bool albumMode) {
+    if (filePath.isEmpty())
+        return 0.0f;
+    try {
+#ifdef _WIN32
+        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
+#else
+        TagLib::FileRef fileRef(filePath.toUtf8().constData());
+#endif
+        if (!fileRef.isNull() && fileRef.file() && fileRef.file()->isValid()) {
+            const TagLib::PropertyMap properties = fileRef.file()->properties();
+            auto parseGain = [&properties](const char *key, float &outDb) -> bool {
+                if (!properties.contains(key) || properties[key].isEmpty()) {
+                    return false;
+                }
+                QString val = QString::fromStdWString(properties[key].front().toWString());
+                val.remove("dB", Qt::CaseInsensitive);
+                bool ok = false;
+                const float db = val.trimmed().toFloat(&ok);
+                if (ok && std::isfinite(db)) {
+                    outDb = db;
+                    return true;
+                }
+                return false;
+            };
+
+            float db = 0.0f;
+            const char *primaryKey = albumMode ? "REPLAYGAIN_ALBUM_GAIN" : "REPLAYGAIN_TRACK_GAIN";
+            if (parseGain(primaryKey, db)) {
+                return db;
+            }
+            if (albumMode && parseGain("REPLAYGAIN_TRACK_GAIN", db)) {
+                return db;
+            }
+        }
+    } catch (...) {
+    }
+    return 0.0f;
+}
+
+TrackInfo readTrackInfo(const QString &filePath) {
     const QFileInfo fileInfo(filePath);
     const QString fallbackTitle = fileInfo.completeBaseName();
 
@@ -324,7 +378,8 @@ TrackInfo readTrackInfo(const QString &filePath)
             if (const TagLib::Tag *tag = fileRef.tag()) {
                 auto safeString = [](const TagLib::String &s) -> QString {
                     try {
-                        if (s.isEmpty()) return QString();
+                        if (s.isEmpty())
+                            return QString();
                         return QString::fromUtf8(s.toCString(true)).trimmed();
                     } catch (...) {
                         return QString();
@@ -371,9 +426,12 @@ TrackInfo readTrackInfo(const QString &filePath)
                 };
 
                 QString recordLabel = getProp("LABEL");
-                if (recordLabel.isEmpty()) recordLabel = getProp("ORGANIZATION");
-                if (recordLabel.isEmpty()) recordLabel = getProp("PUBLISHER");
-                if (recordLabel.isEmpty()) recordLabel = getProp("COPYRIGHT");
+                if (recordLabel.isEmpty())
+                    recordLabel = getProp("ORGANIZATION");
+                if (recordLabel.isEmpty())
+                    recordLabel = getProp("PUBLISHER");
+                if (recordLabel.isEmpty())
+                    recordLabel = getProp("COPYRIGHT");
                 info.label = recordLabel;
                 info.discNumber = getProp("DISCNUMBER").section('/', 0, 0).toInt();
             }
@@ -388,7 +446,8 @@ TrackInfo readTrackInfo(const QString &filePath)
                             }
                         }
                     }
-                } catch (...) {}
+                } catch (...) {
+                }
             }
 
             if (const TagLib::AudioProperties *props = fileRef.audioProperties()) {
@@ -405,11 +464,11 @@ TrackInfo readTrackInfo(const QString &filePath)
     return info;
 }
 
-bool writeTrackInfo(const QVariantMap &metadata, QString *error)
-{
+bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
     const QString filePath = metadata.value("filePath").toString();
     if (filePath.isEmpty() || !QFileInfo::exists(filePath)) {
-        if (error) *error = "The audio file is unavailable.";
+        if (error)
+            *error = "The audio file is unavailable.";
         return false;
     }
 
@@ -420,7 +479,8 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error)
         TagLib::FileRef fileRef(filePath.toUtf8().constData());
 #endif
         if (fileRef.isNull() || !fileRef.file() || !fileRef.file()->isValid() || !fileRef.tag()) {
-            if (error) *error = "This file format does not support editable metadata.";
+            if (error)
+                *error = "This file format does not support editable metadata.";
             return false;
         }
 
@@ -439,8 +499,10 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error)
         TagLib::PropertyMap properties = fileRef.file()->properties();
         const auto setProperty = [&](const char *key, const QString &value) {
             const TagLib::String propertyKey(key, TagLib::String::Latin1);
-            if (value.trimmed().isEmpty()) properties.erase(propertyKey);
-            else properties.replace(propertyKey, TagLib::StringList(toTagString(value.trimmed())));
+            if (value.trimmed().isEmpty())
+                properties.erase(propertyKey);
+            else
+                properties.replace(propertyKey, TagLib::StringList(toTagString(value.trimmed())));
         };
         setProperty("LABEL", metadata.value("label").toString());
         setProperty("DISCNUMBER", QString::number(qMax(0, metadata.value("discNumber").toInt())));
@@ -448,12 +510,131 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error)
         fileRef.file()->setProperties(properties);
 
         if (!fileRef.file()->save()) {
-            if (error) *error = "CassetteCat could not save this file.";
+            if (error)
+                *error = "CassetteCat could not save this file.";
             return false;
         }
         return true;
     } catch (...) {
-        if (error) *error = "CassetteCat could not update this file.";
+        if (error)
+            *error = "CassetteCat could not update this file.";
         return false;
     }
+}
+
+/// @copydoc parseM3uPlaylist
+QVariantList parseM3uPlaylist(const QString &playlistPath) {
+    QFile file(playlistPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return {};
+    }
+
+    const QFileInfo playlistFileInfo(playlistPath);
+    const QDir playlistDir = playlistFileInfo.dir();
+
+    QVariantList tracks;
+    int extDuration = 0;
+    QString extTitle;
+    QString extArtist;
+
+    QTextStream stream(&file);
+    while (!stream.atEnd()) {
+        const QString line = stream.readLine().trimmed();
+        if (line.isEmpty()) {
+            continue;
+        }
+
+        if (line.startsWith("#EXTINF:", Qt::CaseInsensitive)) {
+            const QString directive = line.mid(8).trimmed();
+            const int commaIdx = directive.indexOf(',');
+            if (commaIdx != -1) {
+                bool ok = false;
+                const int dur = directive.left(commaIdx).trimmed().toInt(&ok);
+                extDuration = ok ? qMax(0, dur) : 0;
+                const QString infoPart = directive.mid(commaIdx + 1).trimmed();
+                const int dashIdx = infoPart.indexOf(" - ");
+                if (dashIdx != -1) {
+                    extArtist = infoPart.left(dashIdx).trimmed();
+                    extTitle = infoPart.mid(dashIdx + 3).trimmed();
+                } else {
+                    extArtist.clear();
+                    extTitle = infoPart;
+                }
+            }
+            continue;
+        }
+
+        if (line.startsWith('#')) {
+            continue;
+        }
+
+        QString targetPath = line;
+        if (targetPath.startsWith("file:///", Qt::CaseInsensitive) ||
+            targetPath.startsWith("file://", Qt::CaseInsensitive)) {
+            targetPath = QUrl(targetPath).toLocalFile();
+        }
+
+        if (targetPath.startsWith("http://", Qt::CaseInsensitive) ||
+            targetPath.startsWith("https://", Qt::CaseInsensitive)) {
+            QVariantMap track;
+            track.insert("filePath", targetPath);
+            track.insert("fileName", targetPath.section('/', -1));
+            track.insert("title", extTitle.isEmpty() ? targetPath : extTitle);
+            track.insert("artist", extArtist.isEmpty() ? QStringLiteral("Radio Stream") : extArtist);
+            track.insert("album", QStringLiteral("Stream"));
+            track.insert("format", QStringLiteral("STREAM"));
+            track.insert("durationSeconds", extDuration);
+            track.insert("duration", formatDuration(extDuration));
+            tracks.append(track);
+
+            extDuration = 0;
+            extTitle.clear();
+            extArtist.clear();
+            continue;
+        }
+
+        targetPath.replace('\\', '/');
+        QFileInfo candidate(targetPath);
+        if (!candidate.isAbsolute()) {
+            targetPath = playlistDir.filePath(targetPath);
+            candidate.setFile(targetPath);
+        }
+
+        targetPath = QDir::cleanPath(targetPath);
+        candidate.setFile(targetPath);
+
+        if (candidate.exists() && candidate.isFile()) {
+            TrackInfo info = readTrackInfo(targetPath);
+            QVariantMap track = info.toMap();
+            if (!extTitle.isEmpty() && (info.title.isEmpty() || info.title == candidate.completeBaseName())) {
+                track["title"] = extTitle;
+            }
+            if (!extArtist.isEmpty() && (info.artist.trimmed().isEmpty() || info.artist == "Unknown Artist")) {
+                track["artist"] = extArtist;
+            }
+            if (info.durationSeconds <= 0 && extDuration > 0) {
+                track["durationSeconds"] = extDuration;
+                track["duration"] = formatDuration(extDuration);
+            }
+            if (track.value("artworkUrl").toString().isEmpty()) {
+                const QDir trackDir = candidate.dir();
+                static const QStringList coverNames = {"cover.jpg",  "cover.jpeg", "cover.png", "folder.jpg",
+                                                       "folder.png", "front.jpg",  "front.png"};
+                for (const QString &coverName : coverNames) {
+                    const QString coverPath = trackDir.filePath(coverName);
+                    if (QFileInfo::exists(coverPath)) {
+                        track["artworkUrl"] = QUrl::fromLocalFile(coverPath).toString();
+                        break;
+                    }
+                }
+            }
+            tracks.append(track);
+        }
+
+        extDuration = 0;
+        extTitle.clear();
+        extArtist.clear();
+    }
+
+    return tracks;
 }

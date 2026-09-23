@@ -6,6 +6,7 @@ Item {
     id: root
     property string name: ""
     property string artist: ""
+    property string subtitle: ""
     property int count: 0
     property var track: ({})
     property real cardWidth: 170
@@ -77,7 +78,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
-                text: root.artist ? root.artist : (root.count + " songs")
+                text: root.subtitle.length > 0 ? root.subtitle : (root.artist ? root.artist : (root.count + (root.count === 1 ? " song" : " songs")))
                 color: textSecondary
                 font.family: bodyFont
                 font.pixelSize: 11

@@ -1,4 +1,4 @@
-﻿import QtQuick
+import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
@@ -58,9 +58,11 @@ Item {
                 entry: modelData
                 removeEnabled: modelData.queueEditable === true
                 playNextEnabled: modelData.queueEditable === true
+                reorderEnabled: modelData.queueEditable === true
                 onTrackActivated: track => root.appWindow.playFromQueue(track)
                 onPlayNextRequested: track => root.appWindow.moveQueuedTrackNext(track)
                 onTrackRemovalRequested: track => root.appWindow.removeQueuedTrack(track)
+                onTrackReorderRequested: (srcTrack, targetTrack, srcIndex, targetIndex) => root.appWindow.reorderQueuedTrack(srcTrack, targetTrack, srcIndex, targetIndex)
             }
         }
     }

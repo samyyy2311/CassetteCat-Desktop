@@ -41,12 +41,12 @@ Item {
                 Cover {
                     anchors.fill: parent
                     track: root.track
-                    radius: 12
+                    radius: coverContainer.radius
                 }
 
                 Rectangle {
                     anchors.fill: parent
-                    radius: 12
+                    radius: coverContainer.radius
                     color: "transparent"
                     border.width: 1
                     border.color: root.isCurrent ? recordRed : "#15FFFFFF"

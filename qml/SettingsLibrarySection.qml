@@ -31,6 +31,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "folder"
+            iconColor: "#C4C4C0"
             title: "Audio Folders"
             subtitle: root.libraryFolders.length > 0
                       ? (root.libraryFolders.length + " folder(s) • " + root.trackCount + " songs")
@@ -52,6 +53,7 @@ ColumnLayout {
 
         SettingRow {
             iconName: "folder"
+            iconColor: "#96918A"
             title: "Excluded Folders"
             subtitle: root.excludedFolders.length === 0 ? "No exclusions. Every subfolder is scanned" : (root.excludedFolders.length + " folder(s) hidden from the library")
 
@@ -71,6 +73,7 @@ ColumnLayout {
 
         SettingRow {
             iconName: "audio-lines"
+            iconColor: "#10B981"
             title: "Ignore Short Clips"
             subtitle: "Hide audio tracks shorter than 30 seconds from library and search"
 
@@ -89,12 +92,12 @@ ColumnLayout {
             title: "Default Launch Page"
             subtitle: "View displayed immediately upon opening CassetteCat"
             options: [
-                { value: "last", label: "LAST VISITED" },
-                { value: "home", label: "HOME" },
-                { value: "library", label: "LIBRARY" },
-                { value: "radio", label: "RADIO" },
-                { value: "search", label: "SEARCH" },
-                { value: "settings", label: "SETTINGS" }
+                { value: "last", label: "Last Visited" },
+                { value: "home", label: "Home" },
+                { value: "library", label: "Library" },
+                { value: "radio", label: "Radio" },
+                { value: "search", label: "Search" },
+                { value: "settings", label: "Settings" }
             ]
             selectedValue: root.defaultLaunchPage
             onOptionSelected: val => root.defaultLaunchPageSelected(val)
@@ -109,10 +112,10 @@ ColumnLayout {
             title: "Default Library Sort"
             subtitle: "Default track order for songs listing"
             options: [
-                { value: "title", label: "TITLE" },
-                { value: "artist", label: "ARTIST" },
-                { value: "album", label: "ALBUM" },
-                { value: "duration", label: "DURATION" }
+                { value: "title", label: "Title" },
+                { value: "artist", label: "Artist" },
+                { value: "album", label: "Album" },
+                { value: "duration", label: "Duration" }
             ]
             selectedValue: root.songSortMetric
             onOptionSelected: val => root.songSortSelected(val)
@@ -122,13 +125,14 @@ ColumnLayout {
 
         SettingRow {
             iconName: "sliders-horizontal"
+            iconColor: "#A5B4FC"
             title: "Track Row Density"
             subtitle: "Vertical spacing for song rows in track lists"
 
             SettingSegmentedControl {
                 options: [
-                    { value: "comfortable", label: "COMFORTABLE" },
-                    { value: "compact", label: "COMPACT" }
+                    { value: "comfortable", label: "Comfortable" },
+                    { value: "compact", label: "Compact" }
                 ]
                 selectedValue: root.trackDensity
                 onOptionSelected: val => root.trackDensitySelected(val)
@@ -139,6 +143,7 @@ ColumnLayout {
 
         SettingRow {
             iconName: "disc"
+            iconColor: "#C23B30"
             title: "Audio Format Badges"
             subtitle: "Show FLAC, MP3, and AAC badges on track rows"
 

@@ -29,6 +29,7 @@ Item {
         }
 
         Label {
+            id: artistLabel
             Layout.fillWidth: true
             text: {
                 if (!root.playerController.currentTrack.title && !root.playerController.currentTrack.filePath) {
@@ -40,15 +41,18 @@ Item {
             }
             color: (!root.playerController.currentTrack.title && !root.playerController.currentTrack.filePath)
                 ? root.appWindow.textSecondary
-                : root.appWindow.recordRed
+                : (artistMouseArea.containsMouse ? root.appWindow.textPrimary : root.appWindow.textSecondary)
             font.family: root.appWindow.displayFont
             font.pixelSize: 15
-            font.weight: Font.DemiBold
+            font.weight: Font.Medium
             wrapMode: Text.WordWrap
             maximumLineCount: 1
             elide: Text.ElideRight
 
+            Behavior on color { ColorAnimation { duration: 130 } }
+
             MouseArea {
+                id: artistMouseArea
                 anchors.fill: parent
                 enabled: !!root.playerController.currentTrack.album
                 hoverEnabled: true

@@ -161,7 +161,7 @@ Rectangle {
                             id: heroMask
                             width: heroPortraitItem.width
                             height: heroPortraitItem.height
-                            radius: root.artistDetail ? width / 2 : 16
+                            radius: root.artistDetail ? width / 2 : ((typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 16)
                             color: "#FFFFFF"
                             visible: false
                             layer.enabled: true
@@ -170,7 +170,7 @@ Rectangle {
 
                         Rectangle {
                             anchors.fill: parent
-                            radius: root.artistDetail ? width / 2 : 16
+                            radius: root.artistDetail ? width / 2 : ((typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 16)
                             color: "#181715"
                             border.width: root.featuredDetail ? 2 : 1.5
                             border.color: root.artistDetail && heroArtistImg.status === Image.Ready ? "#B8FFFFFF" : "#30FFFFFF"

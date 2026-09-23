@@ -22,14 +22,15 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "quote"
+            iconColor: "#38BDF8"
             title: "Lyrics Font Size"
             subtitle: "Relative scale of lyric lines in synchronized view"
 
             SettingSegmentedControl {
                 options: [
-                    { value: 24, label: "SMALL" },
-                    { value: 28, label: "DEFAULT" },
-                    { value: 32, label: "LARGE" }
+                    { value: 24, label: "Small" },
+                    { value: 28, label: "Default" },
+                    { value: 32, label: "Large" }
                 ]
                 selectedValue: root.lyricsFontSize
                 onOptionSelected: val => root.lyricsFontSizeSelected(Number(val))
@@ -40,13 +41,14 @@ ColumnLayout {
 
         SettingRow {
             iconName: "sliders-horizontal"
+            iconColor: "#A5B4FC"
             title: "Text Alignment"
             subtitle: "Horizontal alignment of synced lyric text"
 
             SettingSegmentedControl {
                 options: [
-                    { value: "left", label: "LEFT" },
-                    { value: "center", label: "CENTRE" }
+                    { value: "left", label: "Left" },
+                    { value: "center", label: "Center" }
                 ]
                 selectedValue: root.lyricsAlignment
                 onOptionSelected: val => root.lyricsAlignmentSelected(String(val))
@@ -57,13 +59,14 @@ ColumnLayout {
 
         SettingRow {
             iconName: "disc"
+            iconColor: "#EC4899"
             title: "Active Line Color"
             subtitle: "Highlight styling for currently playing lyrics"
 
             SettingSegmentedControl {
                 options: [
-                    { value: "accent", label: "ACCENT" },
-                    { value: "white", label: "WHITE" }
+                    { value: "accent", label: "Accent" },
+                    { value: "white", label: "White" }
                 ]
                 selectedValue: root.lyricsActiveStyle
                 onOptionSelected: val => root.lyricsActiveStyleSelected(String(val))
@@ -76,6 +79,7 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "folder"
+            iconColor: "#C4C4C0"
             title: "Prefer Local .lrc Files"
             subtitle: "Load sidecar .lrc files before querying online providers"
 

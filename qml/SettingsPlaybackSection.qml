@@ -64,12 +64,12 @@ ColumnLayout {
             title: "Sleep Timer"
             subtitle: root.sleepTimerMode === "off" ? "Stop playback automatically after a duration or track" : ("Active countdown: " + root.sleepTimerStatus)
             options: [
-                { value: "off", label: "OFF" },
-                { value: "15", label: "15 MIN" },
-                { value: "30", label: "30 MIN" },
-                { value: "45", label: "45 MIN" },
-                { value: "60", label: "60 MIN" },
-                { value: "track", label: "END OF TRACK" }
+                { value: "off", label: "Off" },
+                { value: "15", label: "15 min" },
+                { value: "30", label: "30 min" },
+                { value: "45", label: "45 min" },
+                { value: "60", label: "60 min" },
+                { value: "track", label: "End of track" }
             ]
             selectedValue: root.sleepTimerMode
             onOptionSelected: val => {
@@ -146,9 +146,9 @@ ColumnLayout {
             title: "Volume Normalization (ReplayGain)"
             subtitle: root.replayGainMode === "off" ? "Preserve original file loudness" : (root.replayGainMode === "track" ? "Track gain active: balance volume per song" : "Album gain active: preserve album dynamic range")
             options: [
-                { value: "off", label: "OFF" },
-                { value: "track", label: "TRACK" },
-                { value: "album", label: "ALBUM" }
+                { value: "off", label: "Off" },
+                { value: "track", label: "Track" },
+                { value: "album", label: "Album" }
             ]
             selectedValue: root.replayGainMode
             onOptionSelected: val => root.replayGainModeSelected(String(val))

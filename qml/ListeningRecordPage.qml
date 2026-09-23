@@ -34,7 +34,7 @@ Item {
 
     readonly property int libraryExploredPct: {
         const totalLib = (tracks || []).length
-        return totalLib > 0 ? Math.min(100, Math.round((uniquePlayed / totalLib) * 100)) : 0
+        return totalLib > 0 ? Math.min(100, Math.round(((playedTracks || []).length / totalLib) * 100)) : 0
     }
 
     readonly property string replayDepth: {
@@ -43,7 +43,7 @@ Item {
 
     readonly property var spotlightTrack: mostPlayed.length > 0 ? mostPlayed[0] : null
 
-    readonly property var artistRanks: {
+    readonly property var allArtistRanks: {
         const counts = {}
         const sampleTracks = {}
         playedTracks.forEach(row => {
@@ -56,29 +56,31 @@ Item {
             name: artist,
             count: counts[artist],
             track: sampleTracks[artist] || ({})
-        })).sort((left, right) => right.count - left.count).slice(0, 30)
+        })).sort((left, right) => right.count - left.count)
     }
+    readonly property var artistRanks: (allArtistRanks || []).slice(0, 30)
 
-    readonly property var albumRanks: {
-        const counts = {}
-        const sampleTracks = {}
-        const artists = {}
+    readonly property var allAlbumRanks: {
+        const groups = {}
         playedTracks.forEach(row => {
-            const album = (row.track && row.track.album) ? row.track.album : "Unknown Album"
-            counts[album] = (counts[album] || 0) + row.count
-            if (!sampleTracks[album] && row.track) {
-                sampleTracks[album] = row.track
-                artists[album] = row.track.artist || "Unknown Artist"
+            if (!row.track) return
+            const album = row.track.album ? row.track.album : "Unknown Album"
+            const artist = row.track.albumArtist || row.track.artist || "Unknown Artist"
+            const key = album + "\u0000" + artist
+            if (!groups[key]) {
+                groups[key] = {
+                    album: album,
+                    name: album,
+                    artist: artist,
+                    count: 0,
+                    track: row.track
+                }
             }
+            groups[key].count += row.count
         })
-        return Object.keys(counts).map(album => ({
-            album: album,
-            name: album,
-            artist: artists[album] || "Unknown Artist",
-            count: counts[album],
-            track: sampleTracks[album] || ({})
-        })).sort((left, right) => right.count - left.count).slice(0, 30)
+        return Object.values(groups).sort((left, right) => right.count - left.count)
     }
+    readonly property var albumRanks: (allAlbumRanks || []).slice(0, 30)
 
     readonly property var genreRanks: {
         const counts = {}
@@ -116,7 +118,7 @@ Item {
     readonly property var filteredTracks: {
         if (!searchQuery.trim()) return mostPlayed
         const q = searchQuery.toLowerCase().trim()
-        return mostPlayed.filter(r => {
+        return playedTracks.filter(r => {
             const title = (r.track && (r.track.title || r.track.fileName) || "").toLowerCase()
             const artist = (r.track && r.track.artist || "").toLowerCase()
             const album = (r.track && r.track.album || "").toLowerCase()
@@ -127,13 +129,13 @@ Item {
     readonly property var filteredArtists: {
         if (!searchQuery.trim()) return artistRanks
         const q = searchQuery.toLowerCase().trim()
-        return artistRanks.filter(r => (r.artist || "").toLowerCase().includes(q))
+        return allArtistRanks.filter(r => (r.artist || "").toLowerCase().includes(q))
     }
 
     readonly property var filteredAlbums: {
         if (!searchQuery.trim()) return albumRanks
         const q = searchQuery.toLowerCase().trim()
-        return albumRanks.filter(r => (r.album || "").toLowerCase().includes(q) || (r.artist || "").toLowerCase().includes(q))
+        return allAlbumRanks.filter(r => (r.album || "").toLowerCase().includes(q) || (r.artist || "").toLowerCase().includes(q))
     }
 
     readonly property var filteredHistory: {
@@ -637,7 +639,7 @@ Item {
                         StatCard {
                             label: "Library Explored"
                             value: root.libraryExploredPct + "%"
-                            subtitle: root.uniquePlayed + " of " + (root.tracks ? root.tracks.length : 0) + " songs"
+                            subtitle: (root.playedTracks ? root.playedTracks.length : 0) + " of " + (root.tracks ? root.tracks.length : 0) + " songs"
                         }
 
                         StatCard {

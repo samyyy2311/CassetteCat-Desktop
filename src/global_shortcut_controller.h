@@ -2,6 +2,7 @@
 
 #include <QAbstractNativeEventFilter>
 #include <QObject>
+#include <QSet>
 #include <QString>
 #include <QTimer>
 #include <QVariantMap>
@@ -53,4 +54,5 @@ private:
     QTimer m_altHoldTimer;
     QString m_status;
     QVariantMap m_shortcuts;
+    QSet<int> m_registeredIds;
 };

@@ -60,7 +60,7 @@ Item {
         const stations = root.displayedStations || []
         const index = stations.findIndex(candidate => candidate.streamUrl === station.streamUrl)
         appWindow.recordRadioRecent(station)
-        appWindow.startRadioPlayback(stations.map(candidate => root.stationTrack(candidate)), Math.max(0, index))
+        appWindow.startRadioPlayback(stations.map(candidate => root.stationTrack(candidate)), Math.max(0, index), station)
     }
 
     function toggleStation(station) {
@@ -185,7 +185,7 @@ Item {
                     boxSize: 34
                     iconSize: 16
                     iconName: "refresh-cw"
-                    enabled: !root.radioUnavailable
+                    enabled: !root.radioUnavailable && root.appWindow.radioActiveTag !== "FAVORITES" && root.appWindow.radioActiveTag !== "RECENTS" && root.appWindow.radioActiveTag !== "CUSTOM"
                     tint: textPrimary
                     tooltipText: "Refresh Stations"
                     onClicked: root.appWindow.refreshRadio()

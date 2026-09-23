@@ -12,8 +12,8 @@ QtObject {
         { action: "volumeDown", label: "Volume Down", defaultKey: "Ctrl+Down", icon: "volume-1", iconColor: "#F59E0B" },
         { action: "seekForward", label: "Seek Forward", defaultKey: "Ctrl+Right", icon: "skip-forward", iconColor: "#38BDF8" },
         { action: "seekBackward", label: "Seek Backward", defaultKey: "Ctrl+Left", icon: "skip-back", iconColor: "#38BDF8" },
-        { action: "nowPlayingNext", label: "Next Track in Player", defaultKey: "Right", icon: "skip-forward", iconColor: "#38BDF8" },
-        { action: "nowPlayingPrevious", label: "Previous Track in Player", defaultKey: "Left", icon: "skip-back", iconColor: "#38BDF8" },
+        { action: "nowPlayingNext", label: "Seek Forward (5s)", defaultKey: "Right", icon: "skip-forward", iconColor: "#38BDF8" },
+        { action: "nowPlayingPrevious", label: "Seek Backward (5s)", defaultKey: "Left", icon: "skip-back", iconColor: "#38BDF8" },
         { action: "mute", label: "Mute", defaultKey: "M", icon: "volume-x", iconColor: "#C23B30" }
     ]
 

@@ -286,7 +286,19 @@ ApplicationWindow {
         const upcoming = currentIndex >= 0 ? queue.slice(currentIndex + 1) : queue
         if (upcoming.length) {
             entries.push({ type: "header", title: "UP NEXT" })
-            upcoming.forEach(track => entries.push({ type: "track", track: track, title: track.title, fileName: track.fileName, filePath: track.filePath, artist: track.artist, album: track.album, duration: track.duration, queueEditable: true }))
+            const baseOffset = currentIndex >= 0 ? currentIndex + 1 : 0
+            upcoming.forEach((track, idx) => entries.push({
+                type: "track",
+                track: track,
+                title: track.title,
+                fileName: track.fileName,
+                filePath: track.filePath,
+                artist: track.artist,
+                album: track.album,
+                duration: track.duration,
+                queueEditable: true,
+                queueIndex: baseOffset + idx
+            }))
         }
         return entries
     }
@@ -791,7 +803,13 @@ ApplicationWindow {
         }
         const tracksByPath = {}
         playbackTracks().forEach(track => tracksByPath[normalizedPlaylistPath(track.filePath)] = track)
-        const tracks = parsedTracks.map(track => tracksByPath[normalizedPlaylistPath(track.filePath)] || track)
+        const tracks = parsedTracks
+            .map(track => tracksByPath[normalizedPlaylistPath(track.filePath)])
+            .filter(track => !!track && track.format !== "STREAM")
+        if (!tracks.length) {
+            playlistStatus = "No library tracks found in playlist"
+            return
+        }
         const fileName = sourcePath.replace(/\\/g, "/").split("/").pop()
         const name = fileName.replace(/\.[^.]+$/, "") || "Imported playlist"
         createPlaylist(name, tracks)
@@ -903,24 +921,36 @@ ApplicationWindow {
     }
 
     function inAppShortcut(action) {
-        const selected = inAppShortcutBindings[action]
-        return selected || shortcutDefinitions.defaultKey(action)
+        if (inAppShortcutBindings && inAppShortcutBindings.hasOwnProperty(action)) {
+            return inAppShortcutBindings[action]
+        }
+        return shortcutDefinitions.defaultKey(action)
     }
 
     function setInAppShortcut(action, shortcut) {
         const matching = shortcutDefinitions.inAppActions.find(item => item.action === action)
         if (!matching) return
-        for (const item of shortcutDefinitions.inAppActions) {
-            if (item.action !== action && inAppShortcut(item.action) === shortcut) {
-                inAppShortcutStatus = shortcut + " is already assigned to " + item.label
-                return
+        if (shortcut && String(shortcut).length > 0) {
+            for (const item of shortcutDefinitions.inAppActions) {
+                if (item.action !== action && inAppShortcut(item.action) === shortcut) {
+                    inAppShortcutStatus = shortcut + " is already assigned to " + item.label
+                    return
+                }
             }
         }
         const updated = Object.assign({}, inAppShortcutBindings)
         if (shortcut === matching.defaultKey) delete updated[action]
         else updated[action] = shortcut
         inAppShortcutBindings = updated
-        inAppShortcutStatus = "Shortcut saved"
+        inAppShortcutStatus = shortcut === "" ? "Shortcut cleared" : "Shortcut saved"
+    }
+
+    function isInputActive() {
+        const item = window.activeFocusItem
+        if (!item) return false
+        if (item.isShortcutCapture === true) return true
+        if (typeof item.cursorPosition !== "undefined" || typeof item.selectedText !== "undefined") return true
+        return false
     }
 
     function dismissSearchFocus(point) {
@@ -1276,11 +1306,13 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("toggleMiniPlayer")
+        enabled: sequence.length > 0 && !isInputActive()
         onActivated: toggleMiniPlayer()
     }
 
     Shortcut {
         sequence: inAppShortcut("toggleSidebar")
+        enabled: sequence.length > 0 && !isInputActive()
         onActivated: {
             if (!miniPlayerMode) sidebarCollapsed = !sidebarCollapsed
         }
@@ -1288,6 +1320,7 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("search")
+        enabled: sequence.length > 0 && !isInputActive()
         onActivated: {
             if (!miniPlayerMode) {
                 nowPlayingOpen = false
@@ -1298,6 +1331,7 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("quickSwitcher")
+        enabled: sequence.length > 0 && !isInputActive()
         onActivated: {
             if (miniPlayerMode) return
             nowPlayingOpen = false
@@ -1313,6 +1347,7 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("closePlayerView")
+        enabled: sequence.length > 0 && !isInputActive()
         onActivated: {
             if (miniPlayerMode) {
                 toggleMiniPlayer()
@@ -1324,6 +1359,7 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("playPause")
+        enabled: sequence.length > 0 && !isInputActive()
         onActivated: {
             if (!player.currentTrack.filePath && library.trackCount > 0) {
                 shuffleAll()
@@ -1335,38 +1371,43 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("volumeUp")
+        enabled: sequence.length > 0 && !isInputActive()
         onActivated: setPlayerVolume(player.volume + 0.05)
     }
 
     Shortcut {
         sequence: inAppShortcut("volumeDown")
+        enabled: sequence.length > 0 && !isInputActive()
         onActivated: setPlayerVolume(player.volume - 0.05)
     }
 
     Shortcut {
         sequence: inAppShortcut("seekForward")
+        enabled: sequence.length > 0 && !isInputActive()
         onActivated: player.seek(Math.min(player.duration, player.position + 5000))
     }
 
     Shortcut {
         sequence: inAppShortcut("seekBackward")
+        enabled: sequence.length > 0 && !isInputActive()
         onActivated: player.seek(Math.max(0, player.position - 5000))
     }
 
     Shortcut {
         sequence: inAppShortcut("nowPlayingNext")
-        enabled: nowPlayingOpen
-        onActivated: player.seek(Math.min(player.duration, player.position + 5000))
+        enabled: sequence.length > 0 && nowPlayingOpen && !isInputActive()
+        onActivated: window.playNext()
     }
 
     Shortcut {
         sequence: inAppShortcut("nowPlayingPrevious")
-        enabled: nowPlayingOpen
-        onActivated: player.seek(Math.max(0, player.position - 5000))
+        enabled: sequence.length > 0 && nowPlayingOpen && !isInputActive()
+        onActivated: window.playPrevious()
     }
 
     Shortcut {
         sequence: inAppShortcut("mute")
+        enabled: sequence.length > 0 && !isInputActive()
         onActivated: setPlayerVolume(player.volume > 0.001 ? 0.0 : 0.8)
     }
 
@@ -1939,7 +1980,7 @@ ApplicationWindow {
         startPlayback(queue, Math.floor(Math.random() * queue.length), true)
     }
 
-    function startRadioPlayback(source, startIndex) {
+    function startRadioPlayback(source, startIndex, originalStation) {
         if (!source || source.length === 0) return
         player.setShuffleEnabled(false)
         const queue = uniqueTracks(source)
@@ -1949,13 +1990,17 @@ ApplicationWindow {
         radioPlaybackQueue = queue.slice()
         const activeTrack = radioPlaybackQueue[index]
         if (activeTrack) {
-            recordRadioRecent({
-                name: activeTrack.title,
-                streamUrl: activeTrack.filePath,
-                favicon: activeTrack.artworkUrl,
-                country: activeTrack.artist,
-                tags: activeTrack.album
-            })
+            if (originalStation) {
+                recordRadioRecent(originalStation)
+            } else {
+                recordRadioRecent({
+                    name: activeTrack.title,
+                    streamUrl: activeTrack.filePath,
+                    favicon: activeTrack.artworkUrl,
+                    country: activeTrack.artist,
+                    tags: activeTrack.album
+                })
+            }
         }
         playQueuedTrack(activeTrack)
     }
@@ -2016,17 +2061,17 @@ ApplicationWindow {
         queueRevision++
     }
 
-    function reorderQueuedTrack(sourceTrack, targetTrack) {
-        if (!sourceTrack || !targetTrack || !sourceTrack.filePath || !targetTrack.filePath) return
-        if (trackIdentity(sourceTrack) === trackIdentity(targetTrack)) return
+    function reorderQueuedTrack(sourceTrack, targetTrack, sourceIndex, targetIndex) {
+        if (!sourceTrack || !targetTrack) return
         const queue = activePlaybackQueue()
         const currentIndex = currentQueueIndex()
-        const fromIdx = queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(sourceTrack))
-        const toIdx = queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(targetTrack))
-        if (fromIdx < 0 || toIdx < 0 || fromIdx <= currentIndex || toIdx <= currentIndex) return
+        let fromIdx = (sourceIndex !== undefined && sourceIndex >= 0) ? sourceIndex : queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(sourceTrack))
+        let toIdx = (targetIndex !== undefined && targetIndex >= 0) ? targetIndex : queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(targetTrack))
+        if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx || fromIdx <= currentIndex || toIdx <= currentIndex) return
         const nextQueue = queue.slice()
         const [moved] = nextQueue.splice(fromIdx, 1)
-        nextQueue.splice(toIdx, 0, moved)
+        const insertIdx = fromIdx < toIdx ? toIdx - 1 : toIdx
+        nextQueue.splice(insertIdx, 0, moved)
         if (player.currentTrack && player.currentTrack.format === "STREAM") radioPlaybackQueue = nextQueue
         else playbackQueue = nextQueue
         queueRevision++
@@ -2087,7 +2132,24 @@ ApplicationWindow {
     Connections {
         target: player
         function onPlaybackRequested(tracks, startIndex) {
-            startPlayback(tracks, startIndex, false)
+            if (!tracks || !tracks.length) return
+            const allStream = tracks.every(t => t && t.format === "STREAM")
+            if (allStream) {
+                const idx = (startIndex >= 0 && startIndex < tracks.length) ? startIndex : 0
+                startRadioPlayback(tracks, idx)
+                return
+            }
+            const hasStream = tracks.some(t => t && t.format === "STREAM")
+            if (!hasStream) {
+                startPlayback(tracks, startIndex, false)
+                return
+            }
+            const targetTrack = (startIndex >= 0 && startIndex < tracks.length) ? tracks[startIndex] : null
+            const filtered = tracks.filter(t => t && t.format !== "STREAM")
+            if (!filtered.length) return
+            let nextIndex = targetTrack ? filtered.indexOf(targetTrack) : 0
+            if (nextIndex < 0) nextIndex = 0
+            startPlayback(filtered, nextIndex, false)
         }
         function onTrackEnded() {
             if (sleepTimerMode === "track") {
@@ -2499,10 +2561,9 @@ ApplicationWindow {
     }
 
     function enforceVolumeLimit() {
-        if (volumeLimitEnabled) {
-            const limit = Math.max(0.05, maxVolumePercent / 100.0)
-            if (player.volume > limit) player.setVolume(limit)
-        }
+        let v = player.volume
+        if (volumeLimitEnabled) v = Math.min(v, Math.max(0.05, maxVolumePercent / 100.0))
+        player.setVolume(v)
     }
 
     Component {

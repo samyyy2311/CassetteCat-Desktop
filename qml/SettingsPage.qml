@@ -154,56 +154,9 @@ Item {
             anchors.fill: parent
             anchors.leftMargin: 28
             anchors.rightMargin: 28
-            anchors.topMargin: 20
+            anchors.topMargin: 14
             anchors.bottomMargin: 16
-            spacing: 16
-
-            // Header matching SearchPage / LibraryPage / ListeningRecordPage
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 14
-
-                ColumnLayout {
-                    spacing: 3
-
-                    Label {
-                        text: "Settings"
-                        color: textPrimary
-                        font.family: displayFont
-                        font.pixelSize: 24
-                        font.weight: Font.Bold
-                        font.letterSpacing: -0.4
-                    }
-
-                    Label {
-                        text: "Manage playback, library, hardware, services, and data"
-                        color: textSecondary
-                        font.family: bodyFont
-                        font.pixelSize: 13
-                    }
-                }
-
-                Item { Layout.fillWidth: true }
-
-                Rectangle {
-                    Layout.preferredHeight: 24
-                    Layout.preferredWidth: versionBadgeText.implicitWidth + 16
-                    radius: 12
-                    color: Qt.rgba(recordRed.r, recordRed.g, recordRed.b, 0.12)
-                    border.width: 1
-                    border.color: Qt.rgba(recordRed.r, recordRed.g, recordRed.b, 0.3)
-
-                    Label {
-                        id: versionBadgeText
-                        anchors.centerIn: parent
-                        text: "v0.5.1"
-                        color: recordRedHover
-                        font.family: monoFont
-                        font.pixelSize: 11
-                        font.weight: Font.Bold
-                    }
-                }
-            }
+            spacing: 0
 
             Item {
                 Layout.fillWidth: true

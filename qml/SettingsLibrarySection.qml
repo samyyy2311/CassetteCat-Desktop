@@ -92,12 +92,12 @@ ColumnLayout {
             title: "Default Launch Page"
             subtitle: "View displayed immediately upon opening CassetteCat"
             options: [
-                { value: "last", label: "LAST VISITED" },
-                { value: "home", label: "HOME" },
-                { value: "library", label: "LIBRARY" },
-                { value: "radio", label: "RADIO" },
-                { value: "search", label: "SEARCH" },
-                { value: "settings", label: "SETTINGS" }
+                { value: "last", label: "Last Visited" },
+                { value: "home", label: "Home" },
+                { value: "library", label: "Library" },
+                { value: "radio", label: "Radio" },
+                { value: "search", label: "Search" },
+                { value: "settings", label: "Settings" }
             ]
             selectedValue: root.defaultLaunchPage
             onOptionSelected: val => root.defaultLaunchPageSelected(val)
@@ -112,10 +112,10 @@ ColumnLayout {
             title: "Default Library Sort"
             subtitle: "Default track order for songs listing"
             options: [
-                { value: "title", label: "TITLE" },
-                { value: "artist", label: "ARTIST" },
-                { value: "album", label: "ALBUM" },
-                { value: "duration", label: "DURATION" }
+                { value: "title", label: "Title" },
+                { value: "artist", label: "Artist" },
+                { value: "album", label: "Album" },
+                { value: "duration", label: "Duration" }
             ]
             selectedValue: root.songSortMetric
             onOptionSelected: val => root.songSortSelected(val)
@@ -131,8 +131,8 @@ ColumnLayout {
 
             SettingSegmentedControl {
                 options: [
-                    { value: "comfortable", label: "COMFORTABLE" },
-                    { value: "compact", label: "COMPACT" }
+                    { value: "comfortable", label: "Comfortable" },
+                    { value: "compact", label: "Compact" }
                 ]
                 selectedValue: root.trackDensity
                 onOptionSelected: val => root.trackDensitySelected(val)

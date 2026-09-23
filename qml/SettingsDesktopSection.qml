@@ -72,9 +72,9 @@ ColumnLayout {
 
             SettingSegmentedControl {
                 options: [
-                    { value: "off", label: "OFF" },
-                    { value: "minimized", label: "WHEN MINIMIZED" },
-                    { value: "always", label: "ALWAYS" }
+                    { value: "off", label: "Off" },
+                    { value: "minimized", label: "When Minimized" },
+                    { value: "always", label: "Always" }
                 ]
                 selectedValue: root.nowPlayingNotifications
                 onOptionSelected: val => root.nowPlayingNotificationsSelected(String(val))

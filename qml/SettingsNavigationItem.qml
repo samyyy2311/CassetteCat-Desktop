@@ -18,10 +18,10 @@ Rectangle {
     implicitHeight: compact ? 34 : 40
     radius: compact ? 17 : 8
     color: selected
-        ? (compact ? root.accentColor : Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.12))
-        : (mouse.containsMouse ? surfaceCardHover : "transparent")
+        ? (compact ? root.accentColor : (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623"))
+        : (mouse.containsMouse ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#22201D") : "transparent")
     border.width: (!compact && selected) ? 1 : 0
-    border.color: selected ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.35) : "transparent"
+    border.color: selected ? (typeof borderVariant !== "undefined" ? borderVariant : "#2C2926") : "transparent"
     Accessible.role: Accessible.Button
     Accessible.name: label
     Accessible.checked: selected

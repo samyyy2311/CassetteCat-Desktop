@@ -16,7 +16,8 @@ Item {
     signal trackActivated(var track)
     signal playNextRequested(var track)
     signal trackRemovalRequested(var track)
-    signal trackReorderRequested(var srcTrack, var targetTrack)
+    signal trackReorderRequested(var srcTrack, var targetTrack, int srcIndex, int targetIndex)
+    readonly property int queueIndex: entry && entry.queueIndex !== undefined ? entry.queueIndex : -1
 
     readonly property bool header: entry && entry.type === "header"
     readonly property bool current: entry && entry.type === "current"
@@ -50,7 +51,7 @@ Item {
             keys: ["queue-track"]
             onDropped: drop => {
                 if (drop.source && drop.source.dragTrack) {
-                    root.trackReorderRequested(drop.source.dragTrack, root.track)
+                    root.trackReorderRequested(drop.source.dragTrack, root.track, drop.source.dragIndex !== undefined ? drop.source.dragIndex : -1, root.queueIndex)
                 }
             }
         }
@@ -72,6 +73,7 @@ Item {
             Drag.source: dragSourceItem
             Drag.keys: ["queue-track"]
             property var dragTrack: root.track
+            property int dragIndex: root.queueIndex
         }
 
         Label {
@@ -196,6 +198,7 @@ Item {
                     id: gripMouse
                     anchors.fill: parent
                     hoverEnabled: true
+                    preventStealing: true
                     cursorShape: Qt.SizeVerCursor
                     drag.target: dragSourceItem
                     drag.axis: Drag.YAxis
@@ -203,6 +206,10 @@ Item {
                         if (dragSourceItem.Drag.active) {
                             dragSourceItem.Drag.drop()
                         }
+                        dragSourceItem.y = 0
+                    }
+                    onCanceled: {
+                        dragSourceItem.y = 0
                     }
                 }
             }

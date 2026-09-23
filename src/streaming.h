@@ -6,6 +6,7 @@
 #include <QPointer>
 #include <QSet>
 #include <QUrl>
+#include <QSslCertificate>
 #include <QVariantList>
 #include <QVariantMap>
 
@@ -24,8 +25,7 @@ inline constexpr int requestTimeoutMs = 60'000;
 // Android data/streaming clients. Secrets live only in the OS credential
 // store plus transient request memory; QSettings holds non-secret config.
 // QML receives track metadata only, never passwords, tokens, or session keys.
-class StreamingController final : public QObject
-{
+class StreamingController final : public QObject {
     Q_OBJECT
     Q_PROPERTY(QVariantList remoteTracks READ remoteTracks NOTIFY remoteTracksChanged)
     Q_PROPERTY(bool subsonicConnected READ subsonicConnected NOTIFY statusChanged)
@@ -39,23 +39,47 @@ class StreamingController final : public QObject
     Q_PROPERTY(RemoteTrackModel *jellyfinModel READ jellyfinModel CONSTANT)
     Q_PROPERTY(RemoteTrackModel *subsonicModel READ subsonicModel CONSTANT)
 
-public:
+  public:
     explicit StreamingController(const QString &settingsPath, QObject *parent = nullptr);
 
-    QVariantList remoteTracks() const { return m_remoteTracks; }
-    bool subsonicConnected() const { return m_subsonicConnected; }
-    bool jellyfinConnected() const { return m_jellyfinConnected; }
-    QString subsonicStatus() const { return m_subsonicStatus; }
-    QString jellyfinStatus() const { return m_jellyfinStatus; }
-    bool jellyfinQuickConnecting() const { return m_jellyfinQuickConnecting; }
-    QString jellyfinQuickConnectCode() const { return m_jellyfinQuickConnectCode; }
-    bool remoteLibraryLoading() const { return m_refreshing; }
-    int remoteArtRevision() const { return m_remoteArtRevision; }
-    RemoteTrackModel *jellyfinModel() const { return m_jellyfinModel; }
-    RemoteTrackModel *subsonicModel() const { return m_subsonicModel; }
+    QVariantList remoteTracks() const {
+        return m_remoteTracks;
+    }
+    bool subsonicConnected() const {
+        return m_subsonicConnected;
+    }
+    bool jellyfinConnected() const {
+        return m_jellyfinConnected;
+    }
+    QString subsonicStatus() const {
+        return m_subsonicStatus;
+    }
+    QString jellyfinStatus() const {
+        return m_jellyfinStatus;
+    }
+    bool jellyfinQuickConnecting() const {
+        return m_jellyfinQuickConnecting;
+    }
+    QString jellyfinQuickConnectCode() const {
+        return m_jellyfinQuickConnectCode;
+    }
+    bool remoteLibraryLoading() const {
+        return m_refreshing;
+    }
+    int remoteArtRevision() const {
+        return m_remoteArtRevision;
+    }
+    RemoteTrackModel *jellyfinModel() const {
+        return m_jellyfinModel;
+    }
+    RemoteTrackModel *subsonicModel() const {
+        return m_subsonicModel;
+    }
 
-    Q_INVOKABLE void connectSubsonic(const QString &serverUrl, const QString &username, const QString &password, bool trustCert = false);
-    Q_INVOKABLE void connectJellyfin(const QString &serverUrl, const QString &username, const QString &password, bool trustCert = false);
+    Q_INVOKABLE void connectSubsonic(const QString &serverUrl, const QString &username, const QString &password,
+                                     bool trustCert = false);
+    Q_INVOKABLE void connectJellyfin(const QString &serverUrl, const QString &username, const QString &password,
+                                     bool trustCert = false);
     Q_INVOKABLE void startJellyfinQuickConnect(const QString &serverUrl, bool trustCert = false);
     Q_INVOKABLE void cancelJellyfinQuickConnect();
     Q_INVOKABLE void disconnectServer(const QString &protocol);
@@ -74,7 +98,7 @@ public:
     Q_INVOKABLE QVariantMap serverConfigSnapshot() const;
     static QVariantMap serverConfigSnapshot(const QString &settingsPath);
 
-signals:
+  signals:
     void remoteTracksChanged();
     void statusChanged();
     void remoteArtChanged();
@@ -85,7 +109,7 @@ signals:
     void serverFavoriteFailed(const QString &filePath);
     void jellyfinLyricsFetched(const QString &filePath, const QString &lyrics);
 
-private:
+  private:
     void updateStatusTexts();
     void setRemoteTracks(const QVariantList &tracks);
     void removeProviderTracks(const QString &prefix);
@@ -94,22 +118,21 @@ private:
     bool blackoutEnabled() const;
     QString deviceId();
     QNetworkReply *trackReply(QNetworkReply *reply, bool allowSelfSigned = false);
-    bool isServerCertTrusted(const QUrl &url) const;
+    bool isServerCertTrusted(const QUrl &url, const QSslCertificate &cert = QSslCertificate()) const;
     QString friendlyError(QNetworkReply *reply, const QString &fallback);
     void beginRefresh();
     void finishRefreshStage();
     void cancelPendingRequests();
     void refreshSubsonic(const QString &base, const QString &user, const QString &password, int tokenSnapshot);
-    void fetchSubsonicAlbumIds(const QString &base, const QString &user, const QString &token,
-                               const QString &salt, int offset, std::shared_ptr<QStringList> ids,
-                               std::shared_ptr<QVariantList> out, int tokenSnapshot);
-    void fetchSubsonicAlbum(const QString &base, const QString &user, const QString &token,
-                            const QString &salt, std::shared_ptr<QStringList> ids,
-                            std::shared_ptr<QVariantList> out, std::shared_ptr<int> nextIndex,
-                            std::shared_ptr<int> activeRequests, int tokenSnapshot);
+    void fetchSubsonicAlbumIds(const QString &base, const QString &user, const QString &token, const QString &salt,
+                               int offset, std::shared_ptr<QStringList> ids, std::shared_ptr<QVariantList> out,
+                               int tokenSnapshot);
+    void fetchSubsonicAlbum(const QString &base, const QString &user, const QString &token, const QString &salt,
+                            std::shared_ptr<QStringList> ids, std::shared_ptr<QVariantList> out,
+                            std::shared_ptr<int> nextIndex, std::shared_ptr<int> activeRequests, int tokenSnapshot);
     void refreshJellyfin(const QString &base, const QString &userId, const QString &accessToken, int tokenSnapshot);
-    void fetchJellyfinPage(const QString &base, const QString &userId, const QString &accessToken,
-                           int startIndex, std::shared_ptr<QVariantList> out, int tokenSnapshot);
+    void fetchJellyfinPage(const QString &base, const QString &userId, const QString &accessToken, int startIndex,
+                           std::shared_ptr<QVariantList> out, int tokenSnapshot);
     void completeJellyfinLogin(const QString &base, const QJsonObject &result, bool trustCert = false);
 
     QString m_settingsPath;
@@ -136,6 +159,7 @@ private:
     QNetworkAccessManager *m_net = nullptr;
     RemoteTrackModel *m_jellyfinModel = nullptr;
     RemoteTrackModel *m_subsonicModel = nullptr;
+    QHash<QString, QString> m_pendingCertDigests;
 };
 
 namespace streaming {
@@ -144,4 +168,4 @@ namespace streaming {
 // unattended Windows sessions cannot access Credential Manager.
 bool runSelfChecks(bool includeVaultProbe = false);
 
-}
+} // namespace streaming

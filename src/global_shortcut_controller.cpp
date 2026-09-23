@@ -200,16 +200,9 @@ bool GlobalShortcutController::setShortcut(const QString &action, const QString 
     const QString normalized = normalizedShortcut(modifiers, key);
     if (m_shortcuts.value(action).toString() == normalized) return true;
 
-    const QVariantMap previous = m_shortcuts;
     m_shortcuts.insert(action, normalized);
     if (m_enabled) {
-        unregisterShortcuts();
-        if (!registerShortcuts()) {
-            m_shortcuts = previous;
-            registerShortcuts();
-            return false;
-        }
-        setStatus("Global shortcuts are on");
+        registerShortcuts();
     }
     emit shortcutsChanged();
     return true;
@@ -274,15 +267,35 @@ bool GlobalShortcutController::nativeEventFilter(const QByteArray &eventType, vo
 bool GlobalShortcutController::registerShortcuts()
 {
 #ifdef Q_OS_WIN
+    unregisterShortcuts();
+    int registeredCount = 0;
+    QStringList conflicts;
+
     for (const auto &shortcut : shortcutDefinitions) {
         UINT modifiers = 0;
         UINT key = 0;
-        if (!parseShortcut(m_shortcuts.value(QString::fromLatin1(shortcut.action)).toString(), &modifiers, &key)
-            || !RegisterHotKey(nullptr, shortcut.id, modifiers | MOD_NOREPEAT, key)) {
-            unregisterShortcuts();
-            setStatus("Unavailable: another app is using one of these shortcuts");
-            return false;
+        const QString shortcutStr = m_shortcuts.value(QString::fromLatin1(shortcut.action)).toString();
+        if (!parseShortcut(shortcutStr, &modifiers, &key)) {
+            conflicts << QString::fromLatin1(shortcut.action);
+            continue;
         }
+        if (RegisterHotKey(nullptr, shortcut.id, modifiers | MOD_NOREPEAT, key)) {
+            m_registeredIds.insert(shortcut.id);
+            registeredCount++;
+        } else {
+            conflicts << QString::fromLatin1(shortcut.action);
+        }
+    }
+
+    if (registeredCount == 0) {
+        setStatus("Unavailable: another application is using these shortcuts");
+        return false;
+    }
+
+    if (!conflicts.isEmpty()) {
+        setStatus(QString("Active (%1 conflict: %2)").arg(conflicts.size()).arg(conflicts.join(", ")));
+    } else {
+        setStatus("Global shortcuts are active");
     }
     return true;
 #else
@@ -309,7 +322,10 @@ bool GlobalShortcutController::selfCheck()
 void GlobalShortcutController::unregisterShortcuts()
 {
 #ifdef Q_OS_WIN
-    for (const auto &shortcut : shortcutDefinitions) UnregisterHotKey(nullptr, shortcut.id);
+    for (int id : m_registeredIds) {
+        UnregisterHotKey(nullptr, id);
+    }
+    m_registeredIds.clear();
 #endif
 }
 

@@ -18,14 +18,13 @@
 #include <QTemporaryDir>
 #include <QUrlQuery>
 
-ServicesController::ServicesController(QObject *parent)
-    : QObject(parent), m_net(new QNetworkAccessManager(this))
-{
+ServicesController::ServicesController(QObject *parent) : QObject(parent), m_net(new QNetworkAccessManager(this)) {
     QSettings s(settingsFilePath(), QSettings::IniFormat);
     s.beginGroup("artist_images");
     for (const QString &key : s.childKeys()) {
         const QString imageUrl = s.value(key).toString();
-        if (imageUrl.startsWith("http://", Qt::CaseInsensitive) || imageUrl.startsWith("https://", Qt::CaseInsensitive)) {
+        if (imageUrl.startsWith("http://", Qt::CaseInsensitive) ||
+            imageUrl.startsWith("https://", Qt::CaseInsensitive)) {
             m_artistImages.insert(key, imageUrl);
         } else if (QUrl(imageUrl).isLocalFile() && QFileInfo::exists(QUrl(imageUrl).toLocalFile())) {
             m_artistImages.insert(key, imageUrl);
@@ -34,184 +33,200 @@ ServicesController::ServicesController(QObject *parent)
     s.endGroup();
 }
 
-bool ServicesController::onlineEnabled() const
-{
+bool ServicesController::onlineEnabled() const {
     return !SettingsController::globalValue("network/offlineBlackout", false).toBool();
 }
 
-bool ServicesController::serviceEnabled(const QString &service) const
-{
+bool ServicesController::serviceEnabled(const QString &service) const {
     return SettingsController::globalValue("services/" + service, true).toBool();
 }
 
-bool ServicesController::serviceEnabled(const QSettings &settings, const QString &service)
-{
+bool ServicesController::serviceEnabled(const QSettings &settings, const QString &service) {
     return settings.value("services/" + service, true).toBool();
 }
 
-bool ServicesController::selfCheck()
-{
+bool ServicesController::selfCheck() {
     class PendingReply final : public QNetworkReply {
-    public:
+      public:
         void abort() override {
             setFinished(true);
             emit finished();
         }
-    protected:
-        qint64 readData(char *, qint64) override { return -1; }
+
+      protected:
+        qint64 readData(char *, qint64) override {
+            return -1;
+        }
     };
 
     ServicesController services;
     QTemporaryDir settingsDir;
-    if (!settingsDir.isValid()) return false;
+    if (!settingsDir.isValid())
+        return false;
     QSettings serviceSettings(settingsDir.filePath("settings.ini"), QSettings::IniFormat);
     serviceSettings.setValue("services/deezer", false);
-    if (serviceEnabled(serviceSettings, "deezer") || !serviceEnabled(serviceSettings, "wiki") || !serviceEnabled(serviceSettings, "archive")) return false;
+    if (serviceEnabled(serviceSettings, "deezer") || !serviceEnabled(serviceSettings, "wiki") ||
+        !serviceEnabled(serviceSettings, "archive"))
+        return false;
 
     PendingReply replies[8];
-    for (auto &reply : replies) services.trackReply(&reply);
+    for (auto &reply : replies)
+        services.trackReply(&reply);
     services.m_radioReply = &replies[0];
 
     services.setBlackoutEnabled(false);
     for (const auto &reply : replies) {
-        if (!reply.isRunning()) return false;
+        if (!reply.isRunning())
+            return false;
     }
 
     services.cancelRadioRequests();
-    if (!replies[0].isFinished() || services.m_radioReply) return false;
+    if (!replies[0].isFinished() || services.m_radioReply)
+        return false;
     for (int i = 1; i < 8; ++i) {
-        if (!replies[i].isRunning()) return false;
+        if (!replies[i].isRunning())
+            return false;
     }
 
     services.setBlackoutEnabled(true);
     for (const auto &reply : replies) {
-        if (!reply.isFinished()) return false;
+        if (!reply.isFinished())
+            return false;
     }
     services.setBlackoutEnabled(true);
-    if (!services.m_pendingReplies.isEmpty()) return false;
+    if (!services.m_pendingReplies.isEmpty())
+        return false;
 
-    return compareVersions("0.5.2", "0.5.1") > 0
-        && compareVersions("0.5.1", "0.5.1") == 0
-        && compareVersions("0.5.0", "0.5.1") < 0
-        && compareVersions("v1.0.0", "0.9.9") > 0;
+    return compareVersions("0.5.2", "0.5.1") > 0 && compareVersions("0.5.1", "0.5.1") == 0 &&
+           compareVersions("0.5.0", "0.5.1") < 0 && compareVersions("v1.0.0", "0.9.9") > 0;
 }
 
-QNetworkReply *ServicesController::trackReply(QNetworkReply *reply)
-{
+QNetworkReply *ServicesController::trackReply(QNetworkReply *reply) {
     m_pendingReplies.append(reply);
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
-        m_pendingReplies.removeAll(reply);
-    });
+    connect(reply, &QNetworkReply::finished, this, [this, reply] { m_pendingReplies.removeAll(reply); });
     return reply;
 }
 
-void ServicesController::fetchRadioStations(const QString &searchQuery, const QString &country, const QString &language, const QString &tag, const QString &sort, bool reverse)
-{
-        if (!onlineEnabled() || !serviceEnabled("radio")) return;
-        cancelRadioRequests();
-        const int requestToken = m_radioRequestToken;
-        QUrl url("https://de1.api.radio-browser.info/json/stations/search");
-        QUrlQuery q;
-        const QString normalizedSort = QStringList{"votes", "clicktrend", "name", "country", "bitrate"}.contains(sort) ? sort : "votes";
-        q.addQueryItem("order", normalizedSort);
-        q.addQueryItem("reverse", reverse ? "true" : "false");
-        q.addQueryItem("lastcheckok", "1");
-        q.addQueryItem("limit", "80");
-        if (!searchQuery.trimmed().isEmpty()) {
-            q.addQueryItem("name", searchQuery.trimmed());
-        }
-        if (!country.trimmed().isEmpty()) q.addQueryItem("country", country.trimmed());
-        if (!language.trimmed().isEmpty()) q.addQueryItem("language", language.trimmed());
-        if (!tag.trimmed().isEmpty()) q.addQueryItem("tag", tag.trimmed());
-        url.setQuery(q);
-
-        QNetworkRequest req(url);
-        req.setTransferTimeout(services::detail::requestTimeoutMs);
-        req.setHeader(QNetworkRequest::UserAgentHeader, "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
-
-        auto *reply = trackReply(m_net->get(req));
-        m_radioReply = reply;
-        connect(reply, &QNetworkReply::finished, this, [this, reply, requestToken]() {
-            if (reply == m_radioReply) m_radioReply = nullptr;
-            reply->deleteLater();
-            if (!onlineEnabled() || !serviceEnabled("radio")) return;
-            if (requestToken != m_radioRequestToken) return;
-            if (reply->error() == QNetworkReply::NoError) {
-                const auto doc = QJsonDocument::fromJson(reply->readAll());
-                if (doc.isArray()) {
-                    QVariantList stations;
-                    const auto arr = doc.array();
-                    for (const auto &v : arr) {
-                        const auto obj = v.toObject();
-                        const QString streamUrl = obj.value("url_resolved").toString();
-                        if (streamUrl.isEmpty()) continue;
-
-                        QVariantMap s;
-                        s["id"] = obj.value("stationuuid").toString();
-                        s["name"] = obj.value("name").toString();
-                        s["streamUrl"] = streamUrl;
-                        s["favicon"] = obj.value("favicon").toString();
-                        s["tags"] = obj.value("tags").toString();
-                        s["country"] = obj.value("country").toString();
-                        s["language"] = obj.value("language").toString();
-                        s["bitrate"] = obj.value("bitrate").toInt();
-                        stations.append(s);
-                    }
-                    emit radioStationsLoaded(stations);
-                }
-            }
-        });
+void ServicesController::fetchRadioStations(const QString &searchQuery, const QString &country, const QString &language,
+                                            const QString &tag, const QString &sort, bool reverse) {
+    if (!onlineEnabled() || !serviceEnabled("radio"))
+        return;
+    cancelRadioRequests();
+    const int requestToken = m_radioRequestToken;
+    QUrl url("https://de1.api.radio-browser.info/json/stations/search");
+    QUrlQuery q;
+    const QString normalizedSort =
+        QStringList{"votes", "clicktrend", "name", "country", "bitrate"}.contains(sort) ? sort : "votes";
+    q.addQueryItem("order", normalizedSort);
+    q.addQueryItem("reverse", reverse ? "true" : "false");
+    q.addQueryItem("lastcheckok", "1");
+    q.addQueryItem("limit", "80");
+    if (!searchQuery.trimmed().isEmpty()) {
+        q.addQueryItem("name", searchQuery.trimmed());
     }
+    if (!country.trimmed().isEmpty())
+        q.addQueryItem("country", country.trimmed());
+    if (!language.trimmed().isEmpty())
+        q.addQueryItem("language", language.trimmed());
+    if (!tag.trimmed().isEmpty())
+        q.addQueryItem("tag", tag.trimmed());
+    url.setQuery(q);
 
-void ServicesController::cancelRadioRequests()
-{
-        ++m_radioRequestToken;
-        if (m_radioReply && m_radioReply->isRunning()) m_radioReply->abort();
-        m_radioReply = nullptr;
+    QNetworkRequest req(url);
+    req.setTransferTimeout(services::detail::requestTimeoutMs);
+    req.setHeader(QNetworkRequest::UserAgentHeader, "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
+
+    auto *reply = trackReply(m_net->get(req));
+    m_radioReply = reply;
+    connect(reply, &QNetworkReply::finished, this, [this, reply, requestToken]() {
+        if (reply == m_radioReply)
+            m_radioReply = nullptr;
+        reply->deleteLater();
+        if (!onlineEnabled() || !serviceEnabled("radio"))
+            return;
+        if (requestToken != m_radioRequestToken)
+            return;
+        if (reply->error() == QNetworkReply::NoError) {
+            const auto doc = QJsonDocument::fromJson(reply->readAll());
+            if (doc.isArray()) {
+                QVariantList stations;
+                const auto arr = doc.array();
+                for (const auto &v : arr) {
+                    const auto obj = v.toObject();
+                    const QString streamUrl = obj.value("url_resolved").toString();
+                    if (streamUrl.isEmpty())
+                        continue;
+
+                    QVariantMap s;
+                    s["id"] = obj.value("stationuuid").toString();
+                    s["name"] = obj.value("name").toString();
+                    s["streamUrl"] = streamUrl;
+                    s["favicon"] = obj.value("favicon").toString();
+                    s["tags"] = obj.value("tags").toString();
+                    s["country"] = obj.value("country").toString();
+                    s["language"] = obj.value("language").toString();
+                    s["bitrate"] = obj.value("bitrate").toInt();
+                    stations.append(s);
+                }
+                emit radioStationsLoaded(stations);
+            }
+        }
+    });
 }
 
-void ServicesController::cancelNetworkRequests()
-{
-        ++m_lyricsRequestToken;
-        cancelRadioRequests();
-        cancelNetworkReplies(m_pendingReplies);
+void ServicesController::cancelRadioRequests() {
+    ++m_radioRequestToken;
+    if (m_radioReply && m_radioReply->isRunning())
+        m_radioReply->abort();
+    m_radioReply = nullptr;
 }
 
-void ServicesController::setBlackoutEnabled(bool enabled)
-{
-        if (!enabled) return;
-        cancelNetworkRequests();
+void ServicesController::cancelNetworkRequests() {
+    ++m_lyricsRequestToken;
+    cancelRadioRequests();
+    cancelNetworkReplies(m_pendingReplies);
 }
 
-void ServicesController::openExternalUrl(const QString &url)
-{
-    if (!onlineEnabled()) return;
+void ServicesController::setBlackoutEnabled(bool enabled) {
+    if (!enabled)
+        return;
+    cancelNetworkRequests();
+}
+
+void ServicesController::openExternalUrl(const QString &url) {
+    if (!onlineEnabled())
+        return;
     QDesktopServices::openUrl(QUrl(url));
 }
 
-int ServicesController::compareVersions(const QString &v1, const QString &v2)
-{
+int ServicesController::compareVersions(const QString &v1, const QString &v2) {
     const auto parseVersion = [](QString v) -> QList<int> {
-        if (v.startsWith('v', Qt::CaseInsensitive)) v = v.mid(1);
+        if (v.startsWith('v', Qt::CaseInsensitive))
+            v = v.mid(1);
         const QStringList parts = v.split('.');
         QList<int> numbers;
         for (const QString &part : parts) {
             numbers.append(part.toInt());
         }
-        while (numbers.size() < 3) numbers.append(0);
+        while (numbers.size() < 3)
+            numbers.append(0);
         return numbers;
     };
     const QList<int> nums1 = parseVersion(v1);
     const QList<int> nums2 = parseVersion(v2);
-    for (int i = 0; i < qMin(nums1.size(), nums2.size()); ++i) {
-        if (nums1[i] > nums2[i]) return 1;
-        if (nums1[i] < nums2[i]) return -1;
+    const int count = qMax(nums1.size(), nums2.size());
+    for (int i = 0; i < count; ++i) {
+        const int n1 = i < nums1.size() ? nums1[i] : 0;
+        const int n2 = i < nums2.size() ? nums2[i] : 0;
+        if (n1 > n2)
+            return 1;
+        if (n1 < n2)
+            return -1;
     }
     return 0;
 }
 
-void ServicesController::checkForUpdates(bool manual)
-{
+void ServicesController::checkForUpdates(bool manual) {
     if (!onlineEnabled()) {
         if (manual) {
             emit updateCheckFailed(QStringLiteral("Offline blackout is enabled."), manual);
@@ -253,5 +268,3 @@ void ServicesController::checkForUpdates(bool manual)
         emit updateCheckFinished(updateAvailable, tag, releaseUrl, body, manual);
     });
 }
-
-

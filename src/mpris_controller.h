@@ -6,12 +6,11 @@
 
 class PlayerController;
 
-class MprisController final : public QObject
-{
+class MprisController final : public QObject {
     Q_OBJECT
     Q_PROPERTY(int repeatMode READ repeatMode WRITE setRepeatMode NOTIFY repeatModeChanged)
 
-public:
+  public:
     explicit MprisController(PlayerController *player, QObject *parent = nullptr);
     ~MprisController() override;
 
@@ -26,7 +25,7 @@ public:
     static QString loopStatusString(int repeatMode);
     static int loopStatusToRepeatMode(const QString &loopStatus);
 
-signals:
+  signals:
     void playRequested();
     void pauseRequested();
     void playPauseRequested();
@@ -38,14 +37,14 @@ signals:
     void openUriRequested(const QString &uri);
     void repeatModeChanged(int mode);
 
-private slots:
+  private slots:
     void onTrackChanged();
     void onPlayingChanged();
     void onVolumeChanged();
     void onShuffleChanged();
     void onPositionChanged();
 
-private:
+  private:
     PlayerController *m_player = nullptr;
     int m_repeatMode = 0;
     void *m_backend = nullptr;

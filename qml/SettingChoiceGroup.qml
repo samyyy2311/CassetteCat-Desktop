@@ -125,10 +125,10 @@ SettingRow {
                     height: 36
                     radius: 7
                     color: isSelected
-                        ? Qt.rgba(root.accentColor.r, root.accentColor.g, root.accentColor.b, 0.16)
+                        ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623")
                         : (optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus) ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#282623") : "transparent")
                     border.width: isSelected ? 1 : 0
-                    border.color: root.accentColor
+                    border.color: (typeof borderVariant !== "undefined" ? borderVariant : "#2C2926")
 
                     RowLayout {
                         anchors.fill: parent
@@ -140,11 +140,11 @@ SettingRow {
                             Layout.fillWidth: true
                             text: optItem.optionLabel
                             color: optItem.isSelected
-                                ? root.accentHoverColor
+                                ? textPrimary
                                 : (optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus) ? textPrimary : textSecondary)
                             font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
                             font.pixelSize: 12
-                            font.weight: optItem.isSelected ? Font.Bold : Font.Medium
+                            font.weight: optItem.isSelected ? Font.DemiBold : Font.Normal
                             elide: Text.ElideRight
                         }
 
@@ -153,7 +153,7 @@ SettingRow {
                             Layout.preferredWidth: 14
                             Layout.preferredHeight: 14
                             icon: "check"
-                            color: root.accentHoverColor
+                            color: root.accentColor
                         }
                     }
 

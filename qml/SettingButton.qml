@@ -18,21 +18,21 @@ Rectangle {
 
     implicitWidth: contentRow.implicitWidth + 22
     implicitHeight: 32
-    radius: height / 2
+    radius: 8
     color: {
         if (mouseArea.containsMouse) {
             if (root.destructive) return Qt.rgba(1, 0.15, 0.15, 0.18)
-            if (root.primary) return (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#2E2A27")
+            if (root.primary) return root.accentHoverColor
             return (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623")
         }
         if (root.destructive) return "transparent"
-        if (root.primary) return (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#262320")
+        if (root.primary) return root.accentColor
         return (typeof surfaceInput !== "undefined" ? surfaceInput : "#1A1917")
     }
     border.width: 1
     border.color: {
-        if (root.destructive) return mouseArea.containsMouse ? root.accentHoverColor : Qt.rgba(1, 0.25, 0.25, 0.35)
-        if (root.primary) return root.accentColor
+        if (root.destructive) return mouseArea.containsMouse ? Qt.rgba(1, 0.35, 0.35, 0.5) : Qt.rgba(1, 0.25, 0.25, 0.25)
+        if (root.primary) return "transparent"
         return mouseArea.containsMouse ? (typeof borderVariant !== "undefined" ? borderVariant : "#2C2926") : (typeof borderSubtle !== "undefined" ? borderSubtle : "#22201D")
     }
     Accessible.name: root.accessibleName
@@ -56,17 +56,17 @@ Rectangle {
             Layout.alignment: Qt.AlignVCenter
             icon: root.iconName
             preserveColor: root.preserveIconColor
-            color: root.destructive ? root.accentHoverColor : (root.primary ? root.accentHoverColor : (mouseArea.containsMouse ? textPrimary : textSecondary))
+            color: root.primary ? "#FFFFFF" : (root.destructive ? (mouseArea.containsMouse ? "#FF6B6B" : Qt.rgba(1, 0.45, 0.45, 0.9)) : (mouseArea.containsMouse ? textPrimary : textSecondary))
 
             Behavior on color { ColorAnimation { duration: 120 } }
         }
 
         Label {
             text: root.text
-            color: root.destructive ? root.accentHoverColor : (root.primary ? root.accentHoverColor : (mouseArea.containsMouse ? textPrimary : textSecondary))
-            font.family: (typeof monoFont !== "undefined" ? monoFont : "IBM Plex Mono")
-            font.pixelSize: 11
-            font.weight: root.primary ? Font.Bold : (root.destructive ? Font.DemiBold : Font.Medium)
+            color: root.primary ? "#FFFFFF" : (root.destructive ? (mouseArea.containsMouse ? "#FF6B6B" : Qt.rgba(1, 0.45, 0.45, 0.9)) : (mouseArea.containsMouse ? textPrimary : textSecondary))
+            font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
+            font.pixelSize: 12
+            font.weight: root.primary ? Font.Bold : Font.DemiBold
             Layout.alignment: Qt.AlignVCenter
 
             Behavior on color { ColorAnimation { duration: 120 } }
@@ -79,7 +79,7 @@ Rectangle {
             Layout.alignment: Qt.AlignVCenter
             icon: root.iconName
             preserveColor: root.preserveIconColor
-            color: root.destructive ? root.accentHoverColor : (root.primary ? root.accentHoverColor : (mouseArea.containsMouse ? textPrimary : textSecondary))
+            color: root.primary ? "#FFFFFF" : (root.destructive ? (mouseArea.containsMouse ? "#FF6B6B" : Qt.rgba(1, 0.45, 0.45, 0.9)) : (mouseArea.containsMouse ? textPrimary : textSecondary))
 
             Behavior on color { ColorAnimation { duration: 120 } }
         }

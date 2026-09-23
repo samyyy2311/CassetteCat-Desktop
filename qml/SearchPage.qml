@@ -419,7 +419,7 @@ Item {
                         spacing: 8
 
                         Repeater {
-                            model: root.getTopArtists()
+                            model: (root.libraryModel && root.libraryModel.trackCount >= 0 && root.libraryModel.folders !== undefined) ? root.getTopArtists() : []
 
                             Rectangle {
                                 height: 28
@@ -484,7 +484,7 @@ Item {
                         spacing: 8
 
                         Repeater {
-                            model: root.getPopularGenres()
+                            model: (root.libraryModel && root.libraryModel.trackCount >= 0 && root.libraryModel.folders !== undefined) ? root.getPopularGenres() : []
 
                             Rectangle {
                                 height: 28

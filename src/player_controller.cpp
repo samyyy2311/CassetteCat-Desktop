@@ -28,26 +28,22 @@
 
 namespace {
 
-bool isNetworkStream(const QUrl &url)
-{
+bool isNetworkStream(const QUrl &url) {
     return url.scheme() == QStringLiteral("http") || url.scheme() == QStringLiteral("https");
 }
 
-}
+} // namespace
 
 PlayerController::PlayerController(QObject *parent, StreamingController *streaming)
-    : QObject(parent)
-    , m_streaming(streaming)
-    , m_audioOutput(new QAudioOutput(this))
-    , m_mediaDevices(new QMediaDevices(this))
-    , m_bufferOutput(new QAudioBufferOutput(this))
-    , m_player(new QMediaPlayer(this))
-{
+    : QObject(parent), m_streaming(streaming), m_audioOutput(new QAudioOutput(this)),
+      m_mediaDevices(new QMediaDevices(this)), m_bufferOutput(new QAudioBufferOutput(this)),
+      m_player(new QMediaPlayer(this)) {
     m_player->setAudioOutput(m_audioOutput);
     m_replayGainMode = SettingsController::globalValue("player/replayGainMode", QStringLiteral("off")).toString();
     m_baseVolume = std::clamp(SettingsController::globalValue("player/volume", 1.0f).toFloat(), 0.0f, 1.0f);
     if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
-        const int maxPercent = std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
+        const int maxPercent =
+            std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
         m_baseVolume = (std::min)(m_baseVolume, maxPercent / 100.0f);
     }
     applyEffectiveVolume();
@@ -59,8 +55,7 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     connect(m_player, &QMediaPlayer::playbackStateChanged, this, [this](QMediaPlayer::PlaybackState state) {
         const bool wasPlaying = m_isPlaying;
         const bool playing = (state == QMediaPlayer::PlayingState);
-        qInfo().noquote() << "[PLAYER] state=" << static_cast<int>(state)
-                          << "positionMs=" << m_player->position()
+        qInfo().noquote() << "[PLAYER] state=" << static_cast<int>(state) << "positionMs=" << m_player->position()
                           << "track=" << m_currentTrack.value("filePath").toString();
         if (m_isPlaying != playing) {
             m_isPlaying = playing;
@@ -69,37 +64,44 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
 #endif
             emit isPlayingChanged();
         }
-        if (!playing) setAudioLevel(0.0);
+        if (!playing)
+            setAudioLevel(0.0);
         if (state == QMediaPlayer::StoppedState && !m_pauseExpected && !m_currentTrack.isEmpty()) {
             const QString stoppedTrackPath = m_currentTrack.value("filePath").toString();
             QTimer::singleShot(75, this, [this, stoppedTrackPath] {
-                if (m_pauseExpected || m_currentTrack.value("filePath").toString() != stoppedTrackPath
-                    || m_player->playbackState() == QMediaPlayer::PlayingState
-                    || m_player->mediaStatus() == QMediaPlayer::EndOfMedia) return;
-                qWarning().noquote() << "[PLAYER] unexpected backend stop; resuming positionMs=" << m_player->position();
+                if (m_pauseExpected || m_currentTrack.value("filePath").toString() != stoppedTrackPath ||
+                    m_player->playbackState() == QMediaPlayer::PlayingState ||
+                    m_player->mediaStatus() == QMediaPlayer::EndOfMedia)
+                    return;
+                qWarning().noquote() << "[PLAYER] unexpected backend stop; resuming positionMs="
+                                     << m_player->position();
                 m_player->play();
             });
         }
-        if (state == QMediaPlayer::PausedState && wasPlaying
-            && !m_pauseExpected && m_player->mediaStatus() != QMediaPlayer::EndOfMedia) {
+        if (state == QMediaPlayer::PausedState && wasPlaying && !m_pauseExpected &&
+            m_player->mediaStatus() != QMediaPlayer::EndOfMedia) {
             qWarning() << "[PLAYER] unexpected backend pause; resuming";
             QTimer::singleShot(0, m_player, &QMediaPlayer::play);
         }
         if (state == QMediaPlayer::PlayingState) {
             m_pauseExpected = false;
         }
-        if (state == QMediaPlayer::PausedState) m_pauseExpected = false;
+        if (state == QMediaPlayer::PausedState)
+            m_pauseExpected = false;
     });
 
     connect(m_bufferOutput, &QAudioBufferOutput::audioBufferReceived, this, [this](const QAudioBuffer &buffer) {
-        if (!audioMeterEnabled()) return;
+        if (!audioMeterEnabled())
+            return;
         const int sampleCount = buffer.sampleCount();
-        if (sampleCount <= 0) return;
+        if (sampleCount <= 0)
+            return;
 
         double sum = 0.0;
         if (buffer.format().sampleFormat() == QAudioFormat::Float) {
             const auto *samples = buffer.constData<float>();
-            for (int i = 0; i < sampleCount; ++i) sum += samples[i] * samples[i];
+            for (int i = 0; i < sampleCount; ++i)
+                sum += samples[i] * samples[i];
         } else if (buffer.format().sampleFormat() == QAudioFormat::Int16) {
             const auto *samples = buffer.constData<qint16>();
             for (int i = 0; i < sampleCount; ++i) {
@@ -131,7 +133,8 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
 
     connect(m_player, &QMediaPlayer::errorOccurred, this, [this](QMediaPlayer::Error, const QString &message) {
         qWarning().noquote() << "[PLAYER] error positionMs=" << m_player->position() << message;
-        if (m_error == message) return;
+        if (m_error == message)
+            return;
         m_error = message;
         emit errorChanged();
     });
@@ -150,20 +153,43 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     });
 }
 
-QVariantMap PlayerController::currentTrack() const { return m_currentTrack; }
-QString PlayerController::currentLyrics() const { return m_currentLyrics; }
-bool PlayerController::isPlaying() const { return m_isPlaying; }
-bool PlayerController::shuffleEnabled() const { return m_shuffleEnabled; }
-qreal PlayerController::audioLevel() const { return m_audioLevel; }
-bool PlayerController::audioMeterEnabled() const { return m_player->audioBufferOutput() != nullptr; }
-qint64 PlayerController::position() const { return m_position; }
-qint64 PlayerController::duration() const { return m_duration; }
-QString PlayerController::formattedPosition() const { return formatDuration(static_cast<int>(m_position / 1000)); }
-QString PlayerController::formattedDuration() const { return formatDuration(static_cast<int>(m_duration / 1000)); }
-float PlayerController::volume() const { return m_baseVolume; }
-QString PlayerController::replayGainMode() const { return m_replayGainMode; }
-QVariantList PlayerController::audioOutputs() const
-{
+QVariantMap PlayerController::currentTrack() const {
+    return m_currentTrack;
+}
+QString PlayerController::currentLyrics() const {
+    return m_currentLyrics;
+}
+bool PlayerController::isPlaying() const {
+    return m_isPlaying;
+}
+bool PlayerController::shuffleEnabled() const {
+    return m_shuffleEnabled;
+}
+qreal PlayerController::audioLevel() const {
+    return m_audioLevel;
+}
+bool PlayerController::audioMeterEnabled() const {
+    return m_player->audioBufferOutput() != nullptr;
+}
+qint64 PlayerController::position() const {
+    return m_position;
+}
+qint64 PlayerController::duration() const {
+    return m_duration;
+}
+QString PlayerController::formattedPosition() const {
+    return formatDuration(static_cast<int>(m_position / 1000));
+}
+QString PlayerController::formattedDuration() const {
+    return formatDuration(static_cast<int>(m_duration / 1000));
+}
+float PlayerController::volume() const {
+    return m_baseVolume;
+}
+QString PlayerController::replayGainMode() const {
+    return m_replayGainMode;
+}
+QVariantList PlayerController::audioOutputs() const {
     QVariantList outputs;
     QVariantMap defaultDevice;
     defaultDevice.insert(QStringLiteral("value"), QString());
@@ -179,9 +205,9 @@ QVariantList PlayerController::audioOutputs() const
     return outputs;
 }
 
-QString PlayerController::audioDeviceId() const
-{
-    if (!m_audioOutput) return QString();
+QString PlayerController::audioDeviceId() const {
+    if (!m_audioOutput)
+        return QString();
     const QByteArray currentId = m_audioOutput->device().id();
     if (currentId.isEmpty() || currentId == QMediaDevices::defaultAudioOutput().id()) {
         return QString();
@@ -189,9 +215,9 @@ QString PlayerController::audioDeviceId() const
     return QString::fromLatin1(currentId.toHex());
 }
 
-bool PlayerController::setAudioDevice(const QString &id)
-{
-    if (!m_audioOutput) return false;
+bool PlayerController::setAudioDevice(const QString &id) {
+    if (!m_audioOutput)
+        return false;
     if (id.isEmpty()) {
         const QAudioDevice defaultDevice = QMediaDevices::defaultAudioOutput();
         if (m_audioOutput->device().id() != defaultDevice.id()) {
@@ -201,7 +227,8 @@ bool PlayerController::setAudioDevice(const QString &id)
         return true;
     }
     for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
-        if (QString::fromLatin1(device.id().toHex()) != id) continue;
+        if (QString::fromLatin1(device.id().toHex()) != id)
+            continue;
         if (m_audioOutput->device().id() != device.id()) {
             m_audioOutput->setDevice(device);
         }
@@ -210,23 +237,28 @@ bool PlayerController::setAudioDevice(const QString &id)
     }
     return false;
 }
-QString PlayerController::error() const { return m_error; }
+QString PlayerController::error() const {
+    return m_error;
+}
 
-void PlayerController::setAudioMeterEnabled(bool enabled)
-{
-    if (enabled == audioMeterEnabled()) return;
+void PlayerController::setAudioMeterEnabled(bool enabled) {
+    if (enabled == audioMeterEnabled())
+        return;
     m_player->setAudioBufferOutput(enabled ? m_bufferOutput : nullptr);
-    if (!enabled) setAudioLevel(0.0);
+    if (!enabled)
+        setAudioLevel(0.0);
     emit audioMeterEnabledChanged();
 }
 
-bool PlayerController::selfCheck()
-{
+bool PlayerController::selfCheck() {
     QBuffer source;
     PlayerController player;
-    if (player.audioMeterEnabled()) return false;
-    if (!isNetworkStream(QUrl(QStringLiteral("https://radio.example/live")))) return false;
-    if (isNetworkStream(QUrl::fromLocalFile(QStringLiteral("C:/music/track.flac")))) return false;
+    if (player.audioMeterEnabled())
+        return false;
+    if (!isNetworkStream(QUrl(QStringLiteral("https://radio.example/live"))))
+        return false;
+    if (isNetworkStream(QUrl::fromLocalFile(QStringLiteral("C:/music/track.flac"))))
+        return false;
 
     QAudioFormat format;
     format.setSampleRate(48000);
@@ -237,23 +269,31 @@ bool PlayerController::selfCheck()
     buffer.data<float>()[1] = -0.25f;
 
     player.m_bufferOutput->audioBufferReceived(buffer);
-    if (player.audioLevel() != 0.0) return false;
+    if (player.audioLevel() != 0.0)
+        return false;
     for (int i = 0; i < 3; ++i) {
         player.setAudioMeterEnabled(true);
         player.m_bufferOutput->audioBufferReceived(buffer);
-        if (!player.audioMeterEnabled() || qAbs(player.audioLevel() - 0.75) > 0.001) return false;
+        if (!player.audioMeterEnabled() || qAbs(player.audioLevel() - 0.75) > 0.001)
+            return false;
         player.setAudioMeterEnabled(false);
         player.m_bufferOutput->audioBufferReceived(buffer);
-        if (player.audioMeterEnabled() || player.audioLevel() != 0.0) return false;
+        if (player.audioMeterEnabled() || player.audioLevel() != 0.0)
+            return false;
     }
-    if (player.m_player->audioOutput() != player.m_audioOutput) return false;
+    if (player.m_player->audioOutput() != player.m_audioOutput)
+        return false;
     player.setReplayGainMode(QStringLiteral("track"));
-    if (player.replayGainMode() != QStringLiteral("track")) return false;
+    if (player.replayGainMode() != QStringLiteral("track"))
+        return false;
     player.setReplayGainMode(QStringLiteral("album"));
-    if (player.replayGainMode() != QStringLiteral("album")) return false;
+    if (player.replayGainMode() != QStringLiteral("album"))
+        return false;
     player.setReplayGainMode(QStringLiteral("off"));
-    if (player.replayGainMode() != QStringLiteral("off")) return false;
-    if (extractReplayGain(QString()) != 0.0f) return false;
+    if (player.replayGainMode() != QStringLiteral("off"))
+        return false;
+    if (extractReplayGain(QString()) != 0.0f)
+        return false;
 
     QByteArray pcm(128000, '\x20');
     QByteArray wave;
@@ -262,8 +302,7 @@ bool PlayerController::selfCheck()
     stream.writeRawData("RIFF", 4);
     stream << quint32(36 + pcm.size());
     stream.writeRawData("WAVEfmt ", 8);
-    stream << quint32(16) << quint16(1) << quint16(1) << quint32(8000)
-           << quint32(16000) << quint16(2) << quint16(16);
+    stream << quint32(16) << quint16(1) << quint16(1) << quint32(8000) << quint32(16000) << quint16(2) << quint16(16);
     stream.writeRawData("data", 4);
     stream << quint32(pcm.size());
     stream.writeRawData(pcm.constData(), pcm.size());
@@ -275,7 +314,8 @@ bool PlayerController::selfCheck()
         QEventLoop loop;
         QTimer poll;
         QObject::connect(&poll, &QTimer::timeout, &loop, [&] {
-            if (condition()) loop.quit();
+            if (condition())
+                loop.quit();
         });
         poll.start(20);
         QTimer::singleShot(3000, &loop, &QEventLoop::quit);
@@ -286,61 +326,62 @@ bool PlayerController::selfCheck()
     player.m_audioOutput->setMuted(true);
     player.m_player->setSourceDevice(&source, QUrl("meter-check.wav"));
     player.m_player->play();
-    if (!waitFor([&] { return player.position() > 100; })) return false;
+    if (!waitFor([&] { return player.position() > 100; }))
+        return false;
     player.setAudioMeterEnabled(true);
-    if (!waitFor([&] { return player.audioLevel() > 0.1; })) return false;
+    if (!waitFor([&] { return player.audioLevel() > 0.1; }))
+        return false;
     const qint64 position = player.position();
     player.setAudioMeterEnabled(false);
-    if (!waitFor([&] { return player.position() > position + 100; })) return false;
-    return player.audioLevel() == 0.0 && player.error().isEmpty()
-        && player.m_player->audioOutput() == player.m_audioOutput;
+    if (!waitFor([&] { return player.position() > position + 100; }))
+        return false;
+    return player.audioLevel() == 0.0 && player.error().isEmpty() &&
+           player.m_player->audioOutput() == player.m_audioOutput;
 }
 
-QString PlayerController::getLyrics(const QString &filePath) const
-{
+QString PlayerController::getLyrics(const QString &filePath) const {
     if (StreamingController::isRemotePath(filePath)) {
         return {};
     }
     return extractEmbeddedLyrics(filePath);
 }
 
-void PlayerController::setCurrentLyrics(const QString &lyrics)
-{
-    if (m_currentLyrics == lyrics) return;
+void PlayerController::setCurrentLyrics(const QString &lyrics) {
+    if (m_currentLyrics == lyrics)
+        return;
     m_currentLyrics = lyrics;
     emit currentLyricsChanged();
 }
 
-void PlayerController::setShuffleEnabled(bool enabled)
-{
+void PlayerController::setShuffleEnabled(bool enabled) {
     if (m_shuffleEnabled != enabled) {
         m_shuffleEnabled = enabled;
         emit shuffleEnabledChanged();
     }
 }
 
-void PlayerController::toggleShuffle()
-{
+void PlayerController::toggleShuffle() {
     setShuffleEnabled(!m_shuffleEnabled);
 }
 
-void PlayerController::setVolume(float vol)
-{
+void PlayerController::setVolume(float vol) {
     float clamped = std::clamp(vol, 0.0f, 1.0f);
     if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
-        const int maxPercent = std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
+        const int maxPercent =
+            std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
         clamped = (std::min)(clamped, maxPercent / 100.0f);
     }
-    if (!qFuzzyCompare(m_baseVolume, clamped)) {
-        m_baseVolume = clamped;
-        applyEffectiveVolume();
+    const bool changed = !qFuzzyCompare(m_baseVolume, clamped);
+    m_baseVolume = clamped;
+    applyEffectiveVolume();
+    if (changed) {
         emit volumeChanged();
     }
 }
 
-void PlayerController::applyEffectiveVolume()
-{
-    if (!m_audioOutput) return;
+void PlayerController::applyEffectiveVolume() {
+    if (!m_audioOutput)
+        return;
     float factor = 1.0f;
     if (m_replayGainMode != QStringLiteral("off") && !qFuzzyIsNull(m_currentReplayGainDb)) {
         factor = std::pow(10.0f, m_currentReplayGainDb / 20.0f);
@@ -348,18 +389,20 @@ void PlayerController::applyEffectiveVolume()
     }
     float maxCeiling = 1.0f;
     if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
-        const int maxPercent = std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
+        const int maxPercent =
+            std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
         maxCeiling = maxPercent / 100.0f;
     }
     m_audioOutput->setVolume(std::clamp(m_baseVolume * factor, 0.0f, maxCeiling));
 }
 
-void PlayerController::setReplayGainMode(const QString &mode)
-{
-    if (m_replayGainMode == mode) return;
+void PlayerController::setReplayGainMode(const QString &mode) {
+    if (m_replayGainMode == mode)
+        return;
     m_replayGainMode = mode;
     const QString filePath = m_currentTrack.value("filePath").toString();
-    if (m_replayGainMode != QStringLiteral("off") && !filePath.isEmpty() && !StreamingController::isRemotePath(filePath)) {
+    if (m_replayGainMode != QStringLiteral("off") && !filePath.isEmpty() &&
+        !StreamingController::isRemotePath(filePath)) {
         m_currentReplayGainDb = extractReplayGain(filePath, m_replayGainMode == QStringLiteral("album"));
     } else {
         m_currentReplayGainDb = 0.0f;
@@ -368,8 +411,7 @@ void PlayerController::setReplayGainMode(const QString &mode)
     emit replayGainModeChanged();
 }
 
-void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs)
-{
+void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs) {
     m_pendingRestorePositionMs = positionMs;
     if (!loadTrack(track)) {
         m_pendingRestorePositionMs = 0;
@@ -383,29 +425,30 @@ void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs)
     }
 }
 
-void PlayerController::playTrack(const QVariantMap &track)
-{
+void PlayerController::playTrack(const QVariantMap &track) {
     m_pendingRestorePositionMs = 0;
-    if (!loadTrack(track)) return;
+    if (!loadTrack(track))
+        return;
     m_pauseExpected = false;
     m_player->play();
 }
 
-bool PlayerController::loadTrack(const QVariantMap &track)
-{
+bool PlayerController::loadTrack(const QVariantMap &track) {
     const QString filePath = track.value("filePath").toString();
-    if (filePath.isEmpty()) return false;
+    if (filePath.isEmpty())
+        return false;
     const QUrl mediaSource = resolveMediaSource(track);
-    if (mediaSource.isEmpty()) return false;
+    if (mediaSource.isEmpty())
+        return false;
 
     m_currentTrack = track;
     if (!m_error.isEmpty()) {
         m_error.clear();
         emit errorChanged();
     }
-    if (m_currentTrack.value("artworkUrl").toString().isEmpty()
-        && !StreamingController::isRemotePath(filePath)) {
-        // ponytail: load embedded artwork only for the current track; add async thumbnailing if browsing embedded art needs it.
+    if (m_currentTrack.value("artworkUrl").toString().isEmpty() && !StreamingController::isRemotePath(filePath)) {
+        // ponytail: load embedded artwork only for the current track; add async thumbnailing if browsing embedded art
+        // needs it.
         m_currentTrack.insert("artworkUrl", extractEmbeddedArtwork(filePath));
     }
     m_currentLyrics = track.value("lyrics").toString();
@@ -430,8 +473,7 @@ bool PlayerController::loadTrack(const QVariantMap &track)
     return true;
 }
 
-void PlayerController::togglePlay()
-{
+void PlayerController::togglePlay() {
     if (m_player->playbackState() == QMediaPlayer::PlayingState) {
         qInfo().noquote() << "[PLAYER] pause source=toggle positionMs=" << m_player->position();
         m_pauseExpected = true;
@@ -443,38 +485,34 @@ void PlayerController::togglePlay()
     }
 }
 
-void PlayerController::play()
-{
+void PlayerController::play() {
     if (m_player->playbackState() != QMediaPlayer::PlayingState)
         m_player->play();
 }
 
-void PlayerController::pause()
-{
+void PlayerController::pause() {
     qInfo().noquote() << "[PLAYER] pause requested positionMs=" << m_player->position();
     m_pauseExpected = true;
     m_player->pause();
 }
 
-void PlayerController::stop()
-{
+void PlayerController::stop() {
     m_pauseExpected = true;
     m_player->stop();
 }
 
-void PlayerController::seek(qint64 positionMs)
-{
+void PlayerController::seek(qint64 positionMs) {
     m_pendingRestorePositionMs = 0;
     m_player->setPosition(positionMs);
 }
 
-void PlayerController::setWindowAlwaysOnTop(QQuickWindow *win, bool onTop)
-{
+void PlayerController::setWindowAlwaysOnTop(QQuickWindow *win, bool onTop) {
 #ifdef _WIN32
     if (win) {
         HWND hwnd = reinterpret_cast<HWND>(win->winId());
         if (hwnd) {
-            SetWindowPos(hwnd, onTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+            SetWindowPos(hwnd, onTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0,
+                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
         }
     }
 #else
@@ -483,8 +521,7 @@ void PlayerController::setWindowAlwaysOnTop(QQuickWindow *win, bool onTop)
 #endif
 }
 
-QUrl PlayerController::resolveMediaSource(const QVariantMap &track) const
-{
+QUrl PlayerController::resolveMediaSource(const QVariantMap &track) const {
     const QString filePath = track.value("filePath").toString();
     const QString remoteId = track.value("remoteId").toString();
     if (!remoteId.isEmpty() && m_streaming) {
@@ -495,36 +532,35 @@ QUrl PlayerController::resolveMediaSource(const QVariantMap &track) const
     }
     const QUrl url(filePath);
     if (isNetworkStream(url)) {
-        if (SettingsController::globalValue("network/offlineBlackout", false).toBool()) return {};
+        if (SettingsController::globalValue("network/offlineBlackout", false).toBool())
+            return {};
         return url;
     }
     return QUrl::fromLocalFile(filePath);
 }
 
-void PlayerController::setAudioLevel(qreal level)
-{
-    if (qAbs(m_audioLevel - level) < 0.01) return;
+void PlayerController::setAudioLevel(qreal level) {
+    if (qAbs(m_audioLevel - level) < 0.01)
+        return;
     m_audioLevel = level;
     emit audioLevelChanged();
 }
 
-void PlayerController::updateCurrentTrackArtwork(const QString &artworkPath)
-{
-    if (m_currentTrack.isEmpty()) return;
+void PlayerController::updateCurrentTrackArtwork(const QString &artworkPath) {
+    if (m_currentTrack.isEmpty())
+        return;
     m_currentTrack.insert("artworkUrl", artworkPath);
     emit currentTrackChanged();
 }
 
-void PlayerController::updateCurrentTrackMetadata(const QVariantMap &track)
-{
-    if (m_currentTrack.isEmpty() || track.value("filePath") != m_currentTrack.value("filePath")) return;
+void PlayerController::updateCurrentTrackMetadata(const QVariantMap &track) {
+    if (m_currentTrack.isEmpty() || track.value("filePath") != m_currentTrack.value("filePath"))
+        return;
     m_currentTrack = track;
     setCurrentLyrics(track.value("lyrics").toString());
     emit currentTrackChanged();
 }
 
-void PlayerController::requestPlayback(const QVariantList &tracks, int startIndex)
-{
+void PlayerController::requestPlayback(const QVariantList &tracks, int startIndex) {
     emit playbackRequested(tracks, startIndex);
 }
-

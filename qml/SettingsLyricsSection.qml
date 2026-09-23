@@ -28,9 +28,9 @@ ColumnLayout {
 
             SettingSegmentedControl {
                 options: [
-                    { value: 24, label: "SMALL" },
-                    { value: 28, label: "DEFAULT" },
-                    { value: 32, label: "LARGE" }
+                    { value: 24, label: "Small" },
+                    { value: 28, label: "Default" },
+                    { value: 32, label: "Large" }
                 ]
                 selectedValue: root.lyricsFontSize
                 onOptionSelected: val => root.lyricsFontSizeSelected(Number(val))
@@ -47,8 +47,8 @@ ColumnLayout {
 
             SettingSegmentedControl {
                 options: [
-                    { value: "left", label: "LEFT" },
-                    { value: "center", label: "CENTRE" }
+                    { value: "left", label: "Left" },
+                    { value: "center", label: "Center" }
                 ]
                 selectedValue: root.lyricsAlignment
                 onOptionSelected: val => root.lyricsAlignmentSelected(String(val))
@@ -65,8 +65,8 @@ ColumnLayout {
 
             SettingSegmentedControl {
                 options: [
-                    { value: "accent", label: "ACCENT" },
-                    { value: "white", label: "WHITE" }
+                    { value: "accent", label: "Accent" },
+                    { value: "white", label: "White" }
                 ]
                 selectedValue: root.lyricsActiveStyle
                 onOptionSelected: val => root.lyricsActiveStyleSelected(String(val))

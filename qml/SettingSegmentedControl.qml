@@ -12,7 +12,7 @@ Rectangle {
 
     implicitHeight: 32
     implicitWidth: rowLayout.implicitWidth + 8
-    radius: height / 2
+    radius: 8
     color: (typeof surfaceInput !== "undefined" ? surfaceInput : "#1A1917")
     border.width: 1
     border.color: (typeof borderSubtle !== "undefined" ? borderSubtle : "#22201D")
@@ -61,14 +61,14 @@ Rectangle {
                 readonly property string optLabel: (modelData && typeof modelData === "object" && "label" in modelData) ? modelData.label : String(modelData)
                 readonly property bool isSelected: root.selectedValue !== undefined && (root.selectedValue === optVal || String(root.selectedValue).toLowerCase() === String(optVal).toLowerCase())
 
-                height: 26
-                width: segLabel.implicitWidth + 16
-                radius: height / 2
+                height: 24
+                width: segLabel.implicitWidth + 20
+                radius: 6
                 color: isSelected
-                    ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#262320")
+                    ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#2E2B27")
                     : (segMouse.containsMouse ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#22201D") : "transparent")
                 border.width: isSelected ? 1 : 0
-                border.color: root.accentColor
+                border.color: (typeof borderVariant !== "undefined" ? borderVariant : "#383430")
                 scale: segMouse.pressed ? 0.97 : 1.0
 
                 Behavior on color { ColorAnimation { duration: 120 } }
@@ -80,12 +80,11 @@ Rectangle {
                     anchors.centerIn: parent
                     text: segItem.optLabel
                     color: segItem.isSelected
-                        ? root.accentHoverColor
+                        ? textPrimary
                         : (segMouse.containsMouse ? textPrimary : textSecondary)
-                    font.family: (typeof monoFont !== "undefined" ? monoFont : "IBM Plex Mono")
+                    font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
                     font.pixelSize: 11
-                    font.weight: segItem.isSelected ? Font.Bold : Font.Medium
-                    font.letterSpacing: 0.3
+                    font.weight: segItem.isSelected ? Font.DemiBold : Font.Normal
 
                     Behavior on color { ColorAnimation { duration: 120 } }
                 }

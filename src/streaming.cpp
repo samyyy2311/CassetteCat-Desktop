@@ -36,20 +36,16 @@ namespace {
 constexpr int kMaxArtDownloads = 6;
 constexpr int kMaxArtBytes = 3 * 1024 * 1024;
 
-void releaseArtworkDownload(QSet<QString> &pending, int &downloads, const QString &filePath)
-{
-    if (pending.remove(filePath) && downloads > 0) --downloads;
+void releaseArtworkDownload(QSet<QString> &pending, int &downloads, const QString &filePath) {
+    if (pending.remove(filePath) && downloads > 0)
+        --downloads;
 }
 
 } // namespace
 
 StreamingController::StreamingController(const QString &settingsPath, QObject *parent)
-    : QObject(parent)
-    , m_settingsPath(settingsPath)
-    , m_net(new QNetworkAccessManager(this))
-    , m_jellyfinModel(new RemoteTrackModel("jellyfin", this))
-    , m_subsonicModel(new RemoteTrackModel("subsonic", this))
-{
+    : QObject(parent), m_settingsPath(settingsPath), m_net(new QNetworkAccessManager(this)),
+      m_jellyfinModel(new RemoteTrackModel("jellyfin", this)), m_subsonicModel(new RemoteTrackModel("subsonic", this)) {
     QSettings settings(m_settingsPath, QSettings::IniFormat);
     m_subsonicConnected = settings.value("stream/subsonicConnected", false).toBool();
     m_jellyfinConnected = settings.value("stream/jellyfinConnected", false).toBool();
@@ -59,8 +55,8 @@ StreamingController::StreamingController(const QString &settingsPath, QObject *p
     if (m_jellyfinConnected && settings.value("stream/jellyfinUrl").toString().isEmpty()) {
         m_jellyfinConnected = false;
     }
-    const QJsonDocument cachedDocument = QJsonDocument::fromJson(
-        settings.value("stream/cachedTracks").toString().toUtf8());
+    const QJsonDocument cachedDocument =
+        QJsonDocument::fromJson(settings.value("stream/cachedTracks").toString().toUtf8());
     if (cachedDocument.isArray()) {
         m_remoteTracks = cachedDocument.array().toVariantList();
         m_jellyfinModel->setTracks(m_remoteTracks);
@@ -69,19 +65,16 @@ StreamingController::StreamingController(const QString &settingsPath, QObject *p
     updateStatusTexts();
 }
 
-bool StreamingController::isRemotePath(const QString &filePath)
-{
+bool StreamingController::isRemotePath(const QString &filePath) {
     return filePath.startsWith("subsonic:") || filePath.startsWith("jellyfin:");
 }
 
-bool StreamingController::blackoutEnabled() const
-{
+bool StreamingController::blackoutEnabled() const {
     QSettings settings(m_settingsPath, QSettings::IniFormat);
     return settings.value("network/offlineBlackout", false).toBool();
 }
 
-QString StreamingController::deviceId()
-{
+QString StreamingController::deviceId() {
     QSettings settings(m_settingsPath, QSettings::IniFormat);
     QString id = settings.value("stream/deviceId").toString();
     if (id.isEmpty()) {
@@ -92,12 +85,11 @@ QString StreamingController::deviceId()
     return id;
 }
 
-void StreamingController::setRemoteTracks(const QVariantList &tracks)
-{
+void StreamingController::setRemoteTracks(const QVariantList &tracks) {
     m_remoteTracks = tracks;
     QSettings settings(m_settingsPath, QSettings::IniFormat);
-    settings.setValue("stream/cachedTracks", QString::fromUtf8(
-        QJsonDocument::fromVariant(tracks).toJson(QJsonDocument::Compact)));
+    settings.setValue("stream/cachedTracks",
+                      QString::fromUtf8(QJsonDocument::fromVariant(tracks).toJson(QJsonDocument::Compact)));
     settings.sync();
     m_jellyfinModel->setTracks(tracks);
     m_subsonicModel->setTracks(tracks);
@@ -105,8 +97,7 @@ void StreamingController::setRemoteTracks(const QVariantList &tracks)
     updateStatusTexts();
 }
 
-void StreamingController::removeProviderTracks(const QString &prefix)
-{
+void StreamingController::removeProviderTracks(const QString &prefix) {
     QVariantList kept;
     kept.reserve(m_remoteTracks.size());
     for (const QVariant &track : m_remoteTracks) {
@@ -122,8 +113,7 @@ void StreamingController::removeProviderTracks(const QString &prefix)
     setRemoteTracks(kept);
 }
 
-void StreamingController::setStatus(const QString &protocol, bool connected, const QString &status)
-{
+void StreamingController::setStatus(const QString &protocol, bool connected, const QString &status) {
     if (protocol == "subsonic") {
         m_subsonicConnected = connected;
         m_subsonicStatus = status;
@@ -134,15 +124,14 @@ void StreamingController::setStatus(const QString &protocol, bool connected, con
     emit statusChanged();
 }
 
-void StreamingController::setRemoteLibraryLoading(bool loading)
-{
-    if (m_refreshing == loading) return;
+void StreamingController::setRemoteLibraryLoading(bool loading) {
+    if (m_refreshing == loading)
+        return;
     m_refreshing = loading;
     emit remoteLibraryLoadingChanged();
 }
 
-void StreamingController::updateStatusTexts()
-{
+void StreamingController::updateStatusTexts() {
     QSettings settings(m_settingsPath, QSettings::IniFormat);
     int subCount = 0;
     int jellyCount = 0;
@@ -156,15 +145,15 @@ void StreamingController::updateStatusTexts()
     }
     if (m_subsonicConnected) {
         const QString user = settings.value("stream/subsonicUsername").toString();
-        m_subsonicStatus = QString("%1 · %2 %3").arg(
-            user.isEmpty() ? QString("Connected") : user,
-            QString::number(subCount), subCount == 1 ? QString("song") : QString("songs"));
+        m_subsonicStatus = QString("%1 · %2 %3")
+                               .arg(user.isEmpty() ? QString("Connected") : user, QString::number(subCount),
+                                    subCount == 1 ? QString("song") : QString("songs"));
     }
     if (m_jellyfinConnected) {
         const QString user = settings.value("stream/jellyfinUsername").toString();
-        m_jellyfinStatus = QString("%1 · %2 %3").arg(
-            user.isEmpty() ? QString("Connected") : user,
-            QString::number(jellyCount), jellyCount == 1 ? QString("song") : QString("songs"));
+        m_jellyfinStatus = QString("%1 · %2 %3")
+                               .arg(user.isEmpty() ? QString("Connected") : user, QString::number(jellyCount),
+                                    jellyCount == 1 ? QString("song") : QString("songs"));
     }
     if (m_subsonicStatus.isEmpty()) {
         m_subsonicStatus = QString("Not connected");
@@ -175,31 +164,60 @@ void StreamingController::updateStatusTexts()
     emit statusChanged();
 }
 
-QNetworkReply *StreamingController::trackReply(QNetworkReply *reply, bool allowSelfSigned)
-{
+QNetworkReply *StreamingController::trackReply(QNetworkReply *reply, bool allowSelfSigned) {
     if (!reply) {
         return nullptr;
     }
-    if (allowSelfSigned || isServerCertTrusted(reply->url())) {
-        connect(reply, &QNetworkReply::sslErrors, reply, [reply](const QList<QSslError> &errors) {
-            QList<QSslError> ignorable;
-            for (const auto &err : errors) {
-                switch (err.error()) {
-                case QSslError::SelfSignedCertificate:
-                case QSslError::SelfSignedCertificateInChain:
-                case QSslError::UnableToGetLocalIssuerCertificate:
-                case QSslError::UnableToVerifyFirstCertificate:
-                case QSslError::CertificateUntrusted:
-                    ignorable.append(err);
-                    break;
-                default:
-                    return;
-                }
-            }
-            if (!ignorable.isEmpty()) {
-                reply->ignoreSslErrors(ignorable);
-            }
-        });
+    const QUrl originalUrl = reply->url();
+    if (allowSelfSigned || isServerCertTrusted(originalUrl)) {
+        connect(reply, &QNetworkReply::sslErrors, reply,
+                [this, reply, originalUrl, allowSelfSigned](const QList<QSslError> &errors) {
+                    const QUrl currentUrl = reply->url();
+                    const bool sameOrigin = (currentUrl.scheme() == originalUrl.scheme() &&
+                                             currentUrl.host().compare(originalUrl.host(), Qt::CaseInsensitive) == 0 &&
+                                             (currentUrl.port(443) == originalUrl.port(443)));
+
+                    QSslCertificate peerCert = reply->sslConfiguration().peerCertificate();
+                    if (peerCert.isNull() && !errors.isEmpty()) {
+                        peerCert = errors.first().certificate();
+                    }
+
+                    bool trustAllowed = false;
+                    if (sameOrigin && allowSelfSigned) {
+                        trustAllowed = true;
+                        if (!peerCert.isNull()) {
+                            const QString digest =
+                                QString::fromLatin1(peerCert.digest(QCryptographicHash::Sha256).toHex());
+                            const QString hostKey =
+                                QString("%1:%2").arg(currentUrl.host().toLower()).arg(currentUrl.port(443));
+                            m_pendingCertDigests.insert(hostKey, digest);
+                        }
+                    } else if (isServerCertTrusted(currentUrl, peerCert)) {
+                        trustAllowed = true;
+                    }
+
+                    if (!trustAllowed) {
+                        return;
+                    }
+
+                    QList<QSslError> ignorable;
+                    for (const auto &err : errors) {
+                        switch (err.error()) {
+                        case QSslError::SelfSignedCertificate:
+                        case QSslError::SelfSignedCertificateInChain:
+                        case QSslError::UnableToGetLocalIssuerCertificate:
+                        case QSslError::UnableToVerifyFirstCertificate:
+                        case QSslError::CertificateUntrusted:
+                            ignorable.append(err);
+                            break;
+                        default:
+                            return;
+                        }
+                    }
+                    if (!ignorable.isEmpty()) {
+                        reply->ignoreSslErrors(ignorable);
+                    }
+                });
     }
     m_pendingReplies.append(QPointer<QNetworkReply>(reply));
     QTimer::singleShot(streaming::detail::requestTimeoutMs, reply, [reply] {
@@ -214,31 +232,49 @@ QNetworkReply *StreamingController::trackReply(QNetworkReply *reply, bool allowS
     return reply;
 }
 
-bool StreamingController::isServerCertTrusted(const QUrl &url) const
-{
+bool StreamingController::isServerCertTrusted(const QUrl &url, const QSslCertificate &cert) const {
     if (url.scheme() != QLatin1String("https")) {
         return false;
     }
+    const QString certDigest =
+        cert.isNull() ? QString() : QString::fromLatin1(cert.digest(QCryptographicHash::Sha256).toHex());
     QSettings settings(m_settingsPath, QSettings::IniFormat);
     if (settings.value("stream/subsonicTrustCert", false).toBool()) {
         const QUrl subUrl(settings.value("stream/subsonicUrl").toString());
-        if (subUrl.isValid() && subUrl.host().compare(url.host(), Qt::CaseInsensitive) == 0
-            && (subUrl.port(443) == url.port(443))) {
-            return true;
+        if (subUrl.isValid() && subUrl.host().compare(url.host(), Qt::CaseInsensitive) == 0 &&
+            (subUrl.port(443) == url.port(443))) {
+            const QString storedDigest = settings.value("stream/subsonicCertDigest").toString();
+            if (storedDigest.isEmpty()) {
+                if (!certDigest.isEmpty()) {
+                    settings.setValue("stream/subsonicCertDigest", certDigest);
+                }
+                return true;
+            }
+            if (storedDigest.compare(certDigest, Qt::CaseInsensitive) == 0) {
+                return true;
+            }
         }
     }
     if (settings.value("stream/jellyfinTrustCert", false).toBool()) {
         const QUrl jellyUrl(settings.value("stream/jellyfinUrl").toString());
-        if (jellyUrl.isValid() && jellyUrl.host().compare(url.host(), Qt::CaseInsensitive) == 0
-            && (jellyUrl.port(443) == url.port(443))) {
-            return true;
+        if (jellyUrl.isValid() && jellyUrl.host().compare(url.host(), Qt::CaseInsensitive) == 0 &&
+            (jellyUrl.port(443) == url.port(443))) {
+            const QString storedDigest = settings.value("stream/jellyfinCertDigest").toString();
+            if (storedDigest.isEmpty()) {
+                if (!certDigest.isEmpty()) {
+                    settings.setValue("stream/jellyfinCertDigest", certDigest);
+                }
+                return true;
+            }
+            if (storedDigest.compare(certDigest, Qt::CaseInsensitive) == 0) {
+                return true;
+            }
         }
     }
     return false;
 }
 
-QString StreamingController::friendlyError(QNetworkReply *reply, const QString &fallback)
-{
+QString StreamingController::friendlyError(QNetworkReply *reply, const QString &fallback) {
     if (!reply) {
         return fallback;
     }
@@ -266,18 +302,17 @@ QString StreamingController::friendlyError(QNetworkReply *reply, const QString &
     }
 }
 
-void StreamingController::beginRefresh()
-{
+void StreamingController::beginRefresh() {
     if (blackoutEnabled()) {
         setRemoteTracks({});
         return;
     }
     CredentialVault vault;
     QSettings settings(m_settingsPath, QSettings::IniFormat);
-    const bool wantSubsonic = settings.value("stream/subsonicConnected", false).toBool()
-        && !settings.value("stream/subsonicUrl").toString().isEmpty();
-    const bool wantJellyfin = settings.value("stream/jellyfinConnected", false).toBool()
-        && !settings.value("stream/jellyfinUrl").toString().isEmpty();
+    const bool wantSubsonic = settings.value("stream/subsonicConnected", false).toBool() &&
+                              !settings.value("stream/subsonicUrl").toString().isEmpty();
+    const bool wantJellyfin = settings.value("stream/jellyfinConnected", false).toBool() &&
+                              !settings.value("stream/jellyfinUrl").toString().isEmpty();
     if (!wantSubsonic && !wantJellyfin) {
         setRemoteTracks({});
         return;
@@ -322,13 +357,11 @@ void StreamingController::beginRefresh()
     }
 }
 
-void StreamingController::refreshLibrary()
-{
+void StreamingController::refreshLibrary() {
     beginRefresh();
 }
 
-void StreamingController::finishRefreshStage()
-{
+void StreamingController::finishRefreshStage() {
     if (--m_pendingStages <= 0) {
         m_pendingStages = 0;
         if (m_refreshQueued) {
@@ -341,8 +374,7 @@ void StreamingController::finishRefreshStage()
     }
 }
 
-void StreamingController::cancelPendingRequests()
-{
+void StreamingController::cancelPendingRequests() {
     ++m_subConnectToken;
     ++m_jellyConnectToken;
     ++m_refreshToken;
@@ -352,9 +384,9 @@ void StreamingController::cancelPendingRequests()
     cancelNetworkReplies(m_pendingReplies);
 }
 
-void StreamingController::setBlackoutEnabled(bool enabled)
-{
-    if (!enabled) return;
+void StreamingController::setBlackoutEnabled(bool enabled) {
+    if (!enabled)
+        return;
 
     cancelPendingRequests();
     m_remoteArt.clear();
@@ -364,27 +396,27 @@ void StreamingController::setBlackoutEnabled(bool enabled)
     setRemoteTracks({});
 }
 
-void StreamingController::disconnectServer(const QString &protocol)
-{
+void StreamingController::disconnectServer(const QString &protocol) {
     cancelPendingRequests();
     CredentialVault vault;
     QSettings settings(m_settingsPath, QSettings::IniFormat);
     if (protocol == "subsonic") {
         vault.clearSecret("subsonic");
         settings.setValue("stream/subsonicConnected", false);
+        settings.remove("stream/subsonicCertDigest");
         setStatus("subsonic", false, QString("Not connected"));
         removeProviderTracks("subsonic:");
     } else if (protocol == "jellyfin") {
         vault.clearSecret("jellyfin");
         settings.setValue("stream/jellyfinConnected", false);
+        settings.remove("stream/jellyfinCertDigest");
         setStatus("jellyfin", false, QString("Not connected"));
         removeProviderTracks("jellyfin:");
     }
     settings.sync();
 }
 
-void StreamingController::setServerFavorite(const QString &filePath, bool favorite)
-{
+void StreamingController::setServerFavorite(const QString &filePath, bool favorite) {
     if (blackoutEnabled()) {
         emit serverFavoriteFailed(filePath);
         return;
@@ -401,8 +433,8 @@ void StreamingController::setServerFavorite(const QString &filePath, bool favori
         const QString user = settings.value("stream/subsonicUsername").toString();
         const QString salt = randomSalt();
         const QString endpoint = favorite ? "star.view" : "unstar.view";
-        QNetworkRequest request(subsonicUrl(base, endpoint, user, md5Hex(password + salt), salt,
-                                            {{"id", filePath.mid(9)}}));
+        QNetworkRequest request(
+            subsonicUrl(base, endpoint, user, md5Hex(password + salt), salt, {{"id", filePath.mid(9)}}));
         request.setTransferTimeout(streaming::detail::requestTimeoutMs);
         QNetworkReply *reply = trackReply(m_net->get(request));
         connect(reply, &QNetworkReply::finished, this, [=, this] {
@@ -427,9 +459,8 @@ void StreamingController::setServerFavorite(const QString &filePath, bool favori
         request.setRawHeader("Authorization", header.toUtf8());
         request.setRawHeader("X-Emby-Authorization", header.toUtf8());
         request.setRawHeader("X-Emby-Token", token.toUtf8());
-        QNetworkReply *reply = favorite
-            ? trackReply(m_net->post(request, QByteArray()))
-            : trackReply(m_net->deleteResource(request));
+        QNetworkReply *reply =
+            favorite ? trackReply(m_net->post(request, QByteArray())) : trackReply(m_net->deleteResource(request));
         connect(reply, &QNetworkReply::finished, this, [=, this] {
             if (reply->error() != QNetworkReply::NoError) {
                 emit serverFavoriteFailed(filePath);
@@ -439,8 +470,7 @@ void StreamingController::setServerFavorite(const QString &filePath, bool favori
     }
 }
 
-void StreamingController::fetchJellyfinLyrics(const QString &filePath, const QString &remoteId)
-{
+void StreamingController::fetchJellyfinLyrics(const QString &filePath, const QString &remoteId) {
     if (!filePath.startsWith("jellyfin:") || remoteId.isEmpty()) {
         emit jellyfinLyricsFetched(filePath, QString());
         return;
@@ -469,14 +499,15 @@ void StreamingController::fetchJellyfinLyrics(const QString &filePath, const QSt
             for (const QJsonValue &value : lines) {
                 const QJsonObject line = value.toObject();
                 const QString text = line.value("Text").toString();
-                if (text.isEmpty()) continue;
+                if (text.isEmpty())
+                    continue;
                 const qint64 startMs = line.value("Start").toVariant().toLongLong() / 10000;
                 if (startMs > 0) {
                     result += QString("[%1:%2.%3]%4\n")
-                        .arg(startMs / 60000, 2, 10, QLatin1Char('0'))
-                        .arg((startMs / 1000) % 60, 2, 10, QLatin1Char('0'))
-                        .arg((startMs % 1000) / 10, 2, 10, QLatin1Char('0'))
-                        .arg(text);
+                                  .arg(startMs / 60000, 2, 10, QLatin1Char('0'))
+                                  .arg((startMs / 1000) % 60, 2, 10, QLatin1Char('0'))
+                                  .arg((startMs % 1000) / 10, 2, 10, QLatin1Char('0'))
+                                  .arg(text);
                 } else {
                     result += text + QLatin1Char('\n');
                 }
@@ -486,9 +517,9 @@ void StreamingController::fetchJellyfinLyrics(const QString &filePath, const QSt
     });
 }
 
-QString StreamingController::remoteArtwork(const QString &filePath)
-{
-    if (blackoutEnabled()) return {};
+QString StreamingController::remoteArtwork(const QString &filePath) {
+    if (blackoutEnabled())
+        return {};
 
     const auto cached = m_remoteArt.constFind(filePath);
     if (cached != m_remoteArt.cend()) {
@@ -510,7 +541,8 @@ QString StreamingController::remoteArtwork(const QString &filePath)
     QNetworkReply *reply = trackReply(m_net->get(request));
     connect(reply, &QNetworkReply::finished, this, [this, reply, filePath, artworkSource] {
         releaseArtworkDownload(m_remoteArtPending, m_remoteArtDownloads, filePath);
-        if (blackoutEnabled() || m_remoteArtSource.value(filePath) != artworkSource) return;
+        if (blackoutEnabled() || m_remoteArtSource.value(filePath) != artworkSource)
+            return;
 
         QString local;
         if (reply->error() == QNetworkReply::NoError) {
@@ -528,8 +560,7 @@ QString StreamingController::remoteArtwork(const QString &filePath)
     return {};
 }
 
-QUrl StreamingController::streamSourceFor(const QString &source, const QString &remoteId) const
-{
+QUrl StreamingController::streamSourceFor(const QString &source, const QString &remoteId) const {
     if (remoteId.isEmpty() || blackoutEnabled()) {
         return {};
     }
@@ -542,8 +573,8 @@ QUrl StreamingController::streamSourceFor(const QString &source, const QString &
         }
         const QString salt = randomSalt();
         return subsonicUrl(settings.value("stream/subsonicUrl").toString(), "stream.view",
-                           settings.value("stream/subsonicUsername").toString(),
-                           md5Hex(password + salt), salt, {{"id", remoteId}});
+                           settings.value("stream/subsonicUsername").toString(), md5Hex(password + salt), salt,
+                           {{"id", remoteId}});
     }
     if (source == "jellyfin" && settings.value("stream/jellyfinConnected", false).toBool()) {
         const QString token = vault.loadSecret("jellyfin");
@@ -560,13 +591,11 @@ QUrl StreamingController::streamSourceFor(const QString &source, const QString &
     return {};
 }
 
-QVariantMap StreamingController::serverConfigSnapshot() const
-{
+QVariantMap StreamingController::serverConfigSnapshot() const {
     return serverConfigSnapshot(m_settingsPath);
 }
 
-QVariantMap StreamingController::serverConfigSnapshot(const QString &settingsPath)
-{
+QVariantMap StreamingController::serverConfigSnapshot(const QString &settingsPath) {
     QSettings settings(settingsPath, QSettings::IniFormat);
     QVariantMap snapshot;
     snapshot.insert("subsonic/url", settings.value("stream/subsonicUrl").toString());
@@ -586,8 +615,7 @@ namespace {
 
 int g_failures = 0;
 
-void check(bool condition, const char *name)
-{
+void check(bool condition, const char *name) {
     if (!condition) {
         ++g_failures;
         std::cerr << "streaming self-check FAILED: " << name << std::endl;
@@ -596,8 +624,7 @@ void check(bool condition, const char *name)
 
 } // namespace
 
-bool runSelfChecks(bool includeVaultProbe)
-{
+bool runSelfChecks(bool includeVaultProbe) {
     g_failures = 0;
 
     check(normalizeServerUrl("music.example.com") == "https://music.example.com", "normalize-adds-https");
@@ -605,7 +632,8 @@ bool runSelfChecks(bool includeVaultProbe)
     check(normalizeServerUrl("https://music.example.com///") == "https://music.example.com", "normalize-trims-slashes");
     check(normalizeServerUrl("   ").isEmpty(), "normalize-blank");
     check(normalizeServerUrl("192.168.1.112", 8096) == "http://192.168.1.112:8096", "normalize-local-ip-default-port");
-    check(normalizeServerUrl("192.168.1.112:8096", 8096) == "http://192.168.1.112:8096", "normalize-local-ip-explicit-port");
+    check(normalizeServerUrl("192.168.1.112:8096", 8096) == "http://192.168.1.112:8096",
+          "normalize-local-ip-explicit-port");
     check(normalizeServerUrl("http://localhost", 4533) == "http://localhost:4533", "normalize-localhost-default-port");
 
     check(md5Hex("abc") == "900150983cd24fb0d6963f7d28e17f72", "md5-vector");
@@ -623,7 +651,8 @@ bool runSelfChecks(bool includeVaultProbe)
     check(subQuery.queryItemValue("c") == "CassetteCat", "subsonic-client");
     check(subQuery.queryItemValue("f") == "json", "subsonic-format");
     check(!subUrl.toString().contains("secret-password"), "subsonic-no-password-in-url");
-    check(subsonicUrl("https://m.example.com", "stream.view", "u", "t", "s", {{"id", "42"}}).toString()
+    check(subsonicUrl("https://m.example.com", "stream.view", "u", "t", "s", {{"id", "42"}})
+              .toString()
               .contains("stream.view"),
           "subsonic-stream-endpoint");
 
@@ -632,11 +661,13 @@ bool runSelfChecks(bool includeVaultProbe)
     check(!okResponse.contains("_error"), "subsonic-ok");
     check(jsonArrayTolerant(okResponse.value("albumList2").toObject(), "album").size() == 1, "subsonic-album-ids");
 
-    const QByteArray singleBody = R"({"subsonic-response": {"status": "ok", "album": {"id": "a1", "name": "N", "song": {"id": "s1", "title": "T"}}}})";
+    const QByteArray singleBody =
+        R"({"subsonic-response": {"status": "ok", "album": {"id": "a1", "name": "N", "song": {"id": "s1", "title": "T"}}}})";
     const QJsonObject singleResponse = parseSubsonicBody(singleBody);
     check(jsonArrayTolerant(singleResponse.value("album").toObject(), "song").size() == 1, "subsonic-single-tolerance");
 
-    const QByteArray failBody = R"({"subsonic-response": {"status": "failed", "error": {"code": 40, "message": "Wrong username"}}})";
+    const QByteArray failBody =
+        R"({"subsonic-response": {"status": "failed", "error": {"code": 40, "message": "Wrong username"}}})";
     check(parseSubsonicBody(failBody).value("_error").toString() == "Wrong username", "subsonic-error-message");
     check(parseSubsonicBody(QByteArray("{broken")).contains("_error"), "subsonic-broken-json");
 
@@ -648,7 +679,8 @@ bool runSelfChecks(bool includeVaultProbe)
     check(postHeader.contains("Token=\"tok123\""), "jellyfin-token-post-login");
     check(!postHeader.contains("s3cret"), "jellyfin-no-password-in-header");
 
-    const QByteArray itemsBody = R"({"Items": [{"Id": "1", "Name": "Song", "AlbumArtist": "A", "Album": "B", "AlbumId": "al", "ProductionYear": 2020, "RunTimeTicks": 2100000000, "ImageTags": {"Primary": "p"}, "UserData": {"IsFavorite": true}, "Genres": ["Rock"], "Container": "mp3"}, {"Id": "2", "Name": "Bare"}]})";
+    const QByteArray itemsBody =
+        R"({"Items": [{"Id": "1", "Name": "Song", "AlbumArtist": "A", "Album": "B", "AlbumId": "al", "ProductionYear": 2020, "RunTimeTicks": 2100000000, "ImageTags": {"Primary": "p"}, "UserData": {"IsFavorite": true}, "Genres": ["Rock"], "Container": "mp3"}, {"Id": "2", "Name": "Bare"}]})";
     const QJsonArray items = QJsonDocument::fromJson(itemsBody).object().value("Items").toArray();
     const QVariantMap full = jellyfinTrackMap(items.at(0).toObject());
     check(full.value("filePath").toString() == "jellyfin:1", "jellyfin-path");
@@ -669,10 +701,8 @@ bool runSelfChecks(bool includeVaultProbe)
 
     {
         RemoteTrackModel model("jellyfin");
-        model.setTracks({
-            QVariantMap{{"source", "jellyfin"}, {"title", "J"}},
-            QVariantMap{{"source", "subsonic"}, {"title", "S"}}
-        });
+        model.setTracks(
+            {QVariantMap{{"source", "jellyfin"}, {"title", "J"}}, QVariantMap{{"source", "subsonic"}, {"title", "S"}}});
         check(model.rowCount() == 1, "remote-model-filter");
         check(model.data(model.index(0, 0), RemoteTrackModel::TrackRole).toMap().value("title") == "J",
               "remote-model-role");
@@ -689,8 +719,8 @@ bool runSelfChecks(bool includeVaultProbe)
     const QString redacted = CredentialVault::redactSecrets(
         "https://m.example.com/Audio/1/stream?static=true&api_key=tok123 and t=abc&s=def Token=\"tok123\"");
     check(!redacted.contains("tok123") && !redacted.contains("t=abc"), "redact-secrets");
-    const QString redactedHeaders = CredentialVault::redactSecrets(
-        "Authorization: Bearer secret-token\nX-Emby-Token: second-token");
+    const QString redactedHeaders =
+        CredentialVault::redactSecrets("Authorization: Bearer secret-token\nX-Emby-Token: second-token");
     check(!redactedHeaders.contains("secret-token") && !redactedHeaders.contains("second-token"),
           "redact-secret-headers");
     check(redacted.contains("static=true"), "redact-keeps-rest");
@@ -726,8 +756,8 @@ bool runSelfChecks(bool includeVaultProbe)
         bool secretLeak = false;
         for (auto it = snapshot.cbegin(); it != snapshot.cend(); ++it) {
             const QString key = it.key().toLower();
-            if (key.contains("password") || key.contains("token") || key.contains("secret")
-                || key.contains("session") || key.contains("credential")) {
+            if (key.contains("password") || key.contains("token") || key.contains("secret") ||
+                key.contains("session") || key.contains("credential")) {
                 secretLeak = true;
             }
             if (it.value().toString().contains("s3cret-pw") || it.value().toString().contains("tok-abc")) {

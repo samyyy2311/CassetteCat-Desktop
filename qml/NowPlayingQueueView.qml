@@ -62,7 +62,7 @@ Item {
                 onTrackActivated: track => root.appWindow.playFromQueue(track)
                 onPlayNextRequested: track => root.appWindow.moveQueuedTrackNext(track)
                 onTrackRemovalRequested: track => root.appWindow.removeQueuedTrack(track)
-                onTrackReorderRequested: (srcTrack, targetTrack) => root.appWindow.reorderQueuedTrack(srcTrack, targetTrack)
+                onTrackReorderRequested: (srcTrack, targetTrack, srcIndex, targetIndex) => root.appWindow.reorderQueuedTrack(srcTrack, targetTrack, srcIndex, targetIndex)
             }
         }
     }

@@ -46,7 +46,9 @@ ColumnLayout {
 
         ColumnLayout {
             Layout.fillWidth: true
-            visible: root.globalShortcutsSupported && root.globalShortcutsEnabled
+            visible: root.globalShortcutsSupported
+            opacity: root.globalShortcutsEnabled ? 1.0 : 0.4
+            enabled: root.globalShortcutsEnabled
             spacing: 0
 
             Repeater {
@@ -56,7 +58,7 @@ ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 0
 
-                    SettingDivider { visible: index > 0 }
+                    SettingDivider {}
 
                     SettingRow {
                         iconName: modelData.icon || ""
@@ -64,7 +66,10 @@ ColumnLayout {
                         title: modelData.label
 
                         ShortcutCaptureField {
-                            shortcut: (root.globalShortcutBindings && root.globalShortcutBindings[modelData.action]) || modelData.defaultKey
+                            enabled: root.globalShortcutsEnabled
+                            shortcut: (root.globalShortcutBindings && root.globalShortcutBindings.hasOwnProperty(modelData.action))
+                                ? root.globalShortcutBindings[modelData.action]
+                                : modelData.defaultKey
                             onShortcutCaptured: value => root.globalShortcutSelected(modelData.action, value)
                         }
                     }
@@ -77,14 +82,27 @@ ColumnLayout {
 
     SettingCard {
         Label {
+            Layout.fillWidth: true
+            Layout.topMargin: 8
+            Layout.bottomMargin: 4
+            text: "Click a shortcut field to record keys. Press Backspace to clear, Escape to cancel."
+            color: (typeof textSecondary !== "undefined" ? textSecondary : "#96918A")
+            font.family: (typeof bodyFont !== "undefined" ? bodyFont : "Space Grotesk")
+            font.pixelSize: 11
+        }
+
+        Label {
             visible: root.inAppShortcutStatus.length > 0
             Layout.fillWidth: true
-            Layout.topMargin: 4
-            Layout.bottomMargin: 8
+            Layout.topMargin: 2
+            Layout.bottomMargin: 6
             text: root.inAppShortcutStatus
-            color: root.inAppShortcutStatus.toLowerCase().includes("already") ? "#FF5555" : recordRedHover
-            font.family: monoFont
-            font.pixelSize: 11
+            color: root.inAppShortcutStatus.toLowerCase().includes("already")
+                ? "#FF5555"
+                : (root.inAppShortcutStatus.toLowerCase().includes("cleared") ? textSecondary : "#10B981")
+            font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
+            font.pixelSize: 12
+            font.weight: Font.Medium
             wrapMode: Text.WordWrap
         }
 
@@ -104,7 +122,9 @@ ColumnLayout {
 
                     ShortcutCaptureField {
                         allowPlainKey: true
-                        shortcut: (root.inAppShortcutBindings && root.inAppShortcutBindings[modelData.action]) || modelData.defaultKey
+                        shortcut: (root.inAppShortcutBindings && root.inAppShortcutBindings.hasOwnProperty(modelData.action))
+                            ? root.inAppShortcutBindings[modelData.action]
+                            : modelData.defaultKey
                         onShortcutCaptured: value => root.inAppShortcutSelected(modelData.action, value)
                     }
                 }

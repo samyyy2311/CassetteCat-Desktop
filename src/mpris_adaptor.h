@@ -12,8 +12,7 @@ class PlayerController;
 #include <QStringList>
 #include <QVariantMap>
 
-class MediaPlayer2Adaptor final : public QDBusAbstractAdaptor
-{
+class MediaPlayer2Adaptor final : public QDBusAbstractAdaptor {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.mpris.MediaPlayer2")
     Q_PROPERTY(bool CanQuit READ canQuit)
@@ -25,7 +24,7 @@ class MediaPlayer2Adaptor final : public QDBusAbstractAdaptor
     Q_PROPERTY(QStringList SupportedUriSchemes READ supportedUriSchemes)
     Q_PROPERTY(QStringList SupportedMimeTypes READ supportedMimeTypes)
 
-public:
+  public:
     explicit MediaPlayer2Adaptor(MprisController *parent);
 
     bool canQuit() const;
@@ -37,16 +36,15 @@ public:
     QStringList supportedUriSchemes() const;
     QStringList supportedMimeTypes() const;
 
-public slots:
+  public slots:
     void Raise();
     void Quit();
 
-private:
+  private:
     MprisController *m_controller = nullptr;
 };
 
-class MediaPlayer2PlayerAdaptor final : public QDBusAbstractAdaptor
-{
+class MediaPlayer2PlayerAdaptor final : public QDBusAbstractAdaptor {
     Q_OBJECT
     Q_CLASSINFO("D-Bus Interface", "org.mpris.MediaPlayer2.Player")
     Q_PROPERTY(QString PlaybackStatus READ playbackStatus)
@@ -65,7 +63,7 @@ class MediaPlayer2PlayerAdaptor final : public QDBusAbstractAdaptor
     Q_PROPERTY(bool CanSeek READ canSeek)
     Q_PROPERTY(bool CanControl READ canControl)
 
-public:
+  public:
     explicit MediaPlayer2PlayerAdaptor(MprisController *parent, PlayerController *player);
 
     QString playbackStatus() const;
@@ -90,7 +88,7 @@ public:
 
     void notifyPropertiesChanged(const QVariantMap &changed);
 
-public slots:
+  public slots:
     void Next();
     void Previous();
     void Pause();
@@ -101,10 +99,10 @@ public slots:
     void SetPosition(const QDBusObjectPath &trackId, qlonglong positionUs);
     void OpenUri(const QString &uri);
 
-signals:
+  signals:
     void Seeked(qlonglong Position);
 
-private:
+  private:
     MprisController *m_controller = nullptr;
     PlayerController *m_player = nullptr;
 };
@@ -119,7 +117,9 @@ void notifyLinuxMprisLoopStatusChanged(void *backend);
 
 #else
 
-inline void *createLinuxMprisBackend(MprisController *, PlayerController *) { return nullptr; }
+inline void *createLinuxMprisBackend(MprisController *, PlayerController *) {
+    return nullptr;
+}
 inline void destroyLinuxMprisBackend(void *) {}
 inline void notifyLinuxMprisTrackChanged(void *) {}
 inline void notifyLinuxMprisPlayingChanged(void *) {}

@@ -144,9 +144,9 @@ ColumnLayout {
 
             SettingSegmentedControl {
                 options: [
-                    { value: 0, label: "SQUARE" },
-                    { value: 8, label: "SOFT" },
-                    { value: 16, label: "ROUNDED" }
+                    { value: 0, label: "Square" },
+                    { value: 8, label: "Soft" },
+                    { value: 16, label: "Rounded" }
                 ]
                 selectedValue: root.albumArtRadius
                 onOptionSelected: val => root.albumArtRadiusSelected(Number(val))
@@ -163,8 +163,8 @@ ColumnLayout {
 
             SettingSegmentedControl {
                 options: [
-                    { value: "tinted", label: "TINTED" },
-                    { value: "clean", label: "CLEAN" }
+                    { value: "tinted", label: "Tinted" },
+                    { value: "clean", label: "Clean" }
                 ]
                 selectedValue: root.nowPlayingBackdrop
                 onOptionSelected: val => root.nowPlayingBackdropSelected(val)
@@ -183,8 +183,8 @@ ColumnLayout {
 
             SettingSegmentedControl {
                 options: [
-                    { value: true, label: "REMAINING" },
-                    { value: false, label: "TOTAL" }
+                    { value: true, label: "Remaining" },
+                    { value: false, label: "Total" }
                 ]
                 selectedValue: root.showRemainingTime
                 onOptionSelected: val => root.showRemainingTimeSelected(Boolean(val))

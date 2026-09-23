@@ -27,7 +27,7 @@ RowLayout {
         Layout.alignment: Qt.AlignVCenter
         icon: root.iconName
         preserveColor: root.preserveIconColor
-        color: root.preserveIconColor ? "transparent" : (root.iconColor.a > 0 ? root.iconColor : root.accentHoverColor)
+        color: root.preserveIconColor ? "transparent" : (root.iconColor.a > 0 ? root.iconColor : (typeof textSecondary !== "undefined" ? textSecondary : "#96918A"))
     }
 
     ColumnLayout {

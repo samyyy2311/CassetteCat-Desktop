@@ -18,6 +18,19 @@ Item {
     width: sidebarWidth
     height: 40
     readonly property bool selected: appWindow.page === destination && !appWindow.nowPlayingOpen
+    readonly property bool highlighted: navMouse.containsMouse || activeFocus
+
+    function activate() {
+        appWindow.nowPlayingOpen = false
+        appWindow.page = destination
+    }
+
+    Accessible.role: Accessible.Button
+    Accessible.name: label
+    Accessible.onPressAction: activate()
+    activeFocusOnTab: true
+    Keys.onReturnPressed: activate()
+    Keys.onEnterPressed: activate()
 
     Rectangle {
         id: navCard
@@ -28,7 +41,7 @@ Item {
         radius: 8
         color: root.selected
             ? root.appWindow.surfaceElevated
-            : (navMouse.containsMouse ? root.appWindow.surfaceCardHover : "transparent")
+            : (root.highlighted ? root.appWindow.surfaceCardHover : "transparent")
         border.width: 0
         border.color: "transparent"
 
@@ -57,7 +70,7 @@ Item {
             preserveColor: root.selected && root.preserveIconColor
             color: root.selected
                 ? root.appWindow.recordRedHover
-                : (navMouse.containsMouse ? root.appWindow.textSecondary : root.appWindow.silverDim)
+                : (root.highlighted ? root.appWindow.textSecondary : root.appWindow.silverDim)
 
             Behavior on anchors.leftMargin { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 120 } }
@@ -72,7 +85,7 @@ Item {
             text: root.label
             color: root.selected
                 ? root.appWindow.textPrimary
-                : (navMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.textSecondary)
+                : (root.highlighted ? root.appWindow.textPrimary : root.appWindow.textSecondary)
             font.family: root.appWindow.displayFont
             font.pixelSize: 13
             font.weight: root.selected ? Font.DemiBold : Font.Normal
@@ -109,10 +122,7 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: {
-            root.appWindow.nowPlayingOpen = false
-            root.appWindow.page = root.destination
-        }
+        onClicked: root.activate()
     }
 
     AppToolTip {

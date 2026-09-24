@@ -22,7 +22,14 @@ Item {
     implicitHeight: root.boxSize
 
     readonly property bool isPressed: mouseArea.pressed
-    readonly property bool isHovered: mouseArea.containsMouse
+    readonly property bool isHovered: mouseArea.containsMouse || root.activeFocus
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.tooltipText
+    Accessible.onPressAction: root.clicked()
+    activeFocusOnTab: true
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
 
     Rectangle {
         anchors.fill: parent

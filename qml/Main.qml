@@ -56,6 +56,7 @@ ApplicationWindow {
     property bool appQuitting: false
     property string page: "home"
     property real homeScrollPosition: 0
+    property var libraryScrollPositions: ({})
     property string libraryTab: "songs"
     property string libraryViewMode: "grid"
     property string songFilterMode: "ALL"
@@ -1109,6 +1110,11 @@ ApplicationWindow {
         return false
     }
 
+    function focusSearchInput() {
+        searchPageLoader.item.searchInput.forceActiveFocus()
+        searchPageLoader.item.searchInput.selectAll()
+    }
+
     function dismissSearchFocus(point) {
         const contains = function(item) {
             return item && item.visible && item.contains(item.mapFromItem(appArea, point.x, point.y))
@@ -1508,12 +1514,8 @@ ApplicationWindow {
             if (miniPlayerMode) return
             nowPlayingOpen = false
             page = "search"
-            Qt.callLater(function() {
-                if (searchPageLoader.item) {
-                    searchPageLoader.item.searchInput.forceActiveFocus()
-                    searchPageLoader.item.searchInput.selectAll()
-                }
-            })
+            if (searchPageLoader.item) focusSearchInput()
+            else searchPageLoader.focusOnLoad = true
         }
     }
 
@@ -3401,9 +3403,7 @@ ApplicationWindow {
                         id: homePageLoader
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        property bool wasLoaded: true
-                        active: wasLoaded || page === "home"
-                        onLoaded: wasLoaded = true
+                        active: page === "home"
 
                         sourceComponent: Component {
                             HomePage {
@@ -3432,9 +3432,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        property bool wasLoaded: false
-                        active: wasLoaded || page === "library"
-                        onLoaded: wasLoaded = true
+                        active: page === "library"
 
                         PageSkeleton {
                             anchors.fill: parent
@@ -3455,9 +3453,12 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        property bool wasLoaded: false
-                        active: wasLoaded || page === "search"
-                        onLoaded: wasLoaded = true
+                        active: page === "search"
+                        property bool focusOnLoad: false
+                        onLoaded: if (focusOnLoad) {
+                            focusOnLoad = false
+                            focusSearchInput()
+                        }
 
                         PageSkeleton {
                             anchors.fill: parent
@@ -3500,9 +3501,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        property bool wasLoaded: false
-                        active: wasLoaded || page === "jellyfin"
-                        onLoaded: wasLoaded = true
+                        active: page === "jellyfin"
 
                         PageSkeleton {
                             anchors.fill: parent
@@ -3523,9 +3522,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        property bool wasLoaded: false
-                        active: wasLoaded || page === "subsonic"
-                        onLoaded: wasLoaded = true
+                        active: page === "subsonic"
 
                         PageSkeleton {
                             anchors.fill: parent
@@ -3572,9 +3569,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        property bool wasLoaded: false
-                        active: wasLoaded || page === "settings"
-                        onLoaded: wasLoaded = true
+                        active: page === "settings"
 
                         PageSkeleton {
                             anchors.fill: parent

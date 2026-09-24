@@ -12,6 +12,21 @@ Item {
     readonly property int selectedTrackCount: Object.keys(root.appWindow.selectedTrackPaths || {}).length
     property var health: ({})
 
+    // The page is unloaded while hidden, so each view's scroll position is kept on the window.
+    readonly property var scrollViews: ({ songsGrid: songsGridView, songsList: songsListView, artists: artistGrid,
+                                          albums: albumGrid, genres: genreGrid, folders: folderGrid })
+    Component.onCompleted: Qt.callLater(() => {
+        const saved = root.appWindow.libraryScrollPositions
+        for (const key in root.scrollViews) {
+            if (saved[key]) root.scrollViews[key].contentY = saved[key]
+        }
+    })
+    Component.onDestruction: {
+        const positions = {}
+        for (const key in root.scrollViews) positions[key] = root.scrollViews[key].contentY
+        root.appWindow.libraryScrollPositions = positions
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0

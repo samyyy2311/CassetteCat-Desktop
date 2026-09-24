@@ -263,6 +263,16 @@ ApplicationWindow {
         return availableTracks().concat(streaming.remoteTracks || [])
     }
 
+    // Resolves saved paths in C++ instead of converting the whole library; server tracks are matched here.
+    // The result is aligned with paths, with undefined where no track matches.
+    function tracksForPaths(paths) {
+        const remoteByPath = {}
+        const remoteTracks = streaming.remoteTracks || []
+        remoteTracks.forEach(track => remoteByPath[normalizedPlaylistPath(track.filePath)] = track)
+        return library.tracksForPaths(paths).map((track, index) =>
+            track.filePath ? track : remoteByPath[normalizedPlaylistPath(paths[index])])
+    }
+
     function updateVisibleLibrary() {
         if (page === "search") {
             library.setSearchFilter(searchQuery, activeFormatFilter, excludedFolders, ignoreShortClips)
@@ -614,8 +624,7 @@ ApplicationWindow {
             lastTrackRestored = true
             return
         }
-        const normTarget = normalizedPlaylistPath(lastTrackPath)
-        const track = playbackTracks().find(candidate => normalizedPlaylistPath(candidate.filePath) === normTarget)
+        const track = tracksForPaths([lastTrackPath])[0]
         if (track && track.filePath) {
             lastTrackRestored = true
             player.restoreTrack(track, appSettings.value("player/lastPosition", 0))
@@ -658,13 +667,7 @@ ApplicationWindow {
     function restoredTracks(key) {
         try {
             const savedPaths = JSON.parse(appSettings.value(key, "[]") || "[]")
-            const tracksByPath = {}
-            playbackTracks().forEach(track => {
-                if (track && track.filePath) {
-                    tracksByPath[normalizedPlaylistPath(track.filePath)] = track
-                }
-            })
-            return uniqueTracks(savedPaths.map(path => tracksByPath[normalizedPlaylistPath(path)]).filter(track => !!track))
+            return uniqueTracks(tracksForPaths(savedPaths).filter(track => !!track))
         } catch (e) {
             return []
         }
@@ -691,9 +694,7 @@ ApplicationWindow {
             else playlist = { name: playlist }
         }
         if (Array.isArray(playlist.trackPaths)) {
-            const tracksByPath = {}
-            playbackTracks().forEach(track => tracksByPath[track.filePath] = track)
-            return playlist.trackPaths.map(path => tracksByPath[path]).filter(track => !!track)
+            return tracksForPaths(playlist.trackPaths).filter(track => !!track)
         }
         if (playlist.name === "Favorites") {
             return availableTracks().filter(track => favoriteTracks[track.filePath])
@@ -862,10 +863,7 @@ ApplicationWindow {
             playlistStatus = "No playable tracks found in playlist"
             return
         }
-        const tracksByPath = {}
-        playbackTracks().forEach(track => tracksByPath[normalizedPlaylistPath(track.filePath)] = track)
-        const tracks = parsedTracks
-            .map(track => tracksByPath[normalizedPlaylistPath(track.filePath)])
+        const tracks = tracksForPaths(parsedTracks.map(track => track.filePath))
             .filter(track => !!track && track.format !== "STREAM")
         if (!tracks.length) {
             playlistStatus = "No library tracks found in playlist"
@@ -918,20 +916,23 @@ ApplicationWindow {
         const nextCounts = Object.assign({}, playCounts)
         const nextSeenAt = Object.assign({}, seenAt)
         const now = Date.now()
-        availableTracks().forEach(track => {
-            if (!track.filePath) return
-            if (!nextSeenAt[track.filePath]) nextSeenAt[track.filePath] = now
+        library.availablePaths().forEach(path => {
+            if (!nextSeenAt[path]) nextSeenAt[path] = now
         })
         if (!sameNumberMap(playCounts, nextCounts)) playCounts = nextCounts
         if (!sameNumberMap(seenAt, nextSeenAt)) seenAt = nextSeenAt
     }
 
     function reconcileTrackSnapshots() {
-        const tracksByPath = {}
         const snapshotKey = path => String(path || "").replace(/\\/g, "/")
-        playbackTracks().forEach(track => {
-            const key = snapshotKey(track.filePath)
-            if (key) tracksByPath[key] = track
+        const snapshots = [].concat(playbackHistory, playbackQueue, originalPlaybackQueue, radioPlaybackQueue,
+                                    originalRadioPlaybackQueue, catalogDetailTracks, historyTrackedTrack,
+                                    catalogDetailHeroTrack, (catalogDetailHistory || []).map(entry => entry && entry.heroTrack))
+        const snapshotPaths = [...new Set(snapshots.filter(track => track && track.filePath)
+                                                   .map(track => snapshotKey(track.filePath)))]
+        const tracksByPath = {}
+        tracksForPaths(snapshotPaths).forEach((track, index) => {
+            if (track) tracksByPath[snapshotPaths[index]] = track
         })
 
         const snapshotChanged = (left, right) => {
@@ -1297,12 +1298,8 @@ ApplicationWindow {
     onFavoriteTracksChanged: {
         if (settingsInitialized) appSettings.setValue("library/favorites", JSON.stringify(favoriteTracks))
         if (songFilterMode === "FAVORITES") updateVisibleLibrary()
-        if (quickPicks.length > 0) {
-            const played = {}
-            playbackHistory.forEach(track => played[trackIdentity(track)] = true)
-            const forgotten = uniqueTracks(availableTracks()).filter(track => favoriteTracks[track.filePath] && !played[trackIdentity(track)])
-            forgottenFavs = forgotten.length >= 3 ? forgotten.slice(0, 10) : []
-        }
+        if (quickPicks.length > 0)
+            forgottenFavs = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory).forgottenFavs
     }
     onPlaylistsChanged: if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
     onPlayCountsChanged: {
@@ -1970,8 +1967,7 @@ ApplicationWindow {
     property var genreGroups: []
     property var folderGroups: []
 
-    function refreshSpotlight(source) {
-        const candidates = source || uniqueTracks(availableTracks())
+    function refreshSpotlight(candidates) {
         if (candidates.length > 0) {
             spotlightTrack = candidates[Math.floor(Math.random() * candidates.length)]
         } else {
@@ -1980,39 +1976,13 @@ ApplicationWindow {
     }
 
     function refreshHomeRecommendations() {
-        const libraryTracks = availableTracks()
-        if (libraryTracks.length === 0) {
-            quickPicks = []
-            heavyRotation = []
-            recentlyPlayed = []
-            recentlyAdded = []
-            forgottenFavs = []
-            spotlightTrack = null
-            return
-        }
-
-        const uniqueLibraryTracks = uniqueTracks(libraryTracks)
-        const played = {}
-        playbackHistory.forEach(track => played[trackIdentity(track)] = true)
-        const candidates = uniqueLibraryTracks.filter(track => !played[trackIdentity(track)])
-        refreshSpotlight(candidates)
-
-        const shuffled = shuffledTracks(candidates)
-
-        quickPicks = shuffled.slice(0, Math.min(8, shuffled.length))
-        const ranked = shuffledTracks(uniqueLibraryTracks.filter(track => playCounts[track.filePath] > 0))
-        ranked.sort((left, right) => playCounts[right.filePath] - playCounts[left.filePath])
-        heavyRotation = ranked.slice(0, 10)
-
-        const tracksByPath = {}
-        uniqueLibraryTracks.forEach(track => tracksByPath[track.filePath] = track)
-        recentlyPlayed = uniqueTracks(playbackHistory.map(track => tracksByPath[track.filePath]).filter(track => !!track)).slice(0, 10)
-        recentlyAdded = uniqueLibraryTracks
-            .filter(track => seenAt[track.filePath] > 0)
-            .sort((left, right) => seenAt[right.filePath] - seenAt[left.filePath])
-            .slice(0, 10)
-        const forgotten = uniqueLibraryTracks.filter(track => favoriteTracks[track.filePath] && !played[trackIdentity(track)])
-        forgottenFavs = forgotten.length >= 3 ? forgotten.slice(0, 10) : []
+        const home = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory)
+        spotlightTrack = home.spotlight.filePath ? home.spotlight : null
+        quickPicks = home.quickPicks
+        heavyRotation = home.heavyRotation
+        recentlyPlayed = home.recentlyPlayed
+        recentlyAdded = home.recentlyAdded
+        forgottenFavs = home.forgottenFavs
     }
 
     function refreshLibraryState() {
@@ -2368,7 +2338,7 @@ ApplicationWindow {
         const queue = uniqueTracks(availableTracks())
         if (!queue.length) return
         shufflePlayback(queue)
-        refreshSpotlight()
+        refreshSpotlight(queue)
     }
 
     Connections {

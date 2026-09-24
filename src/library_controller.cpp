@@ -12,6 +12,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
+#include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QSettings>
@@ -28,6 +29,28 @@ QString normalizedPath(QString path) {
     path = path.toLower();
 #endif
     return path;
+}
+
+// Matches saved queue, history, and playlist entries, which may be file URLs or differently separated paths.
+QString pathKey(QString path) {
+    path = path.trimmed();
+    if (path.isEmpty() || path.startsWith('#'))
+        return {};
+    if (path.startsWith(QStringLiteral("file:"), Qt::CaseInsensitive))
+        path = QUrl(path).toLocalFile();
+    return normalizedPath(path);
+}
+
+// Same identity the QML queue uses to treat one song in several files as a single entry.
+QString trackIdentity(const QVariantMap &track) {
+    QString title = track.value("title").toString();
+    if (title.isEmpty())
+        title = track.value("fileName").toString();
+    title = title.trimmed().toLower();
+    if (title.isEmpty())
+        return track.value("filePath").toString();
+    return title + QChar(0x1f) + track.value("artist").toString().trimmed().toLower() + QChar(0x1f) +
+           track.value("album").toString().trimmed().toLower();
 }
 
 QString primaryArtist(const QString &artist) {
@@ -240,6 +263,30 @@ bool LibraryController::selfCheck() {
     library.setLibraryFilter({}, "ALL", {}, "title", true, {"C:/Music/hidden"}, true);
     if (library.trackCount() != 2 || library.visibleTrackCount() != 2)
         return fail("library filter");
+    const QVariantList found =
+        library.tracksForPaths({"C:\\Music\\keep.flac", "C:/Music/hidden/song.mp3", "#comment", "C:/Music/keep.flac"});
+    if (found.size() != 4 || found[0].toMap().value("title") != "Keep" || !found[1].toMap().isEmpty() ||
+        !found[2].toMap().isEmpty() || found[3].toMap().value("title") != "Keep")
+        return fail("tracks for paths");
+#ifdef Q_OS_WIN
+    if (library.tracksForPaths({"file:///C:/Music/ALTERNATE.wav"}).value(0).toMap().value("title") != "Alternate")
+        return fail("tracks for file urls");
+#endif
+    if (library.availablePaths() != QStringList{"C:/Music/keep.flac", "C:/Music/alternate.wav"})
+        return fail("available paths");
+    const QVariantMap home = library.homeRecommendations(
+        {{"C:/Music/keep.flac", 3}}, {{"C:/Music/keep.flac", 50}, {"C:/Music/alternate.wav", 100}},
+        {{"C:/Music/alternate.wav", true}}, {QVariantMap{{"filePath", "C:/Music/keep.flac"}, {"title", "Keep"}}});
+    const auto titles = [&](const char *shelf) {
+        QStringList result;
+        for (const QVariant &track : home.value(shelf).toList())
+            result.append(track.toMap().value("title").toString());
+        return result;
+    };
+    if (titles("quickPicks") != QStringList{"Alternate"} || titles("heavyRotation") != QStringList{"Keep"} ||
+        titles("recentlyPlayed") != QStringList{"Keep"} || titles("recentlyAdded") != QStringList{"Alternate", "Keep"} ||
+        !titles("forgottenFavs").isEmpty() || home.value("spotlight").toMap().value("title") != "Alternate")
+        return fail("home recommendations");
     if (library.data(library.index(0, 0), TrackRole).toMap().value("filePath").toString() != "C:/Music/alternate.wav")
         return fail("library sort");
 
@@ -378,13 +425,105 @@ void LibraryController::setAlbumArtwork(const QString &album, const QString &art
     }
 }
 
-QVariantMap LibraryController::trackForPath(const QString &filePath) const {
+QVariantList LibraryController::tracksForPaths(const QVariantList &paths) const {
+    QHash<QString, QList<int>> wanted;
+    for (int i = 0; i < paths.size(); ++i) {
+        const QString key = pathKey(paths[i].toString());
+        if (!key.isEmpty())
+            wanted[key].append(i);
+    }
+    QVariantList result(paths.size(), QVariantMap());
     for (const QVariant &value : m_tracks) {
         const QVariantMap track = value.toMap();
-        if (track.value("filePath").toString() == filePath)
-            return track;
+        const auto match = wanted.constFind(pathKey(track.value("filePath").toString()));
+        if (match == wanted.cend() || !isAvailable(track))
+            continue;
+        for (int index : *match)
+            result[index] = track;
     }
-    return {};
+    return result;
+}
+
+QStringList LibraryController::availablePaths() const {
+    QStringList paths;
+    paths.reserve(m_trackCount);
+    for (const QVariant &value : m_tracks) {
+        const QVariantMap track = value.toMap();
+        if (isAvailable(track))
+            paths.append(track.value("filePath").toString());
+    }
+    return paths;
+}
+
+QVariantMap LibraryController::homeRecommendations(const QVariantMap &playCounts, const QVariantMap &seenAt,
+                                                   const QVariantMap &favorites, const QVariantList &history) const {
+    const auto path = [](const QVariantMap &track) { return track.value("filePath").toString(); };
+    QList<QVariantMap> tracks;
+    QSet<QString> identities;
+    QHash<QString, QVariantMap> tracksByPath;
+    for (const QVariant &value : m_tracks) {
+        const QVariantMap track = value.toMap();
+        const QString identity = trackIdentity(track);
+        if (!isAvailable(track) || identity.isEmpty() || identities.contains(identity))
+            continue;
+        identities.insert(identity);
+        tracks.append(track);
+        tracksByPath.insert(path(track), track);
+    }
+
+    QSet<QString> played;
+    for (const QVariant &value : history)
+        played.insert(trackIdentity(value.toMap()));
+
+    QList<QVariantMap> unplayed;
+    QList<QVariantMap> ranked;
+    QList<QVariantMap> added;
+    QList<QVariantMap> forgotten;
+    for (const QVariantMap &track : std::as_const(tracks)) {
+        const bool wasPlayed = played.contains(trackIdentity(track));
+        if (!wasPlayed)
+            unplayed.append(track);
+        if (playCounts.value(path(track)).toInt() > 0)
+            ranked.append(track);
+        if (seenAt.value(path(track)).toDouble() > 0)
+            added.append(track);
+        if (!wasPlayed && favorites.value(path(track)).toBool())
+            forgotten.append(track);
+    }
+
+    QRandomGenerator *random = QRandomGenerator::global();
+    std::shuffle(unplayed.begin(), unplayed.end(), *random);
+    // Shuffle first so tracks with equal play counts do not always appear in library order.
+    std::shuffle(ranked.begin(), ranked.end(), *random);
+    std::stable_sort(ranked.begin(), ranked.end(), [&](const QVariantMap &left, const QVariantMap &right) {
+        return playCounts.value(path(left)).toInt() > playCounts.value(path(right)).toInt();
+    });
+    std::stable_sort(added.begin(), added.end(), [&](const QVariantMap &left, const QVariantMap &right) {
+        return seenAt.value(path(left)).toDouble() > seenAt.value(path(right)).toDouble();
+    });
+
+    QList<QVariantMap> recentlyPlayed;
+    QSet<QString> recentIdentities;
+    for (const QVariant &value : history) {
+        const QVariantMap track = tracksByPath.value(path(value.toMap()));
+        if (!track.isEmpty() && !recentIdentities.contains(trackIdentity(track))) {
+            recentIdentities.insert(trackIdentity(track));
+            recentlyPlayed.append(track);
+        }
+    }
+
+    const auto shelf = [](const QList<QVariantMap> &list, qsizetype limit) {
+        QVariantList result;
+        for (qsizetype i = 0; i < qMin(limit, list.size()); ++i)
+            result.append(list[i]);
+        return result;
+    };
+    return {{"spotlight", unplayed.isEmpty() ? QVariantMap() : unplayed.first()},
+            {"quickPicks", shelf(unplayed, 8)},
+            {"heavyRotation", shelf(ranked, 10)},
+            {"recentlyPlayed", shelf(recentlyPlayed, 10)},
+            {"recentlyAdded", shelf(added, 10)},
+            {"forgottenFavs", forgotten.size() >= 3 ? shelf(forgotten, 10) : QVariantList()}};
 }
 
 QVariantMap LibraryController::updateTrackMetadata(const QVariantMap &metadata) {

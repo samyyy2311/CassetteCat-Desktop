@@ -103,6 +103,7 @@ class PlayerController final : public QObject {
     QUrl resolveMediaSource(const QVariantMap &track) const;
     /// Loads \p track into the media player without starting playback.
     bool loadTrack(const QVariantMap &track);
+    void openDeferredSource();
     void setAudioLevel(qreal level);
     /// Applies ReplayGain and the configured ceiling to the audio output.
     void applyEffectiveVolume();
@@ -120,6 +121,8 @@ class PlayerController final : public QObject {
     qint64 m_position = 0;
     qint64 m_duration = 0;
     qint64 m_pendingRestorePositionMs = 0;
+    // Media for the loaded track that has not been handed to the backend yet.
+    QUrl m_deferredSource;
     QString m_error;
     bool m_pauseExpected = false;
     QString m_replayGainMode = QStringLiteral("off");

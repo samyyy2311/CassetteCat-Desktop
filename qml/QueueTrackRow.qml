@@ -32,7 +32,9 @@ Item {
     readonly property color borderCard: paletteSource && paletteSource.borderCard ? paletteSource.borderCard : borderVariant
 
     readonly property bool isCompactDensity: compact || (typeof window !== "undefined" && window.trackDensity === "compact")
-    readonly property bool highlighted: rowMouse.containsMouse || (rowMouse.enabled && activeFocus)
+    readonly property bool highlighted: rowMouse.containsMouse || (rowMouse.enabled && activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
 
     Accessible.role: Accessible.ListItem
     Accessible.name: track ? (track.title || track.fileName || "") : ""
@@ -106,6 +108,10 @@ Item {
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onPressed: {
+                root.mouseFocused = true
+                root.forceActiveFocus()
+            }
             onClicked: mouse => {
                 if (mouse.button === Qt.RightButton) {
                     contextMenu.popup()

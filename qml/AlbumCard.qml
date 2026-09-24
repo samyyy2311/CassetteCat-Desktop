@@ -15,7 +15,9 @@ Item {
 
     signal clicked()
 
-    readonly property bool highlighted: albumCardMouse.containsMouse || activeFocus
+    readonly property bool highlighted: albumCardMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
 
     Accessible.role: Accessible.Button
     Accessible.name: root.name
@@ -103,6 +105,10 @@ Item {
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: mouse => {
             if (mouse.button === Qt.RightButton) {
                 if (typeof window !== "undefined" && window.openCoverSearch) {

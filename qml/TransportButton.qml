@@ -27,12 +27,14 @@ Item {
     readonly property color textSecondary: "#A8A29A"
 
     readonly property bool isPressed: mouseArea.pressed
-    readonly property bool isHovered: mouseArea.containsMouse || root.activeFocus
+    readonly property bool isHovered: mouseArea.containsMouse || (root.activeFocus && !root.mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
 
     Accessible.role: Accessible.Button
     Accessible.name: root.tooltipText
     Accessible.onPressAction: root.clicked()
-    activeFocusOnTab: true
+    activeFocusOnTab: root.opacity > 0
     Keys.onReturnPressed: root.clicked()
     Keys.onEnterPressed: root.clicked()
 
@@ -78,6 +80,10 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: root.clicked()
     }
 

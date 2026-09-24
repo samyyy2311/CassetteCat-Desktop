@@ -13,7 +13,9 @@ Item {
     signal clicked()
     signal favoriteClicked()
 
-    readonly property bool highlighted: cardMouse.containsMouse || activeFocus
+    readonly property bool highlighted: cardMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
 
     Accessible.role: Accessible.Button
     Accessible.name: root.track.title || root.track.fileName || ""
@@ -107,6 +109,10 @@ Item {
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: mouse => {
             if (mouse.button === Qt.RightButton) {
                 contextMenu.popup()

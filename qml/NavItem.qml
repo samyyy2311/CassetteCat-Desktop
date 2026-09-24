@@ -18,7 +18,9 @@ Item {
     width: sidebarWidth
     height: 40
     readonly property bool selected: appWindow.page === destination && !appWindow.nowPlayingOpen
-    readonly property bool highlighted: navMouse.containsMouse || activeFocus
+    readonly property bool highlighted: navMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
 
     function activate() {
         appWindow.nowPlayingOpen = false
@@ -122,6 +124,10 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: root.activate()
     }
 

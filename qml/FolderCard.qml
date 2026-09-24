@@ -13,7 +13,9 @@ Rectangle {
 
     signal clicked()
 
-    readonly property bool highlighted: folderMouse.containsMouse || activeFocus
+    readonly property bool highlighted: folderMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
 
     Accessible.role: Accessible.Button
     Accessible.name: root.name
@@ -119,6 +121,10 @@ Rectangle {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: root.clicked()
     }
 }

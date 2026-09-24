@@ -18,7 +18,9 @@ Item {
 
     signal clicked()
 
-    readonly property bool highlighted: artistMouse.containsMouse || activeFocus
+    readonly property bool highlighted: artistMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
 
     Accessible.role: Accessible.Button
     Accessible.name: root.name
@@ -192,6 +194,10 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: root.clicked()
     }
 }

@@ -405,6 +405,24 @@ ApplicationWindow {
         if (updateUrl) services.openExternalUrl(updateUrl)
     }
 
+    // Flickables do not follow keyboard focus, so scroll every enclosing one to reveal the focused item.
+    onActiveFocusItemChanged: {
+        const item = activeFocusItem
+        if (!item || item.mouseFocused) return
+        for (let view = item.parent; view; view = view.parent) {
+            if (view.flickableDirection === undefined) continue
+            const r = item.mapToItem(view.contentItem, 0, 0, item.width, item.height)
+            if (view.contentHeight > view.height) {
+                const top = Math.min(r.y, Math.max(view.contentY, r.y + r.height - view.height))
+                view.contentY = Math.max(view.originY, Math.min(top, view.originY + view.contentHeight - view.height))
+            }
+            if (view.contentWidth > view.width) {
+                const left = Math.min(r.x, Math.max(view.contentX, r.x + r.width - view.width))
+                view.contentX = Math.max(view.originX, Math.min(left, view.originX + view.contentWidth - view.width))
+            }
+        }
+    }
+
     Component.onCompleted: {
         const savedW = appSettings.value("window/width", 1120)
         const savedH = appSettings.value("window/height", 720)

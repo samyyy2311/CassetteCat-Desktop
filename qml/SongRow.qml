@@ -30,7 +30,9 @@ Rectangle {
     signal clicked(var modifiers)
     signal favoriteClicked()
 
-    readonly property bool highlighted: rowMouse.containsMouse || activeFocus
+    readonly property bool highlighted: rowMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
 
     Accessible.role: Accessible.ListItem
     Accessible.name: root.track ? (root.track.title || root.track.fileName || "") : ""
@@ -220,6 +222,10 @@ Rectangle {
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: mouse => {
             if (mouse.button === Qt.RightButton) {
                 contextMenu.popup()

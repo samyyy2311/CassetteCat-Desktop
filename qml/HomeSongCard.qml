@@ -12,7 +12,9 @@ Item {
 
     signal clicked()
 
-    readonly property bool highlighted: cardMouse.containsMouse || activeFocus
+    readonly property bool highlighted: cardMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
 
     Accessible.role: Accessible.Button
     Accessible.name: root.track.title || root.track.fileName || ""
@@ -53,6 +55,7 @@ Item {
                 anchors.bottom: parent.bottom
                 anchors.margins: 8
                 buttonSize: 38
+                activeFocusOnTab: false
                 iconName: "play"
                 accented: true
                 iconColor: recordRed
@@ -94,6 +97,10 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: root.clicked()
     }
 }

@@ -210,9 +210,16 @@ Rectangle {
         }
     }
 
-    TrackContextMenu {
+    // Built on first use: a Menu per list delegate makes scrolling allocate menus nobody opens.
+    Loader {
         id: contextMenu
-        track: root.track
+        active: false
+        sourceComponent: TrackContextMenu { track: root.track }
+
+        function popup(...args) {
+            active = true
+            item.popup(...args)
+        }
     }
 
     MouseArea {

@@ -19,6 +19,7 @@ Item {
         const rows = (tracks || []).filter(track => track && track.filePath && (playCounts[track.filePath] || 0) > 0)
             .map(track => ({ track: track, count: playCounts[track.filePath] || 0 }))
         rows.sort((left, right) => right.count - left.count)
+        rows.forEach((row, i) => { row.rank = i + 1 })
         return rows
     }
     readonly property var mostPlayed: (playedTracks || []).slice(0, 50)
@@ -445,10 +446,15 @@ Item {
             currentIndex: root.currentTab === "overview" ? 0 : (root.currentTab === "tracks" ? 1 : (root.currentTab === "artists" ? 2 : (root.currentTab === "albums" ? 3 : 4)))
 
             // Overview
-            ScrollView {
+            Flickable {
                 id: overviewScroll
+                readonly property real availableWidth: width
                 clip: true
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                flickableDirection: Flickable.VerticalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                pixelAligned: UiConstants.pixelAligned
                 ScrollBar.vertical: SleekScrollBar {}
                 contentWidth: availableWidth
                 contentHeight: overviewCol.implicitHeight + 48
@@ -734,13 +740,18 @@ Item {
                             spacing: 16
                             clip: false
                             boundsBehavior: Flickable.StopAtBounds
+                            flickDeceleration: UiConstants.flickDeceleration
+                            maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                            cacheBuffer: UiConstants.cacheBuffer
+                            pixelAligned: UiConstants.pixelAligned
+                            reuseItems: true
                             model: root.artistRanks.slice(0, 10)
                             delegate: ArtistCard {
                                 name: modelData.artist
                                 count: modelData.count
                                 subtitle: modelData.count + (modelData.count === 1 ? " play" : " plays")
                                 track: modelData.track
-                                cardWidth: 140
+                                cardWidth: 148
                                 cardHeight: 200
                                 onClicked: root.appWindow.openCatalogDetail("artist", modelData.artist, modelData.track)
                             }
@@ -832,6 +843,11 @@ Item {
                             spacing: 16
                             clip: false
                             boundsBehavior: Flickable.StopAtBounds
+                            flickDeceleration: UiConstants.flickDeceleration
+                            maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                            cacheBuffer: UiConstants.cacheBuffer
+                            pixelAligned: UiConstants.pixelAligned
+                            reuseItems: true
                             model: root.albumRanks.slice(0, 10)
                             delegate: AlbumCard {
                                 name: modelData.album
@@ -1066,12 +1082,17 @@ Item {
                     model: root.filteredTracks
                     spacing: 4
                     boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    cacheBuffer: UiConstants.cacheBuffer
+                    pixelAligned: UiConstants.pixelAligned
+                    reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
                     delegate: RankedSongRow {
                         width: topTracksListView.width
                         rowItem: modelData
-                        rankNumber: index + 1
+                        rankNumber: (modelData && modelData.rank !== undefined) ? modelData.rank : (index + 1)
                     }
                 }
 
@@ -1103,6 +1124,11 @@ Item {
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 245
                     boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    cacheBuffer: UiConstants.cacheBuffer
+                    pixelAligned: UiConstants.pixelAligned
+                    reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
                     delegate: Item {
@@ -1150,6 +1176,11 @@ Item {
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 255
                     boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    cacheBuffer: UiConstants.cacheBuffer
+                    pixelAligned: UiConstants.pixelAligned
+                    reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
                     delegate: Item {
@@ -1195,6 +1226,11 @@ Item {
                     model: root.filteredHistory
                     spacing: 4
                     boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    cacheBuffer: UiConstants.cacheBuffer
+                    pixelAligned: UiConstants.pixelAligned
+                    reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
                     delegate: SongRow {
@@ -1263,8 +1299,8 @@ Item {
 
                     LucideIcon {
                         anchors.centerIn: parent
-                        Layout.preferredWidth: 18
-                        Layout.preferredHeight: 18
+                        width: 18
+                        height: 18
                         icon: "rotate-ccw"
                         color: root.appWindow.recordRed
                     }

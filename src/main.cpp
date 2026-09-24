@@ -15,11 +15,13 @@
 #include <QQmlContext>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QSurfaceFormat>
 #include <QSize>
 #include <QStandardPaths>
 #include <QStringList>
 #include <QUrl>
 #include <QVariantList>
+#include <QThread>
 #include <cstring>
 #include <iostream>
 #include <string>
@@ -76,21 +78,27 @@ bool notifyRunningInstance(const QString &serverName, const QString &openPath = 
     return written;
 }
 
-bool startInstanceServer(QLocalServer &server, const QString &serverName, const QString &openPath = {}) {
+enum class InstanceStartResult {
+    Started,
+    HandedOff,
+    Unavailable,
+};
+
+InstanceStartResult startInstanceServer(QLocalServer &server, const QString &serverName, const QString &openPath = {}) {
 #ifndef Q_OS_WIN
     server.setSocketOptions(QLocalServer::UserAccessOption);
 #endif
     if (server.listen(serverName))
-        return true;
+        return InstanceStartResult::Started;
     if (notifyRunningInstance(serverName, openPath))
-        return false;
+        return InstanceStartResult::HandedOff;
 
     QLocalServer::removeServer(serverName);
     if (server.listen(serverName))
-        return true;
+        return InstanceStartResult::Started;
 
     qWarning() << "Single-instance server unavailable:" << server.errorString();
-    return false;
+    return InstanceStartResult::Unavailable;
 }
 
 bool singleInstanceSelfCheck() {
@@ -180,9 +188,18 @@ static void setupWindowsFrameless(QQuickWindow *window) {
     if (!hwnd)
         return;
 
-    // A one-pixel client extension keeps DWM shadowing on a frameless window.
+    // Enable immersive dark mode for title bar and window frame on Windows 10/11
+    BOOL darkMode = TRUE;
+    DwmSetWindowAttribute(hwnd, 19 /* DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 */, &darkMode, sizeof(darkMode));
+    DwmSetWindowAttribute(hwnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &darkMode, sizeof(darkMode));
+
+    // A one-pixel client extension is required for DWM to composite a frameless window on Windows.
     MARGINS margins = {1, 1, 1, 1};
     DwmExtendFrameIntoClientArea(hwnd, &margins);
+
+    // Blend window border seamlessly with the app surface background (#0E0D0C) on Windows 11
+    COLORREF borderColor = RGB(14, 13, 12);
+    DwmSetWindowAttribute(hwnd, 34 /* DWMWA_BORDER_COLOR */, &borderColor, sizeof(borderColor));
 }
 
 static void registerWindowsAppIdentity() {
@@ -230,6 +247,11 @@ int main(int argc, char *argv[]) {
 #ifdef Q_OS_WIN
     SetCurrentProcessExplicitAppUserModelID(L"CassetteCat.AudioEngine.Desktop.App");
 #endif
+
+    // Ensure display swap interval is synchronized with monitor VSync (supports high refresh 144Hz, 240Hz, 360Hz, 540Hz)
+    QSurfaceFormat surfaceFormat = QSurfaceFormat::defaultFormat();
+    surfaceFormat.setSwapInterval(1);
+    QSurfaceFormat::setDefaultFormat(surfaceFormat);
 
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
@@ -323,15 +345,30 @@ int main(int argc, char *argv[]) {
 #ifdef _WIN32
     SetLastError(0);
     const HANDLE instanceMutex = CreateMutexW(nullptr, FALSE, kInstanceMutexName);
-    if (!instanceMutex || GetLastError() == ERROR_ALREADY_EXISTS) {
-        if (notifyRunningInstance(QString::fromLatin1(kInstanceServerName), openPath)) {
-            return 0;
+    if (instanceMutex && GetLastError() == ERROR_ALREADY_EXISTS) {
+        bool handedOff = false;
+        constexpr int maxHandoffRetries = 5;
+        for (int attempt = 0; attempt < maxHandoffRetries; ++attempt) {
+            if (notifyRunningInstance(QString::fromLatin1(kInstanceServerName), openPath)) {
+                handedOff = true;
+                break;
+            }
+            if (attempt + 1 < maxHandoffRetries)
+                QThread::msleep(100);
         }
+        if (!handedOff) {
+            qWarning() << "Existing instance detected, but handoff notification failed.";
+            return 1;
+        }
+        return 0;
     }
 #endif
-    if (!startInstanceServer(instanceServer, QString::fromLatin1(kInstanceServerName), openPath)) {
+    const InstanceStartResult instanceResult =
+        startInstanceServer(instanceServer, QString::fromLatin1(kInstanceServerName), openPath);
+    if (instanceResult == InstanceStartResult::HandedOff)
+        return 0;
+    if (instanceResult == InstanceStartResult::Unavailable)
         qWarning() << "Proceeding without single-instance handoff server.";
-    }
 
     QQuickWindow *mainWindow = nullptr;
 
@@ -388,11 +425,15 @@ int main(int argc, char *argv[]) {
 
     QObject::connect(&mpris, &MprisController::openUriRequested, [&](const QString &uri) {
         const QUrl url(uri);
-        const QString path = url.isLocalFile() ? url.toLocalFile() : uri;
-        openExternalPath(path);
+        if (!url.isLocalFile())
+            return;
+        const QString path = url.toLocalFile();
+        const QFileInfo file(path);
+        if (file.exists() && file.isFile()) {
+            openExternalPath(path);
+        }
     });
     QObject::connect(&mpris, &MprisController::raiseRequested, [&]() { activateWindow(mainWindow); });
-    QObject::connect(&mpris, &MprisController::quitRequested, [&]() { app.quit(); });
     mpris.initialize();
 
     const auto handleInstanceSocket = [&](QLocalSocket *socket) {

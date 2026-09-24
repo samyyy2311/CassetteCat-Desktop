@@ -23,8 +23,8 @@ ColumnLayout {
             Layout.bottomMargin: 4
             radius: 8
             color: (typeof surfaceInput !== "undefined" ? surfaceInput : "#1A1917")
-            border.width: 1
-            border.color: (typeof borderSubtle !== "undefined" ? borderSubtle : "#22201D")
+            border.width: 0
+            border.color: "transparent"
 
             RowLayout {
                 anchors.fill: parent
@@ -35,8 +35,8 @@ ColumnLayout {
                 LucideIcon {
                     Layout.preferredWidth: 14
                     Layout.preferredHeight: 14
-                    icon: "folder"
-                    color: root.accentHoverColor
+                    icon: "music"
+                    color: textSecondary
                 }
 
                 Label {

@@ -59,21 +59,21 @@ Item {
     property bool scrobbleLibreFmEnabled: false
     property string scrobbleLibreFmUser: ""
     property bool scrobbleLibreFmConnected: false
-    property string updateStatusText: "Current version: v0.5.1"
+    property string updateStatusText: "Current version: v0.6.0"
     property bool updateChecking: false
     property bool updateAvailable: false
     property string updateUrl: ""
 
     readonly property var categories: [
-        { id: "library", label: "Music Library", icon: "folder" },
+        { id: "library", label: "Music Library", icon: "library" },
         { id: "appearance", label: "Appearance", icon: "sliders-horizontal" },
-        { id: "playback", label: "Playback", icon: "play" },
-        { id: "shortcuts", label: "Keyboard Shortcuts", icon: "zap" },
-        { id: "desktop", label: "Desktop & System", icon: "pip" },
+        { id: "playback", label: "Playback & Audio", icon: "play" },
+        { id: "shortcuts", label: "Keyboard Shortcuts", icon: "keyboard" },
+        { id: "desktop", label: "General & System", icon: "settings" },
         { id: "lyrics", label: "Lyrics", icon: "mic" },
         { id: "scrobble", label: "Scrobbling", icon: "audio-lines" },
         { id: "network", label: "Network & Services", icon: "globe" },
-        { id: "data", label: "Backup & Data", icon: "refresh-cw" },
+        { id: "data", label: "Backup & Diagnostics", icon: "refresh-cw" },
         { id: "credits", label: "Credits & Legal", icon: "info" }
     ]
 
@@ -141,10 +141,25 @@ Item {
     signal downloadUpdateRequested()
     signal sectionSelected(string section)
 
+    property string pendingSection: ""
+
     function chooseSection(id) {
-        currentSection = id
-        contentScroll.contentItem.contentY = 0
-        sectionSelected(id)
+        if (currentSection === id) return
+        pendingSection = id
+        sectionFadeAnim.restart()
+    }
+
+    SequentialAnimation {
+        id: sectionFadeAnim
+        NumberAnimation { target: sectionContent; property: "opacity"; to: 0.0; duration: 70; easing.type: Easing.OutQuad }
+        ScriptAction {
+            script: {
+                currentSection = pendingSection
+                if (contentScroll) contentScroll.contentY = 0
+                sectionSelected(pendingSection)
+            }
+        }
+        NumberAnimation { target: sectionContent; property: "opacity"; to: 1.0; duration: 150; easing.type: Easing.OutCubic }
     }
 
     Item {
@@ -172,6 +187,10 @@ Item {
                     height: 48
                     contentWidth: compactRow.implicitWidth
                     clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    pixelAligned: UiConstants.pixelAligned
 
                     Row {
                         id: compactRow
@@ -222,11 +241,12 @@ Item {
                     anchors.left: navigation.right
                     anchors.leftMargin: 20
                     width: 1
-                    color: borderSubtle
+                    color: Qt.rgba(255, 255, 255, 0.05)
                 }
 
-                ScrollView {
+                Flickable {
                     id: contentScroll
+                    readonly property real availableWidth: width
                     anchors.top: parent.compact ? compactNav.bottom : parent.top
                     anchors.bottom: parent.bottom
                     anchors.left: parent.compact ? parent.left : navigation.right
@@ -236,11 +256,16 @@ Item {
                     clip: true
                     contentWidth: availableWidth
                     contentHeight: Math.max(height, sectionContent.implicitHeight + 48)
-                    ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                    flickableDirection: Flickable.VerticalFlick
+                    boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    pixelAligned: UiConstants.pixelAligned
                     ScrollBar.vertical: SleekScrollBar {}
 
                         ColumnLayout {
                             id: sectionContent
+                            opacity: 1.0
                             x: Math.max(0, (contentScroll.availableWidth - width) / 2)
                             width: Math.min(contentScroll.availableWidth - 20, 960)
                             spacing: 18
@@ -253,7 +278,6 @@ Item {
                                 libraryFolders: root.libraryFolders
                                 excludedFolders: root.excludedFolders
                                 ignoreShortClips: root.ignoreShortClips
-                                defaultLaunchPage: root.defaultLaunchPage
                                 songSortMetric: root.songSortMetric
                                 trackDensity: root.trackDensity
                                 showFormatBadges: root.showFormatBadges
@@ -262,7 +286,6 @@ Item {
                                 onAddExcludeRequested: root.addExcludeRequested()
                                 onRemoveExcludeRequested: path => root.removeExcludeRequested(path)
                                 onIgnoreShortClipsSelected: value => root.ignoreShortClipsSelected(value)
-                                onDefaultLaunchPageSelected: value => root.defaultLaunchPageSelected(value)
                                 onSongSortSelected: value => root.songSortSelected(value)
                                 onTrackDensitySelected: value => root.trackDensitySelected(value)
                                 onShowFormatBadgesSelected: value => root.showFormatBadgesSelected(value)
@@ -288,6 +311,8 @@ Item {
                                 id: secPlayback
                                 visible: root.currentSection === "playback"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
+                                audioOutputs: root.audioOutputs
+                                audioDeviceId: root.audioDeviceId
                                 resumeQueueOnLaunch: root.resumeQueueOnLaunch
                                 autoplayEnabled: root.autoplayEnabled
                                 sleepTimerMode: root.sleepTimerMode
@@ -295,6 +320,8 @@ Item {
                                 sleepFadeOut: root.sleepFadeOut
                                 volumeLimitEnabled: root.volumeLimitEnabled
                                 maxVolumePercent: root.maxVolumePercent
+                                replayGainMode: root.replayGainMode
+                                onAudioDeviceSelected: value => root.audioDeviceSelected(value)
                                 onResumeQueueOnLaunchSelected: value => root.resumeQueueOnLaunchSelected(value)
                                 onAutoplaySelected: value => root.autoplaySelected(value)
                                 onSleepTimerSelected: value => root.sleepTimerSelected(value)
@@ -302,7 +329,6 @@ Item {
                                 onSleepFadeOutSelected: value => root.sleepFadeOutSelected(value)
                                 onVolumeLimitSelected: value => root.volumeLimitSelected(value)
                                 onMaxVolumeSelected: value => root.maxVolumeSelected(value)
-                                replayGainMode: root.replayGainMode
                                 onReplayGainModeSelected: value => root.replayGainModeSelected(value)
                             }
 
@@ -326,22 +352,21 @@ Item {
                                 id: secDesktop
                                 visible: root.currentSection === "desktop"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
+                                defaultLaunchPage: root.defaultLaunchPage
                                 closeToTray: root.closeToTray
                                 startMinimizedToTray: root.startMinimizedToTray
                                 nowPlayingNotifications: root.nowPlayingNotifications
                                 miniPlayerAlwaysOnTop: root.miniPlayerAlwaysOnTop
                                 trayAvailable: root.trayAvailable
-                                audioOutputs: root.audioOutputs
-                                audioDeviceId: root.audioDeviceId
                                 updateStatusText: root.updateStatusText
                                 updateChecking: root.updateChecking
                                 updateAvailable: root.updateAvailable
                                 updateUrl: root.updateUrl
+                                onDefaultLaunchPageSelected: value => root.defaultLaunchPageSelected(value)
                                 onCloseToTraySelected: value => root.closeToTraySelected(value)
                                 onStartMinimizedToTraySelected: value => root.startMinimizedToTraySelected(value)
                                 onNowPlayingNotificationsSelected: value => root.nowPlayingNotificationsSelected(value)
                                 onMiniPlayerAlwaysOnTopSelected: value => root.miniPlayerAlwaysOnTopSelected(value)
-                                onAudioDeviceSelected: value => root.audioDeviceSelected(value)
                                 onCheckUpdatesRequested: root.checkUpdatesRequested()
                                 onDownloadUpdateRequested: root.downloadUpdateRequested()
                             }

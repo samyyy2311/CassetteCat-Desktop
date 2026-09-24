@@ -47,7 +47,7 @@ Rectangle {
     radius: rowRadius
     color: rowMouse.containsMouse ? hoverBg : (selected ? activeBg : (isCurrent ? activeBg : cardBg))
     border.width: selected || isCurrent ? 1 : 0
-    border.color: selected ? recordRed : (isCurrent ? recordRed : "transparent")
+    border.color: selected ? recordRed : (isCurrent ? Qt.rgba(root.recordRed.r, root.recordRed.g, root.recordRed.b, 0.3) : "transparent")
 
     Behavior on color { ColorAnimation { duration: 120 } }
 

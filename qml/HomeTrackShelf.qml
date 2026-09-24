@@ -31,6 +31,11 @@ Column {
         spacing: 16
         clip: false
         boundsBehavior: Flickable.StopAtBounds
+        flickDeceleration: UiConstants.flickDeceleration
+        maximumFlickVelocity: UiConstants.maximumFlickVelocity
+        cacheBuffer: UiConstants.cacheBuffer
+        pixelAligned: UiConstants.pixelAligned
+        reuseItems: true
         model: root.tracks
 
         delegate: SongCard {

@@ -7,15 +7,16 @@ Rectangle {
 
     property string shortcut: ""
     property bool allowPlainKey: false
+    property bool allowClear: false
     property bool isShortcutCapture: true
     signal shortcutCaptured(string shortcut)
 
     implicitHeight: 28
     implicitWidth: Math.max(76, contentLayout.implicitWidth + 20)
     radius: 6
-    color: activeFocus ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623") : (fieldMouse.containsMouse ? "#22201D" : "#1A1917")
-    border.width: activeFocus ? 1.5 : 1
-    border.color: activeFocus ? (typeof accentColor !== "undefined" ? accentColor : "#C23B30") : (fieldMouse.containsMouse ? (typeof borderVariant !== "undefined" ? borderVariant : "#2C2926") : (typeof borderSubtle !== "undefined" ? borderSubtle : "#22201D"))
+    color: activeFocus ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623") : (fieldMouse.containsMouse ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#22201D") : (typeof surfaceInput !== "undefined" ? surfaceInput : "#1A1917"))
+    border.width: activeFocus ? 1.5 : (fieldMouse.containsMouse ? 1 : 0)
+    border.color: activeFocus ? (typeof accentColor !== "undefined" ? accentColor : "#C23B30") : (fieldMouse.containsMouse ? Qt.rgba(255, 255, 255, 0.08) : "transparent")
     enabled: true
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
@@ -43,7 +44,8 @@ Rectangle {
         case Qt.Key_PageUp: return "PageUp"
         case Qt.Key_PageDown: return "PageDown"
         case Qt.Key_Minus: return "-"
-        case Qt.Key_Equal: case Qt.Key_Plus: return "+"
+        case Qt.Key_Equal: return "Equal"
+        case Qt.Key_Plus: return "Plus"
         case Qt.Key_BracketLeft: return "["
         case Qt.Key_BracketRight: return "]"
         case Qt.Key_Semicolon: return ";"
@@ -56,7 +58,7 @@ Rectangle {
         }
     }
 
-    Keys.priority: Keys.BeforeItemShortcut
+    Keys.priority: Keys.BeforeItem
 
     Keys.onReleased: function(event) {
         if (root.activeFocus) {
@@ -82,7 +84,7 @@ Rectangle {
             return
         }
 
-        if (event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete) {
+        if (root.allowClear && (event.key === Qt.Key_Backspace || event.key === Qt.Key_Delete)) {
             if (event.modifiers === Qt.NoModifier) {
                 root.currentModifiersText = ""
                 root.shortcutCaptured("")

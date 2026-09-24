@@ -14,7 +14,7 @@ Menu {
         radius: 8
         color: root.appWindow ? root.appWindow.surfaceElevated : "#22201D"
         border.width: 1
-        border.color: root.appWindow ? root.appWindow.borderVariant : "#3A3632"
+        border.color: root.appWindow ? root.appWindow.borderVariant : Qt.rgba(1, 1, 1, 0.09)
     }
 
     component TrackMenuItem: MenuItem {

@@ -35,7 +35,6 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "shield"
-            iconColor: "#96918A"
             title: "Offline Blackout Mode"
             subtitle: root.offlineBlackout
                       ? "All network connections, metadata lookups, and remote streams are disabled"
@@ -52,8 +51,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "disc"
-            iconColor: "#38BDF8"
+            iconName: "globe"
             title: "Streaming Server Integration"
             subtitle: "Configure credentials, stream audio catalogs, and manage server synchronization"
 
@@ -79,7 +77,7 @@ ColumnLayout {
         Repeater {
             model: [
                 { id: "lrclib", title: "LrcLib Lyrics", subtitle: "Synced lyrics when none are found locally", icon: "lrclib", preserveColor: true, on: root.svcLrclib },
-                { id: "radio", title: "Radio Browser", subtitle: "Internet radio station discovery and streaming", icon: "radio", iconColor: "#F59E0B", preserveColor: false, on: root.svcRadio },
+                { id: "radio", title: "Radio Browser", subtitle: "Internet radio station discovery and streaming", icon: "radio", preserveColor: false, on: root.svcRadio },
                 { id: "deezer", title: "Deezer Artwork", subtitle: "High-resolution artist portraits and imagery", icon: "deezer", preserveColor: true, on: root.svcDeezer },
                 { id: "audiodb", title: "TheAudioDB", subtitle: "Artist imagery and biography metadata fallback", icon: "theaudiodb", preserveColor: true, on: root.svcAudiodb },
                 { id: "wiki", title: "Wikipedia", subtitle: "Artist biographies and summaries", icon: "wikipedia", preserveColor: true, on: root.svcWiki },

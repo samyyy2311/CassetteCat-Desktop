@@ -23,30 +23,28 @@ Item {
     property real initialScrollPosition: 0
 
     signal scrollPositionChanged(real position)
-                                anchors.fill: parent
+    Flickable {
+        id: homeScrollView
+        anchors.fill: parent
+        clip: true
+        readonly property real availableWidth: width
+        contentWidth: width
+        contentHeight: homeContentCol.implicitHeight + 48
+        flickDeceleration: UiConstants.flickDeceleration
+        maximumFlickVelocity: UiConstants.maximumFlickVelocity
+        pixelAligned: UiConstants.pixelAligned
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: SleekScrollBar {}
 
-                                ScrollView {
-                            id: homeScrollView
-                            Component.onCompleted: Qt.callLater(() => {
-                                if (contentItem) contentItem.contentY = root.initialScrollPosition
-                            })
-                            anchors.fill: parent
-                            clip: true
-                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                            ScrollBar.vertical: SleekScrollBar {}
-                            contentWidth: availableWidth
-                            contentHeight: homeContentCol.implicitHeight + 48
+        Component.onCompleted: Qt.callLater(() => {
+            homeScrollView.contentY = root.initialScrollPosition
+        })
 
-                            Connections {
-                                target: homeScrollView.contentItem
-                                function onContentYChanged() {
-                                    root.scrollPositionChanged(homeScrollView.contentItem.contentY)
-                                }
-                            }
+        onContentYChanged: root.scrollPositionChanged(contentY)
 
-                        Column {
-                            id: homeContentCol
-                            width: homeScrollView.availableWidth
+        Column {
+            id: homeContentCol
+            width: homeScrollView.availableWidth
                             spacing: 32
                             topPadding: 24
                             bottomPadding: 36
@@ -204,6 +202,11 @@ Item {
                                     spacing: 16
                                     clip: false
                                     boundsBehavior: Flickable.StopAtBounds
+                                    flickDeceleration: UiConstants.flickDeceleration
+                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                                    cacheBuffer: UiConstants.cacheBuffer
+                                    pixelAligned: UiConstants.pixelAligned
+                                    reuseItems: true
                                     model: quickPicks
 
                                     delegate: HomeSongCard {
@@ -235,6 +238,11 @@ Item {
                                     spacing: 16
                                     clip: false
                                     boundsBehavior: Flickable.StopAtBounds
+                                    flickDeceleration: UiConstants.flickDeceleration
+                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                                    cacheBuffer: UiConstants.cacheBuffer
+                                    pixelAligned: UiConstants.pixelAligned
+                                    reuseItems: true
                                     model: heavyRotation
 
                                     delegate: HomeSongCard {
@@ -290,6 +298,11 @@ Item {
                                     spacing: 16
                                     clip: false
                                     boundsBehavior: Flickable.StopAtBounds
+                                    flickDeceleration: UiConstants.flickDeceleration
+                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                                    cacheBuffer: UiConstants.cacheBuffer
+                                    pixelAligned: UiConstants.pixelAligned
+                                    reuseItems: true
                                     model: albumsRotation
 
                                     delegate: Item {
@@ -315,7 +328,7 @@ Item {
                                                 scale: albumHover.hovered ? 1.03 : 1.0
 
                                                 Behavior on scale {
-                                                    NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                                                    NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
                                                 }
 
                                                 Cover {
@@ -336,8 +349,8 @@ Item {
                                                     scale: albumHover.hovered ? 1.0 : 0.6
                                                     z: 10
 
-                                                    Behavior on opacity { NumberAnimation { duration: 150 } }
-                                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                                                    Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd } }
+                                                    Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingBounce } }
 
                                                     onClicked: root.appWindow.playTrack(modelData.track)
                                                 }
@@ -397,6 +410,11 @@ Item {
                                     spacing: 16
                                     clip: false
                                     boundsBehavior: Flickable.StopAtBounds
+                                    flickDeceleration: UiConstants.flickDeceleration
+                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                                    cacheBuffer: UiConstants.cacheBuffer
+                                    pixelAligned: UiConstants.pixelAligned
+                                    reuseItems: true
                                     model: artistsRotation
 
                                     delegate: ArtistCard {

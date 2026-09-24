@@ -31,7 +31,7 @@ Item {
             scale: cardMouse.containsMouse ? 1.03 : 1.0
 
             Behavior on scale {
-                NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
             }
 
             Cover {
@@ -52,8 +52,8 @@ Item {
                 scale: cardMouse.containsMouse ? 1.0 : 0.6
                 z: 10
 
-                Behavior on opacity { NumberAnimation { duration: 150 } }
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd } }
+                Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingBounce } }
 
                 onClicked: root.clicked()
             }

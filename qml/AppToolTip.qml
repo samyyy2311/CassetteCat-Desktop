@@ -38,7 +38,7 @@ ToolTip {
         if (!p) return
         try {
             const globalPos = p.mapToItem(null, 0, 0)
-            const win = Window.window
+            const win = p ? p.Window.window : null
             const winWidth = win ? win.width : 1280
             const placeBelow = root.below || (globalPos && globalPos.y < 55)
             

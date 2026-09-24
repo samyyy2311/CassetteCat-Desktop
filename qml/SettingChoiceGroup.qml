@@ -52,15 +52,28 @@ SettingRow {
 
         Popup {
             id: choicePopup
-            parent: menuButton
-            x: Math.min(0, menuButton.width - width)
-            y: menuButton.height + 4
-            width: Math.max(menuButton.width, 220)
+            parent: Overlay.overlay
+            x: {
+                if (!menuButton) return 0
+                const pt = menuButton.mapToItem(Overlay.overlay, 0, 0)
+                const ovW = Overlay.overlay ? Overlay.overlay.width : 800
+                return Math.max(10, Math.min(ovW - width - 10, pt.x + menuButton.width - width))
+            }
+            y: {
+                if (!menuButton) return 0
+                const pt = menuButton.mapToItem(Overlay.overlay, 0, 0)
+                const ovH = Overlay.overlay ? Overlay.overlay.height : 600
+                if (pt.y + menuButton.height + height + 10 > ovH) {
+                    return Math.max(10, pt.y - height - 4)
+                }
+                return pt.y + menuButton.height + 4
+            }
+            width: Math.max(menuButton ? menuButton.width : 160, 220)
             implicitHeight: Math.min(260, Math.max(48, (root.options ? root.options.length * 38 : 0) + 12))
             padding: 6
             modal: false
             focus: true
-            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutsideParent
+            closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
             onOpened: {
                 let selIdx = 0
@@ -83,7 +96,7 @@ SettingRow {
                 color: (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#1C1B18")
                 radius: 10
                 border.width: 1
-                border.color: (typeof borderVariant !== "undefined" ? borderVariant : "#2A2825")
+                border.color: Qt.rgba(255, 255, 255, 0.08)
             }
 
             contentItem: ListView {
@@ -127,8 +140,7 @@ SettingRow {
                     color: isSelected
                         ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623")
                         : (optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus) ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#282623") : "transparent")
-                    border.width: isSelected ? 1 : 0
-                    border.color: (typeof borderVariant !== "undefined" ? borderVariant : "#2C2926")
+                    border.width: 0
 
                     RowLayout {
                         anchors.fill: parent

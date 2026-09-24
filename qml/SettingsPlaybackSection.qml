@@ -4,6 +4,8 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: root
+    property var audioOutputs: []
+    property string audioDeviceId: ""
     property bool resumeQueueOnLaunch: true
     property bool autoplayEnabled: false
     property string sleepTimerMode: "off"
@@ -13,6 +15,7 @@ ColumnLayout {
     property int maxVolumePercent: 80
     property string replayGainMode: "off"
 
+    signal audioDeviceSelected(string value)
     signal resumeQueueOnLaunchSelected(bool value)
     signal autoplaySelected(bool value)
     signal sleepTimerSelected(string value)
@@ -25,12 +28,25 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
+    SectionLabel { text: "Audio Output" }
+
+    SettingCard {
+        SettingChoiceGroup {
+            iconName: "plug"
+            title: "Playback Device"
+            subtitle: "Choose where CassetteCat sends audio output"
+            forceMenu: true
+            options: root.audioOutputs
+            selectedValue: root.audioDeviceId
+            onOptionSelected: value => root.audioDeviceSelected(String(value))
+        }
+    }
+
     SectionLabel { text: "Queue & Playback" }
 
     SettingCard {
         SettingRow {
-            iconName: "play"
-            iconColor: "#10B981"
+            iconName: "rotate-ccw"
             title: "Resume Queue on Launch"
             subtitle: "Restore active track, queue, and playback position"
 
@@ -43,8 +59,7 @@ ColumnLayout {
         SettingDivider {}
 
         SettingRow {
-            iconName: "repeat"
-            iconColor: "#38BDF8"
+            iconName: "shuffle"
             title: "Autoplay"
             subtitle: "Shuffle music from library when queue reaches the end"
 
@@ -55,12 +70,67 @@ ColumnLayout {
         }
     }
 
+    SectionLabel { text: "Audio Protection" }
+
+    SettingCard {
+        SettingRow {
+            iconName: "shield"
+            title: "Volume Limit"
+            subtitle: "Cap the maximum output level to protect your hearing"
+
+            SettingSwitch {
+                checked: root.volumeLimitEnabled
+                onToggled: val => root.volumeLimitSelected(val)
+            }
+        }
+
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: root.volumeLimitEnabled
+            spacing: 0
+
+            SettingDivider {}
+
+            SettingChoiceGroup {
+                iconName: "volume-2"
+                title: "Maximum Volume Limit"
+                subtitle: "Ceiling threshold applied to the master volume slider"
+                options: [
+                    { value: 50, label: "50%" },
+                    { value: 60, label: "60%" },
+                    { value: 70, label: "70%" },
+                    { value: 80, label: "80%" },
+                    { value: 90, label: "90%" },
+                    { value: 100, label: "100%" }
+                ]
+                selectedValue: root.maxVolumePercent
+                onOptionSelected: val => root.maxVolumeSelected(Number(val))
+            }
+        }
+    }
+
+    SectionLabel { text: "Loudness & Normalization" }
+
+    SettingCard {
+        SettingChoiceGroup {
+            iconName: "audio-lines"
+            title: "Volume Normalization (ReplayGain)"
+            subtitle: root.replayGainMode === "off" ? "Preserve original file loudness" : (root.replayGainMode === "track" ? "Track gain active: balance volume per song" : "Album gain active: preserve album dynamic range")
+            options: [
+                { value: "off", label: "Off" },
+                { value: "track", label: "Track" },
+                { value: "album", label: "Album" }
+            ]
+            selectedValue: root.replayGainMode
+            onOptionSelected: val => root.replayGainModeSelected(String(val))
+        }
+    }
+
     SectionLabel { text: "Sleep Timer" }
 
     SettingCard {
         SettingChoiceGroup {
             iconName: "clock"
-            iconColor: "#A5B4FC"
             title: "Sleep Timer"
             subtitle: root.sleepTimerMode === "off" ? "Stop playback automatically after a duration or track" : ("Active countdown: " + root.sleepTimerStatus)
             options: [
@@ -85,7 +155,6 @@ ColumnLayout {
 
         SettingRow {
             iconName: "volume-1"
-            iconColor: "#96918A"
             title: "Gentle Fade-Out"
             subtitle: "Smoothly ramp down volume before stopping playback"
 
@@ -93,65 +162,6 @@ ColumnLayout {
                 checked: root.sleepFadeOut
                 onToggled: val => root.sleepFadeOutSelected(val)
             }
-        }
-    }
-
-    SectionLabel { text: "Audio Protection" }
-
-    SettingCard {
-        SettingRow {
-            iconName: "volume-2"
-            iconColor: "#F59E0B"
-            title: "Volume Limit"
-            subtitle: "Cap the maximum output level to protect your hearing"
-
-            SettingSwitch {
-                checked: root.volumeLimitEnabled
-                onToggled: val => root.volumeLimitSelected(val)
-            }
-        }
-
-        ColumnLayout {
-            Layout.fillWidth: true
-            visible: root.volumeLimitEnabled
-            spacing: 0
-
-            SettingDivider {}
-
-            SettingChoiceGroup {
-                iconName: "sliders-horizontal"
-                iconColor: "#F59E0B"
-                title: "Maximum Volume Limit"
-                subtitle: "Ceiling threshold applied to the master volume slider"
-                options: [
-                    { value: 50, label: "50%" },
-                    { value: 60, label: "60%" },
-                    { value: 70, label: "70%" },
-                    { value: 80, label: "80%" },
-                    { value: 90, label: "90%" },
-                    { value: 100, label: "100%" }
-                ]
-                selectedValue: root.maxVolumePercent
-                onOptionSelected: val => root.maxVolumeSelected(Number(val))
-            }
-        }
-    }
-
-    SectionLabel { text: "Loudness & Normalization" }
-
-    SettingCard {
-        SettingChoiceGroup {
-            iconName: "audio-lines"
-            iconColor: "#C23B30"
-            title: "Volume Normalization (ReplayGain)"
-            subtitle: root.replayGainMode === "off" ? "Preserve original file loudness" : (root.replayGainMode === "track" ? "Track gain active: balance volume per song" : "Album gain active: preserve album dynamic range")
-            options: [
-                { value: "off", label: "Off" },
-                { value: "track", label: "Track" },
-                { value: "album", label: "Album" }
-            ]
-            selectedValue: root.replayGainMode
-            onOptionSelected: val => root.replayGainModeSelected(String(val))
         }
     }
 }

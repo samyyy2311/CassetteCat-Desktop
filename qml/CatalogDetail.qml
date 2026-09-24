@@ -7,6 +7,10 @@ Rectangle {
     id: root
     property var appWindow
     property string mode: "artist"
+    opacity: 0.0
+    Behavior on opacity {
+        NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
+    }
     property string title: ""
     property var tracks: []
     property var heroTrack: ({})
@@ -28,7 +32,9 @@ Rectangle {
             if (!groups[name]) groups[name] = { name: name, track: track, count: 0 }
             groups[name].count++
         })
-        return Object.keys(groups).map(name => groups[name])
+        const list = Object.keys(groups).map(name => groups[name])
+        list.sort((a, b) => root.appWindow ? root.appWindow.compareSortKey(a.name, b.name) : a.name.localeCompare(b.name))
+        return list
     }
 
     signal backRequested()
@@ -58,7 +64,10 @@ Rectangle {
         else if (albumDetail) loadAlbumProfile()
     }
 
-    Component.onCompleted: loadDetailProfile()
+    Component.onCompleted: {
+        opacity = 1.0
+        loadDetailProfile()
+    }
     onVisibleChanged: if (visible) loadDetailProfile()
     onModeChanged: loadDetailProfile()
     onTitleChanged: loadDetailProfile()
@@ -88,7 +97,7 @@ Rectangle {
     AlbumDetailBody {
         id: scrollView
         anchors.fill: parent
-        tracks: root.tracks
+        tracks: (root.artistDetail && root.tracks.length <= 5) ? [] : root.tracks
         appWindow: root.appWindow
         footer: Item { width: 1; height: 100 }
 
@@ -112,6 +121,8 @@ Rectangle {
                 Image {
                     anchors.fill: parent
                     source: root.artistDetail ? root.artistImageUrl : ""
+                    sourceSize.width: 480
+                    sourceSize.height: 280
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
                     opacity: root.artistDetail ? 0.2 : 0
@@ -172,6 +183,7 @@ Rectangle {
                             anchors.fill: parent
                             radius: root.artistDetail ? width / 2 : ((typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 16)
                             color: "#181715"
+                            clip: true
                             border.width: root.featuredDetail ? 2 : 1.5
                             border.color: root.artistDetail && heroArtistImg.status === Image.Ready ? "#B8FFFFFF" : "#30FFFFFF"
 
@@ -179,6 +191,7 @@ Rectangle {
                                 anchors.fill: parent
                                 track: root.artistDetail ? (root.tracks.length > 0 ? root.tracks[0] : root.heroTrack) : root.heroTrack
                                 radius: parent.radius
+                                fillMode: Image.PreserveAspectCrop
                                 visible: !root.artistDetail || heroArtistImg.status !== Image.Ready || root.artistImageUrl === ""
                             }
 
@@ -187,9 +200,11 @@ Rectangle {
                                 visible: root.artistDetail && status === Image.Ready && source !== ""
                                 anchors.fill: parent
                                 source: root.artistImageUrl
+                                sourceSize.width: Math.ceil(140 * Screen.devicePixelRatio)
+                                sourceSize.height: Math.ceil(140 * Screen.devicePixelRatio)
                                 fillMode: Image.PreserveAspectCrop
                                 asynchronous: true
-                                layer.enabled: true
+                                layer.enabled: visible
                                 layer.effect: MultiEffect {
                                     maskEnabled: true
                                     maskSource: heroMask
@@ -307,6 +322,7 @@ Rectangle {
                             spacing: 12
 
                             TransportButton {
+                                Layout.alignment: Qt.AlignVCenter
                                 buttonSize: 42
                                 iconName: (player.isPlaying && root.tracks.some(t => t.filePath === player.currentTrack.filePath)) ? "pause" : "play"
                                 accented: true
@@ -323,6 +339,7 @@ Rectangle {
                             }
 
                             TransportButton {
+                                Layout.alignment: Qt.AlignVCenter
                                 buttonSize: 36
                                 iconName: "shuffle"
                                 accented: player.shuffleEnabled
@@ -335,6 +352,7 @@ Rectangle {
                             }
 
                             PressDepthIconButton {
+                                Layout.alignment: Qt.AlignVCenter
                                 boxSize: 36
                                 iconSize: 16
                                 iconName: "heart"
@@ -365,7 +383,7 @@ Rectangle {
             }
 
             Rectangle {
-                visible: root.artistDetail
+                visible: !root.artistDetail || root.tracks.length > 5
                 width: scrollView.width - 72
                 x: 36
                 height: 1
@@ -373,7 +391,7 @@ Rectangle {
             }
 
             Label {
-                visible: true
+                visible: !root.artistDetail || root.tracks.length > 5
                 topPadding: root.artistDetail ? 20 : 16
                 leftPadding: 36
                 rightPadding: 36
@@ -406,7 +424,7 @@ Rectangle {
             radius: 14
             color: root.appWindow ? root.appWindow.surfaceCard : "#181715"
             border.width: 1
-            border.color: root.appWindow ? root.appWindow.borderVariant : "#3A3632"
+            border.color: root.appWindow ? root.appWindow.borderVariant : Qt.rgba(1, 1, 1, 0.09)
         }
 
         contentItem: ColumnLayout {
@@ -456,17 +474,24 @@ Rectangle {
                 color: root.appWindow ? root.appWindow.borderSubtle : "#1AFFFFFF"
             }
 
-            ScrollView {
+            Flickable {
                 id: aboutScroll
+                readonly property real availableWidth: width
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.margins: 24
                 clip: true
                 contentWidth: availableWidth
-                ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
+                contentHeight: aboutBioText.implicitHeight
+                flickableDirection: Flickable.VerticalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                pixelAligned: UiConstants.pixelAligned
                 ScrollBar.vertical: SleekScrollBar {}
 
                 Text {
+                    id: aboutBioText
                     width: aboutScroll.availableWidth
                     text: root.detailBio
                     wrapMode: Text.Wrap

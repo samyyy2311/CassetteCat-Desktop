@@ -216,6 +216,11 @@ Popup {
                 clip: true
                 model: root.searchResults
                 boundsBehavior: Flickable.StopAtBounds
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                cacheBuffer: UiConstants.cacheBuffer
+                pixelAligned: UiConstants.pixelAligned
+                reuseItems: true
                 ScrollBar.vertical: SleekScrollBar {}
 
                 delegate: Item {

@@ -1,5 +1,6 @@
 #include "library_scanner.h"
 
+#include "app_paths.h"
 #include "audio_metadata.h"
 
 #include <QDir>
@@ -7,6 +8,7 @@
 #include <QDataStream>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QTextStream>
 #include <QUrl>
@@ -19,6 +21,25 @@ QVariantList scanTracks(const QString &folder) {
                                  "*.mp3", "*.ogg",  "*.opus", "*.wav",  "*.wma"};
     QList<TrackInfo> trackList;
     QHash<QString, QString> artworkByFolder;
+
+    QHash<QString, TrackInfo> cachedTracks;
+    const QString cachePath = libraryCacheFilePath();
+    QFile cacheFile(cachePath);
+    if (cacheFile.open(QIODevice::ReadOnly)) {
+        const QJsonDocument doc = QJsonDocument::fromJson(cacheFile.readAll());
+        cacheFile.close();
+        if (doc.isArray()) {
+            const QVariantList list = doc.toVariant().toList();
+            cachedTracks.reserve(list.size());
+            for (const QVariant &item : list) {
+                const TrackInfo info = TrackInfo::fromMap(item.toMap());
+                if (!info.filePath.isEmpty()) {
+                    cachedTracks.insert(info.filePath, info);
+                }
+            }
+        }
+    }
+
     QDirIterator iterator(folder, filters, QDir::Files, QDirIterator::Subdirectories);
 
     while (iterator.hasNext()) {
@@ -38,7 +59,10 @@ QVariantList scanTracks(const QString &folder) {
             for (const QString &name : covers) {
                 const QString candidate = trackFolder.filePath(name);
                 if (QFileInfo::exists(candidate)) {
-                    cover = QUrl::fromLocalFile(candidate).toString();
+                    cover = saveFolderArtwork(candidate, 512);
+                    if (cover.isEmpty()) {
+                        cover = QUrl::fromLocalFile(candidate).toString();
+                    }
                     break;
                 }
             }
@@ -46,8 +70,23 @@ QVariantList scanTracks(const QString &folder) {
             artworkByFolder.insert(folderPath, cover);
         }
 
-        TrackInfo track = readTrackInfo(filePath);
-        track.artworkUrl = artworkByFolder.value(folderPath);
+        const qint64 fileSize = fileInfo.size();
+        const qint64 lastModified = fileInfo.lastModified().toMSecsSinceEpoch();
+
+        TrackInfo track;
+        auto it = cachedTracks.constFind(filePath);
+        if (it != cachedTracks.constEnd() && it->fileSize == fileSize && it->lastModified == lastModified) {
+            track = it.value();
+        } else {
+            track = readTrackInfo(filePath);
+            track.fileSize = fileSize;
+            track.lastModified = lastModified;
+        }
+
+        const QString folderCover = artworkByFolder.value(folderPath);
+        if (!folderCover.isEmpty()) {
+            track.artworkUrl = folderCover;
+        }
         trackList.append(track);
     }
 

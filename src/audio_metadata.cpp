@@ -2,10 +2,12 @@
 #include "image_cache.h"
 
 #include <QBuffer>
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QImageReader>
+#include <QStandardPaths>
 #include <QTextStream>
 #include <QUrl>
 #include <QtEndian>
@@ -37,25 +39,66 @@ QString formatDuration(int totalSeconds) {
 QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension) {
     if (image.isEmpty())
         return {};
-    QByteArray outputImage = image;
-    if (maxDimension > 0) {
-        QBuffer input(&outputImage);
-        if (!input.open(QIODevice::ReadOnly))
-            return {};
-        QImageReader reader(&input);
-        const QSize sourceSize = reader.size();
-        if (!sourceSize.isValid())
-            return {};
-        reader.setScaledSize(sourceSize.scaled(maxDimension, maxDimension, Qt::KeepAspectRatio));
-        const QImage thumbnail = reader.read();
-        if (thumbnail.isNull())
-            return {};
-        outputImage.clear();
-        QBuffer output(&outputImage);
-        if (!output.open(QIODevice::WriteOnly) || !thumbnail.save(&output, png ? "PNG" : "JPEG", png ? -1 : 90))
-            return {};
+    const int targetDim = maxDimension > 0 ? maxDimension : 512;
+    const QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/covers_v2";
+    QDir().mkpath(cacheDir);
+    const QString key = filePath + ':' + QString::number(targetDim);
+    const QString sha1 = QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex());
+    const QString targetPath = cacheDir + "/" + sha1 + (png ? ".png" : ".jpg");
+    if (QFileInfo::exists(targetPath)) {
+        return QUrl::fromLocalFile(targetPath).toString();
     }
-    return saveCachedImage(outputImage, filePath + ':' + QString::number(maxDimension), png, "covers");
+
+    QByteArray outputImage = image;
+    QBuffer input(&outputImage);
+    if (!input.open(QIODevice::ReadOnly))
+        return {};
+    QImageReader reader(&input);
+    const QSize sourceSize = reader.size();
+    if (!sourceSize.isValid())
+        return {};
+    if (sourceSize.width() > targetDim || sourceSize.height() > targetDim) {
+        reader.setScaledSize(sourceSize.scaled(targetDim, targetDim, Qt::KeepAspectRatio));
+    }
+    const QImage thumbnail = reader.read();
+    if (thumbnail.isNull())
+        return {};
+    outputImage.clear();
+    QBuffer output(&outputImage);
+    if (!output.open(QIODevice::WriteOnly) || !thumbnail.save(&output, png ? "PNG" : "JPEG", png ? -1 : 88))
+        return {};
+    return saveCachedImage(outputImage, key, png, "covers_v2");
+}
+
+QString saveFolderArtwork(const QString &filePath, int maxDimension) {
+    if (filePath.isEmpty() || !QFileInfo::exists(filePath))
+        return {};
+    const int targetDim = maxDimension > 0 ? maxDimension : 512;
+    const QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/covers_v2";
+    QDir().mkpath(cacheDir);
+    const QString key = filePath + ':' + QString::number(targetDim);
+    const QString sha1 = QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex());
+    const bool png = filePath.endsWith(".png", Qt::CaseInsensitive);
+    const QString targetPath = cacheDir + "/" + sha1 + (png ? ".png" : ".jpg");
+    if (QFileInfo::exists(targetPath)) {
+        return QUrl::fromLocalFile(targetPath).toString();
+    }
+
+    QImageReader reader(filePath);
+    const QSize sourceSize = reader.size();
+    if (!sourceSize.isValid())
+        return {};
+    if (sourceSize.width() > targetDim || sourceSize.height() > targetDim) {
+        reader.setScaledSize(sourceSize.scaled(targetDim, targetDim, Qt::KeepAspectRatio));
+    }
+    const QImage thumbnail = reader.read();
+    if (thumbnail.isNull())
+        return {};
+    QByteArray outputImage;
+    QBuffer output(&outputImage);
+    if (!output.open(QIODevice::WriteOnly) || !thumbnail.save(&output, png ? "PNG" : "JPEG", png ? -1 : 88))
+        return {};
+    return saveCachedImage(outputImage, key, png, "covers_v2");
 }
 
 QString extractEmbeddedArtwork(const QString &filePath, int maxDimension) {
@@ -360,6 +403,8 @@ TrackInfo readTrackInfo(const QString &filePath) {
     info.filePath = filePath;
     info.fileName = fileInfo.fileName();
     info.format = fileInfo.suffix().toUpper();
+    info.fileSize = fileInfo.size();
+    info.lastModified = fileInfo.lastModified().toMSecsSinceEpoch();
     info.title = fallbackTitle;
     info.artist = "Unknown Artist";
     info.album = "Unknown Album";

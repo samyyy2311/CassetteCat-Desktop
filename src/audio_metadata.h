@@ -22,6 +22,8 @@ struct TrackInfo {
     QString format;
     QString artworkUrl;
     QString lyrics;
+    qint64 fileSize = 0;
+    qint64 lastModified = 0;
 
     QVariantMap toMap() const {
         return {{"title", title},
@@ -39,13 +41,39 @@ struct TrackInfo {
                 {"fileName", fileName},
                 {"format", format},
                 {"artworkUrl", artworkUrl},
-                {"lyrics", lyrics}};
+                {"lyrics", lyrics},
+                {"fileSize", fileSize},
+                {"lastModified", lastModified}};
+    }
+
+    static TrackInfo fromMap(const QVariantMap &map) {
+        TrackInfo info;
+        info.title = map.value("title").toString();
+        info.artist = map.value("artist").toString();
+        info.album = map.value("album").toString();
+        info.genre = map.value("genre", "Soundtrack").toString();
+        info.label = map.value("label").toString();
+        info.comment = map.value("comment").toString();
+        info.year = map.value("year").toInt();
+        info.trackNumber = map.value("trackNumber").toInt();
+        info.discNumber = map.value("discNumber").toInt();
+        info.duration = map.value("duration").toString();
+        info.durationSeconds = map.value("durationSeconds").toInt();
+        info.filePath = map.value("filePath").toString();
+        info.fileName = map.value("fileName").toString();
+        info.format = map.value("format").toString();
+        info.artworkUrl = map.value("artworkUrl").toString();
+        info.lyrics = map.value("lyrics").toString();
+        info.fileSize = map.value("fileSize").toLongLong();
+        info.lastModified = map.value("lastModified").toLongLong();
+        return info;
     }
 };
 
 QString formatDuration(int totalSeconds);
-QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension = 0);
-QString extractEmbeddedArtwork(const QString &filePath, int maxDimension = 0);
+QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension = 512);
+QString saveFolderArtwork(const QString &filePath, int maxDimension = 512);
+QString extractEmbeddedArtwork(const QString &filePath, int maxDimension = 512);
 QString extractEmbeddedLyrics(const QString &filePath);
 /// Returns the track or album ReplayGain value stored in \p filePath.
 float extractReplayGain(const QString &filePath, bool albumMode = false);

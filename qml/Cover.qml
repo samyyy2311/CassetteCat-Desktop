@@ -11,8 +11,11 @@ Item {
     property real stableSourceSize: 0
     property bool showTonearm: false
     property int fillMode: Image.PreserveAspectCrop
-    readonly property int requestedSourceSize: Math.max(1, Math.min(1024,
-        Math.ceil((stableSourceSize > 0 ? stableSourceSize : Math.max(width, height)) * Screen.devicePixelRatio)))
+    readonly property int requestedSourceSize: {
+        const rawDim = stableSourceSize > 0 ? stableSourceSize : Math.max(width, height)
+        const target = (rawDim > 10 ? rawDim : 256) * (Screen.devicePixelRatio || 1)
+        return Math.max(32, Math.min(512, Math.ceil(target)))
+    }
 
     function normalizeUrl(val) {
         if (!val) return ""
@@ -116,14 +119,14 @@ Item {
         id: bgPlaceholder
         anchors.fill: parent
         radius: root.radius
-        color: "#000000"
+        color: (typeof surfaceCard !== "undefined" ? surfaceCard : "#181715")
 
         VinylFallback {
             showTonearm: root.showTonearm
             anchors.fill: parent
             visible: opacity > 0.001
             opacity: root.showingFallback ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+            Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
             playing: root.currentTrackPlaying && root.showingFallback
             progress: root.currentTrackPlaying && player.duration > 0 ? player.position / player.duration : 0
         }
@@ -139,81 +142,79 @@ Item {
         layer.smooth: true
     }
 
-    Image {
-        id: imageA
+    Item {
+        id: imageContainer
         anchors.fill: parent
-        sourceSize.width: root.requestedSourceSize
-        sourceSize.height: root.requestedSourceSize
-        fillMode: root.fillMode
-        asynchronous: true
-        cache: root.cacheArtwork
-        smooth: true
-        mipmap: false
-        autoTransform: true
-        opacity: 0
-        visible: opacity > 0.001
-
-        onStatusChanged: {
-            if (status === Image.Ready && !root.useB) {
-                imageA.opacity = 1
-                if (imageB.opacity > 0) imageB.opacity = 0
-            } else if (status === Image.Error && !root.useB) {
-                imageA.opacity = 0
-                if (imageB.opacity > 0) imageB.opacity = 0
-            }
-        }
-        onOpacityChanged: {
-            if (opacity === 0 && root.useB && status !== Image.Loading) {
-                source = ""
-            }
-        }
-        Behavior on opacity {
-            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-        }
-
-        layer.enabled: root.radius > 0 && imageA.visible
+        layer.enabled: root.radius > 0 && root.anyArtVisible
         layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: maskItem
         }
-    }
 
-    Image {
-        id: imageB
-        anchors.fill: parent
-        sourceSize.width: root.requestedSourceSize
-        sourceSize.height: root.requestedSourceSize
-        fillMode: root.fillMode
-        asynchronous: true
-        cache: root.cacheArtwork
-        smooth: true
-        mipmap: false
-        autoTransform: true
-        opacity: 0
-        visible: opacity > 0.001
+        Image {
+            id: imageA
+            anchors.fill: parent
+            sourceSize.width: root.requestedSourceSize
+            sourceSize.height: root.requestedSourceSize
+            fillMode: root.fillMode
+            asynchronous: true
+            cache: root.cacheArtwork
+            smooth: true
+            mipmap: false
+            autoTransform: true
+            opacity: 0
+            visible: opacity > 0.001
 
-        onStatusChanged: {
-            if (status === Image.Ready && root.useB) {
-                imageB.opacity = 1
-                if (imageA.opacity > 0) imageA.opacity = 0
-            } else if (status === Image.Error && root.useB) {
-                imageB.opacity = 0
-                if (imageA.opacity > 0) imageA.opacity = 0
+            onStatusChanged: {
+                if (status === Image.Ready && !root.useB) {
+                    imageA.opacity = 1
+                    if (imageB.opacity > 0) imageB.opacity = 0
+                } else if (status === Image.Error && !root.useB) {
+                    imageA.opacity = 0
+                    if (imageB.opacity > 0) imageB.opacity = 0
+                }
+            }
+            onOpacityChanged: {
+                if (opacity === 0 && root.useB && status !== Image.Loading) {
+                    source = ""
+                }
+            }
+            Behavior on opacity {
+                NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
             }
         }
-        onOpacityChanged: {
-            if (opacity === 0 && !root.useB && status !== Image.Loading) {
-                source = ""
-            }
-        }
-        Behavior on opacity {
-            NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
-        }
 
-        layer.enabled: root.radius > 0 && imageB.visible
-        layer.effect: MultiEffect {
-            maskEnabled: true
-            maskSource: maskItem
+        Image {
+            id: imageB
+            anchors.fill: parent
+            sourceSize.width: root.requestedSourceSize
+            sourceSize.height: root.requestedSourceSize
+            fillMode: root.fillMode
+            asynchronous: true
+            cache: root.cacheArtwork
+            smooth: true
+            mipmap: false
+            autoTransform: true
+            opacity: 0
+            visible: opacity > 0.001
+
+            onStatusChanged: {
+                if (status === Image.Ready && root.useB) {
+                    imageB.opacity = 1
+                    if (imageA.opacity > 0) imageA.opacity = 0
+                } else if (status === Image.Error && root.useB) {
+                    imageB.opacity = 0
+                    if (imageA.opacity > 0) imageA.opacity = 0
+                }
+            }
+            onOpacityChanged: {
+                if (opacity === 0 && !root.useB && status !== Image.Loading) {
+                    source = ""
+                }
+            }
+            Behavior on opacity {
+                NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
+            }
         }
     }
 }

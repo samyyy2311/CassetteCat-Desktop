@@ -21,3 +21,9 @@ QString debugLogFilePath() {
 QString logFilePath() {
     return debugLogFilePath();
 }
+
+QString libraryCacheFilePath() {
+    const QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    QDir().mkpath(cacheDir);
+    return QDir(cacheDir).filePath("library_cache.json");
+}

@@ -69,6 +69,8 @@ class LibraryController final : public QAbstractListModel {
                    const QVariantMap &favorites, const QString &sortMetric, bool ascending,
                    const QVariantList &excludedFolders, bool ignoreShortClips);
     void rebuildVisibleRows();
+    void loadLibraryCache();
+    void saveLibraryCache();
     bool isAvailable(const QVariantMap &track) const;
     bool matchesVisibleFilter(const QVariantMap &track) const;
 

@@ -8,9 +8,11 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QDirIterator>
+#include <QFile>
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QRegularExpression>
+#include <QSaveFile>
 #include <QSettings>
 #include <QTimer>
 
@@ -35,6 +37,64 @@ QString primaryArtist(const QString &artist) {
         return "Unknown Artist";
     const QStringList parts = value.split(separator, Qt::SkipEmptyParts);
     return parts.isEmpty() ? value : parts.first().trimmed();
+}
+
+QStringList splitArtists(const QString &artist) {
+    static const QRegularExpression separator(
+        QStringLiteral("\\s*(?:[,&;/]|(?:\\b(?:feat|ft)\\b\\.?)|\\bfeaturing\\b)\\s*"),
+        QRegularExpression::CaseInsensitiveOption);
+    const QString value = artist.trimmed();
+    if (value.isEmpty())
+        return {QStringLiteral("Unknown Artist")};
+    const QStringList parts = value.split(separator, Qt::SkipEmptyParts);
+    QStringList result;
+    for (const QString &p : parts) {
+        const QString trimmed = p.trimmed();
+        if (!trimmed.isEmpty() && !result.contains(trimmed, Qt::CaseInsensitive))
+            result.append(trimmed);
+    }
+    return result.isEmpty() ? QStringList{value} : result;
+}
+
+QString sortKey(const QString &value) {
+    static const QRegularExpression leadingArticle(QStringLiteral("^(the|an|a)\\s+"),
+                                                   QRegularExpression::CaseInsensitiveOption);
+    QString clean = value;
+    const auto match = leadingArticle.match(clean);
+    if (match.hasMatch()) {
+        clean = clean.mid(match.capturedLength());
+    }
+    int start = 0;
+    while (start < clean.size()) {
+        const QChar ch = clean.at(start);
+        if (ch == '\'' || ch == '"' || ch == '[' || ch == '(' || ch == '{' ||
+            ch == '#' || ch == '.' || ch == '-' || ch == '_' || ch.isSpace()) {
+            ++start;
+        } else {
+            break;
+        }
+    }
+    if (start > 0)
+        clean = clean.mid(start);
+    const QString lower = clean.toLower();
+    return lower.isEmpty() ? value.toLower() : lower;
+}
+
+int symbolOrNumberCategory(const QString &key) {
+    if (key.isEmpty())
+        return 0;
+    const QChar first = key.at(0);
+    return (first >= 'a' && first <= 'z') ? 1 : 0;
+}
+
+int compareSortKeys(const QString &left, const QString &right) {
+    const QString keyA = sortKey(left);
+    const QString keyB = sortKey(right);
+    const int catA = symbolOrNumberCategory(keyA);
+    const int catB = symbolOrNumberCategory(keyB);
+    if (catA != catB)
+        return catA - catB;
+    return QString::localeAwareCompare(keyA, keyB);
 }
 
 } // namespace
@@ -81,6 +141,7 @@ LibraryController::LibraryController(QObject *parent)
         rebuildVisibleRows();
         endResetModel();
         updateFolderWatch();
+        saveLibraryCache();
         emit changed();
         emit tracksChanged();
         emit visibleTracksChanged();
@@ -90,6 +151,10 @@ LibraryController::LibraryController(QObject *parent)
     if (savedFolders.isEmpty())
         savedFolders = {SettingsController::globalValue("library/folder").toString()};
     savedFolders.removeAll(QString());
+    m_folders = savedFolders;
+
+    loadLibraryCache();
+
     if (!savedFolders.isEmpty()) {
         QTimer::singleShot(100, this, [this, savedFolders] { setFolderPaths(savedFolders); });
     }
@@ -133,6 +198,15 @@ bool LibraryController::selfCheck() {
             path != expected)
             return fail("local path");
     }
+
+    if (splitArtists(QStringLiteral("21 Savage & Metro Boomin")) != QStringList{QStringLiteral("21 Savage"), QStringLiteral("Metro Boomin")})
+        return fail("splitArtists collaborate");
+    if (splitArtists(QStringLiteral("A feat. B, C; D / E featuring F")) != QStringList{QStringLiteral("A"), QStringLiteral("B"), QStringLiteral("C"), QStringLiteral("D"), QStringLiteral("E"), QStringLiteral("F")})
+        return fail("splitArtists delimiters");
+    if (sortKey(QStringLiteral("The Beatles")) != QStringLiteral("beatles") || sortKey(QStringLiteral("\"A\" Hero")) != QStringLiteral("hero"))
+        return fail("sortKey stripping");
+    if (compareSortKeys(QStringLiteral("1989"), QStringLiteral("Abbey Road")) >= 0 || compareSortKeys(QStringLiteral("The Beatles"), QStringLiteral("Bee Gees")) >= 0)
+        return fail("compareSortKeys order");
     library.m_tracks = {
         QVariantMap{
             {"filePath", "C:/Music/keep.flac"}, {"title", "Keep"}, {"format", "FLAC"}, {"durationSeconds", 180}},
@@ -225,7 +299,7 @@ QString LibraryController::artworkFor(const QString &filePath) {
         m_artworkUrls.insert(filePath, custom);
         return custom;
     }
-    const QString artworkUrl = extractEmbeddedArtwork(filePath);
+    const QString artworkUrl = extractEmbeddedArtwork(filePath, 512);
     m_artworkUrls.insert(filePath, artworkUrl);
     return artworkUrl;
 }
@@ -240,16 +314,24 @@ void LibraryController::setCustomArtwork(const QString &filePath, const QString 
         if (track.value("filePath").toString() == filePath) {
             track.insert("artworkUrl", artworkPath);
             m_tracks[i] = track;
+            for (int r = 0; r < m_visibleRows.size(); ++r) {
+                if (m_visibleRows[r] == i) {
+                    const QModelIndex idx = index(r, 0);
+                    emit dataChanged(idx, idx, {TrackRole});
+                    break;
+                }
+            }
             break;
         }
     }
+    emit changed();
     emit tracksChanged();
 }
 
 void LibraryController::setAlbumArtwork(const QString &album, const QString &artist, const QString &artworkPath) {
     if (album.isEmpty() || artworkPath.isEmpty())
         return;
-    bool changed = false;
+    bool hasChanges = false;
     SettingsController::setGlobalValue("artwork/album/" + album.trimmed().toLower(), artworkPath);
     for (int i = 0; i < m_tracks.size(); ++i) {
         QVariantMap track = m_tracks[i].toMap();
@@ -261,12 +343,21 @@ void LibraryController::setAlbumArtwork(const QString &album, const QString &art
                 m_artworkUrls.insert(path, artworkPath);
                 SettingsController::setGlobalValue("artwork/custom/" + path, artworkPath);
                 m_tracks[i] = track;
-                changed = true;
+                hasChanges = true;
+                for (int r = 0; r < m_visibleRows.size(); ++r) {
+                    if (m_visibleRows[r] == i) {
+                        const QModelIndex idx = index(r, 0);
+                        emit dataChanged(idx, idx, {TrackRole});
+                        break;
+                    }
+                }
             }
         }
     }
-    if (changed)
+    if (hasChanges) {
+        emit changed();
         emit tracksChanged();
+    }
 }
 
 QVariantMap LibraryController::trackForPath(const QString &filePath) const {
@@ -353,8 +444,10 @@ QVariantMap LibraryController::catalogGroups() const {
         if (!isAvailable(track))
             continue;
 
-        const QString artist = primaryArtist(track.value("artist").toString());
-        add(artists, artist, track, {{"name", artist}});
+        const QStringList trackArtists = splitArtists(track.value("artist").toString());
+        for (const QString &artist : trackArtists) {
+            add(artists, artist, track, {{"name", artist}});
+        }
 
         const QString album =
             track.value("album").toString().isEmpty() ? QString("Unknown Album") : track.value("album").toString();
@@ -421,9 +514,11 @@ void LibraryController::setFilter(const QString &query, const QString &format, b
     }
 
     const bool availabilityChanged = m_excludedFolders != folders || m_ignoreShortClips != ignoreShortClips;
+    const bool favoritesChanged = favoritesOnly && (m_favorites != favoritePaths);
     if (m_query == query && m_format == format && m_strictFormat == strictFormat && m_favoritesOnly == favoritesOnly &&
-        m_favorites == favoritePaths && m_sortMetric == sortMetric && m_sortAscending == ascending &&
+        !favoritesChanged && m_sortMetric == sortMetric && m_sortAscending == ascending &&
         m_excludedFolders == folders && m_ignoreShortClips == ignoreShortClips) {
+        m_favorites = std::move(favoritePaths);
         return;
     }
 
@@ -509,15 +604,27 @@ void LibraryController::rebuildVisibleRows() {
         if (m_sortMetric == "duration") {
             result = a.value("durationSeconds").toInt() - b.value("durationSeconds").toInt();
         } else if (m_sortMetric == "artist") {
-            result = QString::localeAwareCompare(a.value("artist").toString(), b.value("artist").toString());
+            result = compareSortKeys(a.value("artist").toString(), b.value("artist").toString());
+            if (result == 0)
+                result = compareSortKeys(a.value("title").toString(), b.value("title").toString());
         } else if (m_sortMetric == "album") {
-            result = QString::localeAwareCompare(a.value("album").toString(), b.value("album").toString());
+            result = compareSortKeys(a.value("album").toString(), b.value("album").toString());
+            if (result == 0) {
+                const int trackA = a.value("trackNumber").toInt();
+                const int trackB = b.value("trackNumber").toInt();
+                if (trackA > 0 && trackB > 0 && trackA != trackB)
+                    result = trackA - trackB;
+                else
+                    result = compareSortKeys(a.value("title").toString(), b.value("title").toString());
+            }
         } else {
             const QString aTitle =
                 a.value("title").toString().isEmpty() ? a.value("fileName").toString() : a.value("title").toString();
             const QString bTitle =
                 b.value("title").toString().isEmpty() ? b.value("fileName").toString() : b.value("title").toString();
-            result = QString::localeAwareCompare(aTitle, bTitle);
+            result = compareSortKeys(aTitle, bTitle);
+            if (result == 0)
+                result = compareSortKeys(a.value("artist").toString(), b.value("artist").toString());
         }
         return m_sortAscending ? result < 0 : result > 0;
     });
@@ -534,12 +641,32 @@ void LibraryController::setFolderPaths(QStringList paths) {
         }
     }
     paths.removeDuplicates();
+    const bool foldersChanged = (m_folders != paths);
     ++m_scanGeneration;
     m_folders = std::move(paths);
-    beginResetModel();
-    m_tracks.clear();
-    rebuildVisibleRows();
-    endResetModel();
+
+    if (m_tracks.isEmpty()) {
+        loadLibraryCache();
+    } else if (foldersChanged) {
+        QVariantList retained;
+        retained.reserve(m_tracks.size());
+        for (const QVariant &item : std::as_const(m_tracks)) {
+            const QString fp = item.toMap().value("filePath").toString();
+            for (const QString &f : std::as_const(m_folders)) {
+                if (fp.startsWith(f, Qt::CaseInsensitive)) {
+                    retained.append(item);
+                    break;
+                }
+            }
+        }
+        if (retained.size() != m_tracks.size()) {
+            beginResetModel();
+            m_tracks = retained;
+            rebuildVisibleRows();
+            endResetModel();
+        }
+    }
+
     m_artworkUrls.clear();
     updateFolderWatch();
     emit changed();
@@ -587,4 +714,46 @@ void LibraryController::startScan() {
         return;
     m_activeScanGeneration = m_scanGeneration;
     m_scanProcess.start(QCoreApplication::applicationFilePath(), {"--scan-library", m_pendingScanPaths.takeFirst()});
+}
+
+void LibraryController::loadLibraryCache() {
+    const QString cachePath = libraryCacheFilePath();
+    QFile file(cachePath);
+    if (!file.open(QIODevice::ReadOnly))
+        return;
+    const QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+    file.close();
+    if (!doc.isArray())
+        return;
+
+    QVariantList list = doc.toVariant().toList();
+    if (list.isEmpty())
+        return;
+
+    for (QVariant &item : list) {
+        QVariantMap track = item.toMap();
+        const QString path = track.value("filePath").toString();
+        const QString custom = SettingsController::globalValue("artwork/custom/" + path).toString();
+        if (!custom.isEmpty()) {
+            track.insert("artworkUrl", custom);
+            item = track;
+        }
+    }
+
+    beginResetModel();
+    m_tracks = list;
+    rebuildVisibleRows();
+    endResetModel();
+    emit tracksChanged();
+    emit visibleTracksChanged();
+}
+
+void LibraryController::saveLibraryCache() {
+    const QString cachePath = libraryCacheFilePath();
+    QSaveFile file(cachePath);
+    if (!file.open(QIODevice::WriteOnly))
+        return;
+    const QJsonDocument doc = QJsonDocument::fromVariant(m_tracks);
+    file.write(doc.toJson(QJsonDocument::Compact));
+    file.commit();
 }

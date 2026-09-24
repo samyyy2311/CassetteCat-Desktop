@@ -1,5 +1,6 @@
 {
-  "version": 6,
+  "version": 5,
+
   "configurePresets": [
     {
       "name": "dev",

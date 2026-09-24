@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CassetteCat VERSION 0.5.1 LANGUAGES CXX)
+project(CassetteCat VERSION 0.6.0 LANGUAGES CXX)
 
 set(CASSETTECAT_PACKAGE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version used by installers and Linux packages")
 
@@ -72,14 +72,15 @@ if(WIN32)
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/cassettecat_icon.ico"
     )
 endif()
-set_target_properties(CassetteCat PROPERTIES AUTOMOC_COMPILER_PREDEFINES OFF)
 
 set_source_files_properties(qml/Main.qml PROPERTIES QT_QML_SKIP_CACHEGEN TRUE)
+set_source_files_properties(qml/UiConstants.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 
 qt_add_qml_module(CassetteCat
     URI CassetteCat
     VERSION 1.0
     QML_FILES
+        qml/UiConstants.qml
         qml/Main.qml
         qml/NowPlayingDeckControls.qml
         qml/NowPlayingTopBar.qml
@@ -122,8 +123,11 @@ qt_add_qml_module(CassetteCat
         qml/NavItem.qml
         qml/SectionLabel.qml
         qml/LibraryRefineSheet.qml
+        qml/ModernSheet.qml
+        qml/TrackActionSheet.qml
         qml/RefineTextInput.qml
         qml/EmptyState.qml
+        qml/PageSkeleton.qml
         qml/SleekScrollBar.qml
         qml/SettingsNavigationItem.qml
         qml/SettingCard.qml
@@ -212,8 +216,13 @@ qt_add_qml_module(CassetteCat
         qml/icons/plug.svg
         qml/icons/log-out.svg
         qml/icons/key-round.svg
+        qml/icons/keyboard.svg
+        qml/icons/fast-forward.svg
+        qml/icons/rewind.svg
+        qml/icons/command.svg
         qml/icons/maximize-2.svg
         qml/icons/minus.svg
+        qml/icons/plus.svg
         qml/icons/jellyfin.svg
         qml/icons/subsonic.svg
         qml/icons/lrclib.svg
@@ -253,7 +262,7 @@ qt_add_qml_module(CassetteCat
 
 include(CTest)
 option(CASSETTECAT_BUILD_TESTING "Build CassetteCat tests" ON)
-if(CASSETTECAT_BUILD_TESTING)
+if(CASSETTECAT_BUILD_TESTING AND BUILD_TESTING)
     enable_testing()
 endif()
 set(CASSETTECAT_TAGLIB_SOURCE_DIR "" CACHE PATH "Use a local TagLib source checkout")
@@ -302,6 +311,9 @@ if(WIN32)
         ABSOLUTE
     )
     file(GLOB cppWinrtIncludeDirs "${windowsSdkRoot}/Include/*/cppwinrt")
+    if(NOT cppWinrtIncludeDirs)
+        message(FATAL_ERROR "C++/WinRT headers are required to build CassetteCat on Windows")
+    endif()
     list(SORT cppWinrtIncludeDirs COMPARE NATURAL ORDER DESCENDING)
     list(GET cppWinrtIncludeDirs 0 cppWinrtIncludeDir)
     if(NOT EXISTS "${cppWinrtIncludeDir}/winrt/base.h")
@@ -385,12 +397,14 @@ if(WIN32)
     )
 endif()
 
-if(CASSETTECAT_BUILD_TESTING)
+if(CASSETTECAT_BUILD_TESTING AND BUILD_TESTING)
+    find_package(Qt6 REQUIRED COMPONENTS QmlTools)
     add_test(NAME library-scan COMMAND CassetteCat --library-self-check)
     add_test(NAME streaming-protocol COMMAND CassetteCat --streaming-self-check)
     add_test(NAME service-cancellation COMMAND CassetteCat --services-self-check)
     add_test(NAME audio-meter COMMAND CassetteCat --player-self-check)
-    set_tests_properties(library-scan streaming-protocol service-cancellation audio-meter PROPERTIES
+    add_test(NAME catalog-tracklist COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_catalogtracklist.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
+    set_tests_properties(library-scan streaming-protocol service-cancellation audio-meter catalog-tracklist PROPERTIES
         ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )

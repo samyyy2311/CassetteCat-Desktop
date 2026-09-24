@@ -10,12 +10,13 @@ Keep each pull request focused on one change. Do not mix refactors, new features
 
 ## Build locally
 
-You need Qt 6.8 or newer, CMake 3.24 or newer, and Ninja.
+You need Qt 6.10 or newer, CMake 3.24 or newer, and Ninja.
 
 ```powershell
 cmake --preset dev
 cmake --build --preset dev
 .\build\dev\CassetteCat.exe --self-check
+ctest --test-dir build/dev --output-on-failure
 ```
 
 ## Pull requests

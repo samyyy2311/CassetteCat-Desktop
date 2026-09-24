@@ -1147,7 +1147,6 @@ ApplicationWindow {
         if (page !== "radio") services.cancelRadioRequests()
         dismissSearchFocus(Qt.point(-1, -1))
     }
-    onHomeScrollPositionChanged: if (settingsInitialized) appSettings.setValue("ui/homeScrollPosition", homeScrollPosition)
     onLibraryTabChanged: if (settingsInitialized) {
         appSettings.setValue("ui/libraryTab", window.libraryTab)
         if (libraryPageLoader.item) libraryPageLoader.item.searchInput.focus = false

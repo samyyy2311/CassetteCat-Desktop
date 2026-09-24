@@ -16,11 +16,16 @@ enum ShortcutId { PlayPause = 1, Previous, Next, Favorite, Search, MiniPlayer };
 struct Shortcut {
     int id;
     const char *action;
+    // Matches the row label in Settings so status messages name what the user sees.
+    const char *label;
 };
 
-constexpr Shortcut shortcutDefinitions[] = {{PlayPause, "playPause"}, {Previous, "previous"},
-                                            {Next, "next"},           {Favorite, "favorite"},
-                                            {Search, "search"},       {MiniPlayer, "miniPlayer"}};
+constexpr Shortcut shortcutDefinitions[] = {{PlayPause, "playPause", "Play / Pause"},
+                                            {Previous, "previous", "Previous Track"},
+                                            {Next, "next", "Next Track"},
+                                            {Favorite, "favorite", "Toggle Favorite"},
+                                            {Search, "search", "Focus Search"},
+                                            {MiniPlayer, "miniPlayer", "Toggle Mini Player"}};
 
 bool parseShortcut(const QString &text, UINT *modifiers, UINT *key) {
     QString normalized = text.trimmed();
@@ -322,14 +327,14 @@ bool GlobalShortcutController::registerShortcuts() {
         UINT key = 0;
         const QString shortcutStr = m_shortcuts.value(QString::fromLatin1(shortcut.action)).toString();
         if (!parseShortcut(shortcutStr, &modifiers, &key)) {
-            conflicts << QString::fromLatin1(shortcut.action);
+            conflicts << QString::fromLatin1(shortcut.label);
             continue;
         }
         if (RegisterHotKey(nullptr, shortcut.id, modifiers | MOD_NOREPEAT, key)) {
             m_registeredIds.insert(shortcut.id);
             registeredCount++;
         } else {
-            conflicts << QString::fromLatin1(shortcut.action);
+            conflicts << QString::fromLatin1(shortcut.label);
         }
     }
 
@@ -339,7 +344,10 @@ bool GlobalShortcutController::registerShortcuts() {
     }
 
     if (!conflicts.isEmpty()) {
-        setStatus(QString("Active (%1 conflict: %2)").arg(conflicts.size()).arg(conflicts.join(", ")));
+        setStatus(QString("Active, but %1 unavailable: %2")
+                      .arg(conflicts.size() == 1 ? QStringLiteral("1 shortcut is")
+                                                 : QString::number(conflicts.size()) + " shortcuts are",
+                           conflicts.join(", ")));
     } else {
         setStatus("Global shortcuts are active");
     }

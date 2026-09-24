@@ -339,6 +339,8 @@ Item {
             Item {
                 GridView {
                     id: songsGridView
+                    activeFocusOnTab: true
+                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
                     visible: root.appWindow.libraryViewMode === "grid"
                     anchors.fill: parent
                     anchors.leftMargin: 24
@@ -357,11 +359,12 @@ Item {
                     reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
-                    delegate: Item {
+                    delegate: FocusScope {
                         width: songsGridView.cellWidth
                         height: 230
 
                         SongCard {
+                            focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 14
                             cardHeight: 220
@@ -374,6 +377,8 @@ Item {
 
                 ListView {
                     id: songsListView
+                    activeFocusOnTab: true
+                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                     visible: root.appWindow.libraryViewMode === "list"
                     anchors.fill: parent
                     anchors.leftMargin: 24
@@ -445,6 +450,8 @@ Item {
 
                 GridView {
                     id: artistGrid
+                    activeFocusOnTab: true
+                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
                     anchors.fill: parent
                     anchors.leftMargin: 24
                     anchors.rightMargin: 8
@@ -462,11 +469,12 @@ Item {
                     reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
-                    delegate: Item {
+                    delegate: FocusScope {
                         width: artistGrid.cellWidth
                         height: 235
 
                         ArtistCard {
+                            focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 16
                             cardHeight: 225
@@ -518,6 +526,8 @@ Item {
 
                 GridView {
                     id: albumGrid
+                    activeFocusOnTab: true
+                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
                     anchors.fill: parent
                     anchors.leftMargin: 24
                     anchors.rightMargin: 8
@@ -535,11 +545,12 @@ Item {
                     reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
-                    delegate: Item {
+                    delegate: FocusScope {
                         width: albumGrid.cellWidth
                         height: 245
 
                         AlbumCard {
+                            focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 16
                             cardHeight: 235
@@ -585,6 +596,8 @@ Item {
 
                 GridView {
                     id: genreGrid
+                    activeFocusOnTab: true
+                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
                     anchors.fill: parent
                     anchors.leftMargin: 24
                     anchors.rightMargin: 8
@@ -602,11 +615,12 @@ Item {
                     reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
-                    delegate: Item {
+                    delegate: FocusScope {
                         width: genreGrid.cellWidth
                         height: 115
 
                         GenreCard {
+                            focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 16
                             cardHeight: 110
@@ -651,6 +665,8 @@ Item {
 
                 GridView {
                     id: folderGrid
+                    activeFocusOnTab: true
+                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
                     anchors.fill: parent
                     anchors.leftMargin: 24
                     anchors.rightMargin: 8
@@ -668,11 +684,12 @@ Item {
                     reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
-                    delegate: Item {
+                    delegate: FocusScope {
                         width: folderGrid.cellWidth
                         height: 115
 
                         FolderCard {
+                            focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 16
                             cardHeight: 110

@@ -38,4 +38,20 @@ TestCase {
         list.tracks = []
         tryCompare(list, "count", 0)
     }
+
+    function test_keyboardNavigation() {
+        const tracks = []
+        for (let i = 0; i < 100; ++i)
+            tracks.push({ filePath: i + ".mp3" })
+        list.tracks = tracks
+        tryCompare(list, "count", 100)
+        list.forceActiveFocus()
+        for (let i = 0; i < 20; ++i)
+            keyClick(Qt.Key_Down)
+        compare(list.currentIndex, 20)
+        verify(list.currentItem.activeFocus, "The current row must receive keyboard focus")
+        verify(list.contentY > 0, "Keyboard navigation must scroll the current row into view")
+        list.tracks = []
+        tryCompare(list, "count", 0)
+    }
 }

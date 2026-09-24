@@ -25,6 +25,8 @@ Column {
     }
 
     ListView {
+        activeFocusOnTab: true
+        onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
         width: parent.width
         height: 225
         orientation: ListView.Horizontal

@@ -18,6 +18,14 @@ Item {
 
     signal clicked()
 
+    readonly property bool highlighted: artistMouse.containsMouse || activeFocus
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.name
+    Accessible.onPressAction: root.clicked()
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+
     width: cardWidth
     height: cardHeight
 
@@ -60,7 +68,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: Math.min(root.cardWidth - 20, 140)
             Layout.preferredHeight: width
-            scale: artistMouse.containsMouse ? 1.04 : 1.0
+            scale: root.highlighted ? 1.04 : 1.0
 
             Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
 
@@ -80,8 +88,8 @@ Item {
                 anchors.fill: parent
                 radius: width / 2
                 color: surfaceCard
-                border.width: artistMouse.containsMouse ? 2 : 1
-                border.color: artistMouse.containsMouse ? recordRed : "#30FFFFFF"
+                border.width: root.highlighted ? 2 : 1
+                border.color: root.highlighted ? recordRed : "#30FFFFFF"
                 clip: true
                 z: 2
 
@@ -100,7 +108,7 @@ Item {
                         width: 32
                         height: 32
                         icon: "mic"
-                        color: artistMouse.containsMouse ? recordRedHover : silverDim
+                        color: root.highlighted ? recordRedHover : silverDim
                     }
                 }
 
@@ -152,7 +160,7 @@ Item {
                 Layout.minimumWidth: 0
                 horizontalAlignment: Text.AlignHCenter
                 text: root.name
-                color: artistMouse.containsMouse ? recordRedHover : textPrimary
+                color: root.highlighted ? recordRedHover : textPrimary
                 font.family: displayFont
                 font.pixelSize: 14
                 font.weight: Font.Bold

@@ -111,6 +111,8 @@ Column {
                 }
 
                 ListView {
+                    activeFocusOnTab: true
+                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                     Layout.fillWidth: true
                     Layout.preferredHeight: 270
                     orientation: ListView.Horizontal

@@ -365,6 +365,8 @@ Item {
         // Search Results List (visible during active query or filter)
         ListView {
             id: searchResults
+            activeFocusOnTab: true
+            onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: root.filtering
@@ -475,6 +477,8 @@ Item {
                     }
 
                     ListView {
+                        activeFocusOnTab: true
+                        onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                         Layout.fillWidth: true
                         height: 205
                         orientation: ListView.Horizontal
@@ -560,6 +564,8 @@ Item {
                     }
 
                     ListView {
+                        activeFocusOnTab: true
+                        onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                         Layout.fillWidth: true
                         height: 180
                         orientation: ListView.Horizontal

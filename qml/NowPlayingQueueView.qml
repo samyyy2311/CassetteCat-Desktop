@@ -51,6 +51,8 @@ Item {
 
         ListView {
             id: queueListView
+            activeFocusOnTab: true
+            onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true

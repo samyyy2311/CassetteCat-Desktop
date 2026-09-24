@@ -13,14 +13,22 @@ Rectangle {
 
     signal clicked()
 
+    readonly property bool highlighted: folderMouse.containsMouse || activeFocus
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.name
+    Accessible.onPressAction: root.clicked()
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+
     width: cardWidth
     height: cardHeight
     radius: cardRadius
     clip: true
-    color: folderMouse.containsMouse ? surfaceElevated : surfaceCard
+    color: root.highlighted ? surfaceElevated : surfaceCard
     border.width: 1
-    border.color: folderMouse.containsMouse ? recordRed : borderSubtle
-    scale: folderMouse.containsMouse ? 1.02 : 1.0
+    border.color: root.highlighted ? recordRed : borderSubtle
+    scale: root.highlighted ? 1.02 : 1.0
 
     Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
     Behavior on border.color { ColorAnimation { duration: 120 } }
@@ -65,7 +73,7 @@ Rectangle {
                     width: 14
                     height: 14
                     icon: "folder"
-                    color: folderMouse.containsMouse ? recordRedHover : textPrimary
+                    color: root.highlighted ? recordRedHover : textPrimary
                 }
             }
 
@@ -98,7 +106,7 @@ Rectangle {
             Layout.preferredWidth: 0
             Layout.minimumWidth: 0
             text: root.name
-            color: folderMouse.containsMouse ? recordRedHover : textPrimary
+            color: root.highlighted ? recordRedHover : textPrimary
             font.family: displayFont
             font.pixelSize: 15
             font.weight: Font.Bold

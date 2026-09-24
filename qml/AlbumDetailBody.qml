@@ -3,6 +3,8 @@ import QtQuick.Controls
 
 ListView {
     id: root
+    activeFocusOnTab: true
+    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
     property var tracks: []
     property var appWindow
 
@@ -17,12 +19,13 @@ ListView {
     reuseItems: true
     ScrollBar.vertical: SleekScrollBar {}
 
-    delegate: Item {
+    delegate: FocusScope {
         width: root.width
         height: songRow.height
 
         SongRow {
             id: songRow
+            focus: true
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.leftMargin: 36

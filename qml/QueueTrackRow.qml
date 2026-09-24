@@ -32,13 +32,22 @@ Item {
     readonly property color borderCard: paletteSource && paletteSource.borderCard ? paletteSource.borderCard : borderVariant
 
     readonly property bool isCompactDensity: compact || (typeof window !== "undefined" && window.trackDensity === "compact")
+    readonly property bool highlighted: rowMouse.containsMouse || (rowMouse.enabled && activeFocus)
+
+    Accessible.role: Accessible.ListItem
+    Accessible.name: track ? (track.title || track.fileName || "") : ""
+    Accessible.ignored: header
+    Accessible.onPressAction: if (rowMouse.enabled) trackActivated(track)
+    Keys.onReturnPressed: if (rowMouse.enabled) trackActivated(track)
+    Keys.onEnterPressed: if (rowMouse.enabled) trackActivated(track)
+    Keys.onMenuPressed: if (!header) contextMenu.popup(root, 0, root.height)
 
     implicitHeight: header ? (isCompactDensity ? 22 : 30) : (isCompactDensity ? 40 : 52)
 
     Rectangle {
         anchors.fill: parent
         radius: root.isCompactDensity ? 5 : 8
-        color: root.header ? "transparent" : (rowMouse.containsMouse
+        color: root.header ? "transparent" : (root.highlighted
             ? root.paletteSource.surfaceElevated
             : (root.current ? (root.compact ? "#1E1C1A" : "#1C1A18") : "transparent"))
         border.width: root.current && root.compact ? 1 : 0

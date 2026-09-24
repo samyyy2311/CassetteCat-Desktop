@@ -40,6 +40,8 @@ Item {
 
             ListView {
                 id: queueListView
+                activeFocusOnTab: true
+                onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                 anchors.fill: parent
                 clip: true
                 model: miniPlayer.queueEntries

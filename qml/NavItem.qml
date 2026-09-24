@@ -29,8 +29,8 @@ Item {
         color: root.selected
             ? root.appWindow.surfaceElevated
             : (navMouse.containsMouse ? root.appWindow.surfaceCardHover : "transparent")
-        border.width: root.selected ? 1 : 0
-        border.color: root.selected ? root.appWindow.borderVariant : "transparent"
+        border.width: 0
+        border.color: "transparent"
 
         Behavior on width { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
         Behavior on color { ColorAnimation { duration: 120 } }

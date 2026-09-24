@@ -99,7 +99,9 @@ Item {
                 Label {
                     id: countTagLbl
                     anchors.centerIn: parent
-                    text: root.libraryModel.trackCount + " songs"
+                    text: root.appWindow.libraryTab === "playlists"
+                        ? ((root.appWindow.playlists.length + 4) + " playlists")
+                        : (root.libraryModel.trackCount + " songs")
                     color: silverDim
                     font.family: monoFont
                     font.pixelSize: 10
@@ -174,8 +176,34 @@ Item {
                 }
             }
 
+            Row {
+                spacing: 8
+                visible: root.appWindow.libraryTab === "playlists"
+
+                SettingButton {
+                    text: "New Playlist"
+                    iconName: "plus"
+                    onClicked: createPlaylistDialog.open()
+                }
+
+                SettingButton {
+                    text: "Save Queue"
+                    iconName: "list"
+                    onClicked: {
+                        const defaultName = "Queue " + new Date().toLocaleDateString(Qt.locale(), "MMM d")
+                        root.appWindow.saveQueueAsPlaylist(defaultName)
+                    }
+                }
+
+                SettingButton {
+                    text: "Import M3U"
+                    iconName: "folder"
+                    onClicked: root.appWindow.requestPlaylistImport()
+                }
+            }
+
             PressDepthIconButton {
-                visible: root.appWindow.libraryTab === "songs"
+                visible: root.appWindow.libraryTab === "songs" || root.appWindow.libraryTab === "playlists"
                 boxSize: 34
                 iconSize: 16
                 iconName: root.appWindow.libraryViewMode === "grid" ? "grid-2x2" : "list"
@@ -209,11 +237,11 @@ Item {
 
             ExpandableSearchBar {
                 id: libSearchBar
-                visible: root.appWindow.libraryTab !== "playlists"
+                visible: true
                 boxSize: 34
                 iconSize: 16
                 expandedWidth: 175
-                placeholder: "Search library..."
+                placeholder: root.appWindow.libraryTab === "playlists" ? "Search playlists..." : "Search library..."
                 text: root.appWindow.libSearchQuery
                 onTextChanged: root.appWindow.libSearchQuery = text
                 onCleared: root.appWindow.libSearchQuery = ""
@@ -322,6 +350,11 @@ Item {
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 240
                     boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    cacheBuffer: UiConstants.cacheBuffer
+                    pixelAligned: UiConstants.pixelAligned
+                    reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
                     delegate: Item {
@@ -349,6 +382,11 @@ Item {
                     model: library
                     spacing: 4
                     boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    cacheBuffer: UiConstants.cacheBuffer
+                    pixelAligned: UiConstants.pixelAligned
+                    reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
                     delegate: SongRow {
@@ -394,7 +432,12 @@ Item {
                         list = list.filter(a => a.name.toLowerCase().includes(q));
                     }
                     list.sort((a, b) => {
-                        let res = sortM === "count" ? (a.count - b.count) : a.name.localeCompare(b.name);
+                        let res;
+                        if (sortM === "count") {
+                            res = (a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name);
+                        } else {
+                            res = root.appWindow.compareSortKey(a.name, b.name);
+                        }
                         return asc ? res : -res;
                     });
                     return list;
@@ -412,6 +455,11 @@ Item {
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 245
                     boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    cacheBuffer: UiConstants.cacheBuffer
+                    pixelAligned: UiConstants.pixelAligned
+                    reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
                     delegate: Item {
@@ -453,7 +501,16 @@ Item {
                         list = list.filter(a => a.name.toLowerCase().includes(q) || (a.track && a.track.artist && a.track.artist.toLowerCase().includes(q)));
                     }
                     list.sort((a, b) => {
-                        let res = sortM === "artist" ? ((a.track ? a.track.artist : "").localeCompare(b.track ? b.track.artist : "")) : (sortM === "count" ? (a.count - b.count) : a.name.localeCompare(b.name));
+                        let res;
+                        if (sortM === "artist") {
+                            const artistA = a.track ? a.track.artist : "";
+                            const artistB = b.track ? b.track.artist : "";
+                            res = root.appWindow.compareSortKey(artistA, artistB) || root.appWindow.compareSortKey(a.name, b.name);
+                        } else if (sortM === "count") {
+                            res = (a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name);
+                        } else {
+                            res = root.appWindow.compareSortKey(a.name, b.name);
+                        }
                         return asc ? res : -res;
                     });
                     return list;
@@ -471,6 +528,11 @@ Item {
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 255
                     boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    cacheBuffer: UiConstants.cacheBuffer
+                    pixelAligned: UiConstants.pixelAligned
+                    reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
                     delegate: Item {
@@ -513,7 +575,9 @@ Item {
                         list = list.filter(g => g.name.toLowerCase().includes(q));
                     }
                     list.sort((a, b) => {
-                        let res = sortM === "count" ? (a.count - b.count) : a.name.localeCompare(b.name);
+                        let res = sortM === "count"
+                            ? ((a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name))
+                            : root.appWindow.compareSortKey(a.name, b.name);
                         return asc ? res : -res;
                     });
                     return list;
@@ -531,6 +595,11 @@ Item {
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 125
                     boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    cacheBuffer: UiConstants.cacheBuffer
+                    pixelAligned: UiConstants.pixelAligned
+                    reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
                     delegate: Item {
@@ -543,6 +612,7 @@ Item {
                             cardHeight: 110
                             name: modelData.name
                             count: modelData.count
+                            track: modelData.track
                             onClicked: {
                                 root.appWindow.openCatalogDetail("genre", modelData.name, modelData.track);
                             }
@@ -571,7 +641,9 @@ Item {
                         list = list.filter(f => f.name.toLowerCase().includes(q));
                     }
                     list.sort((a, b) => {
-                        let res = sortM === "count" ? (a.count - b.count) : a.name.localeCompare(b.name);
+                        let res = sortM === "count"
+                            ? ((a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name))
+                            : root.appWindow.compareSortKey(a.name, b.name);
                         return asc ? res : -res;
                     });
                     return list;
@@ -589,6 +661,11 @@ Item {
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 125
                     boundsBehavior: Flickable.StopAtBounds
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    cacheBuffer: UiConstants.cacheBuffer
+                    pixelAligned: UiConstants.pixelAligned
+                    reuseItems: true
                     ScrollBar.vertical: SleekScrollBar {}
 
                     delegate: Item {
@@ -670,6 +747,53 @@ Item {
             Label { text: (root.health.noFolderArtwork || 0) + " without folder artwork"; color: root.appWindow.textSecondary }
             Label { text: (root.health.metadataGaps || 0) + " with missing title, artist, or album"; color: root.appWindow.textSecondary }
             Label { text: (root.health.duplicateMetadata || 0) + " duplicate metadata entries"; color: root.appWindow.textSecondary }
+        }
+    }
+
+    Dialog {
+        id: createPlaylistDialog
+        title: "New Playlist"
+        modal: true
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        onAccepted: {
+            const name = newPlaylistInput.text.trim() || ("Playlist " + ((root.appWindow.playlists || []).length + 1))
+            root.appWindow.createPlaylist(name, [])
+            newPlaylistInput.text = ""
+        }
+        onOpened: {
+            newPlaylistInput.text = ""
+            newPlaylistInput.forceActiveFocus()
+        }
+
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: "Enter a name for your new playlist:"
+                color: root.appWindow.textSecondary
+                font.family: root.appWindow.bodyFont
+                font.pixelSize: 12
+            }
+            Rectangle {
+                Layout.preferredWidth: 280
+                Layout.preferredHeight: 34
+                radius: 8
+                color: root.appWindow.surfaceCard
+                border.width: 1
+                border.color: newPlaylistInput.activeFocus ? root.appWindow.recordRed : root.appWindow.borderSubtle
+
+                TextInput {
+                    id: newPlaylistInput
+                    anchors.fill: parent
+                    anchors.leftMargin: 10
+                    anchors.rightMargin: 10
+                    verticalAlignment: Text.AlignVCenter
+                    color: root.appWindow.textPrimary
+                    font.family: root.appWindow.displayFont
+                    font.pixelSize: 13
+                    selectByMouse: true
+                    onAccepted: createPlaylistDialog.accept()
+                }
+            }
         }
     }
 

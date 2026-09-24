@@ -28,6 +28,22 @@ Item {
     property bool isDragging: false
     property int dragPositionMs: 0
 
+    property bool pendingSeek: false
+    property int pendingSeekPos: 0
+
+    Timer {
+        id: seekPendingTimer
+        interval: 650
+        onTriggered: root.pendingSeek = false
+    }
+
+    onPositionChanged: {
+        if (root.pendingSeek && Math.abs(root.position - root.pendingSeekPos) < 1500) {
+            root.pendingSeek = false
+            seekPendingTimer.stop()
+        }
+    }
+
     function formatTime(ms) {
         if (!ms || ms <= 0) return "0:00"
         const totalSec = Math.floor(ms / 1000)
@@ -43,7 +59,7 @@ Item {
         return "-" + formatTime(remMs)
     }
 
-    readonly property int currentPosMs: isDragging ? dragPositionMs : root.position
+    readonly property int currentPosMs: isDragging ? dragPositionMs : (pendingSeek ? pendingSeekPos : root.position)
     readonly property real progressFraction: (root.duration > 0) ? Math.min(1.0, Math.max(0.0, currentPosMs / root.duration)) : 0.0
 
     RowLayout {
@@ -90,6 +106,11 @@ Item {
                     width: Math.round(groove.width * root.progressFraction)
                     radius: height / 2
                     color: root.recordRed
+
+                    Behavior on width {
+                        enabled: !root.isDragging && !root.pendingSeek
+                        NumberAnimation { duration: 250; easing.type: Easing.Linear }
+                    }
                 }
 
                 Rectangle {
@@ -160,6 +181,9 @@ Item {
                 onReleased: mouse => {
                     if (root.isDragging) {
                         updateDrag(mouse.x)
+                        root.pendingSeekPos = root.dragPositionMs
+                        root.pendingSeek = true
+                        seekPendingTimer.restart()
                         root.isDragging = false
                         root.seekRequested(root.dragPositionMs)
                     }
@@ -199,6 +223,12 @@ Item {
                 onClicked: {
                     root.remainingToggled(!root.showRemainingTime)
                 }
+            }
+
+            AppToolTip {
+                targetItem: timeMouse
+                text: root.showRemainingTime ? "Switch to duration" : "Switch to remaining time"
+                visibleTarget: timeMouse.containsMouse
             }
         }
     }

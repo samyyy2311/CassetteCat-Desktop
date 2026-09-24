@@ -2,9 +2,8 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Rectangle {
+ModernSheet {
     id: root
-    property bool isOpen: false
     property string activeTab: "songs"
     property string currentFilter: "ALL"
     property string currentSongSort: "title"
@@ -26,7 +25,6 @@ Rectangle {
     signal radioLanguageSelected(string language)
     signal radioTagSelected(string tag)
     signal radioFiltersSubmitted()
-    signal closed()
 
     property bool isCustomized: {
         if (activeTab === "radio") return radioCountry.length > 0 || radioLanguage.length > 0 || radioTag !== "ALL" || currentRadioSort !== "votes" || currentSortAscending
@@ -39,138 +37,88 @@ Rectangle {
         return false
     }
 
-    anchors.fill: parent
-    color: "#90000000"
-    visible: opacity > 0.01
-    opacity: isOpen ? 1.0 : 0.0
-    z: 9999
+    RowLayout {
+        Layout.fillWidth: true
+        spacing: 14
 
-    Behavior on opacity { NumberAnimation { duration: 180 } }
-
-    MouseArea {
-        anchors.fill: parent
-        onClicked: root.closed()
-    }
-
-    Rectangle {
-        id: sheetContainer
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 0
-        anchors.horizontalCenter: parent.horizontalCenter
-        width: Math.min(parent.width - 32, 540)
-        height: Math.min(parent.height - 30, sheetContent.implicitHeight + 40)
-        radius: 24
-        color: "#121212"
-        border.width: 1
-        border.color: "#282828"
-        clip: true
-
-        transform: Translate {
-            y: root.isOpen ? 0 : 120
-            Behavior on y { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+        Label {
+            text: "Refine & Sort"
+            color: textPrimary
+            font.family: displayFont
+            font.pixelSize: 18
+            font.weight: Font.Bold
         }
 
-        MouseArea {
-            anchors.fill: parent
-        }
+        Item { Layout.fillWidth: true }
 
-        ColumnLayout {
-            id: sheetContent
-            anchors.fill: parent
-            anchors.margins: 22
-            anchors.bottomMargin: 26
-            spacing: 16
+        Rectangle {
+            Layout.alignment: Qt.AlignVCenter
+            Layout.preferredHeight: 32
+            Layout.preferredWidth: rstContentRow.implicitWidth + 28
+            radius: 16
+            color: rstMouse.containsMouse ? "#20FF3344" : "transparent"
+            border.width: 1.2
+            border.color: root.isCustomized ? recordRed : "#40FF3344"
 
-            Rectangle {
-                Layout.alignment: Qt.AlignHCenter
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 4
-                radius: 2
-                color: "#40FFFFFF"
-            }
+            Behavior on border.color { ColorAnimation { duration: 120 } }
+            Behavior on color { ColorAnimation { duration: 120 } }
 
             RowLayout {
-                Layout.fillWidth: true
-                spacing: 14
+                id: rstContentRow
+                anchors.centerIn: parent
+                spacing: 8
+
+                LucideIcon {
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    icon: "rotate-ccw"
+                    color: recordRedHover
+                }
 
                 Label {
-                    text: "Refine & Sort"
-                    color: textPrimary
+                    text: "Reset"
+                    color: recordRedHover
                     font.family: displayFont
-                    font.pixelSize: 18
-                    font.weight: Font.Bold
-                }
-
-                Item { Layout.fillWidth: true }
-
-                Rectangle {
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredHeight: 32
-                    Layout.preferredWidth: rstContentRow.implicitWidth + 28
-                    radius: 16
-                    color: rstMouse.containsMouse ? "#20FF3344" : "transparent"
-                    border.width: 1.2
-                    border.color: root.isCustomized ? recordRed : "#40FF3344"
-
-                    Behavior on border.color { ColorAnimation { duration: 120 } }
-                    Behavior on color { ColorAnimation { duration: 120 } }
-
-                    RowLayout {
-                        id: rstContentRow
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        LucideIcon {
-                            Layout.preferredWidth: 14
-                            Layout.preferredHeight: 14
-                            icon: "rotate-ccw"
-                            color: recordRedHover
-                        }
-
-                        Label {
-                            text: "Reset"
-                            color: recordRedHover
-                            font.family: displayFont
-                            font.pixelSize: 13
-                            font.weight: Font.DemiBold
-                        }
-                    }
-
-                    MouseArea {
-                        id: rstMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.resetRequested()
-                    }
-                }
-
-                Rectangle {
-                    Layout.alignment: Qt.AlignVCenter
-                    Layout.preferredWidth: 32
-                    Layout.preferredHeight: 32
-                    radius: 16
-                    color: closeMouse.containsMouse ? "#20FFFFFF" : "transparent"
-                    border.width: 1
-                    border.color: closeMouse.containsMouse ? "#40FFFFFF" : "transparent"
-
-                    LucideIcon {
-                        anchors.centerIn: parent
-                        width: 16
-                        height: 16
-                        icon: "x"
-                        color: textPrimary
-                    }
-
-                    MouseArea {
-                        id: closeMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.closed()
-                    }
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
                 }
             }
+
+            MouseArea {
+                id: rstMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.resetRequested()
+            }
+        }
+
+        Rectangle {
+            Layout.alignment: Qt.AlignVCenter
+            Layout.preferredWidth: 32
+            Layout.preferredHeight: 32
+            radius: 16
+            color: closeMouse.containsMouse ? "#20FFFFFF" : "transparent"
+            border.width: 1
+            border.color: closeMouse.containsMouse ? "#40FFFFFF" : "transparent"
+
+            LucideIcon {
+                anchors.centerIn: parent
+                width: 16
+                height: 16
+                icon: "x"
+                color: textPrimary
+            }
+
+            MouseArea {
+                id: closeMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.close()
+            }
+        }
+    }
 
             ColumnLayout {
                 Layout.fillWidth: true
@@ -206,7 +154,7 @@ Rectangle {
                             radius: 18
                             color: "transparent"
                             border.width: isSelected ? 1.5 : 1
-                            border.color: isSelected ? recordRed : (fMouse.containsMouse ? "#45FFFFFF" : "#282828")
+                            border.color: isSelected ? recordRed : (fMouse.containsMouse ? "#45FFFFFF" : (root.appWindow ? root.appWindow.borderSubtle : Qt.rgba(255, 255, 255, 0.05)))
 
                             Behavior on border.color { ColorAnimation { duration: 120 } }
 
@@ -292,7 +240,7 @@ Rectangle {
                             radius: 18
                             color: "transparent"
                             border.width: isSelected ? 1.5 : 1
-                            border.color: isSelected ? recordRed : (tagMouse.containsMouse ? "#45FFFFFF" : "#282828")
+                            border.color: isSelected ? recordRed : (tagMouse.containsMouse ? "#45FFFFFF" : (root.appWindow ? root.appWindow.borderSubtle : Qt.rgba(255, 255, 255, 0.05)))
 
                             Label {
                                 id: tagLabel
@@ -384,7 +332,7 @@ Rectangle {
                             radius: 12
                             color: "transparent"
                             border.width: isSelected ? 1.5 : 1
-                            border.color: isSelected ? recordRed : (sMouse.containsMouse ? "#45FFFFFF" : "#242424")
+                            border.color: isSelected ? recordRed : (sMouse.containsMouse ? "#45FFFFFF" : (root.appWindow ? root.appWindow.borderSubtle : Qt.rgba(255, 255, 255, 0.05)))
 
                             Behavior on border.color { ColorAnimation { duration: 120 } }
 
@@ -459,6 +407,4 @@ Rectangle {
                     }
                 }
             }
-        }
-    }
 }

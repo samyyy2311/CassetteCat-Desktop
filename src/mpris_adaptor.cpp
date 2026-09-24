@@ -44,7 +44,7 @@ QString MediaPlayer2Adaptor::desktopEntry() const {
 
 /// @copydoc MediaPlayer2Adaptor::supportedUriSchemes
 QStringList MediaPlayer2Adaptor::supportedUriSchemes() const {
-    return {QStringLiteral("file"), QStringLiteral("http"), QStringLiteral("https")};
+    return {QStringLiteral("file")};
 }
 
 /// @copydoc MediaPlayer2Adaptor::supportedMimeTypes
@@ -108,8 +108,8 @@ bool MediaPlayer2PlayerAdaptor::shuffle() const {
 
 /// @copydoc MediaPlayer2PlayerAdaptor::setShuffle
 void MediaPlayer2PlayerAdaptor::setShuffle(bool shuffle) {
-    if (m_player)
-        m_player->setShuffleEnabled(shuffle);
+    if (m_controller)
+        emit m_controller->shuffleRequested(shuffle);
 }
 
 /// @copydoc MediaPlayer2PlayerAdaptor::metadata
@@ -126,9 +126,9 @@ double MediaPlayer2PlayerAdaptor::volume() const {
 
 /// @copydoc MediaPlayer2PlayerAdaptor::setVolume
 void MediaPlayer2PlayerAdaptor::setVolume(double volume) {
-    if (m_player) {
-        const float clamped = static_cast<float>(std::clamp(volume, 0.0, 1.0));
-        m_player->setVolume(clamped);
+    if (m_controller) {
+        const double clamped = std::clamp(volume, 0.0, 1.0);
+        emit m_controller->volumeRequested(clamped);
     }
 }
 
@@ -204,14 +204,14 @@ void MediaPlayer2PlayerAdaptor::Previous() {
 
 /// @copydoc MediaPlayer2PlayerAdaptor::Pause
 void MediaPlayer2PlayerAdaptor::Pause() {
-    if (m_player)
-        m_player->pause();
+    if (m_controller)
+        emit m_controller->pauseRequested();
 }
 
 /// @copydoc MediaPlayer2PlayerAdaptor::PlayPause
 void MediaPlayer2PlayerAdaptor::PlayPause() {
-    if (m_player)
-        m_player->togglePlay();
+    if (m_controller)
+        emit m_controller->playPauseRequested();
 }
 
 /// @copydoc MediaPlayer2PlayerAdaptor::Stop
@@ -222,8 +222,8 @@ void MediaPlayer2PlayerAdaptor::Stop() {
 
 /// @copydoc MediaPlayer2PlayerAdaptor::Play
 void MediaPlayer2PlayerAdaptor::Play() {
-    if (m_player)
-        m_player->play();
+    if (m_controller)
+        emit m_controller->playRequested();
 }
 
 /// @copydoc MediaPlayer2PlayerAdaptor::Seek
@@ -245,10 +245,11 @@ void MediaPlayer2PlayerAdaptor::Seek(qlonglong offsetUs) {
 
 /// @copydoc MediaPlayer2PlayerAdaptor::SetPosition
 void MediaPlayer2PlayerAdaptor::SetPosition(const QDBusObjectPath &trackId, qlonglong positionUs) {
-    Q_UNUSED(trackId);
-    if (!m_player)
+    if (!m_player || positionUs < 0)
         return;
-    if (positionUs < 0)
+    const QVariantMap currentMeta = metadata();
+    const QString currentPath = currentMeta.value(QStringLiteral("mpris:trackid")).value<QDBusObjectPath>().path();
+    if (trackId.path() != currentPath)
         return;
     const qint64 targetMs = positionUs / 1000;
     const qint64 durationMs = m_player->duration();

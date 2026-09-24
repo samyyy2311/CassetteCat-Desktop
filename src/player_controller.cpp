@@ -434,12 +434,13 @@ void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs)
     }
 }
 
-void PlayerController::playTrack(const QVariantMap &track) {
+bool PlayerController::playTrack(const QVariantMap &track) {
     m_pendingRestorePositionMs = 0;
     if (!loadTrack(track))
-        return;
+        return false;
     m_pauseExpected = false;
     m_player->play();
+    return true;
 }
 
 /// @copydoc PlayerController::loadTrack

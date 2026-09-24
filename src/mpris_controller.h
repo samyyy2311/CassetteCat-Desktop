@@ -56,6 +56,10 @@ class MprisController final : public QObject {
     void openUriRequested(const QString &uri);
     /// Announces a change to repeat \p mode.
     void repeatModeChanged(int mode);
+    /// Requests volume change.
+    void volumeRequested(double volume);
+    /// Requests shuffle state change.
+    void shuffleRequested(bool shuffle);
 
   private slots:
     /// Publishes metadata after the current track changes.

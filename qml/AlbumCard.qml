@@ -37,7 +37,7 @@ Item {
                 border.color: albumCardMouse.containsMouse ? recordRed : "transparent"
                 scale: albumCardMouse.containsMouse ? 1.03 : 1.0
 
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
                 Behavior on border.color { ColorAnimation { duration: 120 } }
 
                 Cover {
@@ -70,8 +70,8 @@ Item {
                 font.pixelSize: 13
                 font.weight: Font.Bold
                 elide: Text.ElideRight
-                maximumLineCount: 1
-                clip: true
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
             }
 
             Label {

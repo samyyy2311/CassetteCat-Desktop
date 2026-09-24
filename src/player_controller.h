@@ -64,7 +64,7 @@ class PlayerController final : public QObject {
     Q_INVOKABLE void setReplayGainMode(const QString &mode);
     Q_INVOKABLE bool setAudioDevice(const QString &id);
     Q_INVOKABLE void restoreTrack(const QVariantMap &track, qint64 positionMs = 0);
-    Q_INVOKABLE void playTrack(const QVariantMap &track);
+    Q_INVOKABLE bool playTrack(const QVariantMap &track);
     Q_INVOKABLE void togglePlay();
     Q_INVOKABLE void play();
     Q_INVOKABLE void pause();

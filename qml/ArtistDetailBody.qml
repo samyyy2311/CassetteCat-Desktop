@@ -18,7 +18,7 @@ Column {
 
     Item {
         width: root.contentWidth
-        height: 352
+        height: Math.max(popularTracksCol.implicitHeight, (discographyCol.visible ? discographyCol.implicitHeight : 0))
         visible: root.tracks.length > 0
 
         RowLayout {
@@ -28,6 +28,7 @@ Column {
             spacing: 40
 
             ColumnLayout {
+                id: popularTracksCol
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.maximumWidth: 560
@@ -77,6 +78,7 @@ Column {
             }
 
             ColumnLayout {
+                id: discographyCol
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.alignment: Qt.AlignTop
@@ -116,7 +118,11 @@ Column {
                     spacing: 16
                     model: root.albumGroups
                     boundsBehavior: Flickable.StopAtBounds
-                    ScrollBar.horizontal: SleekScrollBar {}
+                    flickDeceleration: UiConstants.flickDeceleration
+                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                    cacheBuffer: UiConstants.cacheBuffer
+                    pixelAligned: UiConstants.pixelAligned
+                    reuseItems: true
 
                     delegate: AlbumCard {
                         required property var modelData
@@ -125,7 +131,7 @@ Column {
                         cardWidth: 184
                         cardHeight: 255
                         name: modelData.name
-                        artist: modelData.track.artist || root.title
+                        subtitle: modelData.count + (modelData.count === 1 ? " song" : " songs") + (modelData.track && modelData.track.year ? " • " + modelData.track.year : "")
                         count: modelData.count
                         track: modelData.track
                         onClicked: root.albumRequested(modelData.name, modelData.track)

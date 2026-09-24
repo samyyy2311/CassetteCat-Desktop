@@ -45,7 +45,12 @@ Item {
                 model: miniPlayer.queueEntries
                 spacing: 2
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: SleekScrollBar { anchors.rightMargin: 2 }
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                cacheBuffer: UiConstants.cacheBuffer
+                pixelAligned: UiConstants.pixelAligned
+                reuseItems: true
+                ScrollBar.vertical: SleekScrollBar {}
 
                 delegate: QueueTrackRow {
                     width: ListView.view.width - 4
@@ -174,7 +179,7 @@ Item {
                     maxVolumePercent: miniPlayer.maxVolumePercent
                     visible: opacity > 0.001
                     opacity: (miniPlayer.mode === "queue" && miniPlayer.volumePillVisible) ? 1.0 : 0.0
-                    Behavior on opacity { NumberAnimation { duration: 120 } }
+                    Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }
                 }
 
                 Row {

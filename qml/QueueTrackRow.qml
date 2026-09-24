@@ -29,6 +29,7 @@ Item {
     readonly property color recordRedHover: paletteSource ? paletteSource.recordRedHover : "#F04A40"
     readonly property color borderVariant: paletteSource && paletteSource.borderVariant ? paletteSource.borderVariant : "#403B35"
     readonly property color borderSubtle: paletteSource && paletteSource.borderSubtle ? paletteSource.borderSubtle : "#2A2723"
+    readonly property color borderCard: paletteSource && paletteSource.borderCard ? paletteSource.borderCard : borderVariant
 
     readonly property bool isCompactDensity: compact || (typeof window !== "undefined" && window.trackDensity === "compact")
 
@@ -41,7 +42,7 @@ Item {
             ? root.paletteSource.surfaceElevated
             : (root.current ? (root.compact ? "#1E1C1A" : "#1C1A18") : "transparent"))
         border.width: root.current && root.compact ? 1 : 0
-        border.color: root.paletteSource.borderCard
+        border.color: root.borderCard
         opacity: (root.reorderEnabled && gripMouse.drag.active) ? 0.35 : 1.0
 
         DropArea {
@@ -118,7 +119,7 @@ Item {
                 radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined && window.albumArtRadius === 0)
                         ? 0 : (root.compact ? 4 : 6)
                 track: root.track
-                cacheArtwork: root.compact
+                cacheArtwork: true
             }
 
             ColumnLayout {
@@ -202,6 +203,9 @@ Item {
                     cursorShape: Qt.SizeVerCursor
                     drag.target: dragSourceItem
                     drag.axis: Drag.YAxis
+                    onPressed: mouse => {
+                        dragSourceItem.Drag.hotSpot = gripMouse.mapToItem(dragSourceItem, mouse.x, mouse.y)
+                    }
                     onReleased: {
                         if (dragSourceItem.Drag.active) {
                             dragSourceItem.Drag.drop()

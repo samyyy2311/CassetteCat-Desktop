@@ -37,6 +37,7 @@
 #include "app_settings.h"
 #include "audio_metadata.h"
 #include "credential_vault.h"
+#include "image_cache.h"
 #include "library_controller.h"
 #include "library_scanner.h"
 #include "player_controller.h"
@@ -472,6 +473,7 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("mpris", &mpris);
     engine.rootContext()->setContextProperty("globalShortcuts", &globalShortcuts);
     engine.rootContext()->setContextProperty("tray", &tray);
+    engine.addImageProvider("cover", new CoverImageProvider);
 
     QObject::connect(
         &engine, &QQmlApplicationEngine::objectCreationFailed, &app,

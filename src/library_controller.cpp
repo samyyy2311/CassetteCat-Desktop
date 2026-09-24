@@ -3,6 +3,7 @@
 #include "app_paths.h"
 #include "app_settings.h"
 #include "audio_metadata.h"
+#include "image_cache.h"
 #include "library_scanner.h"
 
 #include <QCoreApplication>
@@ -316,7 +317,7 @@ QString LibraryController::artworkFor(const QString &filePath) {
         m_artworkUrls.insert(filePath, custom);
         return custom;
     }
-    const QString artworkUrl = extractEmbeddedArtwork(filePath, 512);
+    const QString artworkUrl = CoverImageProvider::urlFor(filePath);
     m_artworkUrls.insert(filePath, artworkUrl);
     return artworkUrl;
 }

@@ -11,11 +11,15 @@ Item {
     property real stableSourceSize: 0
     property bool showTonearm: false
     property int fillMode: Image.PreserveAspectCrop
-    readonly property int requestedSourceSize: {
+    readonly property int requestedLongEdge: {
         const rawDim = stableSourceSize > 0 ? stableSourceSize : Math.max(width, height)
         const target = (rawDim > 10 ? rawDim : 256) * (Screen.devicePixelRatio || 1)
         return Math.max(32, Math.min(512, Math.ceil(target)))
     }
+    readonly property size requestedSourceSize: providerRounded && width > 0 && height > 0
+        ? Qt.size(Math.ceil(requestedLongEdge * width / Math.max(width, height)),
+                  Math.ceil(requestedLongEdge * height / Math.max(width, height)))
+        : Qt.size(requestedLongEdge, requestedLongEdge)
 
     function normalizeUrl(val) {
         if (!val) return ""
@@ -27,7 +31,24 @@ Item {
         return "file:///" + str.replace(/\\/g, "/")
     }
 
+    // Local artwork is cropped and rounded by the cover image provider; only web images need the mask layers below.
+    readonly property bool providerRounded: {
+        const src = rawArtworkSource.toString()
+        return fillMode === Image.PreserveAspectCrop && (src.startsWith("file:") || src.startsWith("image://cover/"))
+    }
+
     readonly property url artworkSource: {
+        const src = rawArtworkSource.toString()
+        if (!providerRounded) return src
+        const shortSide = Math.min(width, height)
+        if (shortSide < 1) return ""
+        const fraction = Math.min(0.5, radius / shortSide).toFixed(3)
+        return src.startsWith("image://cover/")
+            ? "image://cover/" + fraction + src.slice(src.indexOf("/", 14))
+            : "image://cover/" + fraction + "/" + src
+    }
+
+    readonly property url rawArtworkSource: {
         // Depend on the remote revision so lazily downloaded server artwork appears.
         streaming.remoteArtRevision
         const currentTrack = root.track || ({})
@@ -138,14 +159,14 @@ Item {
         radius: root.radius
         color: "#FFFFFF"
         visible: false
-        layer.enabled: root.radius > 0
+        layer.enabled: root.radius > 0 && !root.providerRounded
         layer.smooth: true
     }
 
     Item {
         id: imageContainer
         anchors.fill: parent
-        layer.enabled: root.radius > 0 && root.anyArtVisible
+        layer.enabled: root.radius > 0 && root.anyArtVisible && !root.providerRounded
         layer.effect: MultiEffect {
             maskEnabled: true
             maskSource: maskItem
@@ -154,8 +175,7 @@ Item {
         Image {
             id: imageA
             anchors.fill: parent
-            sourceSize.width: root.requestedSourceSize
-            sourceSize.height: root.requestedSourceSize
+            sourceSize: root.requestedSourceSize
             fillMode: root.fillMode
             asynchronous: true
             cache: root.cacheArtwork
@@ -187,8 +207,7 @@ Item {
         Image {
             id: imageB
             anchors.fill: parent
-            sourceSize.width: root.requestedSourceSize
-            sourceSize.height: root.requestedSourceSize
+            sourceSize: root.requestedSourceSize
             fillMode: root.fillMode
             asynchronous: true
             cache: root.cacheArtwork

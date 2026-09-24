@@ -36,15 +36,23 @@ QString formatDuration(int totalSeconds) {
     return QString("%1:%2").arg(minutes).arg(seconds, 2, 10, QChar('0'));
 }
 
+namespace {
+
+// Extension-less path of the cached cover for \p filePath; saveArtwork appends ".png" or ".jpg".
+QString artworkCacheBase(const QString &filePath, int targetDim) {
+    const QString key = filePath + ':' + QString::number(targetDim);
+    return QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/covers_v2/" +
+           QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex());
+}
+
+} // namespace
+
 QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension) {
     if (image.isEmpty())
         return {};
     const int targetDim = maxDimension > 0 ? maxDimension : 512;
-    const QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/covers_v2";
-    QDir().mkpath(cacheDir);
     const QString key = filePath + ':' + QString::number(targetDim);
-    const QString sha1 = QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex());
-    const QString targetPath = cacheDir + "/" + sha1 + (png ? ".png" : ".jpg");
+    const QString targetPath = artworkCacheBase(filePath, targetDim) + (png ? ".png" : ".jpg");
     if (QFileInfo::exists(targetPath)) {
         return QUrl::fromLocalFile(targetPath).toString();
     }
@@ -104,6 +112,11 @@ QString saveFolderArtwork(const QString &filePath, int maxDimension) {
 QString extractEmbeddedArtwork(const QString &filePath, int maxDimension) {
     if (filePath.isEmpty())
         return {};
+    const QString cachedBase = artworkCacheBase(filePath, maxDimension > 0 ? maxDimension : 512);
+    for (const char *extension : {".jpg", ".png"}) {
+        if (QFileInfo::exists(cachedBase + extension))
+            return QUrl::fromLocalFile(cachedBase + extension).toString();
+    }
     const QString suffix = QFileInfo(filePath).suffix().toLower();
 
     if (suffix == "m4a" || suffix == "mp4" || suffix == "alac") {

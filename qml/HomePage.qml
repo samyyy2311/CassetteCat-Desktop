@@ -34,7 +34,7 @@ Item {
         maximumFlickVelocity: UiConstants.maximumFlickVelocity
         pixelAligned: UiConstants.pixelAligned
         boundsBehavior: Flickable.StopAtBounds
-        ScrollBar.vertical: SleekScrollBar {}
+        ScrollBar.vertical: AutoHideScrollBar {}
 
         Component.onCompleted: Qt.callLater(() => {
             homeScrollView.contentY = root.initialScrollPosition

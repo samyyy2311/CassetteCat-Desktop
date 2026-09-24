@@ -80,7 +80,7 @@ Popup {
             flickDeceleration: UiConstants.flickDeceleration
             maximumFlickVelocity: UiConstants.maximumFlickVelocity
             pixelAligned: UiConstants.pixelAligned
-            ScrollBar.vertical: SleekScrollBar {}
+            ScrollBar.vertical: AutoHideScrollBar {}
 
             GridLayout {
                 id: metadataGrid

@@ -372,7 +372,7 @@ Item {
                     cacheBuffer: UiConstants.cacheBuffer
                     pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
-                    ScrollBar.vertical: SleekScrollBar {}
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: FocusScope {
                         width: songsGridView.cellWidth
@@ -407,7 +407,7 @@ Item {
                     cacheBuffer: UiConstants.cacheBuffer
                     pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
-                    ScrollBar.vertical: SleekScrollBar {}
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: SongRow {
                         width: songsListView.width
@@ -482,7 +482,7 @@ Item {
                     cacheBuffer: UiConstants.cacheBuffer
                     pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
-                    ScrollBar.vertical: SleekScrollBar {}
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: FocusScope {
                         width: artistGrid.cellWidth
@@ -558,7 +558,7 @@ Item {
                     cacheBuffer: UiConstants.cacheBuffer
                     pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
-                    ScrollBar.vertical: SleekScrollBar {}
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: FocusScope {
                         width: albumGrid.cellWidth
@@ -628,7 +628,7 @@ Item {
                     cacheBuffer: UiConstants.cacheBuffer
                     pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
-                    ScrollBar.vertical: SleekScrollBar {}
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: FocusScope {
                         width: genreGrid.cellWidth
@@ -697,7 +697,7 @@ Item {
                     cacheBuffer: UiConstants.cacheBuffer
                     pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
-                    ScrollBar.vertical: SleekScrollBar {}
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: FocusScope {
                         width: folderGrid.cellWidth

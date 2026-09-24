@@ -379,7 +379,7 @@ Item {
             cacheBuffer: UiConstants.cacheBuffer
             pixelAligned: UiConstants.pixelAligned
             reuseItems: true
-            ScrollBar.vertical: SleekScrollBar {}
+            ScrollBar.vertical: AutoHideScrollBar {}
 
             header: Item {
                 width: searchResults.width
@@ -449,7 +449,7 @@ Item {
             maximumFlickVelocity: UiConstants.maximumFlickVelocity
             pixelAligned: UiConstants.pixelAligned
             boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: SleekScrollBar {}
+            ScrollBar.vertical: AutoHideScrollBar {}
 
             ColumnLayout {
                 id: idleColumn

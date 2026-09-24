@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-ModernSheet {
+BottomSheet {
     id: root
     property string activeTab: "songs"
     property string currentFilter: "ALL"

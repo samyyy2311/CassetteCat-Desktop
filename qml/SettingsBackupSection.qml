@@ -148,7 +148,7 @@ ColumnLayout {
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
 
-                ScrollBar.vertical: SleekScrollBar {}
+                ScrollBar.vertical: AutoHideScrollBar {}
 
                 TextEdit {
                     id: logText

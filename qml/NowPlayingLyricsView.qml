@@ -56,7 +56,7 @@ Item {
         cacheBuffer: UiConstants.cacheBuffer
         pixelAligned: UiConstants.pixelAligned
         reuseItems: true
-        ScrollBar.vertical: SleekScrollBar {}
+        ScrollBar.vertical: AutoHideScrollBar {}
 
         delegate: Item {
             id: lyricItem

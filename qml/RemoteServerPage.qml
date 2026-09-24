@@ -550,7 +550,7 @@ Item {
                 cacheBuffer: UiConstants.cacheBuffer
                 pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
-                ScrollBar.vertical: SleekScrollBar {}
+                ScrollBar.vertical: AutoHideScrollBar {}
 
                 delegate: Item {
                     width: trackGrid.cellWidth
@@ -586,7 +586,7 @@ Item {
                 cacheBuffer: UiConstants.cacheBuffer
                 pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
-                ScrollBar.vertical: SleekScrollBar {}
+                ScrollBar.vertical: AutoHideScrollBar {}
                 model: trackContent.sortedTracks
 
                 delegate: SongRow {
@@ -612,11 +612,8 @@ Item {
                 }
             }
 
-            PageSkeleton {
+            LoadingBar {
                 anchors.fill: parent
-                type: root.viewMode === "grid" ? "grid" : "list"
-                headerVisible: false
-                filterPillsVisible: false
                 visible: root.streamingController.remoteLibraryLoading && (root.activeTab === "songs" ? root.trackModel.rowCount() === 0 : root.displayItems.length === 0)
             }
 

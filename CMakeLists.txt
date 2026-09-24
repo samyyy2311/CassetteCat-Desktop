@@ -123,12 +123,12 @@ qt_add_qml_module(CassetteCat
         qml/NavItem.qml
         qml/SectionLabel.qml
         qml/LibraryRefineSheet.qml
-        qml/ModernSheet.qml
+        qml/BottomSheet.qml
         qml/TrackActionSheet.qml
         qml/RefineTextInput.qml
         qml/EmptyState.qml
-        qml/PageSkeleton.qml
-        qml/SleekScrollBar.qml
+        qml/LoadingBar.qml
+        qml/AutoHideScrollBar.qml
         qml/SettingsNavigationItem.qml
         qml/SettingCard.qml
         qml/SettingRow.qml

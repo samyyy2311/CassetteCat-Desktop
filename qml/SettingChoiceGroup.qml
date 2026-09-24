@@ -123,7 +123,7 @@ SettingRow {
                     }
                 }
 
-                ScrollBar.vertical: SleekScrollBar {
+                ScrollBar.vertical: AutoHideScrollBar {
                     visible: optionList.contentHeight > optionList.height
                 }
 

@@ -488,7 +488,7 @@ Rectangle {
                 flickDeceleration: UiConstants.flickDeceleration
                 maximumFlickVelocity: UiConstants.maximumFlickVelocity
                 pixelAligned: UiConstants.pixelAligned
-                ScrollBar.vertical: SleekScrollBar {}
+                ScrollBar.vertical: AutoHideScrollBar {}
 
                 Text {
                     id: aboutBioText

@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-ModernSheet {
+BottomSheet {
     id: root
 
     property var track: ({})
@@ -188,7 +188,7 @@ ModernSheet {
         maximumFlickVelocity: UiConstants.maximumFlickVelocity
         pixelAligned: true
 
-        ScrollBar.vertical: SleekScrollBar {}
+        ScrollBar.vertical: AutoHideScrollBar {}
 
         ColumnLayout {
             id: actionsColumn

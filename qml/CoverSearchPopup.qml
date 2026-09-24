@@ -221,7 +221,7 @@ Popup {
                 cacheBuffer: UiConstants.cacheBuffer
                 pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
-                ScrollBar.vertical: SleekScrollBar {}
+                ScrollBar.vertical: AutoHideScrollBar {}
 
                 delegate: Item {
                     width: grid.cellWidth

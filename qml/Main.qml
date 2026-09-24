@@ -3404,9 +3404,8 @@ ApplicationWindow {
                         asynchronous: true
                         active: page === "library"
 
-                        PageSkeleton {
+                        LoadingBar {
                             anchors.fill: parent
-                            type: "library"
                             visible: libraryPageLoader.status === Loader.Loading
                         }
 
@@ -3430,9 +3429,8 @@ ApplicationWindow {
                             focusSearchInput()
                         }
 
-                        PageSkeleton {
+                        LoadingBar {
                             anchors.fill: parent
-                            type: "search"
                             visible: searchPageLoader.status === Loader.Loading
                         }
 
@@ -3452,9 +3450,8 @@ ApplicationWindow {
                         asynchronous: true
                         active: page === "radio"
 
-                        PageSkeleton {
+                        LoadingBar {
                             anchors.fill: parent
-                            type: "radio"
                             visible: radioPageLoader.status === Loader.Loading
                         }
 
@@ -3473,9 +3470,8 @@ ApplicationWindow {
                         asynchronous: true
                         active: page === "jellyfin"
 
-                        PageSkeleton {
+                        LoadingBar {
                             anchors.fill: parent
-                            type: "remote"
                             visible: jellyfinPageLoader.status === Loader.Loading
                         }
 
@@ -3494,9 +3490,8 @@ ApplicationWindow {
                         asynchronous: true
                         active: page === "subsonic"
 
-                        PageSkeleton {
+                        LoadingBar {
                             anchors.fill: parent
-                            type: "remote"
                             visible: subsonicPageLoader.status === Loader.Loading
                         }
 
@@ -3515,9 +3510,8 @@ ApplicationWindow {
                         asynchronous: true
                         active: page === "stats"
 
-                        PageSkeleton {
+                        LoadingBar {
                             anchors.fill: parent
-                            type: "stats"
                             visible: listeningRecordPageLoader.status === Loader.Loading
                         }
 
@@ -3541,9 +3535,8 @@ ApplicationWindow {
                         asynchronous: true
                         active: page === "settings"
 
-                        PageSkeleton {
+                        LoadingBar {
                             anchors.fill: parent
-                            type: "settings"
                             visible: settingsLoader.status === Loader.Loading
                         }
                         sourceComponent: Component {
@@ -4586,7 +4579,7 @@ ApplicationWindow {
                 cacheBuffer: UiConstants.cacheBuffer
                 pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
-                ScrollBar.vertical: SleekScrollBar {}
+                ScrollBar.vertical: AutoHideScrollBar {}
 
                 delegate: Item {
                     width: ListView.view.width

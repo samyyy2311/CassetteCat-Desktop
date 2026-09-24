@@ -288,7 +288,7 @@ Item {
                 cacheBuffer: UiConstants.cacheBuffer
                 pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
-                ScrollBar.vertical: SleekScrollBar {}
+                ScrollBar.vertical: AutoHideScrollBar {}
                 readonly property int cols: Math.max(2, Math.floor((width - 16) / 185))
                 cellWidth: Math.floor((width - 16) / cols)
                 cellHeight: cellWidth + 56
@@ -453,7 +453,7 @@ Item {
                 cacheBuffer: UiConstants.cacheBuffer
                 pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
-                ScrollBar.vertical: SleekScrollBar {}
+                ScrollBar.vertical: AutoHideScrollBar {}
 
                 delegate: Rectangle {
                     width: radList.width
@@ -579,11 +579,8 @@ Item {
                 }
             }
 
-            PageSkeleton {
+            LoadingBar {
                 anchors.fill: parent
-                type: root.appWindow.radioViewMode === "grid" ? "grid" : "list"
-                headerVisible: false
-                filterPillsVisible: false
                 visible: root.appWindow.radioLoading && root.displayedStations.length === 0
             }
 

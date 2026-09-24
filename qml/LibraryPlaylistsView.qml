@@ -74,7 +74,7 @@ Item {
         cacheBuffer: UiConstants.cacheBuffer
         pixelAligned: UiConstants.pixelAligned
         reuseItems: true
-        ScrollBar.vertical: SleekScrollBar {}
+        ScrollBar.vertical: AutoHideScrollBar {}
 
         delegate: Item {
             width: playlistGrid.cellWidth
@@ -125,7 +125,7 @@ Item {
         cacheBuffer: UiConstants.cacheBuffer
         pixelAligned: UiConstants.pixelAligned
         reuseItems: true
-        ScrollBar.vertical: SleekScrollBar {}
+        ScrollBar.vertical: AutoHideScrollBar {}
 
         delegate: Rectangle {
             id: playlistRow

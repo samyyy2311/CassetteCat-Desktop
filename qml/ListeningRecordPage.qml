@@ -455,7 +455,7 @@ Item {
                 flickDeceleration: UiConstants.flickDeceleration
                 maximumFlickVelocity: UiConstants.maximumFlickVelocity
                 pixelAligned: UiConstants.pixelAligned
-                ScrollBar.vertical: SleekScrollBar {}
+                ScrollBar.vertical: AutoHideScrollBar {}
                 contentWidth: availableWidth
                 contentHeight: overviewCol.implicitHeight + 48
 
@@ -1087,7 +1087,7 @@ Item {
                     cacheBuffer: UiConstants.cacheBuffer
                     pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
-                    ScrollBar.vertical: SleekScrollBar {}
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: RankedSongRow {
                         width: topTracksListView.width
@@ -1129,7 +1129,7 @@ Item {
                     cacheBuffer: UiConstants.cacheBuffer
                     pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
-                    ScrollBar.vertical: SleekScrollBar {}
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: Item {
                         width: artistGrid.cellWidth
@@ -1181,7 +1181,7 @@ Item {
                     cacheBuffer: UiConstants.cacheBuffer
                     pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
-                    ScrollBar.vertical: SleekScrollBar {}
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: Item {
                         width: albumGrid.cellWidth
@@ -1231,7 +1231,7 @@ Item {
                     cacheBuffer: UiConstants.cacheBuffer
                     pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
-                    ScrollBar.vertical: SleekScrollBar {}
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: SongRow {
                         width: historyListView.width

@@ -64,7 +64,7 @@ Item {
             cacheBuffer: UiConstants.cacheBuffer
             pixelAligned: UiConstants.pixelAligned
             reuseItems: true
-            ScrollBar.vertical: SleekScrollBar { anchors.rightMargin: 8 }
+            ScrollBar.vertical: AutoHideScrollBar { anchors.rightMargin: 8 }
 
             delegate: QueueTrackRow {
                 width: ListView.view.width - 24

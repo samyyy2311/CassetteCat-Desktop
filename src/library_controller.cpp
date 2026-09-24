@@ -57,7 +57,7 @@ QStringList splitArtists(const QString &artist) {
 }
 
 QString sortKey(const QString &value) {
-    static const QRegularExpression leadingArticle(QStringLiteral("^(the|an|a)\\s+"),
+    static const QRegularExpression leadingArticle(QStringLiteral(R"(^\s*['"\[\({#._-]*(?:the|an|a)['"\]\)}#._-]*\s+)"),
                                                    QRegularExpression::CaseInsensitiveOption);
     QString clean = value;
     const auto match = leadingArticle.match(clean);
@@ -67,7 +67,7 @@ QString sortKey(const QString &value) {
     int start = 0;
     while (start < clean.size()) {
         const QChar ch = clean.at(start);
-        if (ch == '\'' || ch == '"' || ch == '[' || ch == '(' || ch == '{' ||
+        if (ch == '\'' || ch == '"' || ch == '[' || ch == '(' || ch == '{' || ch == ']' || ch == ')' || ch == '}' ||
             ch == '#' || ch == '.' || ch == '-' || ch == '_' || ch.isSpace()) {
             ++start;
         } else {
@@ -76,6 +76,18 @@ QString sortKey(const QString &value) {
     }
     if (start > 0)
         clean = clean.mid(start);
+    int end = clean.size();
+    while (end > 0) {
+        const QChar ch = clean.at(end - 1);
+        if (ch == '\'' || ch == '"' || ch == '[' || ch == '(' || ch == '{' || ch == ']' || ch == ')' || ch == '}' ||
+            ch == '#' || ch == '.' || ch == '-' || ch == '_' || ch.isSpace()) {
+            --end;
+        } else {
+            break;
+        }
+    }
+    if (end < clean.size())
+        clean = clean.left(end);
     const QString lower = clean.toLower();
     return lower.isEmpty() ? value.toLower() : lower;
 }
@@ -199,13 +211,18 @@ bool LibraryController::selfCheck() {
             return fail("local path");
     }
 
-    if (splitArtists(QStringLiteral("21 Savage & Metro Boomin")) != QStringList{QStringLiteral("21 Savage"), QStringLiteral("Metro Boomin")})
+    if (splitArtists(QStringLiteral("21 Savage & Metro Boomin")) !=
+        QStringList{QStringLiteral("21 Savage"), QStringLiteral("Metro Boomin")})
         return fail("splitArtists collaborate");
-    if (splitArtists(QStringLiteral("A feat. B, C; D / E featuring F")) != QStringList{QStringLiteral("A"), QStringLiteral("B"), QStringLiteral("C"), QStringLiteral("D"), QStringLiteral("E"), QStringLiteral("F")})
+    if (splitArtists(QStringLiteral("A feat. B, C; D / E featuring F")) !=
+        QStringList{QStringLiteral("A"), QStringLiteral("B"), QStringLiteral("C"), QStringLiteral("D"),
+                    QStringLiteral("E"), QStringLiteral("F")})
         return fail("splitArtists delimiters");
-    if (sortKey(QStringLiteral("The Beatles")) != QStringLiteral("beatles") || sortKey(QStringLiteral("\"A\" Hero")) != QStringLiteral("hero"))
+    if (sortKey(QStringLiteral("The Beatles")) != QStringLiteral("beatles") ||
+        sortKey(QStringLiteral("\"A\" Hero")) != QStringLiteral("hero"))
         return fail("sortKey stripping");
-    if (compareSortKeys(QStringLiteral("1989"), QStringLiteral("Abbey Road")) >= 0 || compareSortKeys(QStringLiteral("The Beatles"), QStringLiteral("Bee Gees")) >= 0)
+    if (compareSortKeys(QStringLiteral("1989"), QStringLiteral("Abbey Road")) >= 0 ||
+        compareSortKeys(QStringLiteral("The Beatles"), QStringLiteral("Bee Gees")) >= 0)
         return fail("compareSortKeys order");
     library.m_tracks = {
         QVariantMap{

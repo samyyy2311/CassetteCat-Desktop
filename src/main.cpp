@@ -248,7 +248,8 @@ int main(int argc, char *argv[]) {
     SetCurrentProcessExplicitAppUserModelID(L"CassetteCat.AudioEngine.Desktop.App");
 #endif
 
-    // Ensure display swap interval is synchronized with monitor VSync (supports high refresh 144Hz, 240Hz, 360Hz, 540Hz)
+    // Ensure display swap interval is synchronized with monitor VSync (supports high refresh 144Hz, 240Hz, 360Hz,
+    // 540Hz)
     QSurfaceFormat surfaceFormat = QSurfaceFormat::defaultFormat();
     surfaceFormat.setSwapInterval(1);
     QSurfaceFormat::setDefaultFormat(surfaceFormat);

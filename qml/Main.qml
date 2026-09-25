@@ -697,7 +697,7 @@ ApplicationWindow {
             return tracksForPaths(playlist.trackPaths).filter(track => !!track)
         }
         if (playlist.name === "Favorites") {
-            return availableTracks().filter(track => favoriteTracks[track.filePath])
+            return availableTracks().filter(track => isFavorite(track.filePath))
         }
         if (playlist.name === "Most Played") {
             return heavyRotation.length > 0 ? heavyRotation : availableTracks().filter(track => (playCounts[track.filePath] || 0) > 0)

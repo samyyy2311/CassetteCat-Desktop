@@ -41,6 +41,11 @@ QString pathKey(QString path) {
     return normalizedPath(path);
 }
 
+// Favorites are stored under the lowercased path QML's toggleFavorite() writes, or under the raw path.
+QString favoriteKey(const QString &path) {
+    return pathKey(path).toLower();
+}
+
 // Same identity the QML queue uses to treat one song in several files as a single entry.
 QString trackIdentity(const QVariantMap &track) {
     QString title = track.value("title").toString();
@@ -291,6 +296,9 @@ bool LibraryController::selfCheck() {
         return fail("home recommendations");
     if (library.data(library.index(0, 0), TrackRole).toMap().value("filePath").toString() != "C:/Music/alternate.wav")
         return fail("library sort");
+    library.setLibraryFilter({}, "FAVORITES", {{"c:/music/keep.flac", true}}, "title", true, {"C:/Music/hidden"}, true);
+    if (library.visibleTrackCount() != 1)
+        return fail("normalized favorites");
 
     library.setSearchFilter({}, "FLAC", {}, false);
     const QVariantMap groups = library.catalogGroups();
@@ -476,6 +484,11 @@ QVariantMap LibraryController::homeRecommendations(const QVariantMap &playCounts
     QSet<QString> played;
     for (const QVariant &value : history)
         played.insert(trackIdentity(value.toMap()));
+    QSet<QString> favoriteKeys;
+    for (auto it = favorites.cbegin(); it != favorites.cend(); ++it) {
+        if (it.value().toBool())
+            favoriteKeys.insert(favoriteKey(it.key()));
+    }
 
     QList<QVariantMap> unplayed;
     QList<QVariantMap> ranked;
@@ -489,7 +502,7 @@ QVariantMap LibraryController::homeRecommendations(const QVariantMap &playCounts
             ranked.append(track);
         if (seenAt.value(path(track)).toDouble() > 0)
             added.append(track);
-        if (!wasPlayed && favorites.value(path(track)).toBool())
+        if (!wasPlayed && favoriteKeys.contains(favoriteKey(path(track))))
             forgotten.append(track);
     }
 
@@ -669,7 +682,7 @@ void LibraryController::setFilter(const QString &query, const QString &format, b
     QSet<QString> favoritePaths;
     for (auto it = favorites.cbegin(); it != favorites.cend(); ++it) {
         if (it.value().toBool())
-            favoritePaths.insert(it.key());
+            favoritePaths.insert(favoriteKey(it.key()));
     }
 
     const bool availabilityChanged = m_excludedFolders != folders || m_ignoreShortClips != ignoreShortClips;
@@ -719,7 +732,7 @@ bool LibraryController::isAvailable(const QVariantMap &track) const {
 
 bool LibraryController::matchesVisibleFilter(const QVariantMap &track) const {
     const QString format = track.value("format").toString().toUpper();
-    if (m_favoritesOnly && !m_favorites.contains(track.value("filePath").toString()))
+    if (m_favoritesOnly && !m_favorites.contains(favoriteKey(track.value("filePath").toString())))
         return false;
     if (m_format != "ALL" && !m_format.isEmpty()) {
         if (m_format == "FLAC") {

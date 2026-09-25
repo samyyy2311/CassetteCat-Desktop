@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CassetteCat VERSION 0.6.0 LANGUAGES CXX)
+project(CassetteCat VERSION 0.7.0 LANGUAGES CXX)
 
 set(CASSETTECAT_PACKAGE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version used by installers and Linux packages")
 
@@ -340,7 +340,7 @@ target_include_directories(CassetteCat PRIVATE
     ${taglib_SOURCE_DIR}/taglib/mpeg/id3v2/frames
     ${taglib_SOURCE_DIR}/taglib/mp4
 )
-target_compile_definitions(CassetteCat PRIVATE TAGLIB_STATIC)
+target_compile_definitions(CassetteCat PRIVATE TAGLIB_STATIC CASSETTECAT_VERSION="${PROJECT_VERSION}")
 
 set_target_properties(CassetteCat PROPERTIES
     WIN32_EXECUTABLE TRUE

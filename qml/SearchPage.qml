@@ -33,8 +33,8 @@ Item {
 
     // Deduplicated genres by normalized lowercase name
     readonly property var popularGenres: {
+        // Lists from C++ arrive as sequence objects, which Array.isArray() does not accept.
         const raw = (cachedGroups && cachedGroups.genres) || []
-        if (!Array.isArray(raw)) return []
         const seen = {}
         const list = []
         for (let i = 0; i < raw.length; ++i) {
@@ -61,8 +61,8 @@ Item {
 
     // Deduplicated artists by normalized lowercase name
     readonly property var topArtists: {
+        // Lists from C++ arrive as sequence objects, which Array.isArray() does not accept.
         const raw = (cachedGroups && cachedGroups.artists) || []
-        if (!Array.isArray(raw)) return []
         const seen = {}
         const list = []
         for (let i = 0; i < raw.length; ++i) {

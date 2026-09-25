@@ -344,7 +344,7 @@ Item {
         visible: !root.hasData
         catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
         title: "No listening history yet"
-        subtitle: "Play songs for at least 30 seconds to record your listening stats and build your personal record"
+        subtitle: "Play songs most of the way through to record your listening stats and build your personal record"
         actionLabel: "Explore Library"
         onActionClicked: root.appWindow.page = "library"
     }
@@ -1173,7 +1173,7 @@ Item {
                     visible: root.filteredTracks.length === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
                     title: root.searchQuery.trim().length > 0 ? "No Tracks Found" : "No Plays Recorded"
-                    subtitle: root.searchQuery.trim().length > 0 ? ("No tracks match \"" + root.searchQuery + "\"") : "Play tracks for at least 30 seconds to record your top tracks"
+                    subtitle: root.searchQuery.trim().length > 0 ? ("No tracks match \"" + root.searchQuery + "\"") : "Play songs most of the way through to record your top tracks"
                     actionLabel: root.searchQuery.trim().length > 0 ? "Clear Search" : "Explore Library"
                     onActionClicked: {
                         if (root.searchQuery.trim().length > 0) root.searchQuery = ""
@@ -1405,7 +1405,7 @@ Item {
                         visible: !root.recapHasPlays
                         catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
                         title: "Nothing recorded for " + root.recapYear + " yet"
-                        subtitle: "Songs you play for at least 30 seconds are counted here, with the date you played them"
+                        subtitle: "Songs you play most of the way through are counted here, with the date you played them"
                     }
 
                     RowLayout {

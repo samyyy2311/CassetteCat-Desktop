@@ -107,6 +107,7 @@ ApplicationWindow {
     property double historyAccumulatedMs: 0
     property double historyPlayingSince: 0
     property bool historyRecordedForTrack: false
+    property bool historyScrobbledForTrack: false
     property var lastHandledTrack: null
     property int queueRevision: 0
     property bool playbackPending: false
@@ -1007,6 +1008,7 @@ ApplicationWindow {
         historyAccumulatedMs = 0
         historyPlayingSince = player.isPlaying && historyTrackedTrack ? Date.now() : 0
         historyRecordedForTrack = false
+        historyScrobbledForTrack = false
         if (track && track.format !== "STREAM") {
             services.scrobbleNowPlaying(track)
         }
@@ -1022,17 +1024,24 @@ ApplicationWindow {
         const current = player.currentTrack
         if (!current || !current.filePath) return
         if (!historyTrackedTrack || historyTrackedTrack.filePath !== current.filePath) resetHistoryTracking(current)
-        if (!historyRecordedForTrack) historyPlayingSince = Date.now()
+        historyPlayingSince = Date.now()
     }
 
+    // Plays count like Apple Music, once most of the song (90%) has been heard; without a known length, after
+    // 30 seconds. Scrobbles follow the Last.fm and ListenBrainz rule: half the song or 4 minutes.
     function recordHistoryIfQualified() {
-        if (historyRecordedForTrack || !historyTrackedTrack || historyAccumulatedMs < 30000) return
-        historyRecordedForTrack = true
-        const counts = Object.assign({}, playCounts)
-        counts[historyTrackedTrack.filePath] = (counts[historyTrackedTrack.filePath] || 0) + 1
-        playCounts = counts
-        playbackHistory = [historyTrackedTrack].concat(playbackHistory.filter(track => track.filePath !== historyTrackedTrack.filePath)).slice(0, 50)
-        if (historyTrackedTrack.format !== "STREAM") {
+        if (!historyTrackedTrack) return
+        const durationMs = (historyTrackedTrack.durationSeconds || 0) * 1000 || player.duration
+        if (!historyRecordedForTrack && historyAccumulatedMs >= (durationMs > 0 ? durationMs * 0.9 : 30000)) {
+            historyRecordedForTrack = true
+            const counts = Object.assign({}, playCounts)
+            counts[historyTrackedTrack.filePath] = (counts[historyTrackedTrack.filePath] || 0) + 1
+            playCounts = counts
+            playbackHistory = [historyTrackedTrack].concat(playbackHistory.filter(track => track.filePath !== historyTrackedTrack.filePath)).slice(0, 50)
+        }
+        if (!historyScrobbledForTrack && historyTrackedTrack.format !== "STREAM" && durationMs > 30000
+                && historyAccumulatedMs >= Math.min(durationMs / 2, 240000)) {
+            historyScrobbledForTrack = true
             services.scrobbleTrack(historyTrackedTrack, Math.floor(Date.now() / 1000))
         }
     }
@@ -2428,7 +2437,7 @@ ApplicationWindow {
     Timer {
         interval: 1000
         repeat: true
-        running: player.isPlaying && !historyRecordedForTrack
+        running: player.isPlaying && !(historyRecordedForTrack && historyScrobbledForTrack)
         onTriggered: {
             if (historyPlayingSince > 0) historyAccumulatedMs += Date.now() - historyPlayingSince
             historyPlayingSince = Date.now()

@@ -3,6 +3,7 @@
 
 #include <QBuffer>
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -38,9 +39,15 @@ QString formatDuration(int totalSeconds) {
 
 namespace {
 
-// Extension-less path of the cached cover for \p filePath; saveArtwork appends ".png" or ".jpg".
-QString artworkCacheBase(const QString &filePath, int targetDim) {
-    const QString key = filePath + ':' + QString::number(targetDim);
+// Includes the file's size and modification time so edited tags or replaced images get a fresh cover.
+QString artworkCacheKey(const QString &filePath, int targetDim) {
+    const QFileInfo info(filePath);
+    return filePath + ':' + QString::number(info.size()) + ':' +
+           QString::number(info.lastModified().toMSecsSinceEpoch()) + ':' + QString::number(targetDim);
+}
+
+// Extension-less path of the cached cover for \p key; the image is saved with ".png" or ".jpg".
+QString artworkCacheBase(const QString &key) {
     return QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/covers_v2/" +
            QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex());
 }
@@ -51,8 +58,8 @@ QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, 
     if (image.isEmpty())
         return {};
     const int targetDim = maxDimension > 0 ? maxDimension : 512;
-    const QString key = filePath + ':' + QString::number(targetDim);
-    const QString targetPath = artworkCacheBase(filePath, targetDim) + (png ? ".png" : ".jpg");
+    const QString key = artworkCacheKey(filePath, targetDim);
+    const QString targetPath = artworkCacheBase(key) + (png ? ".png" : ".jpg");
     if (QFileInfo::exists(targetPath)) {
         return QUrl::fromLocalFile(targetPath).toString();
     }
@@ -82,12 +89,9 @@ QString saveFolderArtwork(const QString &filePath, int maxDimension) {
     if (filePath.isEmpty() || !QFileInfo::exists(filePath))
         return {};
     const int targetDim = maxDimension > 0 ? maxDimension : 512;
-    const QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/covers_v2";
-    QDir().mkpath(cacheDir);
-    const QString key = filePath + ':' + QString::number(targetDim);
-    const QString sha1 = QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex());
+    const QString key = artworkCacheKey(filePath, targetDim);
     const bool png = filePath.endsWith(".png", Qt::CaseInsensitive);
-    const QString targetPath = cacheDir + "/" + sha1 + (png ? ".png" : ".jpg");
+    const QString targetPath = artworkCacheBase(key) + (png ? ".png" : ".jpg");
     if (QFileInfo::exists(targetPath)) {
         return QUrl::fromLocalFile(targetPath).toString();
     }
@@ -112,7 +116,7 @@ QString saveFolderArtwork(const QString &filePath, int maxDimension) {
 QString extractEmbeddedArtwork(const QString &filePath, int maxDimension) {
     if (filePath.isEmpty())
         return {};
-    const QString cachedBase = artworkCacheBase(filePath, maxDimension > 0 ? maxDimension : 512);
+    const QString cachedBase = artworkCacheBase(artworkCacheKey(filePath, maxDimension > 0 ? maxDimension : 512));
     for (const char *extension : {".jpg", ".png"}) {
         if (QFileInfo::exists(cachedBase + extension))
             return QUrl::fromLocalFile(cachedBase + extension).toString();

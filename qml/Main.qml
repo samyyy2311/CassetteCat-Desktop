@@ -154,6 +154,7 @@ ApplicationWindow {
     property bool svcAudiodb: true
     property bool svcWiki: true
     property bool svcArchive: true
+    property bool svcDiscord: false
     property bool scrobbleListenBrainzEnabled: false
     property string scrobbleListenBrainzUser: ""
     property bool scrobbleListenBrainzConnected: false
@@ -169,6 +170,12 @@ ApplicationWindow {
 
     ShortcutDefinitions {
         id: shortcutDefinitions
+    }
+
+    Binding {
+        target: discord
+        property: "enabled"
+        value: settingsInitialized && svcDiscord && !offlineBlackout
     }
 
     Binding {
@@ -533,6 +540,7 @@ ApplicationWindow {
         svcAudiodb = appSettings.value("services/audiodb", true)
         svcWiki = appSettings.value("services/wiki", true)
         svcArchive = appSettings.value("services/archive", true)
+        svcDiscord = appSettings.value("services/discord", false)
         scrobbleListenBrainzEnabled = appSettings.value("scrobble/listenbrainz_enabled", false)
         scrobbleListenBrainzUser = appSettings.value("scrobble/listenbrainz_user", "")
         scrobbleListenBrainzConnected = services.hasListenBrainzSession()
@@ -1259,6 +1267,7 @@ ApplicationWindow {
     onSvcAudiodbChanged: saveSetting("services/audiodb", svcAudiodb)
     onSvcWikiChanged: saveSetting("services/wiki", svcWiki)
     onSvcArchiveChanged: saveSetting("services/archive", svcArchive)
+    onSvcDiscordChanged: saveSetting("services/discord", svcDiscord)
     onScrobbleListenBrainzEnabledChanged: saveSetting("scrobble/listenbrainz_enabled", scrobbleListenBrainzEnabled)
     onScrobbleLibreFmEnabledChanged: saveSetting("scrobble/librefm_enabled", scrobbleLibreFmEnabled)
     onLyricsSyncOffsetMsChanged: if (settingsInitialized) {
@@ -1436,6 +1445,7 @@ ApplicationWindow {
             "services/audiodb": svcAudiodb,
             "services/wiki": svcWiki,
             "services/archive": svcArchive,
+            "services/discord": svcDiscord,
             "scrobble/listenbrainz_enabled": scrobbleListenBrainzEnabled,
             "scrobble/listenbrainz_user": scrobbleListenBrainzUser,
             "scrobble/librefm_enabled": scrobbleLibreFmEnabled,
@@ -2502,6 +2512,7 @@ ApplicationWindow {
                 svcAudiodb: window.svcAudiodb,
                 svcWiki: window.svcWiki,
                 svcArchive: window.svcArchive,
+                svcDiscord: window.svcDiscord,
                 favoriteTracks: window.favoriteTracks,
                 playlists: window.playlists,
                 playCounts: window.playCounts,
@@ -2573,6 +2584,7 @@ ApplicationWindow {
                     if (data.svcAudiodb !== undefined) window.svcAudiodb = data.svcAudiodb
                     if (data.svcWiki !== undefined) window.svcWiki = data.svcWiki
                     if (data.svcArchive !== undefined) window.svcArchive = data.svcArchive
+                    if (data.svcDiscord !== undefined) window.svcDiscord = data.svcDiscord
                     if (data.favoriteTracks) {
                         window.favoriteTracks = data.favoriteTracks
                         appSettings.setValue("library/favorites", JSON.stringify(data.favoriteTracks))
@@ -3577,6 +3589,7 @@ ApplicationWindow {
                                 svcAudiodb: window.svcAudiodb
                                 svcWiki: window.svcWiki
                                 svcArchive: window.svcArchive
+                                svcDiscord: window.svcDiscord
                                 scrobbleListenBrainzEnabled: window.scrobbleListenBrainzEnabled
                                 scrobbleListenBrainzUser: window.scrobbleListenBrainzUser
                                 scrobbleListenBrainzConnected: window.scrobbleListenBrainzConnected
@@ -3638,6 +3651,7 @@ ApplicationWindow {
                                     else if (name === "audiodb") window.svcAudiodb = value
                                     else if (name === "wiki") window.svcWiki = value
                                     else if (name === "archive") window.svcArchive = value
+                                    else if (name === "discord") window.svcDiscord = value
                                     if (!value) services.cancelNetworkRequests()
                                 }
                                 onOpenJellyfinRequested: page = "jellyfin"

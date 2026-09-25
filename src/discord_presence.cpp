@@ -212,9 +212,10 @@ void DiscordPresence::sendActivity() {
     if (!m_ready || !m_player)
         return;
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
-    const QJsonObject activity = activityFor(m_player->currentTrack(), m_player->isPlaying(), m_player->position(),
-                                             m_player->duration(), nowMs);
-    m_sentStartMs = activity.isEmpty() ? 0 : nowMs - m_player->position();
+    const qint64 positionMs = m_player->position();
+    const QVariantMap track = m_player->currentTrack();
+    const QJsonObject activity = activityFor(track, m_player->isPlaying(), positionMs, m_player->duration(), nowMs);
+    m_sentStartMs = activity.isEmpty() ? 0 : nowMs - positionMs;
     m_lastSentMs = nowMs;
     sendFrame(Frame, setActivityPayload(activity));
 }

@@ -457,11 +457,11 @@ bool LibraryController::selfCheck() {
     if (inside.size() != 1 || inside[0].toMap().value("filePath") != "/Music/Live/song.flac")
         return fail("folder membership");
     const auto logLine = [](const QString &date, const QString &path, const QString &artist, qint64 ms) {
-        const qint64 at = QDateTime::fromString(date, Qt::ISODate).toMSecsSinceEpoch();
-        return QJsonDocument(QJsonObject{{"at", at}, {"path", path}, {"title", path}, {"artist", artist},
-                                         {"album", "Album"}, {"genre", "Pop"}, {"ms", ms}})
-                   .toJson(QJsonDocument::Compact) +
-               '\n';
+        QJsonObject entry{{"path", path}, {"title", path}, {"artist", artist}, {"album", "Album"}};
+        entry.insert("at", QDateTime::fromString(date, Qt::ISODate).toMSecsSinceEpoch());
+        entry.insert("genre", "Pop");
+        entry.insert("ms", ms);
+        return QJsonDocument(entry).toJson(QJsonDocument::Compact) + '\n';
     };
     const QByteArray log = logLine("2026-03-10T12:00:00", "a.flac", "Ann & Bo", 60000) +
                            logLine("2026-03-11T12:00:00", "a.flac", "Ann & Bo", 30000) +

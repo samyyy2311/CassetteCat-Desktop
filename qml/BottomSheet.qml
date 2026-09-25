@@ -18,14 +18,9 @@ Item {
         isOpen = true
     }
 
+    // The owner sets isOpen (often through a binding) in response to closed(), so it is not written here.
     function close() {
-        if (!isOpen) return
-        isOpen = false
-        closed()
-    }
-
-    onClosed: {
-        isOpen = false
+        if (isOpen) closed()
     }
 
     default property alias sheetContent: contentColumn.data

@@ -16,6 +16,8 @@ BottomSheet {
         isOpen = true
     }
 
+    onClosed: isOpen = false
+
     readonly property bool isTrackFavorite: {
         if (!track || !track.filePath || !root.appWindow) return false
         return root.appWindow.isFavorite(track.filePath)

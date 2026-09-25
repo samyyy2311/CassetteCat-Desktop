@@ -35,8 +35,8 @@ CoverImageProvider::CoverImageProvider()
 
 QString CoverImageProvider::urlFor(const QString &filePath) {
     // Base64 keeps arbitrary path characters intact through QML's URL handling. The leading 0 is the corner radius.
-    return QStringLiteral("image://cover/0/track:") +
-           QString::fromLatin1(filePath.toUtf8().toBase64(QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals));
+    const auto options = QByteArray::Base64UrlEncoding | QByteArray::OmitTrailingEquals;
+    return QStringLiteral("image://cover/0/track:") + QString::fromLatin1(filePath.toUtf8().toBase64(options));
 }
 
 QImage CoverImageProvider::requestImage(const QString &id, QSize *size, const QSize &requestedSize) {

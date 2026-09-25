@@ -283,9 +283,11 @@ bool LibraryController::selfCheck() {
             result.append(track.toMap().value("title").toString());
         return result;
     };
-    if (titles("quickPicks") != QStringList{"Alternate"} || titles("heavyRotation") != QStringList{"Keep"} ||
-        titles("recentlyPlayed") != QStringList{"Keep"} || titles("recentlyAdded") != QStringList{"Alternate", "Keep"} ||
-        !titles("forgottenFavs").isEmpty() || home.value("spotlight").toMap().value("title") != "Alternate")
+    if (titles("quickPicks") != QStringList{"Alternate"} || titles("heavyRotation") != QStringList{"Keep"})
+        return fail("home shelves");
+    if (titles("recentlyPlayed") != QStringList{"Keep"} || titles("recentlyAdded") != QStringList{"Alternate", "Keep"})
+        return fail("home history shelves");
+    if (!titles("forgottenFavs").isEmpty() || home.value("spotlight").toMap().value("title") != "Alternate")
         return fail("home recommendations");
     if (library.data(library.index(0, 0), TrackRole).toMap().value("filePath").toString() != "C:/Music/alternate.wav")
         return fail("library sort");

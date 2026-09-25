@@ -54,6 +54,9 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.7.0" date="2026-09-26">
+      <url type="details">https://github.com/samyyy2311/CassetteCat-Desktop/releases/tag/v0.7.0</url>
+    </release>
     <release version="0.6.0" date="2026-09-26">
       <url type="details">https://github.com/samyyy2311/CassetteCat-Desktop/releases/tag/v0.6.0</url>
     </release>

@@ -402,7 +402,7 @@ ApplicationWindow {
             if (updateAvailable) {
                 updateStatusText = "Update available: v" + latestVersion
             } else {
-                updateStatusText = "CassetteCat is up to date (v0.6.0)"
+                updateStatusText = "CassetteCat is up to date (v" + Qt.application.version + ")"
             }
         }
         function onUpdateCheckFailed(error, manual) {
@@ -411,7 +411,7 @@ ApplicationWindow {
         }
     }
 
-    property string updateStatusText: "Current version: v0.6.0"
+    property string updateStatusText: "Current version: v" + Qt.application.version
     property bool updateChecking: false
     property bool updateAvailableState: false
     property string updateUrl: ""

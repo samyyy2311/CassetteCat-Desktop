@@ -4,6 +4,7 @@
 #include "app_settings.h"
 #include "image_cache.h"
 #include "network_requests.h"
+#include <QCoreApplication>
 #include <QDesktopServices>
 #include <QFile>
 #include <QFileInfo>
@@ -240,7 +241,7 @@ void ServicesController::checkForUpdates(bool manual) {
 
     const QUrl url(QStringLiteral("https://api.github.com/repos/samyyy2311/CassetteCat-Desktop/releases/latest"));
     QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("CassetteCat/0.6.0"));
+    request.setHeader(QNetworkRequest::UserAgentHeader, "CassetteCat/" + QCoreApplication::applicationVersion());
     request.setRawHeader("Accept", "application/vnd.github.v3+json");
     request.setTransferTimeout(services::detail::requestTimeoutMs);
 
@@ -267,8 +268,7 @@ void ServicesController::checkForUpdates(bool manual) {
             tag = tag.mid(1);
         }
 
-        const QString currentVersion = QStringLiteral("0.6.0");
-        const bool updateAvailable = compareVersions(tag, currentVersion) > 0;
+        const bool updateAvailable = compareVersions(tag, QCoreApplication::applicationVersion()) > 0;
         emit updateCheckFinished(updateAvailable, tag, releaseUrl, body, manual);
     });
 }

@@ -261,6 +261,7 @@ int main(int argc, char *argv[]) {
     QQuickStyle::setStyle("Basic");
     QCoreApplication::setOrganizationName("CassetteCat");
     QCoreApplication::setApplicationName("CassetteCat");
+    QCoreApplication::setApplicationVersion(QStringLiteral(CASSETTECAT_VERSION));
     initializeDebugLog();
 #ifdef Q_OS_WIN
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);

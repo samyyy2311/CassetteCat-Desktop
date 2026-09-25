@@ -31,6 +31,27 @@ QString normalizedPath(QString path) {
     return path;
 }
 
+// Adds a trailing separator so a folder does not also match siblings that share its name as a prefix.
+QString folderPrefix(const QString &folder) {
+    QString prefix = normalizedPath(folder);
+    if (!prefix.endsWith('/'))
+        prefix += '/';
+    return prefix;
+}
+
+QVariantList tracksInFolders(const QVariantList &tracks, const QStringList &folders) {
+    QStringList prefixes;
+    for (const QString &folder : folders)
+        prefixes.append(folderPrefix(folder));
+    QVariantList result;
+    for (const QVariant &track : tracks) {
+        const QString path = normalizedPath(track.toMap().value("filePath").toString());
+        if (std::any_of(prefixes.cbegin(), prefixes.cend(), [&](const QString &p) { return path.startsWith(p); }))
+            result.append(track);
+    }
+    return result;
+}
+
 // Matches saved queue, history, and playlist entries, which may be file URLs or differently separated paths.
 QString pathKey(QString path) {
     path = path.trimmed();
@@ -329,6 +350,11 @@ bool LibraryController::selfCheck() {
         if (library.playbackTracks().size() != library.trackCount())
             return fail("playback tracks");
     }
+    const QVariantList candidates = {QVariantMap{{"filePath", "/Music/Live/song.flac"}},
+                                     QVariantMap{{"filePath", "/Music/Live Sessions/song.flac"}}};
+    const QVariantList inside = tracksInFolders(candidates, {"/Music/Live"});
+    if (inside.size() != 1 || inside[0].toMap().value("filePath") != "/Music/Live/song.flac")
+        return fail("folder membership");
     library.setSearchFilter({}, "ALL", {"/"}, false);
     return library.trackCount() == 0;
 }
@@ -677,12 +703,8 @@ void LibraryController::setFilter(const QString &query, const QString &format, b
     QStringList folders;
     folders.reserve(excludedFolders.size());
     for (const QVariant &value : excludedFolders) {
-        if (value.toString().isEmpty())
-            continue;
-        QString path = normalizedPath(value.toString());
-        if (!path.endsWith('/'))
-            path += '/';
-        folders.append(path);
+        if (!value.toString().isEmpty())
+            folders.append(folderPrefix(value.toString()));
     }
 
     QSet<QString> favoritePaths;
@@ -826,22 +848,13 @@ void LibraryController::setFolderPaths(QStringList paths) {
     if (m_tracks.isEmpty()) {
         loadLibraryCache();
     } else if (foldersChanged) {
-        QVariantList retained;
-        retained.reserve(m_tracks.size());
-        for (const QVariant &item : std::as_const(m_tracks)) {
-            const QString fp = item.toMap().value("filePath").toString();
-            for (const QString &f : std::as_const(m_folders)) {
-                if (fp.startsWith(f, Qt::CaseInsensitive)) {
-                    retained.append(item);
-                    break;
-                }
-            }
-        }
+        const QVariantList retained = tracksInFolders(m_tracks, m_folders);
         if (retained.size() != m_tracks.size()) {
             beginResetModel();
             m_tracks = retained;
             rebuildVisibleRows();
             endResetModel();
+            saveLibraryCache();
         }
     }
 
@@ -904,7 +917,8 @@ void LibraryController::loadLibraryCache() {
     if (!doc.isArray())
         return;
 
-    QVariantList list = doc.toVariant().toList();
+    // Folders can be removed while tracks are cached, so only tracks inside a current folder are restored.
+    QVariantList list = tracksInFolders(doc.toVariant().toList(), m_folders);
     if (list.isEmpty())
         return;
 

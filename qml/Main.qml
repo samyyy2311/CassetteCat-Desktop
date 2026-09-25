@@ -1520,7 +1520,8 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("closePlayerView")
-        enabled: sequence.length > 0 && !isInputActive()
+        // An open sheet handles Escape itself; two enabled shortcuts on one key would both be ignored as ambiguous.
+        enabled: sequence.length > 0 && !isInputActive() && !refineSheetOpen && !radioRefineOpen && !trackActionSheet.isOpen
         onActivated: {
             if (miniPlayerMode) {
                 toggleMiniPlayer()

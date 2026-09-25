@@ -26,6 +26,10 @@
   <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest"><img src="https://img.shields.io/badge/Download%20latest%20release-E55B3C?style=for-the-badge&logo=github&logoColor=white" alt="Download latest release" /></a>
 </p>
 
+<p align="center">
+  <img src="assets/screenshots/home.png" alt="CassetteCat Home screen" />
+</p>
+
 ---
 
 ## What it does

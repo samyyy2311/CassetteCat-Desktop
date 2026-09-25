@@ -23,6 +23,28 @@
     <category>Audio</category>
     <category>Player</category>
   </categories>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Home, with picks from your library</caption>
+      <image>https://raw.githubusercontent.com/samyyy2311/CassetteCat-Desktop/main/assets/screenshots/home.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Albums in the library</caption>
+      <image>https://raw.githubusercontent.com/samyyy2311/CassetteCat-Desktop/main/assets/screenshots/library-albums.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Songs in the library</caption>
+      <image>https://raw.githubusercontent.com/samyyy2311/CassetteCat-Desktop/main/assets/screenshots/library-songs.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The player view</caption>
+      <image>https://raw.githubusercontent.com/samyyy2311/CassetteCat-Desktop/main/assets/screenshots/now-playing.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Internet radio stations</caption>
+      <image>https://raw.githubusercontent.com/samyyy2311/CassetteCat-Desktop/main/assets/screenshots/radio.png</image>
+    </screenshot>
+  </screenshots>
   <releases>
     <release version="0.6.0" date="2026-09-26">
       <url type="details">https://github.com/samyyy2311/CassetteCat-Desktop/releases/tag/v0.6.0</url>

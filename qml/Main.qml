@@ -726,6 +726,7 @@ ApplicationWindow {
         playCounts = {}
         playbackHistory = []
         historyRecordedForTrack = false
+        library.clearListeningLog()
     }
 
     function isTrackSelected(path) {
@@ -1001,6 +1002,7 @@ ApplicationWindow {
     }
 
     function resetHistoryTracking(track) {
+        if (historyTrackedTrack) finishHistoryTracking()
         historyTrackedTrack = track && track.filePath ? track : null
         historyAccumulatedMs = 0
         historyPlayingSince = player.isPlaying && historyTrackedTrack ? Date.now() : 0
@@ -1037,6 +1039,9 @@ ApplicationWindow {
 
     function finishHistoryTracking() {
         pauseHistoryTracking()
+        // Counted song plays are logged with their date and listening time for the yearly recap.
+        if (historyRecordedForTrack && historyTrackedTrack && historyTrackedTrack.format !== "STREAM")
+            library.recordListen(historyTrackedTrack, historyAccumulatedMs)
         historyTrackedTrack = null
     }
 

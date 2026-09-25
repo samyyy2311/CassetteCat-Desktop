@@ -83,10 +83,8 @@ QVariantList scanTracks(const QString &folder) {
             track.lastModified = lastModified;
         }
 
-        const QString folderCover = artworkByFolder.value(folderPath);
-        if (!folderCover.isEmpty()) {
-            track.artworkUrl = folderCover;
-        }
+        // Cached details may carry a folder cover that has since been removed; custom covers are applied later.
+        track.artworkUrl = artworkByFolder.value(folderPath);
         trackList.append(track);
     }
 

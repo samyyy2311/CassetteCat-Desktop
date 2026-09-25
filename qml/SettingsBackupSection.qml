@@ -5,6 +5,8 @@ import QtQuick.Layouts
 ColumnLayout {
     id: root
     property string backupStatus: ""
+    property bool logsVisible: false
+    property string recentLogs: ""
 
     signal exportBackupRequested()
     signal importBackupRequested()
@@ -17,7 +19,6 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "refresh-cw"
-            iconColor: "#10B981"
             title: "Configuration Backup"
             subtitle: root.backupStatus.length > 0
                       ? root.backupStatus
@@ -32,7 +33,7 @@ ColumnLayout {
 
             SettingButton {
                 text: "Import"
-                iconName: "folder"
+                iconName: "arrow-down"
                 onClicked: root.importBackupRequested()
             }
         }
@@ -46,9 +47,6 @@ ColumnLayout {
             radius: 8
             color: (root.backupStatus.toLowerCase().includes("error") || root.backupStatus.toLowerCase().includes("fail"))
                    ? "#33FF4444" : "#2510B981"
-            border.width: 1
-            border.color: (root.backupStatus.toLowerCase().includes("error") || root.backupStatus.toLowerCase().includes("fail"))
-                   ? "#80FF4444" : "#8010B981"
 
             RowLayout {
                 anchors.fill: parent
@@ -89,6 +87,79 @@ ColumnLayout {
             font.family: bodyFont
             font.pixelSize: 11
             lineHeight: 1.3
+        }
+    }
+
+    SectionLabel { text: "Diagnostics & Logs" }
+
+    SettingCard {
+        SettingRow {
+            iconName: "archive"
+            title: "Application Logs"
+            subtitle: appSettings.getLogFilePath()
+
+            SettingButton {
+                text: root.logsVisible ? "Hide Logs" : "Logs"
+                iconName: "list"
+                onClicked: {
+                    root.logsVisible = !root.logsVisible
+                    if (root.logsVisible) {
+                        root.recentLogs = appSettings.readRecentLogs(150)
+                    }
+                }
+            }
+
+            SettingButton {
+                text: "Open"
+                iconName: "external-link"
+                onClicked: appSettings.openLogFile()
+            }
+
+            SettingButton {
+                text: "Copy"
+                onClicked: appSettings.copyToClipboard(appSettings.readRecentLogs(200))
+            }
+
+            SettingButton {
+                text: "Clear"
+                iconName: "x"
+                destructive: true
+                onClicked: {
+                    appSettings.clearLogs()
+                    root.recentLogs = appSettings.readRecentLogs(150)
+                }
+            }
+        }
+
+        Rectangle {
+            visible: root.logsVisible
+            Layout.fillWidth: true
+            Layout.preferredHeight: 180
+            radius: 8
+            color: (typeof surfaceInput !== "undefined" ? surfaceInput : "#141312")
+            border.width: 0
+            clip: true
+
+            Flickable {
+                anchors.fill: parent
+                anchors.margins: 10
+                contentWidth: logText.contentWidth
+                contentHeight: logText.contentHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+
+                ScrollBar.vertical: AutoHideScrollBar {}
+
+                TextEdit {
+                    id: logText
+                    readOnly: true
+                    selectByMouse: true
+                    text: root.recentLogs
+                    color: (typeof textPrimary !== "undefined" ? textPrimary : "#F5F0EC")
+                    font.family: (typeof monoFont !== "undefined") ? monoFont : "IBM Plex Mono"
+                    font.pixelSize: 11
+                }
+            }
         }
     }
 }

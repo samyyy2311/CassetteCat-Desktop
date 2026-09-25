@@ -113,14 +113,14 @@ Item {
         PressDepthIconButton {
             boxSize: 38
             iconSize: 18
-            iconName: "pencil"
+            iconName: "more-vertical"
             tint: root.appWindow.silverDim
             backgroundColor: "#10FFFFFF"
             hoverBackgroundColor: "#24FFFFFF"
             borderColor: "#14FFFFFF"
             hoverBorderColor: "#30FFFFFF"
-            tooltipText: "Edit metadata"
-            onClicked: root.appWindow.openTrackMetadataEditor()
+            tooltipText: "Track options"
+            onClicked: root.appWindow.openTrackActionSheet(player.currentTrack)
         }
 
         Rectangle {
@@ -163,25 +163,27 @@ Item {
             width: 38
             height: 38
             radius: 19
-            color: root.appWindow.nowPlayingMode === "lyrics"
-                ? root.appWindow.recordRed
-                : (lyricsBtnMouse.containsMouse ? "#24FFFFFF" : "#10FFFFFF")
-            border.width: 1
-            border.color: root.appWindow.nowPlayingMode === "lyrics"
-                ? root.appWindow.recordRed
+            readonly property bool isActive: root.appWindow.nowPlayingMode === "lyrics"
+            color: lyricsBtnMouse.containsMouse ? "#24FFFFFF" : (isActive ? "#14FFFFFF" : "#10FFFFFF")
+            border.width: isActive ? 1.5 : 1
+            border.color: isActive
+                ? (lyricsBtnMouse.containsMouse ? root.appWindow.recordRedHover : root.appWindow.recordRed)
                 : (lyricsBtnMouse.containsMouse ? "#30FFFFFF" : "#14FFFFFF")
             scale: lyricsBtnMouse.pressed ? 0.94 : 1.0
 
-            Behavior on color { ColorAnimation { duration: 160 } }
-            Behavior on border.color { ColorAnimation { duration: 160 } }
-            Behavior on scale { NumberAnimation { duration: 90 } }
+            Behavior on color { ColorAnimation { duration: 140 } }
+            Behavior on border.color { ColorAnimation { duration: 140 } }
+            Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
 
             LucideIcon {
                 anchors.centerIn: parent
                 width: 18
                 height: 18
                 icon: "quote"
-                color: root.appWindow.nowPlayingMode === "lyrics" ? "#FFFFFF" : (lyricsBtnMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.silverDim)
+                color: parent.isActive
+                    ? (lyricsBtnMouse.containsMouse ? root.appWindow.recordRedHover : root.appWindow.recordRed)
+                    : (lyricsBtnMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.silverDim)
+                Behavior on color { ColorAnimation { duration: 140 } }
             }
 
             MouseArea {
@@ -203,25 +205,27 @@ Item {
             width: 38
             height: 38
             radius: 19
-            color: root.appWindow.nowPlayingMode === "queue"
-                ? root.appWindow.recordRed
-                : (queueBtnMouse.containsMouse ? "#24FFFFFF" : "#10FFFFFF")
-            border.width: 1
-            border.color: root.appWindow.nowPlayingMode === "queue"
-                ? root.appWindow.recordRed
+            readonly property bool isActive: root.appWindow.nowPlayingMode === "queue"
+            color: queueBtnMouse.containsMouse ? "#24FFFFFF" : (isActive ? "#14FFFFFF" : "#10FFFFFF")
+            border.width: isActive ? 1.5 : 1
+            border.color: isActive
+                ? (queueBtnMouse.containsMouse ? root.appWindow.recordRedHover : root.appWindow.recordRed)
                 : (queueBtnMouse.containsMouse ? "#30FFFFFF" : "#14FFFFFF")
             scale: queueBtnMouse.pressed ? 0.94 : 1.0
 
-            Behavior on color { ColorAnimation { duration: 160 } }
-            Behavior on border.color { ColorAnimation { duration: 160 } }
-            Behavior on scale { NumberAnimation { duration: 90 } }
+            Behavior on color { ColorAnimation { duration: 140 } }
+            Behavior on border.color { ColorAnimation { duration: 140 } }
+            Behavior on scale { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
 
             LucideIcon {
                 anchors.centerIn: parent
                 width: 18
                 height: 18
                 icon: "list"
-                color: root.appWindow.nowPlayingMode === "queue" ? "#FFFFFF" : (queueBtnMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.silverDim)
+                color: parent.isActive
+                    ? (queueBtnMouse.containsMouse ? root.appWindow.recordRedHover : root.appWindow.recordRed)
+                    : (queueBtnMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.silverDim)
+                Behavior on color { ColorAnimation { duration: 140 } }
             }
 
             MouseArea {

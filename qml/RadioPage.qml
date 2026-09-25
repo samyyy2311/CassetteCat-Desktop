@@ -214,6 +214,9 @@ Item {
             contentHeight: height
             clip: true
             boundsBehavior: Flickable.StopAtBounds
+            flickDeceleration: UiConstants.flickDeceleration
+            maximumFlickVelocity: UiConstants.maximumFlickVelocity
+            pixelAligned: UiConstants.pixelAligned
             flickableDirection: Flickable.HorizontalFlick
 
             Row {
@@ -280,7 +283,12 @@ Item {
                 clip: true
                 model: root.displayedStations
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: SleekScrollBar {}
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                cacheBuffer: UiConstants.cacheBuffer
+                pixelAligned: UiConstants.pixelAligned
+                reuseItems: true
+                ScrollBar.vertical: AutoHideScrollBar {}
                 readonly property int cols: Math.max(2, Math.floor((width - 16) / 185))
                 cellWidth: Math.floor((width - 16) / cols)
                 cellHeight: cellWidth + 56
@@ -314,13 +322,13 @@ Item {
                                 id: coverBox
                                 anchors.fill: parent
                                 radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
-                                color: stationImg.status === Image.Ready ? surfaceCard : "#000000"
+                                color: surfaceCard
                                 clip: true
                                 border.width: isCurrent ? 1.5 : (cardMouse.containsMouse ? 1.5 : 0)
                                 border.color: isCurrent ? recordRed : (cardMouse.containsMouse ? recordRed : "transparent")
                                 scale: cardMouse.containsMouse ? 1.03 : 1.0
 
-                                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                                Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
                                 Behavior on border.color { ColorAnimation { duration: 120 } }
 
                                 Image {
@@ -328,7 +336,9 @@ Item {
                                     anchors.fill: parent
                                     anchors.margins: 14
                                     source: modelData.favicon || ""
-                                    fillMode: Image.PreserveAspectFit
+                                    sourceSize.width: Math.ceil(120 * Screen.devicePixelRatio)
+                                    sourceSize.height: Math.ceil(120 * Screen.devicePixelRatio)
+                                    fillMode: Image.PreserveAspectCrop
                                     visible: status === Image.Ready
                                     asynchronous: true
                                     smooth: true
@@ -355,8 +365,8 @@ Item {
                                     opacity: (cardMouse.containsMouse || isCurrent) ? 1.0 : 0.0
                                     scale: (cardMouse.containsMouse || isCurrent) ? 1.0 : 0.6
 
-                                    Behavior on opacity { NumberAnimation { duration: 150 } }
-                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                                    Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd } }
+                                    Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingBounce } }
 
                                     tooltipText: isPlaying ? "Pause station" : "Play station"
                                     onClicked: root.toggleStation(modelData)
@@ -438,7 +448,12 @@ Item {
                 model: root.displayedStations
                 spacing: 4
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: SleekScrollBar {}
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                cacheBuffer: UiConstants.cacheBuffer
+                pixelAligned: UiConstants.pixelAligned
+                reuseItems: true
+                ScrollBar.vertical: AutoHideScrollBar {}
 
                 delegate: Rectangle {
                     width: radList.width
@@ -473,7 +488,7 @@ Item {
                             Layout.preferredHeight: 40
                             Layout.alignment: Qt.AlignVCenter
                             radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 8
-                            color: listImg.status === Image.Ready ? surfaceCard : "#000000"
+                            color: surfaceCard
                             clip: true
                             border.width: 1
                             border.color: isCurrent ? recordRed : "#15FFFFFF"
@@ -483,7 +498,9 @@ Item {
                                 anchors.fill: parent
                                 anchors.margins: 4
                                 source: modelData.favicon || ""
-                                fillMode: Image.PreserveAspectFit
+                                sourceSize.width: Math.ceil(40 * Screen.devicePixelRatio)
+                                sourceSize.height: Math.ceil(40 * Screen.devicePixelRatio)
+                                fillMode: Image.PreserveAspectCrop
                                 visible: status === Image.Ready
                                 asynchronous: true
                             }
@@ -562,9 +579,14 @@ Item {
                 }
             }
 
+            LoadingBar {
+                anchors.fill: parent
+                visible: root.appWindow.radioLoading && root.displayedStations.length === 0
+            }
+
             EmptyState {
                 anchors.fill: parent
-                visible: root.displayedStations.length === 0
+                visible: !root.appWindow.radioLoading && root.displayedStations.length === 0
                 catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
                 readonly property bool hasQuery: (root.appWindow.radioSearchQuery || "").trim().length > 0
                 readonly property bool sourceEmpty: {

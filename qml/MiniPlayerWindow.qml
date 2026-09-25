@@ -61,6 +61,12 @@ Window {
     property bool playerVisuallyPlaying: false
     property int repeatMode: 0
     property var favoriteTracks: ({})
+    function isFavorite(path) {
+        if (!path || !root.favoriteTracks) return false
+        const raw = String(path).trim()
+        const norm = raw.replace(/\\/g, "/").replace(/^\/+([A-Za-z]:\/)/, "$1").toLowerCase()
+        return !!(root.favoriteTracks[raw] || root.favoriteTracks[norm])
+    }
     property string displayFont: (typeof displayFontFamily !== "undefined" && displayFontFamily.length > 0) ? displayFontFamily : "Space Grotesk"
     property string bodyFont: (typeof bodyFontFamily !== "undefined" && bodyFontFamily.length > 0) ? bodyFontFamily : "IBM Plex Sans"
     property string monoFont: (typeof monoFontFamily !== "undefined" && monoFontFamily.length > 0) ? monoFontFamily : "IBM Plex Mono"
@@ -167,8 +173,8 @@ Window {
         anchors.margins: -1
         radius: card.radius + 1
         color: "transparent"
-        border.width: 1.5
-        border.color: "#90000000"
+        border.width: 1
+        border.color: Qt.rgba(255, 255, 255, 0.08)
         z: 0
         antialiasing: true
     }
@@ -229,6 +235,7 @@ Window {
                 anchors.right: parent.right
                 anchors.topMargin: 8
                 anchors.rightMargin: 10
+                width: compactControlsRow.implicitWidth + 8
                 height: 26
                 radius: 13
                 color: compactHoverHandler.hovered ? "#22201E" : "#1A1918"
@@ -240,6 +247,7 @@ Window {
                 Behavior on border.color { ColorAnimation { duration: 150 } }
 
                 Row {
+                    id: compactControlsRow
                     anchors.centerIn: parent
                     spacing: 2
                     padding: 2
@@ -397,7 +405,7 @@ Window {
                             radius: parent.radius
                             color: "#80000000"
                             opacity: coverHoverM.containsMouse ? 1.0 : 0.0
-                            Behavior on opacity { NumberAnimation { duration: 140 } }
+                            Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }
                             LucideIcon { anchors.centerIn: parent; width: 14; height: 14; icon: "disc"; color: "#FFFFFF" }
                         }
 
@@ -426,7 +434,7 @@ Window {
 
                         Label {
                             Layout.fillWidth: true
-                            horizontalAlignment: Text.AlignHCenter
+                            horizontalAlignment: Text.AlignLeft
                             text: (player.currentTrack && player.currentTrack.title)
                                 ? player.currentTrack.title
                                 : (root.tracksCount > 0 ? "CassetteCat" : "Library Empty")
@@ -439,7 +447,7 @@ Window {
 
                         Label {
                             Layout.fillWidth: true
-                            horizontalAlignment: Text.AlignHCenter
+                            horizontalAlignment: Text.AlignLeft
                             text: {
                                 if (player.currentTrack && player.currentTrack.artist) {
                                     return player.currentTrack.album
@@ -500,6 +508,9 @@ Window {
                                 border.width: 1.5
                                 border.color: root.recordRed
                                 opacity: (compactSeekM.containsMouse || compactSeekM.pressed) ? 1.0 : 0.0
+
+                                Behavior on width { NumberAnimation { duration: 100 } }
+                                Behavior on height { NumberAnimation { duration: 100 } }
                             }
                         }
 
@@ -534,10 +545,18 @@ Window {
                         horizontalAlignment: Text.AlignRight
 
                         MouseArea {
+                            id: compactTimeMouse
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
                             onClicked: root.showRemainingTime = !root.showRemainingTime
+                        }
+
+                        AppToolTip {
+                            targetItem: compactTimeMouse
+                            text: root.showRemainingTime ? "Switch to duration" : "Switch to remaining time"
+                            visibleTarget: compactTimeMouse.containsMouse
+                            delay: 350
                         }
                     }
                 }
@@ -553,13 +572,13 @@ Window {
                         id: leftControls
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 8
+                        spacing: 4
                         visible: !root.volumePillVisible
 
                         Item {
-                            width: 32; height: 32
+                            width: 28; height: 28
                             LucideIcon {
-                                anchors.centerIn: parent; width: 17; height: 17
+                                anchors.centerIn: parent; width: 16; height: 16
                                 icon: player.volume <= 0.001 ? "volume-x" : (player.volume < 0.5 ? "volume-1" : "volume-2")
                                 color: volBtnM.containsMouse ? root.textPrimary : root.textSecondary
                             }
@@ -567,8 +586,8 @@ Window {
                         }
 
                         Item {
-                            width: 32; height: 32
-                            readonly property bool isFav: player.currentTrack && root.favoriteTracks && !!root.favoriteTracks[player.currentTrack.filePath]
+                            width: 28; height: 28
+                            readonly property bool isFav: player.currentTrack && root.isFavorite(player.currentTrack.filePath)
                             LucideIcon {
                                 anchors.centerIn: parent; width: 16; height: 16; icon: "heart"
                                 color: parent.isFav ? root.recordRed : (favBtnM.containsMouse ? root.textPrimary : root.silverDim)
@@ -594,19 +613,30 @@ Window {
                         maxVolumePercent: root.maxVolumePercent
                         visible: opacity > 0.001
                         opacity: root.volumePillVisible ? 1.0 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 120 } }
+                        Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }
                     }
 
                     Row {
                         id: centerControls
                         anchors.centerIn: parent
-                        spacing: 18
+                        spacing: 8
 
                         Item {
-                            width: 32; height: 32
+                            width: 28; height: 28
+                            anchors.verticalCenter: parent.verticalCenter
+                            readonly property bool active: player.shuffleEnabled
+                            LucideIcon {
+                                anchors.centerIn: parent; width: 15; height: 15; icon: "shuffle"
+                                color: parent.active ? root.recordRed : (shufBtnM.containsMouse ? root.textPrimary : root.textSecondary)
+                            }
+                            MouseArea { id: shufBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleShuffle() }
+                        }
+
+                        Item {
+                            width: 28; height: 28
                             anchors.verticalCenter: parent.verticalCenter
                             LucideIcon {
-                                anchors.centerIn: parent; width: 19; height: 19; icon: "skip-back"
+                                anchors.centerIn: parent; width: 18; height: 18; icon: "skip-back"
                                 color: prevBtnM.containsMouse ? root.textPrimary : root.textSecondary
                             }
                             MouseArea { id: prevBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.playPrevious() }
@@ -621,7 +651,7 @@ Window {
                             LucideIcon {
                                 anchors.centerIn: parent
                                 anchors.horizontalCenterOffset: (player.isPlaying || root.playerVisuallyPlaying) ? 0 : 1
-                                width: 24; height: 24
+                                width: 22; height: 22
                                 icon: (player.isPlaying || root.playerVisuallyPlaying) ? "pause" : "play"
                                 color: playBtnM.containsMouse ? root.recordRedHover : root.textPrimary
                             }
@@ -629,13 +659,25 @@ Window {
                         }
 
                         Item {
-                            width: 32; height: 32
+                            width: 28; height: 28
                             anchors.verticalCenter: parent.verticalCenter
                             LucideIcon {
-                                anchors.centerIn: parent; width: 19; height: 19; icon: "skip-forward"
+                                anchors.centerIn: parent; width: 18; height: 18; icon: "skip-forward"
                                 color: nextBtnM.containsMouse ? root.textPrimary : root.textSecondary
                             }
                             MouseArea { id: nextBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.playNext() }
+                        }
+
+                        Item {
+                            width: 28; height: 28
+                            anchors.verticalCenter: parent.verticalCenter
+                            readonly property bool active: root.repeatMode > 0
+                            LucideIcon {
+                                anchors.centerIn: parent; width: 15; height: 15
+                                icon: root.repeatMode === 2 ? "repeat-1" : "repeat"
+                                color: parent.active ? root.recordRed : (repBtnM.containsMouse ? root.textPrimary : root.textSecondary)
+                            }
+                            MouseArea { id: repBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleRepeat() }
                         }
                     }
 
@@ -643,21 +685,21 @@ Window {
                         id: rightControls
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
-                        spacing: 8
+                        spacing: 6
 
                         Item {
-                            width: 32; height: 32
+                            width: 28; height: 28
                             LucideIcon {
-                                anchors.centerIn: parent; width: 16; height: 16; icon: "quote"
+                                anchors.centerIn: parent; width: 15; height: 15; icon: "quote"
                                 color: root.mode === "lyrics" ? root.recordRed : (lyrBtnM.containsMouse ? root.textPrimary : root.textSecondary)
                             }
                             MouseArea { id: lyrBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.mode = (root.mode === "lyrics" ? "compact" : "lyrics") }
                         }
 
                         Item {
-                            width: 32; height: 32
+                            width: 28; height: 28
                             LucideIcon {
-                                anchors.centerIn: parent; width: 16; height: 16; icon: "list"
+                                anchors.centerIn: parent; width: 15; height: 15; icon: "list"
                                 color: root.mode === "queue" ? root.recordRed : (qBtnM.containsMouse ? root.textPrimary : root.textSecondary)
                             }
                             MouseArea { id: qBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.mode = (root.mode === "queue" ? "compact" : "queue") }

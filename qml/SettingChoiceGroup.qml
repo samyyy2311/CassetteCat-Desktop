@@ -52,10 +52,19 @@ SettingRow {
 
         Popup {
             id: choicePopup
+            // Parented to the button so a press on it toggles the popup instead of closing and reopening it.
             parent: menuButton
-            x: Math.min(0, menuButton.width - width)
-            y: menuButton.height + 4
-            width: Math.max(menuButton.width, 220)
+            // mapToItem() is not tracked by bindings, so the position is computed each time the popup opens.
+            // It is placed in window coordinates, then converted to the button's.
+            function reposition() {
+                const pt = menuButton.mapToItem(Overlay.overlay, 0, 0)
+                x = Math.max(10, Math.min(Overlay.overlay.width - width - 10, pt.x + menuButton.width - width)) - pt.x
+                y = (pt.y + menuButton.height + height + 10 > Overlay.overlay.height
+                    ? Math.max(10, pt.y - height - 4)
+                    : pt.y + menuButton.height + 4) - pt.y
+            }
+            onAboutToShow: reposition()
+            width: Math.max(menuButton ? menuButton.width : 160, 220)
             implicitHeight: Math.min(260, Math.max(48, (root.options ? root.options.length * 38 : 0) + 12))
             padding: 6
             modal: false
@@ -83,7 +92,7 @@ SettingRow {
                 color: (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#1C1B18")
                 radius: 10
                 border.width: 1
-                border.color: (typeof borderVariant !== "undefined" ? borderVariant : "#2A2825")
+                border.color: Qt.rgba(255, 255, 255, 0.08)
             }
 
             contentItem: ListView {
@@ -110,7 +119,7 @@ SettingRow {
                     }
                 }
 
-                ScrollBar.vertical: SleekScrollBar {
+                ScrollBar.vertical: AutoHideScrollBar {
                     visible: optionList.contentHeight > optionList.height
                 }
 
@@ -127,8 +136,7 @@ SettingRow {
                     color: isSelected
                         ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623")
                         : (optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus) ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#282623") : "transparent")
-                    border.width: isSelected ? 1 : 0
-                    border.color: (typeof borderVariant !== "undefined" ? borderVariant : "#2C2926")
+                    border.width: 0
 
                     RowLayout {
                         anchors.fill: parent

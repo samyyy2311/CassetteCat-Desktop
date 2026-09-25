@@ -105,7 +105,7 @@ cmake --build --preset dev
 .\build\dev\CassetteCat.exe
 ```
 
-Run the built-in library scan check with:
+Run the built-in self-check with:
 
 ```powershell
 .\build\dev\CassetteCat.exe --self-check

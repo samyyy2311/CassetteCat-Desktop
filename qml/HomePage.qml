@@ -23,30 +23,28 @@ Item {
     property real initialScrollPosition: 0
 
     signal scrollPositionChanged(real position)
-                                anchors.fill: parent
+    Flickable {
+        id: homeScrollView
+        anchors.fill: parent
+        clip: true
+        readonly property real availableWidth: width
+        contentWidth: width
+        contentHeight: homeContentCol.implicitHeight + 48
+        flickDeceleration: UiConstants.flickDeceleration
+        maximumFlickVelocity: UiConstants.maximumFlickVelocity
+        pixelAligned: UiConstants.pixelAligned
+        boundsBehavior: Flickable.StopAtBounds
+        ScrollBar.vertical: AutoHideScrollBar {}
 
-                                ScrollView {
-                            id: homeScrollView
-                            Component.onCompleted: Qt.callLater(() => {
-                                if (contentItem) contentItem.contentY = root.initialScrollPosition
-                            })
-                            anchors.fill: parent
-                            clip: true
-                            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-                            ScrollBar.vertical: SleekScrollBar {}
-                            contentWidth: availableWidth
-                            contentHeight: homeContentCol.implicitHeight + 48
+        Component.onCompleted: Qt.callLater(() => {
+            homeScrollView.contentY = root.initialScrollPosition
+        })
 
-                            Connections {
-                                target: homeScrollView.contentItem
-                                function onContentYChanged() {
-                                    root.scrollPositionChanged(homeScrollView.contentItem.contentY)
-                                }
-                            }
+        onContentYChanged: root.scrollPositionChanged(contentY)
 
-                        Column {
-                            id: homeContentCol
-                            width: homeScrollView.availableWidth
+        Column {
+            id: homeContentCol
+            width: homeScrollView.availableWidth
                             spacing: 32
                             topPadding: 24
                             bottomPadding: 36
@@ -157,6 +155,7 @@ Item {
                                     }
 
                                     TransportButton {
+                                        Accessible.name: "Shuffle library"
                                         id: heroShuffleBtn
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
@@ -199,11 +198,18 @@ Item {
 
                                 ListView {
                                     width: parent.width
+                                    activeFocusOnTab: true
+                                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                                     height: 225
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
                                     boundsBehavior: Flickable.StopAtBounds
+                                    flickDeceleration: UiConstants.flickDeceleration
+                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                                    cacheBuffer: UiConstants.cacheBuffer
+                                    pixelAligned: UiConstants.pixelAligned
+                                    reuseItems: true
                                     model: quickPicks
 
                                     delegate: HomeSongCard {
@@ -230,11 +236,18 @@ Item {
 
                                 ListView {
                                     width: parent.width
+                                    activeFocusOnTab: true
+                                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                                     height: 225
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
                                     boundsBehavior: Flickable.StopAtBounds
+                                    flickDeceleration: UiConstants.flickDeceleration
+                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                                    cacheBuffer: UiConstants.cacheBuffer
+                                    pixelAligned: UiConstants.pixelAligned
+                                    reuseItems: true
                                     model: heavyRotation
 
                                     delegate: HomeSongCard {
@@ -285,16 +298,33 @@ Item {
 
                                 ListView {
                                     width: parent.width
+                                    activeFocusOnTab: true
+                                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                                     height: 225
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
                                     boundsBehavior: Flickable.StopAtBounds
+                                    flickDeceleration: UiConstants.flickDeceleration
+                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                                    cacheBuffer: UiConstants.cacheBuffer
+                                    pixelAligned: UiConstants.pixelAligned
+                                    reuseItems: true
                                     model: albumsRotation
 
                                     delegate: Item {
+                                        id: albumTile
                                         width: 150
                                         height: 225
+                                        readonly property bool highlighted: albumHover.hovered || (activeFocus && !mouseFocused)
+                                        property bool mouseFocused: false
+                                        onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: modelData.name
+                                        Accessible.onPressAction: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
+                                        Keys.onReturnPressed: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
+                                        Keys.onEnterPressed: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
 
                                         HoverHandler { id: albumHover }
 
@@ -311,11 +341,11 @@ Item {
                                                 clip: true
                                                 color: surfaceCard
                                                 border.width: 1
-                                                border.color: albumHover.hovered ? borderVariant : borderSubtle
-                                                scale: albumHover.hovered ? 1.03 : 1.0
+                                                border.color: albumTile.highlighted ? borderVariant : borderSubtle
+                                                scale: albumTile.highlighted ? 1.03 : 1.0
 
                                                 Behavior on scale {
-                                                    NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                                                    NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
                                                 }
 
                                                 Cover {
@@ -325,19 +355,21 @@ Item {
                                                 }
 
                                                 TransportButton {
+                                                    Accessible.name: "Play album"
                                                     anchors.right: parent.right
                                                     anchors.bottom: parent.bottom
                                                     anchors.margins: 8
                                                     buttonSize: 38
+                                                    activeFocusOnTab: false
                                                     iconName: "play"
                                                     accented: true
                                                     iconColor: recordRed
-                                                    opacity: albumHover.hovered ? 1.0 : 0.0
-                                                    scale: albumHover.hovered ? 1.0 : 0.6
+                                                    opacity: albumTile.highlighted ? 1.0 : 0.0
+                                                    scale: albumTile.highlighted ? 1.0 : 0.6
                                                     z: 10
 
-                                                    Behavior on opacity { NumberAnimation { duration: 150 } }
-                                                    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                                                    Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd } }
+                                                    Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingBounce } }
 
                                                     onClicked: root.appWindow.playTrack(modelData.track)
                                                 }
@@ -369,6 +401,10 @@ Item {
                                             anchors.fill: parent
                                             hoverEnabled: true
                                             cursorShape: Qt.PointingHandCursor
+                                            onPressed: {
+                                                albumTile.mouseFocused = true
+                                                albumTile.forceActiveFocus()
+                                            }
                                             onClicked: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
                                         }
                                     }
@@ -392,11 +428,18 @@ Item {
 
                                 ListView {
                                     width: parent.width
+                                    activeFocusOnTab: true
+                                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                                     height: 195
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
                                     boundsBehavior: Flickable.StopAtBounds
+                                    flickDeceleration: UiConstants.flickDeceleration
+                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                                    cacheBuffer: UiConstants.cacheBuffer
+                                    pixelAligned: UiConstants.pixelAligned
+                                    reuseItems: true
                                     model: artistsRotation
 
                                     delegate: ArtistCard {

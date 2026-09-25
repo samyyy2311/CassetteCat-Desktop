@@ -29,11 +29,11 @@ Rectangle {
         if (root.primary) return root.accentColor
         return (typeof surfaceInput !== "undefined" ? surfaceInput : "#1A1917")
     }
-    border.width: 1
+    border.width: root.primary ? 0 : (mouseArea.containsMouse || root.destructive ? 1 : 0)
     border.color: {
         if (root.destructive) return mouseArea.containsMouse ? Qt.rgba(1, 0.35, 0.35, 0.5) : Qt.rgba(1, 0.25, 0.25, 0.25)
         if (root.primary) return "transparent"
-        return mouseArea.containsMouse ? (typeof borderVariant !== "undefined" ? borderVariant : "#2C2926") : (typeof borderSubtle !== "undefined" ? borderSubtle : "#22201D")
+        return mouseArea.containsMouse ? (typeof borderVariant !== "undefined" ? borderVariant : Qt.rgba(255, 255, 255, 0.09)) : "transparent"
     }
     Accessible.name: root.accessibleName
     Accessible.role: Accessible.Button

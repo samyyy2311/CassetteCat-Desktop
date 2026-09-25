@@ -30,6 +30,17 @@ Rectangle {
     signal clicked(var modifiers)
     signal favoriteClicked()
 
+    readonly property bool highlighted: rowMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+
+    Accessible.role: Accessible.ListItem
+    Accessible.name: root.track ? (root.track.title || root.track.fileName || "") : ""
+    Accessible.onPressAction: root.clicked(Qt.NoModifier)
+    Keys.onReturnPressed: root.clicked(Qt.NoModifier)
+    Keys.onEnterPressed: root.clicked(Qt.NoModifier)
+    Keys.onMenuPressed: contextMenu.popup(root, 0, root.height)
+
     Drag.active: trackDrag.active
     Drag.source: root
     Drag.hotSpot.x: width / 2
@@ -45,9 +56,9 @@ Rectangle {
     height: rowHeight
     implicitHeight: rowHeight
     radius: rowRadius
-    color: rowMouse.containsMouse ? hoverBg : (selected ? activeBg : (isCurrent ? activeBg : cardBg))
+    color: root.highlighted ? hoverBg : (selected ? activeBg : (isCurrent ? activeBg : cardBg))
     border.width: selected || isCurrent ? 1 : 0
-    border.color: selected ? recordRed : (isCurrent ? recordRed : "transparent")
+    border.color: selected ? recordRed : (isCurrent ? Qt.rgba(recordRed.r, recordRed.g, recordRed.b, 0.3) : "transparent")
 
     Behavior on color { ColorAnimation { duration: 120 } }
 
@@ -162,7 +173,7 @@ Rectangle {
                 width: 16
                 height: 16
                 icon: "heart"
-                color: isFavorite(root.track ? root.track.filePath : "") ? recordRed : (rowMouse.containsMouse ? textSecondary : "transparent")
+                color: isFavorite(root.track ? root.track.filePath : "") ? recordRed : (root.highlighted ? textSecondary : "transparent")
             }
 
             MouseArea {
@@ -199,9 +210,16 @@ Rectangle {
         }
     }
 
-    TrackContextMenu {
+    // Built on first use: a Menu per list delegate makes scrolling allocate menus nobody opens.
+    Loader {
         id: contextMenu
-        track: root.track
+        active: false
+        sourceComponent: TrackContextMenu { track: root.track }
+
+        function popup(...args) {
+            active = true
+            item.popup(...args)
+        }
     }
 
     MouseArea {
@@ -211,6 +229,10 @@ Rectangle {
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: mouse => {
             if (mouse.button === Qt.RightButton) {
                 contextMenu.popup()

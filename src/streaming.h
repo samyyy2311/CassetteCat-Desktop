@@ -102,6 +102,8 @@ class StreamingController final : public QObject {
     Q_INVOKABLE QVariantMap serverConfigSnapshot() const;
     /// Reads non-secret remote-server configuration from \p settingsPath.
     static QVariantMap serverConfigSnapshot(const QString &settingsPath);
+    /// Returns whether a certificate digest is already saved for the server at \p url.
+    static bool hasPinnedCertificate(const QString &settingsPath, const QUrl &url);
 
   signals:
     void remoteTracksChanged();
@@ -117,6 +119,7 @@ class StreamingController final : public QObject {
   private:
     void updateStatusTexts();
     void setRemoteTracks(const QVariantList &tracks);
+    void replaceProviderTracks(const QString &prefix, const QVariantList &tracks);
     void removeProviderTracks(const QString &prefix);
     void setStatus(const QString &protocol, bool connected, const QString &status);
     void setRemoteLibraryLoading(bool loading);
@@ -128,16 +131,17 @@ class StreamingController final : public QObject {
     bool isServerCertTrusted(const QUrl &url, const QSslCertificate &cert = QSslCertificate()) const;
     QString friendlyError(QNetworkReply *reply, const QString &fallback);
     void beginRefresh();
-    void finishRefreshStage();
+    void finishRefreshStage(const QString &provider);
     void cancelPendingRequests();
     void refreshSubsonic(const QString &base, const QString &user, const QString &password, int tokenSnapshot);
     void fetchSubsonicAlbumIds(const QString &base, const QString &user, const QString &token, const QString &salt,
                                int offset, std::shared_ptr<QStringList> ids, std::shared_ptr<QVariantList> out,
-                               int tokenSnapshot);
+                               std::shared_ptr<bool> failed, int tokenSnapshot);
     /// Fetches the next available Subsonic album into a shared result list.
     void fetchSubsonicAlbum(const QString &base, const QString &user, const QString &token, const QString &salt,
                             std::shared_ptr<QStringList> ids, std::shared_ptr<QVariantList> out,
-                            std::shared_ptr<int> nextIndex, std::shared_ptr<int> activeRequests, int tokenSnapshot);
+                            std::shared_ptr<int> nextIndex, std::shared_ptr<int> activeRequests,
+                            std::shared_ptr<bool> failed, int tokenSnapshot);
     void refreshJellyfin(const QString &base, const QString &userId, const QString &accessToken, int tokenSnapshot);
     void fetchJellyfinPage(const QString &base, const QString &userId, const QString &accessToken, int startIndex,
                            std::shared_ptr<QVariantList> out, int tokenSnapshot);
@@ -158,7 +162,10 @@ class StreamingController final : public QObject {
     QList<QPointer<QNetworkReply>> m_pendingReplies;
     int m_subConnectToken = 0;
     int m_jellyConnectToken = 0;
-    int m_refreshToken = 0;
+    int m_subsonicRefreshToken = 0;
+    int m_jellyfinRefreshToken = 0;
+    bool m_subsonicRefreshActive = false;
+    bool m_jellyfinRefreshActive = false;
     bool m_refreshing = false;
     bool m_refreshQueued = false;
     bool m_jellyfinQuickConnecting = false;

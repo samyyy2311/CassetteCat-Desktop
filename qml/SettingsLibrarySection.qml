@@ -8,7 +8,6 @@ ColumnLayout {
     property var libraryFolders: []
     property var excludedFolders: []
     property bool ignoreShortClips: false
-    property string defaultLaunchPage: "last"
     property string songSortMetric: "title"
     property string trackDensity: "comfortable"
     property bool showFormatBadges: true
@@ -18,7 +17,6 @@ ColumnLayout {
     signal addExcludeRequested()
     signal removeExcludeRequested(string path)
     signal ignoreShortClipsSelected(bool value)
-    signal defaultLaunchPageSelected(string value)
     signal songSortSelected(string value)
     signal trackDensitySelected(string value)
     signal showFormatBadgesSelected(bool value)
@@ -31,7 +29,6 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "folder"
-            iconColor: "#C4C4C0"
             title: "Audio Folders"
             subtitle: root.libraryFolders.length > 0
                       ? (root.libraryFolders.length + " folder(s) • " + root.trackCount + " songs")
@@ -39,7 +36,6 @@ ColumnLayout {
 
             SettingButton {
                 text: "Add folder"
-                iconName: "folder"
                 onClicked: root.addLibraryFolderRequested()
             }
         }
@@ -52,14 +48,12 @@ ColumnLayout {
         SettingDivider {}
 
         SettingRow {
-            iconName: "folder"
-            iconColor: "#96918A"
+            iconName: "eye-off"
             title: "Excluded Folders"
             subtitle: root.excludedFolders.length === 0 ? "No exclusions. Every subfolder is scanned" : (root.excludedFolders.length + " folder(s) hidden from the library")
 
             SettingButton {
                 text: "Exclude folder"
-                iconName: "folder"
                 onClicked: root.addExcludeRequested()
             }
         }
@@ -68,12 +62,13 @@ ColumnLayout {
             paths: root.excludedFolders
             onRemoveRequested: path => root.removeExcludeRequested(path)
         }
+    }
 
-        SettingDivider {}
+    SectionLabel { text: "Library Filtering" }
 
+    SettingCard {
         SettingRow {
-            iconName: "audio-lines"
-            iconColor: "#10B981"
+            iconName: "clock"
             title: "Ignore Short Clips"
             subtitle: "Hide audio tracks shorter than 30 seconds from library and search"
 
@@ -81,26 +76,6 @@ ColumnLayout {
                 checked: root.ignoreShortClips
                 onToggled: val => root.ignoreShortClipsSelected(val)
             }
-        }
-    }
-
-    SectionLabel { text: "Startup & Navigation" }
-
-    SettingCard {
-        SettingChoiceGroup {
-            iconName: "compass"
-            title: "Default Launch Page"
-            subtitle: "View displayed immediately upon opening CassetteCat"
-            options: [
-                { value: "last", label: "Last Visited" },
-                { value: "home", label: "Home" },
-                { value: "library", label: "Library" },
-                { value: "radio", label: "Radio" },
-                { value: "search", label: "Search" },
-                { value: "settings", label: "Settings" }
-            ]
-            selectedValue: root.defaultLaunchPage
-            onOptionSelected: val => root.defaultLaunchPageSelected(val)
         }
     }
 
@@ -118,14 +93,13 @@ ColumnLayout {
                 { value: "duration", label: "Duration" }
             ]
             selectedValue: root.songSortMetric
-            onOptionSelected: val => root.songSortSelected(val)
+            onOptionSelected: val => root.songSortSelected(String(val))
         }
 
         SettingDivider {}
 
         SettingRow {
-            iconName: "sliders-horizontal"
-            iconColor: "#A5B4FC"
+            iconName: "list"
             title: "Track Row Density"
             subtitle: "Vertical spacing for song rows in track lists"
 
@@ -135,7 +109,7 @@ ColumnLayout {
                     { value: "compact", label: "Compact" }
                 ]
                 selectedValue: root.trackDensity
-                onOptionSelected: val => root.trackDensitySelected(val)
+                onOptionSelected: val => root.trackDensitySelected(String(val))
             }
         }
 
@@ -143,7 +117,6 @@ ColumnLayout {
 
         SettingRow {
             iconName: "disc"
-            iconColor: "#C23B30"
             title: "Audio Format Badges"
             subtitle: "Show FLAC, MP3, and AAC badges on track rows"
 

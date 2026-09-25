@@ -96,6 +96,7 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 10
         anchors.verticalCenter: parent.verticalCenter
+        width: subControlsRow.implicitWidth + 8
         height: 26
         radius: 13
         color: root.miniPlayer.surfaceElevated
@@ -104,6 +105,7 @@ Item {
         z: 10
 
         Row {
+            id: subControlsRow
             anchors.centerIn: parent
             spacing: 2
             padding: 2

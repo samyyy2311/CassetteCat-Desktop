@@ -7,3 +7,5 @@ QString settingsFilePath();
 QString debugLogFilePath();
 /// Returns the canonical application log path.
 QString logFilePath();
+/// Returns the path to the persistent library cache.
+QString libraryCacheFilePath();

@@ -25,12 +25,19 @@ Column {
     }
 
     ListView {
+        activeFocusOnTab: true
+        onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
         width: parent.width
         height: 225
         orientation: ListView.Horizontal
         spacing: 16
         clip: false
         boundsBehavior: Flickable.StopAtBounds
+        flickDeceleration: UiConstants.flickDeceleration
+        maximumFlickVelocity: UiConstants.maximumFlickVelocity
+        cacheBuffer: UiConstants.cacheBuffer
+        pixelAligned: UiConstants.pixelAligned
+        reuseItems: true
         model: root.tracks
 
         delegate: SongCard {

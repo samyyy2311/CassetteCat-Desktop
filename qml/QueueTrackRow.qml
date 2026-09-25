@@ -29,19 +29,31 @@ Item {
     readonly property color recordRedHover: paletteSource ? paletteSource.recordRedHover : "#F04A40"
     readonly property color borderVariant: paletteSource && paletteSource.borderVariant ? paletteSource.borderVariant : "#403B35"
     readonly property color borderSubtle: paletteSource && paletteSource.borderSubtle ? paletteSource.borderSubtle : "#2A2723"
+    readonly property color borderCard: paletteSource && paletteSource.borderCard ? paletteSource.borderCard : borderVariant
 
     readonly property bool isCompactDensity: compact || (typeof window !== "undefined" && window.trackDensity === "compact")
+    readonly property bool highlighted: rowMouse.containsMouse || (rowMouse.enabled && activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+
+    Accessible.role: Accessible.ListItem
+    Accessible.name: track ? (track.title || track.fileName || "") : ""
+    Accessible.ignored: header
+    Accessible.onPressAction: if (rowMouse.enabled) trackActivated(track)
+    Keys.onReturnPressed: if (rowMouse.enabled) trackActivated(track)
+    Keys.onEnterPressed: if (rowMouse.enabled) trackActivated(track)
+    Keys.onMenuPressed: if (!header) contextMenu.popup(root, 0, root.height)
 
     implicitHeight: header ? (isCompactDensity ? 22 : 30) : (isCompactDensity ? 40 : 52)
 
     Rectangle {
         anchors.fill: parent
         radius: root.isCompactDensity ? 5 : 8
-        color: root.header ? "transparent" : (rowMouse.containsMouse
+        color: root.header ? "transparent" : (root.highlighted
             ? root.paletteSource.surfaceElevated
             : (root.current ? (root.compact ? "#1E1C1A" : "#1C1A18") : "transparent"))
         border.width: root.current && root.compact ? 1 : 0
-        border.color: root.paletteSource.borderCard
+        border.color: root.borderCard
         opacity: (root.reorderEnabled && gripMouse.drag.active) ? 0.35 : 1.0
 
         DropArea {
@@ -96,6 +108,10 @@ Item {
             hoverEnabled: true
             acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+            onPressed: {
+                root.mouseFocused = true
+                root.forceActiveFocus()
+            }
             onClicked: mouse => {
                 if (mouse.button === Qt.RightButton) {
                     contextMenu.popup()
@@ -118,7 +134,7 @@ Item {
                 radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined && window.albumArtRadius === 0)
                         ? 0 : (root.compact ? 4 : 6)
                 track: root.track
-                cacheArtwork: root.compact
+                cacheArtwork: true
             }
 
             ColumnLayout {
@@ -202,6 +218,9 @@ Item {
                     cursorShape: Qt.SizeVerCursor
                     drag.target: dragSourceItem
                     drag.axis: Drag.YAxis
+                    onPressed: mouse => {
+                        dragSourceItem.Drag.hotSpot = gripMouse.mapToItem(dragSourceItem, mouse.x, mouse.y)
+                    }
                     onReleased: {
                         if (dragSourceItem.Drag.active) {
                             dragSourceItem.Drag.drop()
@@ -215,9 +234,16 @@ Item {
             }
         }
 
-        TrackContextMenu {
+        // Built on first use: a Menu per list delegate makes scrolling allocate menus nobody opens.
+        Loader {
             id: contextMenu
-            track: root.track
+            active: false
+            sourceComponent: TrackContextMenu { track: root.track }
+
+            function popup(...args) {
+                active = true
+                item.popup(...args)
+            }
         }
     }
 }

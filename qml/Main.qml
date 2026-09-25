@@ -43,17 +43,20 @@ ApplicationWindow {
     readonly property color silverDim: "#6E6C68"
     readonly property color textPrimary: "#F5F0EC"
     readonly property color textSecondary: "#8E8A84"
-    readonly property color borderSubtle: "#22201D"
-    readonly property color borderVariant: "#2C2926"
+    readonly property color borderSubtle: Qt.rgba(1, 1, 1, 0.05)
+    readonly property color borderVariant: Qt.rgba(1, 1, 1, 0.09)
+    readonly property color borderCard: borderVariant
 
     readonly property string displayFont: (typeof displayFontFamily !== "undefined" && displayFontFamily.length > 0) ? displayFontFamily : "Space Grotesk"
     readonly property string bodyFont: (typeof bodyFontFamily !== "undefined" && bodyFontFamily.length > 0) ? bodyFontFamily : "IBM Plex Sans"
     readonly property string monoFont: (typeof monoFontFamily !== "undefined" && monoFontFamily.length > 0) ? monoFontFamily : "IBM Plex Mono"
 
     property bool settingsInitialized: false
+    property int libraryRevision: 0
     property bool appQuitting: false
     property string page: "home"
     property real homeScrollPosition: 0
+    property var libraryScrollPositions: ({})
     property string libraryTab: "songs"
     property string libraryViewMode: "grid"
     property string songFilterMode: "ALL"
@@ -76,12 +79,14 @@ ApplicationWindow {
     property bool catalogDetailOpen: false
     property string catalogDetailMode: "artist"
     property string catalogDetailTitle: ""
+    // What the detail view is filtered by; differs from the title for playlists, which are keyed by id.
+    property string catalogDetailKey: ""
     property var catalogDetailTracks: []
     property var catalogDetailHeroTrack: ({})
     property var catalogDetailHistory: []
     property string nowPlayingMode: "controls" // "controls", "lyrics", "queue"
     property var lyricsListView: null
-    property bool nowPlayingClosing: false
+    property bool nowPlayingLoaded: false
     property bool sidebarCollapsed: false
     property var favoriteTracks: ({})
     property var playlists: []
@@ -102,6 +107,7 @@ ApplicationWindow {
     property double historyAccumulatedMs: 0
     property double historyPlayingSince: 0
     property bool historyRecordedForTrack: false
+    property var lastHandledTrack: null
     property int queueRevision: 0
     property bool playbackPending: false
     readonly property bool playerVisuallyPlaying: player.isPlaying || playbackPending
@@ -212,7 +218,9 @@ ApplicationWindow {
     Connections {
         target: library
         function onTracksChanged() {
+            libraryRevision++
             refreshLibraryState()
+            reconcileTrackSnapshots()
             reconcileLibraryMaps()
         }
     }
@@ -255,6 +263,16 @@ ApplicationWindow {
 
     function playbackTracks() {
         return availableTracks().concat(streaming.remoteTracks || [])
+    }
+
+    // Resolves saved paths in C++ instead of converting the whole library; server tracks are matched here.
+    // The result is aligned with paths, with undefined where no track matches.
+    function tracksForPaths(paths) {
+        const remoteByPath = {}
+        const remoteTracks = streaming.remoteTracks || []
+        remoteTracks.forEach(track => remoteByPath[normalizedPlaylistPath(track.filePath)] = track)
+        return library.tracksForPaths(paths).map((track, index) =>
+            track.filePath ? track : remoteByPath[normalizedPlaylistPath(paths[index])])
     }
 
     function updateVisibleLibrary() {
@@ -315,6 +333,7 @@ ApplicationWindow {
     property bool radioSortDescending: true
     property string radioViewMode: "grid"
     property bool radioRefineOpen: false
+    property bool radioLoading: false
     readonly property bool radioIsCustomized: radioActiveTag !== "ALL" || radioCountryFilter.length > 0 || radioLanguageFilter.length > 0 || radioSortOrder !== "votes" || !radioSortDescending
 
     Connections {
@@ -332,6 +351,7 @@ ApplicationWindow {
             lyricSearchResults = results || []
         }
         function onRadioStationsLoaded(stations) {
+            radioLoading = false
             radioStations = stations
         }
         function onListenBrainzValidationFinished(valid, userName, error) {
@@ -359,8 +379,10 @@ ApplicationWindow {
             }
             if (player.currentTrack) {
                 const trackAlbum = player.currentTrack.album || ""
+                const trackArtist = player.currentTrack.artist || ""
                 const trackFile = player.currentTrack.filePath || ""
-                if ((filePath && trackFile === filePath) || (album && trackAlbum.toLowerCase() === album.toLowerCase())) {
+                const sameArtist = !artist || trackArtist.trim().toLowerCase() === artist.trim().toLowerCase()
+                if ((filePath && trackFile === filePath) || (album && sameArtist && trackAlbum.trim().toLowerCase() === album.trim().toLowerCase())) {
                     player.updateCurrentTrackArtwork(artworkPath)
                 }
             }
@@ -372,7 +394,7 @@ ApplicationWindow {
             if (updateAvailable) {
                 updateStatusText = "Update available: v" + latestVersion
             } else {
-                updateStatusText = "CassetteCat is up to date (v0.5.1)"
+                updateStatusText = "CassetteCat is up to date (v0.6.0)"
             }
         }
         function onUpdateCheckFailed(error, manual) {
@@ -381,7 +403,7 @@ ApplicationWindow {
         }
     }
 
-    property string updateStatusText: "Current version: v0.5.1"
+    property string updateStatusText: "Current version: v0.6.0"
     property bool updateChecking: false
     property bool updateAvailableState: false
     property string updateUrl: ""
@@ -394,6 +416,24 @@ ApplicationWindow {
 
     function downloadUpdate() {
         if (updateUrl) services.openExternalUrl(updateUrl)
+    }
+
+    // Flickables do not follow keyboard focus, so scroll every enclosing one to reveal the focused item.
+    onActiveFocusItemChanged: {
+        const item = activeFocusItem
+        if (!item || item.mouseFocused) return
+        for (let view = item.parent; view; view = view.parent) {
+            if (view.flickableDirection === undefined) continue
+            const r = item.mapToItem(view.contentItem, 0, 0, item.width, item.height)
+            if (view.contentHeight > view.height) {
+                const top = Math.min(r.y, Math.max(view.contentY, r.y + r.height - view.height))
+                view.contentY = Math.max(view.originY, Math.min(top, view.originY + view.contentHeight - view.height))
+            }
+            if (view.contentWidth > view.width) {
+                const left = Math.min(r.x, Math.max(view.contentX, r.x + r.width - view.width))
+                view.contentX = Math.max(view.originX, Math.min(left, view.originX + view.contentWidth - view.width))
+            }
+        }
     }
 
     Component.onCompleted: {
@@ -429,16 +469,29 @@ ApplicationWindow {
         player.setAudioDevice(appSettings.value("player/audioDeviceId", ""))
         try {
             const savedShortcuts = appSettings.value("ui/inAppShortcuts", "{}")
-            inAppShortcutBindings = typeof savedShortcuts === "string" ? JSON.parse(savedShortcuts) : savedShortcuts
+            const parsedShortcuts = typeof savedShortcuts === "string" ? JSON.parse(savedShortcuts) : savedShortcuts
+            inAppShortcutBindings = normalizeInAppShortcutBindings(parsedShortcuts)
         } catch (error) {
             inAppShortcutBindings = ({})
         }
-        globalShortcuts.setShortcut("playPause", appSettings.value("ui/globalShortcut/playPause", "Ctrl+Alt+Space"))
-        globalShortcuts.setShortcut("previous", appSettings.value("ui/globalShortcut/previous", "Ctrl+Alt+Left"))
-        globalShortcuts.setShortcut("next", appSettings.value("ui/globalShortcut/next", "Ctrl+Alt+Right"))
-        globalShortcuts.setShortcut("favorite", appSettings.value("ui/globalShortcut/favorite", "Ctrl+Alt+F"))
-        globalShortcuts.setShortcut("search", appSettings.value("ui/globalShortcut/search", "Ctrl+Alt+S"))
-        globalShortcuts.setShortcut("miniPlayer", appSettings.value("ui/globalShortcut/miniPlayer", "Ctrl+Alt+M"))
+        appSettings.setValue("ui/inAppShortcuts", JSON.stringify(inAppShortcutBindings))
+        const defaultGlobalShortcuts = {
+            playPause: "Ctrl+Alt+Space",
+            previous: "Ctrl+Alt+Left",
+            next: "Ctrl+Alt+Right",
+            favorite: "Ctrl+Alt+F",
+            search: "Ctrl+Alt+S",
+            miniPlayer: "Ctrl+Alt+M"
+        }
+        for (const action in defaultGlobalShortcuts) {
+            const key = appSettings.value("ui/globalShortcut/" + action, defaultGlobalShortcuts[action])
+            if (!globalShortcuts.supported) continue
+            if (globalShortcuts.setShortcut(action, key)) {
+                appSettings.setValue("ui/globalShortcut/" + action, globalShortcuts.shortcuts[action])
+            } else {
+                appSettings.setValue("ui/globalShortcut/" + action, defaultGlobalShortcuts[action])
+            }
+        }
         globalShortcutsEnabled = appSettings.value("ui/globalShortcutsEnabled", false)
         closeToTray = appSettings.value("ui/closeToTray", false)
         startMinimizedToTray = appSettings.value("ui/startMinimizedToTray", false)
@@ -573,8 +626,7 @@ ApplicationWindow {
             lastTrackRestored = true
             return
         }
-        const normTarget = normalizedPlaylistPath(lastTrackPath)
-        const track = playbackTracks().find(candidate => normalizedPlaylistPath(candidate.filePath) === normTarget)
+        const track = tracksForPaths([lastTrackPath])[0]
         if (track && track.filePath) {
             lastTrackRestored = true
             player.restoreTrack(track, appSettings.value("player/lastPosition", 0))
@@ -617,13 +669,7 @@ ApplicationWindow {
     function restoredTracks(key) {
         try {
             const savedPaths = JSON.parse(appSettings.value(key, "[]") || "[]")
-            const tracksByPath = {}
-            playbackTracks().forEach(track => {
-                if (track && track.filePath) {
-                    tracksByPath[normalizedPlaylistPath(track.filePath)] = track
-                }
-            })
-            return uniqueTracks(savedPaths.map(path => tracksByPath[normalizedPlaylistPath(path)]).filter(track => !!track))
+            return uniqueTracks(tracksForPaths(savedPaths).filter(track => !!track))
         } catch (e) {
             return []
         }
@@ -643,10 +689,29 @@ ApplicationWindow {
     }
 
     function playlistTracks(playlist) {
-        if (!playlist || !Array.isArray(playlist.trackPaths)) return []
-        const tracksByPath = {}
-        playbackTracks().forEach(track => tracksByPath[track.filePath] = track)
-        return playlist.trackPaths.map(path => tracksByPath[path]).filter(track => !!track)
+        if (!playlist) return []
+        if (typeof playlist === "string") {
+            // Built-in names win over a custom playlist that happens to share one.
+            const builtIn = ["Favorites", "Most Played", "Recently Added", "Never Played"].includes(playlist)
+            const pl = playlists.find(p => p.id === playlist) || (builtIn ? null : playlists.find(p => p.name === playlist))
+            playlist = pl || { name: playlist }
+        }
+        if (Array.isArray(playlist.trackPaths)) {
+            return tracksForPaths(playlist.trackPaths).filter(track => !!track)
+        }
+        if (playlist.name === "Favorites") {
+            return availableTracks().filter(track => isFavorite(track.filePath))
+        }
+        if (playlist.name === "Most Played") {
+            return heavyRotation.length > 0 ? heavyRotation : availableTracks().filter(track => (playCounts[track.filePath] || 0) > 0)
+        }
+        if (playlist.name === "Recently Added") {
+            return recentlyAdded
+        }
+        if (playlist.name === "Never Played") {
+            return availableTracks().filter(track => !playCounts[track.filePath])
+        }
+        return []
     }
 
     function createPlaylist(name, tracks) {
@@ -801,10 +866,7 @@ ApplicationWindow {
             playlistStatus = "No playable tracks found in playlist"
             return
         }
-        const tracksByPath = {}
-        playbackTracks().forEach(track => tracksByPath[normalizedPlaylistPath(track.filePath)] = track)
-        const tracks = parsedTracks
-            .map(track => tracksByPath[normalizedPlaylistPath(track.filePath)])
+        const tracks = tracksForPaths(parsedTracks.map(track => track.filePath))
             .filter(track => !!track && track.format !== "STREAM")
         if (!tracks.length) {
             playlistStatus = "No library tracks found in playlist"
@@ -857,12 +919,85 @@ ApplicationWindow {
         const nextCounts = Object.assign({}, playCounts)
         const nextSeenAt = Object.assign({}, seenAt)
         const now = Date.now()
-        availableTracks().forEach(track => {
-            if (!track.filePath) return
-            if (!nextSeenAt[track.filePath]) nextSeenAt[track.filePath] = now
+        library.availablePaths().forEach(path => {
+            if (!nextSeenAt[path]) nextSeenAt[path] = now
         })
         if (!sameNumberMap(playCounts, nextCounts)) playCounts = nextCounts
         if (!sameNumberMap(seenAt, nextSeenAt)) seenAt = nextSeenAt
+    }
+
+    function reconcileTrackSnapshots() {
+        const snapshotKey = path => String(path || "").replace(/\\/g, "/")
+        const snapshots = [].concat(playbackHistory, playbackQueue, originalPlaybackQueue, radioPlaybackQueue,
+                                    originalRadioPlaybackQueue, catalogDetailTracks, historyTrackedTrack,
+                                    catalogDetailHeroTrack, (catalogDetailHistory || []).map(entry => entry && entry.heroTrack))
+        const snapshotPaths = [...new Set(snapshots.filter(track => track && track.filePath)
+                                                   .map(track => snapshotKey(track.filePath)))]
+        const tracksByPath = {}
+        tracksForPaths(snapshotPaths).forEach((track, index) => {
+            if (track) tracksByPath[snapshotPaths[index]] = track
+        })
+
+        const snapshotChanged = (left, right) => {
+            if (!left || !right) return left !== right
+            return ["filePath", "title", "fileName", "artist", "album", "genre", "artworkUrl",
+                    "duration", "durationSeconds", "format", "source", "remoteId"]
+                .some(key => left[key] !== right[key])
+        }
+        const refreshTrack = track => {
+            if (!track || !track.filePath) return track
+            const replacement = tracksByPath[snapshotKey(track.filePath)]
+            return replacement && snapshotChanged(track, replacement) ? replacement : track
+        }
+
+        let changed = false
+        const refreshList = list => {
+            const source = list || []
+            let listChanged = false
+            const next = source.map(track => {
+                const refreshed = refreshTrack(track)
+                if (refreshed !== track) listChanged = true
+                return refreshed
+            })
+            if (listChanged) changed = true
+            return listChanged ? next : source
+        }
+
+        playbackHistory = refreshList(playbackHistory)
+        playbackQueue = refreshList(playbackQueue)
+        originalPlaybackQueue = refreshList(originalPlaybackQueue)
+        radioPlaybackQueue = refreshList(radioPlaybackQueue)
+        originalRadioPlaybackQueue = refreshList(originalRadioPlaybackQueue)
+        if (catalogDetailOpen) {
+            catalogDetailTracks = filterCatalogDetailTracks(catalogDetailMode, catalogDetailKey, catalogDetailHeroTrack)
+            changed = true
+        } else {
+            catalogDetailTracks = refreshList(catalogDetailTracks)
+        }
+
+        const refreshedHistoryTrack = refreshTrack(historyTrackedTrack)
+        if (refreshedHistoryTrack !== historyTrackedTrack)
+            historyTrackedTrack = refreshedHistoryTrack
+
+        const refreshedHero = refreshTrack(catalogDetailHeroTrack)
+        if (refreshedHero !== catalogDetailHeroTrack) {
+            catalogDetailHeroTrack = refreshedHero
+            changed = true
+        }
+
+        let historyChanged = false
+        const nextHistory = (catalogDetailHistory || []).map(entry => {
+            if (!entry || !entry.heroTrack) return entry
+            const heroTrack = refreshTrack(entry.heroTrack)
+            if (heroTrack === entry.heroTrack) return entry
+            historyChanged = true
+            return Object.assign({}, entry, { heroTrack: heroTrack })
+        })
+        if (historyChanged) {
+            catalogDetailHistory = nextHistory
+            changed = true
+        }
+        if (changed) queueRevision++
     }
 
     function resetHistoryTracking(track) {
@@ -907,6 +1042,7 @@ ApplicationWindow {
 
     function refreshRadio() {
         if (!settingsInitialized || page !== "radio" || offlineBlackout || !svcRadio) return
+        radioLoading = true
         services.fetchRadioStations(
             radioSearchQuery,
             radioCountryFilter,
@@ -920,27 +1056,60 @@ ApplicationWindow {
         if (settingsInitialized) appSettings.setValue(key, value)
     }
 
+    function normalizeInAppShortcutBindings(bindings) {
+        const source = bindings || {}
+        const normalized = {}
+        const used = {}
+        for (const item of shortcutDefinitions.inAppActions) {
+            const defaultSequence = shortcutDefinitions.toSequence(item.defaultKey)
+            if (!defaultSequence) continue
+            if (!Object.prototype.hasOwnProperty.call(source, item.action)) {
+                used[defaultSequence] = true
+                continue
+            }
+            // A cleared or reassigned action frees its default key; an invalid override falls back to it.
+            const raw = source[item.action]
+            const sequence = raw === "" ? "" : shortcutDefinitions.toSequence(raw)
+            if (raw !== "" && (!sequence || sequence === defaultSequence)) used[defaultSequence] = true
+        }
+        for (const item of shortcutDefinitions.inAppActions) {
+            if (!Object.prototype.hasOwnProperty.call(source, item.action)) continue
+            const raw = source[item.action]
+            if (raw === "") {
+                normalized[item.action] = ""
+                continue
+            }
+            const sequence = shortcutDefinitions.toSequence(raw)
+            if (!sequence || sequence === shortcutDefinitions.toSequence(item.defaultKey) || used[sequence]) continue
+            normalized[item.action] = sequence
+            used[sequence] = true
+        }
+        return normalized
+    }
+
     function inAppShortcut(action) {
         if (inAppShortcutBindings && inAppShortcutBindings.hasOwnProperty(action)) {
-            return inAppShortcutBindings[action]
+            return shortcutDefinitions.toSequence(inAppShortcutBindings[action])
         }
-        return shortcutDefinitions.defaultKey(action)
+        return shortcutDefinitions.toSequence(shortcutDefinitions.defaultKey(action))
     }
 
     function setInAppShortcut(action, shortcut) {
         const matching = shortcutDefinitions.inAppActions.find(item => item.action === action)
         if (!matching) return
-        if (shortcut && String(shortcut).length > 0) {
+        const sequence = shortcutDefinitions.toSequence(shortcut)
+        if (sequence.length > 0) {
             for (const item of shortcutDefinitions.inAppActions) {
-                if (item.action !== action && inAppShortcut(item.action) === shortcut) {
+                if (item.action !== action && inAppShortcut(item.action) === sequence) {
                     inAppShortcutStatus = shortcut + " is already assigned to " + item.label
                     return
                 }
             }
         }
         const updated = Object.assign({}, inAppShortcutBindings)
-        if (shortcut === matching.defaultKey) delete updated[action]
-        else updated[action] = shortcut
+        const defaultSequence = shortcutDefinitions.toSequence(matching.defaultKey)
+        if (shortcut === matching.defaultKey || sequence === defaultSequence) delete updated[action]
+        else updated[action] = sequence
         inAppShortcutBindings = updated
         inAppShortcutStatus = shortcut === "" ? "Shortcut cleared" : "Shortcut saved"
     }
@@ -951,6 +1120,11 @@ ApplicationWindow {
         if (item.isShortcutCapture === true) return true
         if (typeof item.cursorPosition !== "undefined" || typeof item.selectedText !== "undefined") return true
         return false
+    }
+
+    function focusSearchInput() {
+        searchPageLoader.item.searchInput.forceActiveFocus()
+        searchPageLoader.item.searchInput.selectAll()
     }
 
     function dismissSearchFocus(point) {
@@ -991,7 +1165,6 @@ ApplicationWindow {
         if (page !== "radio") services.cancelRadioRequests()
         dismissSearchFocus(Qt.point(-1, -1))
     }
-    onHomeScrollPositionChanged: if (settingsInitialized) appSettings.setValue("ui/homeScrollPosition", homeScrollPosition)
     onLibraryTabChanged: if (settingsInitialized) {
         appSettings.setValue("ui/libraryTab", window.libraryTab)
         if (libraryPageLoader.item) libraryPageLoader.item.searchInput.focus = false
@@ -1036,13 +1209,25 @@ ApplicationWindow {
         }
         saveSetting("ui/globalShortcutsEnabled", globalShortcutsEnabled)
     }
-    onInAppShortcutBindingsChanged: saveSetting("ui/inAppShortcuts", JSON.stringify(inAppShortcutBindings))
+    onInAppShortcutBindingsChanged: {
+        const normalized = normalizeInAppShortcutBindings(inAppShortcutBindings)
+        if (JSON.stringify(normalized) !== JSON.stringify(inAppShortcutBindings)) {
+            inAppShortcutBindings = normalized
+            return
+        }
+        if (settingsInitialized) saveSetting("ui/inAppShortcuts", JSON.stringify(inAppShortcutBindings))
+    }
     onLyricsFontSizeChanged: saveSetting("lyrics/fontSize", lyricsFontSize)
     onAccentNameChanged: saveSetting("ui/accentName", accentName)
     onCustomAccentColorChanged: saveSetting("ui/customAccentColor", customAccentColor)
     onAlbumArtRadiusChanged: saveSetting("ui/albumArtRadius", albumArtRadius)
     onNowPlayingBackdropChanged: saveSetting("player/nowPlayingBackdrop", nowPlayingBackdrop)
-    onShowRemainingTimeChanged: saveSetting("player/showRemainingTime", showRemainingTime)
+    onShowRemainingTimeChanged: {
+        saveSetting("player/showRemainingTime", showRemainingTime)
+        if (miniPlayerWindow && miniPlayerWindow.showRemainingTime !== showRemainingTime) {
+            miniPlayerWindow.showRemainingTime = showRemainingTime
+        }
+    }
     onDefaultLaunchPageChanged: saveSetting("ui/defaultLaunchPage", defaultLaunchPage)
     onTrackDensityChanged: saveSetting("ui/trackDensity", trackDensity)
     onShowFormatBadgesChanged: saveSetting("ui/showFormatBadges", showFormatBadges)
@@ -1123,8 +1308,9 @@ ApplicationWindow {
 
     onFavoriteTracksChanged: {
         if (settingsInitialized) appSettings.setValue("library/favorites", JSON.stringify(favoriteTracks))
-        updateVisibleLibrary()
-        refreshHomeRecommendations()
+        if (songFilterMode === "FAVORITES") updateVisibleLibrary()
+        if (quickPicks.length > 0)
+            forgottenFavs = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory).forgottenFavs
     }
     onPlaylistsChanged: if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
     onPlayCountsChanged: {
@@ -1336,18 +1522,15 @@ ApplicationWindow {
             if (miniPlayerMode) return
             nowPlayingOpen = false
             page = "search"
-            Qt.callLater(function() {
-                if (searchPageLoader.item) {
-                    searchPageLoader.item.searchInput.forceActiveFocus()
-                    searchPageLoader.item.searchInput.selectAll()
-                }
-            })
+            if (searchPageLoader.item) focusSearchInput()
+            else searchPageLoader.focusOnLoad = true
         }
     }
 
     Shortcut {
         sequence: inAppShortcut("closePlayerView")
-        enabled: sequence.length > 0 && !isInputActive()
+        // An open sheet handles Escape itself; two enabled shortcuts on one key would both be ignored as ambiguous.
+        enabled: sequence.length > 0 && !isInputActive() && !refineSheetOpen && !radioRefineOpen && !trackActionSheet.isOpen
         onActivated: {
             if (miniPlayerMode) {
                 toggleMiniPlayer()
@@ -1677,7 +1860,7 @@ ApplicationWindow {
             applyLyrics(local, "Local file")
         } else if (!offlineBlackout && track.source === "jellyfin" && track.remoteId) {
             applyLyrics("", "")
-            streamingController.fetchJellyfinLyrics(track.filePath, track.remoteId)
+            streaming.fetchJellyfinLyrics(track.filePath, track.remoteId)
         } else if (!offlineBlackout && svcLrclib) {
             applyLyrics("", "")
             services.fetchLyrics(track.title || track.fileName || "", track.artist || "", track.album || "", track.durationSeconds || 0)
@@ -1716,15 +1899,16 @@ ApplicationWindow {
         if (player.currentTrack && player.currentTrack.filePath) metadataDialog.openFor(player.currentTrack)
     }
 
+    function openTrackActionSheet(targetTrack) {
+        const t = targetTrack || player.currentTrack
+        if (t && trackActionSheet) trackActionSheet.openFor(t)
+    }
+
     onNowPlayingOpenChanged: {
         if (nowPlayingOpen) {
-            nowPlayingClosing = false
-            nowPlayingUnloadTimer.stop()
+            nowPlayingLoaded = true
             parsedLyrics = parseLrc(player.currentLyrics)
             updateActiveLyric()
-        } else if (nowPlayingLoader.item) {
-            nowPlayingClosing = true
-            nowPlayingUnloadTimer.restart()
         }
     }
 
@@ -1737,10 +1921,11 @@ ApplicationWindow {
     }
 
     Timer {
-        id: nowPlayingUnloadTimer
-        interval: 300
+        id: nowPlayingWarmupTimer
+        interval: 800
+        running: true
         repeat: false
-        onTriggered: nowPlayingClosing = false
+        onTriggered: window.nowPlayingLoaded = true
     }
 
     onNowPlayingModeChanged: {
@@ -1794,8 +1979,7 @@ ApplicationWindow {
     property var genreGroups: []
     property var folderGroups: []
 
-    function refreshSpotlight(source) {
-        const candidates = source || uniqueTracks(availableTracks())
+    function refreshSpotlight(candidates) {
         if (candidates.length > 0) {
             spotlightTrack = candidates[Math.floor(Math.random() * candidates.length)]
         } else {
@@ -1804,39 +1988,13 @@ ApplicationWindow {
     }
 
     function refreshHomeRecommendations() {
-        const libraryTracks = availableTracks()
-        if (libraryTracks.length === 0) {
-            quickPicks = []
-            heavyRotation = []
-            recentlyPlayed = []
-            recentlyAdded = []
-            forgottenFavs = []
-            spotlightTrack = null
-            return
-        }
-
-        const uniqueLibraryTracks = uniqueTracks(libraryTracks)
-        const played = {}
-        playbackHistory.forEach(track => played[trackIdentity(track)] = true)
-        const candidates = uniqueLibraryTracks.filter(track => !played[trackIdentity(track)])
-        refreshSpotlight(candidates)
-
-        const shuffled = shuffledTracks(candidates)
-
-        quickPicks = shuffled.slice(0, Math.min(8, shuffled.length))
-        const ranked = shuffledTracks(uniqueLibraryTracks.filter(track => playCounts[track.filePath] > 0))
-        ranked.sort((left, right) => playCounts[right.filePath] - playCounts[left.filePath])
-        heavyRotation = ranked.slice(0, 10)
-
-        const tracksByPath = {}
-        uniqueLibraryTracks.forEach(track => tracksByPath[track.filePath] = track)
-        recentlyPlayed = uniqueTracks(playbackHistory.map(track => tracksByPath[track.filePath]).filter(track => !!track)).slice(0, 10)
-        recentlyAdded = uniqueLibraryTracks
-            .filter(track => seenAt[track.filePath] > 0)
-            .sort((left, right) => seenAt[right.filePath] - seenAt[left.filePath])
-            .slice(0, 10)
-        const forgotten = uniqueLibraryTracks.filter(track => favoriteTracks[track.filePath] && !played[trackIdentity(track)])
-        forgottenFavs = forgotten.length >= 3 ? forgotten.slice(0, 10) : []
+        const home = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory)
+        spotlightTrack = home.spotlight.filePath ? home.spotlight : null
+        quickPicks = home.quickPicks
+        heavyRotation = home.heavyRotation
+        recentlyPlayed = home.recentlyPlayed
+        recentlyAdded = home.recentlyAdded
+        forgottenFavs = home.forgottenFavs
     }
 
     function refreshLibraryState() {
@@ -1858,20 +2016,33 @@ ApplicationWindow {
         return match ? match.trim() : str
     }
 
+    function splitArtists(raw) {
+        if (!raw) return ["Unknown Artist"]
+        const parts = String(raw).split(/\s*(?:[,&;/]|(?:\b(?:feat|ft)\b\.?)|\bfeaturing\b)\s*/i)
+            .map(s => s.trim())
+            .filter(s => s.length > 0)
+        return parts.length ? parts : [String(raw).trim()]
+    }
+
+    // The library controller classifies letters in every script, which QML regular expressions cannot.
+    function compareSortKey(a, b) {
+        return library.compareNames(String(a || ""), String(b || ""))
+    }
+
     function refreshHomeGroups(groups) {
         const artistGroups = groups.artists || []
         const albumGroups = groups.albums || []
         artistCount = artistGroups.length
         albumCount = albumGroups.length
-        artistsRotation = artistGroups.slice().sort((a, b) => b.count - a.count).slice(0, 12)
-        albumsRotation = albumGroups.slice().sort((a, b) => b.count - a.count).slice(0, 12)
+        artistsRotation = artistGroups.slice().sort((a, b) => (b.count - a.count) || compareSortKey(a.name, b.name)).slice(0, 12)
+        albumsRotation = albumGroups.slice().sort((a, b) => (b.count - a.count) || compareSortKey(a.name, b.name)).slice(0, 12)
     }
 
     function refreshLibraryGroups(groups) {
-        artists = (groups.artists || []).slice().sort((a, b) => a.name.localeCompare(b.name))
-        albums = (groups.albums || []).slice().sort((a, b) => a.name.localeCompare(b.name))
-        genreGroups = groups.genres || []
-        folderGroups = groups.folders || []
+        artists = (groups.artists || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
+        albums = (groups.albums || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
+        genreGroups = (groups.genres || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
+        folderGroups = (groups.folders || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
     }
 
     function refreshVisibleLibraryGroups() {
@@ -1893,21 +2064,21 @@ ApplicationWindow {
         window.showMinimized()
     }
 
-    function openCatalogDetail(mode, title, heroTrack) {
-        if (catalogDetailOpen) {
-            catalogDetailHistory = catalogDetailHistory.concat([{
-                mode: catalogDetailMode,
-                title: catalogDetailTitle,
-                heroTrack: catalogDetailHeroTrack
-            }])
-        }
-        catalogDetailMode = mode
-        catalogDetailTitle = title
-        catalogDetailHeroTrack = heroTrack
+    function filterCatalogDetailTracks(mode, title, heroTrack) {
+        if (mode === "playlist") return playlistTracks(title)
         const trackPool = (heroTrack && heroTrack.remoteId) ? playbackTracks() : availableTracks()
-        catalogDetailTracks = trackPool.filter(track => {
-            if (mode === "artist") return extractPrimaryArtist(track.artist) === title || (track.artist || "").trim() === title
-            if (mode === "genre") return (track.genre || "").trim() === title || (!track.genre && title === "Soundtrack")
+        const normTitle = (title || "").trim().toLowerCase()
+        const result = trackPool.filter(track => {
+            if (!track) return false
+            if (mode === "artist") {
+                const artists = splitArtists(track.artist || "").map(a => a.trim().toLowerCase())
+                const rawArtist = (track.artist || "").trim().toLowerCase()
+                return artists.includes(normTitle) || rawArtist === normTitle
+            }
+            if (mode === "genre") {
+                const rawGenre = (track.genre || "").trim().toLowerCase()
+                return rawGenre === normTitle || (!rawGenre && normTitle === "soundtrack")
+            }
             if (mode === "folder") {
                 const p = (track.filePath || "").replace(/\\/g, "/")
                 const slash = p.lastIndexOf('/')
@@ -1915,19 +2086,40 @@ ApplicationWindow {
                 const folderName = folderPath.split('/').pop() || "Music"
                 return folderName === title || folderPath === title
             }
-            if (mode === "playlist") {
-                const pl = playlists.find(p => p.name === title || p.id === title)
-                return pl ? (pl.trackPaths || []).includes(track.filePath) : false
-            }
             return (track.album || "Unknown Album") === title
         })
+        if (mode === "album") {
+            result.sort((a, b) => {
+                const numA = (a.trackNumber !== undefined && a.trackNumber > 0) ? a.trackNumber : 9999
+                const numB = (b.trackNumber !== undefined && b.trackNumber > 0) ? b.trackNumber : 9999
+                if (numA !== numB) return numA - numB
+                return compareSortKey(a.title || a.fileName, b.title || b.fileName)
+            })
+        }
+        return result
+    }
+
+    function openCatalogDetail(mode, title, heroTrack, key) {
+        if (catalogDetailOpen) {
+            catalogDetailHistory = catalogDetailHistory.concat([{
+                mode: catalogDetailMode,
+                title: catalogDetailTitle,
+                key: catalogDetailKey,
+                heroTrack: catalogDetailHeroTrack
+            }])
+        }
+        catalogDetailMode = mode
+        catalogDetailTitle = title
+        catalogDetailKey = key || title
+        catalogDetailHeroTrack = heroTrack
+        catalogDetailTracks = filterCatalogDetailTracks(mode, catalogDetailKey, heroTrack)
         catalogDetailOpen = true
     }
     function closeCatalogDetail() {
         if (catalogDetailHistory.length) {
             const previous = catalogDetailHistory[catalogDetailHistory.length - 1]
             catalogDetailHistory = catalogDetailHistory.slice(0, -1)
-            openCatalogDetail(previous.mode, previous.title, previous.heroTrack)
+            openCatalogDetail(previous.mode, previous.title, previous.heroTrack, previous.key)
             catalogDetailHistory = catalogDetailHistory.slice(0, -1)
             return
         }
@@ -2018,9 +2210,15 @@ ApplicationWindow {
 
     function playQueuedTrack(track) {
         if (!track) return
-        if (!player.currentTrack || player.currentTrack.filePath !== track.filePath) finishHistoryTracking()
+        if (!player.currentTrack || player.currentTrack.filePath !== track.filePath)
+            finishHistoryTracking()
+        lastHandledTrack = null
         playbackPending = true
-        player.playTrack(track)
+        if (!player.playTrack(track)) {
+            playbackPending = false
+            playerStateDirty = true
+            return
+        }
         loadLyricsForTrack(track)
         queueRevision++
     }
@@ -2126,7 +2324,7 @@ ApplicationWindow {
         const queue = uniqueTracks(availableTracks())
         if (!queue.length) return
         shufflePlayback(queue)
-        refreshSpotlight()
+        refreshSpotlight(queue)
     }
 
     Connections {
@@ -2165,20 +2363,34 @@ ApplicationWindow {
             updateActiveLyric()
             playerStateDirty = true
         }
+        function onErrorChanged() {
+            if (playbackPending) {
+                playbackPending = false
+                playerStateDirty = true
+            }
+        }
         function onCurrentLyricsChanged() {
             parsedLyrics = parseLrc(player.currentLyrics)
             updateActiveLyric()
         }
         function onCurrentTrackChanged() {
-            tray.setTrack(player.currentTrack.title || "", player.currentTrack.artist || "")
-            if (tray.available && player.currentTrack && player.currentTrack.title) {
+            const currentTrack = player.currentTrack || ({})
+            const sameTrack = lastHandledTrack && currentTrack.filePath
+                && lastHandledTrack.filePath === currentTrack.filePath
+            lastHandledTrack = currentTrack
+            tray.setTrack(currentTrack.title || "", currentTrack.artist || "")
+            if (sameTrack) {
+                if (historyTrackedTrack) historyTrackedTrack = currentTrack
+                return
+            }
+            if (tray.available && currentTrack.title) {
                 const isHiddenOrMinimized = !window.active || window.visibility === Window.Hidden || window.visibility === Window.Minimized
                 if (nowPlayingNotifications === "always" || (nowPlayingNotifications === "minimized" && isHiddenOrMinimized)) {
-                    tray.showNotification(player.currentTrack.title, player.currentTrack.artist || "")
+                    tray.showNotification(currentTrack.title, currentTrack.artist || "")
                 }
             }
-            resetHistoryTracking(player.currentTrack)
-            lyricsSyncOffsetMs = appSettings.value(lyricsSyncKey(player.currentTrack), 0)
+            resetHistoryTracking(currentTrack)
+            lyricsSyncOffsetMs = appSettings.value(lyricsSyncKey(currentTrack), 0)
             parsedLyrics = parseLrc(player.currentLyrics)
             activeLyricIndex = -1
             activeLyricDisplayIndex = -1
@@ -2337,7 +2549,8 @@ ApplicationWindow {
                         }
                     }
                     if (data.inAppShortcutBindings && typeof data.inAppShortcutBindings === "object") {
-                        window.inAppShortcutBindings = Object.assign({}, defaultInAppShortcuts, data.inAppShortcutBindings)
+                        window.inAppShortcutBindings = normalizeInAppShortcutBindings(
+                            Object.assign({}, shortcutDefinitions.defaultBindings(), data.inAppShortcutBindings))
                         appSettings.setValue("ui/inAppShortcuts", JSON.stringify(window.inAppShortcutBindings))
                     }
                     if (data.miniPlayerAlwaysOnTop !== undefined) { window.miniPlayerAlwaysOnTop = data.miniPlayerAlwaysOnTop; appSettings.setValue("ui/miniPlayerAlwaysOnTop", data.miniPlayerAlwaysOnTop) }
@@ -2426,6 +2639,20 @@ ApplicationWindow {
         function onPreviousRequested() { window.playPrevious() }
         function onRepeatModeChanged(mode) {
             if (window.repeatMode !== mode) window.repeatMode = mode
+        }
+        function onShuffleRequested(shuffle) {
+            if (player.shuffleEnabled === shuffle) return
+            const q = window.activePlaybackQueue ? window.activePlaybackQueue() : []
+            if (q.length < 2) player.shuffleEnabled = shuffle
+            else window.toggleQueueShuffle()
+        }
+        function onVolumeRequested(volume) {
+            window.setPlayerVolume(volume)
+        }
+        function onQuitRequested() {
+            appQuitting = true
+            persistBeforeExit()
+            Qt.quit()
         }
     }
 
@@ -2591,6 +2818,12 @@ ApplicationWindow {
             activeLyricIndex: window.activeLyricIndex
             lyricDisplayItems: window.lyricDisplayItems
             activeLyricDisplayIndex: window.activeLyricDisplayIndex
+            showRemainingTime: window.showRemainingTime
+            onShowRemainingTimeChanged: {
+                if (window.showRemainingTime !== miniPlayerWindow.showRemainingTime) {
+                    window.showRemainingTime = miniPlayerWindow.showRemainingTime
+                }
+            }
             onRestoreRequested: {
                 miniPlayerWindow.visible = false
                 if (window.visibility === Window.Minimized) {
@@ -3085,14 +3318,49 @@ ApplicationWindow {
                 clip: true
 
                 StackLayout {
+                    id: mainStack
                     anchors.fill: parent
                     currentIndex: page === "home" ? 0 : (page === "library" ? 1 : (page === "search" ? 2 : (page === "radio" ? 3 : (page === "jellyfin" ? 4 : (page === "subsonic" ? 5 : (page === "stats" ? 6 : 7))))))
+
+                    layer.enabled: pageSwitchAnim.running
+                    layer.smooth: true
+
+                    transform: Translate {
+                        id: pageTranslate
+                        y: 0
+                    }
+
+                    onCurrentIndexChanged: {
+                        pageSwitchAnim.restart()
+                        pageSlideAnim.restart()
+                    }
+
+                    NumberAnimation {
+                        id: pageSwitchAnim
+                        target: mainStack
+                        property: "opacity"
+                        from: 0.85
+                        to: 1.0
+                        duration: 160
+                        easing.type: Easing.OutCubic
+                    }
+
+                    NumberAnimation {
+                        id: pageSlideAnim
+                        target: pageTranslate
+                        property: "y"
+                        from: 5
+                        to: 0
+                        duration: 160
+                        easing.type: Easing.OutCubic
+                    }
 
                     Loader {
                         id: homePageLoader
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        active: page === "home" && !nowPlayingOpen
+                        // Wait for the saved page, or Home is built and discarded when launching elsewhere.
+                        active: settingsInitialized && page === "home"
 
                         sourceComponent: Component {
                             HomePage {
@@ -3120,7 +3388,14 @@ ApplicationWindow {
                         id: libraryPageLoader
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        asynchronous: true
                         active: page === "library"
+
+                        LoadingBar {
+                            anchors.fill: parent
+                            visible: libraryPageLoader.status === Loader.Loading
+                        }
+
                         sourceComponent: Component {
                             LibraryPage {
                                 appWindow: window
@@ -3133,7 +3408,19 @@ ApplicationWindow {
                         id: searchPageLoader
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        asynchronous: true
                         active: page === "search"
+                        property bool focusOnLoad: false
+                        onLoaded: if (focusOnLoad) {
+                            focusOnLoad = false
+                            focusSearchInput()
+                        }
+
+                        LoadingBar {
+                            anchors.fill: parent
+                            visible: searchPageLoader.status === Loader.Loading
+                        }
+
                         sourceComponent: Component {
                             SearchPage {
                                 appWindow: window
@@ -3147,7 +3434,14 @@ ApplicationWindow {
                         id: radioPageLoader
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        asynchronous: true
                         active: page === "radio"
+
+                        LoadingBar {
+                            anchors.fill: parent
+                            visible: radioPageLoader.status === Loader.Loading
+                        }
+
                         sourceComponent: Component {
                             RadioPage {
                                 appWindow: window
@@ -3160,7 +3454,14 @@ ApplicationWindow {
                         id: jellyfinPageLoader
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        asynchronous: true
                         active: page === "jellyfin"
+
+                        LoadingBar {
+                            anchors.fill: parent
+                            visible: jellyfinPageLoader.status === Loader.Loading
+                        }
+
                         sourceComponent: Component {
                             JellyfinPage {
                                 appWindow: window
@@ -3173,7 +3474,14 @@ ApplicationWindow {
                         id: subsonicPageLoader
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        asynchronous: true
                         active: page === "subsonic"
+
+                        LoadingBar {
+                            anchors.fill: parent
+                            visible: subsonicPageLoader.status === Loader.Loading
+                        }
+
                         sourceComponent: Component {
                             SubsonicPage {
                                 appWindow: window
@@ -3186,11 +3494,21 @@ ApplicationWindow {
                         id: listeningRecordPageLoader
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        asynchronous: true
                         active: page === "stats"
+
+                        LoadingBar {
+                            anchors.fill: parent
+                            visible: listeningRecordPageLoader.status === Loader.Loading
+                        }
+
                         sourceComponent: Component {
                             ListeningRecordPage {
                                 appWindow: window
-                                tracks: window.availableTracks()
+                                tracks: {
+                                    libraryRevision
+                                    return window.availableTracks()
+                                }
                                 playCounts: window.playCounts
                                 playbackHistory: window.playbackHistory
                             }
@@ -3201,7 +3519,13 @@ ApplicationWindow {
                         id: settingsLoader
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        asynchronous: true
                         active: page === "settings"
+
+                        LoadingBar {
+                            anchors.fill: parent
+                            visible: settingsLoader.status === Loader.Loading
+                        }
                         sourceComponent: Component {
                             SettingsPage {
                                 id: settingsRoot
@@ -3449,6 +3773,12 @@ ApplicationWindow {
                 }
             }
 
+            TrackContextMenu {
+                id: dockTrackMenu
+                appWindow: window
+                track: player.currentTrack
+            }
+
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: 24
@@ -3456,8 +3786,8 @@ ApplicationWindow {
                 spacing: 20
 
                 RowLayout {
-                    Layout.preferredWidth: 320
-                    Layout.maximumWidth: 320
+                    Layout.preferredWidth: 340
+                    Layout.maximumWidth: 360
                     spacing: 12
 
                     Rectangle {
@@ -3489,12 +3819,20 @@ ApplicationWindow {
 
                         MouseArea {
                             anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                if (player.currentTrack.filePath) {
-                                    nowPlayingOpen = !nowPlayingOpen
-                                } else if (library.trackCount > 0) {
-                                    playTrack(library.firstPlayableTrack())
+                            onClicked: mouse => {
+                                if (mouse.button === Qt.RightButton) {
+                                    if (player.currentTrack.filePath) {
+                                        dockTrackMenu.popup()
+                                    }
+                                } else {
+                                    if (player.currentTrack.filePath) {
+                                        nowPlayingOpen = !nowPlayingOpen
+                                    } else if (library.trackCount > 0) {
+                                        playTrack(library.firstPlayableTrack())
+                                    }
                                 }
                             }
                         }
@@ -3517,26 +3855,64 @@ ApplicationWindow {
 
                             MouseArea {
                                 anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (player.currentTrack.filePath) {
-                                        nowPlayingOpen = !nowPlayingOpen
-                                    } else if (library.trackCount > 0) {
-                                        playTrack(library.firstPlayableTrack())
+                                onClicked: mouse => {
+                                    if (mouse.button === Qt.RightButton) {
+                                        if (player.currentTrack.filePath) {
+                                            dockTrackMenu.popup()
+                                        }
+                                    } else {
+                                        if (player.currentTrack.filePath) {
+                                            nowPlayingOpen = !nowPlayingOpen
+                                        } else if (library.trackCount > 0) {
+                                            playTrack(library.firstPlayableTrack())
+                                        }
                                     }
                                 }
                             }
                         }
 
                         Label {
+                            id: dockArtistLabel
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
                             text: player.currentTrack.artist || (library.trackCount > 0 ? "Pick a track to start playback" : "Choose a music folder to begin")
-                            color: player.currentTrack.artist ? recordRed : (library.trackCount > 0 ? recordRed : textSecondary)
+                            color: dockArtistMouse.containsMouse && player.currentTrack.artist ? textPrimary : textSecondary
                             font.family: bodyFont
                             font.pixelSize: 12
+                            font.underline: dockArtistMouse.containsMouse && !!player.currentTrack.artist
                             elide: Text.ElideRight
+
+                            MouseArea {
+                                id: dockArtistMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.LeftButton | Qt.RightButton
+                                cursorShape: player.currentTrack.artist ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                onClicked: mouse => {
+                                    if (mouse.button === Qt.RightButton) {
+                                        if (player.currentTrack.filePath) {
+                                            dockTrackMenu.popup()
+                                        }
+                                    } else if (player.currentTrack.artist) {
+                                        openCatalogDetail("artist", player.currentTrack.artist, player.currentTrack)
+                                    }
+                                }
+                            }
                         }
+                    }
+
+                    PressDepthIconButton {
+                        Layout.alignment: Qt.AlignVCenter
+                        boxSize: 32
+                        iconSize: 16
+                        iconName: "heart"
+                        visible: !!player.currentTrack.filePath
+                        tint: isFavorite(player.currentTrack.filePath) ? recordRed : silverDim
+                        tooltipText: isFavorite(player.currentTrack.filePath) ? "Remove from Favorites" : "Add to Favorites"
+                        onClicked: toggleFavorite(player.currentTrack.filePath)
                     }
                 }
 
@@ -3550,6 +3926,7 @@ ApplicationWindow {
                         spacing: 14
 
                         TransportButton {
+                            Layout.alignment: Qt.AlignVCenter
                             buttonSize: 34
                             paletteSource: window
                             iconName: "shuffle"
@@ -3559,6 +3936,7 @@ ApplicationWindow {
                         }
 
                         TransportButton {
+                            Layout.alignment: Qt.AlignVCenter
                             buttonSize: 38
                             paletteSource: window
                             iconName: "skip-back"
@@ -3568,6 +3946,7 @@ ApplicationWindow {
                         }
 
                         TransportButton {
+                            Layout.alignment: Qt.AlignVCenter
                             buttonSize: 46
                             paletteSource: window
                             iconName: playerVisuallyPlaying ? "pause" : "play"
@@ -3584,6 +3963,7 @@ ApplicationWindow {
                         }
 
                         TransportButton {
+                            Layout.alignment: Qt.AlignVCenter
                             buttonSize: 38
                             paletteSource: window
                             iconName: "skip-forward"
@@ -3593,6 +3973,7 @@ ApplicationWindow {
                         }
 
                         TransportButton {
+                            Layout.alignment: Qt.AlignVCenter
                             buttonSize: 34
                             paletteSource: window
                             iconName: repeatMode === 2 ? "repeat-1" : "repeat"
@@ -3617,56 +3998,51 @@ ApplicationWindow {
                 }
 
                 RowLayout {
-                    Layout.preferredWidth: 372
-                    Layout.maximumWidth: 372
+                    Layout.preferredWidth: 340
+                    Layout.maximumWidth: 360
                     Layout.alignment: Qt.AlignRight
-                    spacing: 10
+                    spacing: 8
 
                     PressDepthIconButton {
-                        boxSize: 36
-                        iconSize: 18
-                        iconName: "heart"
-                        tint: isFavorite(player.currentTrack.filePath) ? recordRed : silverDim
-                        tooltipText: isFavorite(player.currentTrack.filePath) ? "Remove from Favorites" : "Add to Favorites"
-                        onClicked: toggleFavorite(player.currentTrack.filePath)
-                    }
-
-                    VolumeControl {
-                        Layout.preferredWidth: 140
-                        volume: player.volume
-                        paletteSource: window
-                        onVolumeAdjusted: newVol => {
-                            setPlayerVolume(newVol)
-                        }
-                    }
-
-                    PressDepthIconButton {
-                        boxSize: 36
-                        iconSize: 18
+                        Layout.alignment: Qt.AlignVCenter
+                        boxSize: 34
+                        iconSize: 17
                         iconName: "quote"
-                        tint: nowPlayingMode === "lyrics" ? recordRed : silverDim
-                        tooltipText: "Lyrics"
+                        tint: (nowPlayingOpen && nowPlayingMode === "lyrics") ? recordRed : silverDim
+                        highlighted: nowPlayingOpen && nowPlayingMode === "lyrics"
+                        tooltipText: (nowPlayingOpen && nowPlayingMode === "lyrics") ? "Hide Lyrics" : "Lyrics"
                         onClicked: {
-                            nowPlayingMode = "lyrics"
-                            nowPlayingOpen = true
+                            if (nowPlayingOpen && nowPlayingMode === "lyrics") {
+                                nowPlayingOpen = false
+                            } else {
+                                nowPlayingMode = "lyrics"
+                                nowPlayingOpen = true
+                            }
                         }
                     }
 
                     PressDepthIconButton {
-                        boxSize: 36
-                        iconSize: 18
+                        Layout.alignment: Qt.AlignVCenter
+                        boxSize: 34
+                        iconSize: 17
                         iconName: "list"
-                        tint: nowPlayingMode === "queue" ? recordRed : silverDim
-                        tooltipText: "Queue"
+                        tint: (nowPlayingOpen && nowPlayingMode === "queue") ? recordRed : silverDim
+                        highlighted: nowPlayingOpen && nowPlayingMode === "queue"
+                        tooltipText: (nowPlayingOpen && nowPlayingMode === "queue") ? "Hide Queue" : "Queue"
                         onClicked: {
-                            nowPlayingMode = "queue"
-                            nowPlayingOpen = true
+                            if (nowPlayingOpen && nowPlayingMode === "queue") {
+                                nowPlayingOpen = false
+                            } else {
+                                nowPlayingMode = "queue"
+                                nowPlayingOpen = true
+                            }
                         }
                     }
 
                     PressDepthIconButton {
-                        boxSize: 36
-                        iconSize: 18
+                        Layout.alignment: Qt.AlignVCenter
+                        boxSize: 34
+                        iconSize: 17
                         iconName: "pip"
                         tint: silverDim
                         tooltipText: "Mini Player (Ctrl+M)"
@@ -3674,12 +4050,33 @@ ApplicationWindow {
                     }
 
                     PressDepthIconButton {
-                        boxSize: 36
-                        iconSize: 18
+                        Layout.alignment: Qt.AlignVCenter
+                        boxSize: 34
+                        iconSize: 17
                         iconName: nowPlayingOpen ? "chevron-down" : "audio-lines"
                         tint: nowPlayingOpen ? recordRed : silverDim
+                        highlighted: nowPlayingOpen
                         tooltipText: nowPlayingOpen ? "Collapse Now Playing" : "Now Playing Deck"
                         onClicked: nowPlayingOpen = !nowPlayingOpen
+                    }
+
+                    Rectangle {
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.leftMargin: 2
+                        Layout.rightMargin: 4
+                        width: 1
+                        height: 18
+                        color: borderSubtle
+                    }
+
+                    VolumeControl {
+                        Layout.alignment: Qt.AlignVCenter
+                        Layout.preferredWidth: 135
+                        volume: player.volume
+                        paletteSource: window
+                        onVolumeAdjusted: newVol => {
+                            setPlayerVolume(newVol)
+                        }
                     }
                 }
             }
@@ -3697,19 +4094,28 @@ ApplicationWindow {
         id: nowPlayingLoader
         anchors.fill: parent
         z: 500
-        active: nowPlayingOpen || nowPlayingClosing
+        active: nowPlayingLoaded || nowPlayingOpen
         sourceComponent: Component {
             Rectangle {
                 id: nowPlayingOverlay
-                readonly property bool audioMeterVisible: nowPlayingLyricsView.meterVisible
+                readonly property bool audioMeterVisible: nowPlayingOpen && nowPlayingLyricsView.meterVisible
                     && window.visible && window.visibility !== Window.Minimized
                 anchors.fill: parent
                 color: "#0A0908"
-                visible: nowPlayingOpen
+                visible: opacity > 0.001
                 opacity: nowPlayingOpen ? 1.0 : 0.0
+                layer.enabled: opacity < 0.999 && opacity > 0.001
+                layer.smooth: true
+
+        transform: Translate {
+            y: nowPlayingOpen ? 0 : 28
+            Behavior on y {
+                NumberAnimation { duration: UiConstants.durationOverlay; easing.type: UiConstants.easingStd }
+            }
+        }
 
         Behavior on opacity {
-            NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
+            NumberAnimation { duration: UiConstants.durationOverlay; easing.type: UiConstants.easingStd }
         }
 
         MouseArea {
@@ -3743,12 +4149,14 @@ ApplicationWindow {
                 track: player.currentTrack
                 keepPreviousArtwork: true
                 cacheArtwork: true
-                stableSourceSize: 720
+                stableSourceSize: 280
                 layer.enabled: true
+                layer.textureSize: Qt.size(240, 240)
+                layer.smooth: true
                 layer.effect: MultiEffect {
                     blurEnabled: true
-                    blur: 1.0
-                    blurMax: 64
+                    blur: 0.85
+                    blurMax: 32
                     saturation: 0.25
                     brightness: -0.25
                 }
@@ -3810,16 +4218,13 @@ ApplicationWindow {
                     border.color: "#25FFFFFF"
 
                     Behavior on y {
-                        NumberAnimation { duration: 320; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
                     }
                     Behavior on width {
-                        NumberAnimation { duration: 320; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
                     }
                     Behavior on height {
-                        NumberAnimation { duration: 320; easing.type: Easing.OutCubic }
-                    }
-                    Behavior on radius {
-                        NumberAnimation { duration: 320; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
                     }
 
                     Cover {
@@ -3856,10 +4261,10 @@ ApplicationWindow {
                     scale: npLeftColumn.compactPlayerMode ? 1.0 : 0.95
 
                     Behavior on opacity {
-                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
                     }
                     Behavior on scale {
-                        NumberAnimation { duration: 250; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
                     }
 
                     ColumnLayout {
@@ -3916,6 +4321,7 @@ ApplicationWindow {
                             spacing: 10
 
                             TransportButton {
+                                Accessible.name: "Shuffle"
                                 buttonSize: 32
                                 paletteSource: window
                                 iconName: "shuffle"
@@ -3926,6 +4332,7 @@ ApplicationWindow {
                             Item { Layout.fillWidth: true }
 
                             TransportButton {
+                                Accessible.name: "Previous track"
                                 buttonSize: 38
                                 paletteSource: window
                                 iconName: "skip-back"
@@ -3934,6 +4341,7 @@ ApplicationWindow {
                             }
 
                             TransportButton {
+                                Accessible.name: playerVisuallyPlaying ? "Pause" : "Play"
                                 buttonSize: 48
                                 paletteSource: window
                                 iconName: playerVisuallyPlaying ? "pause" : "play"
@@ -3943,6 +4351,7 @@ ApplicationWindow {
                             }
 
                             TransportButton {
+                                Accessible.name: "Next track"
                                 buttonSize: 38
                                 paletteSource: window
                                 iconName: "skip-forward"
@@ -3953,6 +4362,7 @@ ApplicationWindow {
                             Item { Layout.fillWidth: true }
 
                             TransportButton {
+                                Accessible.name: "Repeat"
                                 buttonSize: 32
                                 paletteSource: window
                                 iconName: repeatMode === 2 ? "repeat-1" : "repeat"
@@ -3997,12 +4407,13 @@ ApplicationWindow {
                     visible: opacity > 0.001
                     opacity: nowPlayingMode === "controls" ? 1.0 : 0.0
                     scale: nowPlayingMode === "controls" ? 1.0 : 0.96
+                    enabled: nowPlayingMode === "controls"
 
                     Behavior on opacity {
-                        NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
                     }
                     Behavior on scale {
-                        NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
+                        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
                     }
 
                     onRemainingTimeToggled: value => {
@@ -4096,6 +4507,7 @@ ApplicationWindow {
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = true }
                 }
                 TransportButton {
+                    Accessible.name: "Close lyrics search"
                     buttonSize: 30
                     iconName: "x"
                     onClicked: lyricSearchOpen = false
@@ -4117,6 +4529,7 @@ ApplicationWindow {
                     onSubmitted: searchLyricsOnline()
                 }
                 TransportButton {
+                    Accessible.name: "Search lyrics online"
                     buttonSize: 36
                     iconName: "search"
                     accented: true
@@ -4155,7 +4568,12 @@ ApplicationWindow {
                 model: lyricSearchResults
                 spacing: 4
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: SleekScrollBar {}
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                cacheBuffer: UiConstants.cacheBuffer
+                pixelAligned: UiConstants.pixelAligned
+                reuseItems: true
+                ScrollBar.vertical: AutoHideScrollBar {}
 
                 delegate: Item {
                     width: ListView.view.width
@@ -4393,5 +4811,13 @@ ApplicationWindow {
     TrackMetadataDialog {
         id: metadataDialog
         appWindow: window
+    }
+
+    TrackActionSheet {
+        id: trackActionSheet
+        appWindow: window
+        onOpenMetadataEditor: targetTrack => {
+            if (metadataDialog) metadataDialog.openFor(targetTrack || player.currentTrack)
+        }
     }
 }

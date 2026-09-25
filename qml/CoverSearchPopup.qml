@@ -100,6 +100,7 @@ Popup {
             }
 
             TransportButton {
+                Accessible.name: "Close"
                 buttonSize: 30
                 iconName: "x"
                 onClicked: root.close()
@@ -128,6 +129,7 @@ Popup {
             }
 
             TransportButton {
+                Accessible.name: "Search"
                 buttonSize: 36
                 iconName: "search"
                 accented: true
@@ -216,7 +218,12 @@ Popup {
                 clip: true
                 model: root.searchResults
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: SleekScrollBar {}
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                cacheBuffer: UiConstants.cacheBuffer
+                pixelAligned: UiConstants.pixelAligned
+                reuseItems: true
+                ScrollBar.vertical: AutoHideScrollBar {}
 
                 delegate: Item {
                     width: grid.cellWidth

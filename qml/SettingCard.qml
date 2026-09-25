@@ -7,12 +7,11 @@ Rectangle {
 
     Layout.fillWidth: true
     implicitHeight: inner.implicitHeight + 12
-    radius: 16
-    color: (typeof surfaceCard !== "undefined" ? surfaceCard : "#141312")
-    border.width: 1
-    border.color: (typeof borderVariant !== "undefined" ? borderVariant : "#2A2825")
-
-    Behavior on border.color { ColorAnimation { duration: 120 } }
+    radius: 14
+    clip: true
+    color: (typeof surfaceCard !== "undefined" ? surfaceCard : "#161514")
+    border.width: 0
+    border.color: "transparent"
 
     ColumnLayout {
         id: inner

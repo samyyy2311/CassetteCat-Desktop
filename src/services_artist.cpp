@@ -75,7 +75,7 @@ void ServicesController::fetchArtistImage(const QString &artist) {
                         ? (entry.value("picture_big").toString().isEmpty() ? entry.value("picture_medium").toString()
                                                                            : entry.value("picture_big").toString())
                         : entry.value("picture_xl").toString();
-                if (!image.isEmpty()) {
+                if (!image.isEmpty() && !image.contains("/artist//") && !image.contains("default-artist")) {
                     downloadArtistImage(artistName, image, "deezer");
                     return;
                 }

@@ -22,7 +22,6 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "quote"
-            iconColor: "#38BDF8"
             title: "Lyrics Font Size"
             subtitle: "Relative scale of lyric lines in synchronized view"
 
@@ -40,8 +39,7 @@ ColumnLayout {
         SettingDivider {}
 
         SettingRow {
-            iconName: "sliders-horizontal"
-            iconColor: "#A5B4FC"
+            iconName: "list"
             title: "Text Alignment"
             subtitle: "Horizontal alignment of synced lyric text"
 
@@ -58,8 +56,7 @@ ColumnLayout {
         SettingDivider {}
 
         SettingRow {
-            iconName: "disc"
-            iconColor: "#EC4899"
+            iconName: "pencil"
             title: "Active Line Color"
             subtitle: "Highlight styling for currently playing lyrics"
 
@@ -79,7 +76,6 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "folder"
-            iconColor: "#C4C4C0"
             title: "Prefer Local .lrc Files"
             subtitle: "Load sidecar .lrc files before querying online providers"
 

@@ -23,13 +23,18 @@ QString formatTrackDuration(int totalSeconds) {
 
 bool isPrivateOrLocalHost(const QString &host) {
     const QString value = host.trimmed();
-    if (value.compare("localhost", Qt::CaseInsensitive) == 0 || value.endsWith(".local", Qt::CaseInsensitive)) {
+    if (value.isEmpty()) {
+        return false;
+    }
+    if (value.compare("localhost", Qt::CaseInsensitive) == 0 || value.endsWith(".local", Qt::CaseInsensitive) ||
+        value.endsWith(".lan", Qt::CaseInsensitive) || value.endsWith(".home.arpa", Qt::CaseInsensitive) ||
+        value.endsWith(".internal", Qt::CaseInsensitive) || value.endsWith(".localdomain", Qt::CaseInsensitive)) {
         return true;
     }
 
     QHostAddress address;
     if (!address.setAddress(value)) {
-        return false;
+        return !value.contains('.');
     }
     if (address.isLoopback()) {
         return true;
@@ -64,19 +69,36 @@ QString normalizeServerUrl(const QString &raw, int defaultPort) {
     }
     if (!url.startsWith("http://", Qt::CaseInsensitive) && !url.startsWith("https://", Qt::CaseInsensitive)) {
         const QString host = hostFromUnschemedUrl(url);
+        if (host.isEmpty()) {
+            return {};
+        }
         url.prepend(isPrivateOrLocalHost(host) ? "http://" : "https://");
     }
+
+    const QUrl parsed(url);
+    if (!parsed.isValid() || parsed.host().isEmpty() ||
+        (parsed.scheme().compare("http", Qt::CaseInsensitive) != 0 &&
+         parsed.scheme().compare("https", Qt::CaseInsensitive) != 0) ||
+        !parsed.userInfo().isEmpty() || parsed.hasQuery() || parsed.hasFragment() ||
+        (parsed.scheme().compare("http", Qt::CaseInsensitive) == 0 && !isPrivateOrLocalHost(parsed.host()))) {
+        return {};
+    }
+
+    QString normalized = parsed.toString();
+    while (normalized.endsWith('/')) {
+        normalized.chop(1);
+    }
     if (defaultPort > 0) {
-        QUrl parsed(url);
-        if (parsed.port() == -1 && isPrivateOrLocalHost(parsed.host())) {
-            parsed.setPort(defaultPort);
-            url = parsed.toString();
-            while (url.endsWith('/')) {
-                url.chop(1);
+        QUrl withPort(parsed);
+        if (withPort.port() == -1 && isPrivateOrLocalHost(parsed.host())) {
+            withPort.setPort(defaultPort);
+            normalized = withPort.toString();
+            while (normalized.endsWith('/')) {
+                normalized.chop(1);
             }
         }
     }
-    return url;
+    return normalized;
 }
 
 QString md5Hex(const QString &input) {

@@ -18,6 +18,16 @@ Item {
 
     signal clicked()
 
+    readonly property bool highlighted: artistMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.name
+    Accessible.onPressAction: root.clicked()
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+
     width: cardWidth
     height: cardHeight
 
@@ -60,9 +70,9 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: Math.min(root.cardWidth - 20, 140)
             Layout.preferredHeight: width
-            scale: artistMouse.containsMouse ? 1.04 : 1.0
+            scale: root.highlighted ? 1.04 : 1.0
 
-            Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+            Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
 
             Rectangle {
                 id: maskCircle
@@ -80,17 +90,35 @@ Item {
                 anchors.fill: parent
                 radius: width / 2
                 color: surfaceCard
-                border.width: artistMouse.containsMouse ? 2 : 1
-                border.color: artistMouse.containsMouse ? recordRed : "#20FFFFFF"
+                border.width: root.highlighted ? 2 : 1
+                border.color: root.highlighted ? recordRed : "#30FFFFFF"
+                clip: true
                 z: 2
 
                 Behavior on border.color { ColorAnimation { duration: 120 } }
+
+                // Dark studio fallback when no photo or track artwork exists
+                Rectangle {
+                    anchors.fill: parent
+                    radius: parent.radius
+                    color: surfaceCard
+                    visible: (artistPhoto.status !== Image.Ready || root.artistImageUrl === "") && (!root.track || !root.track.filePath)
+                    z: 0
+
+                    LucideIcon {
+                        anchors.centerIn: parent
+                        width: 32
+                        height: 32
+                        icon: "mic"
+                        color: root.highlighted ? recordRedHover : silverDim
+                    }
+                }
 
                 Cover {
                     anchors.fill: parent
                     track: root.track
                     radius: avatarCircle.radius
-                    visible: artistPhoto.status !== Image.Ready || root.artistImageUrl === ""
+                    visible: (artistPhoto.status !== Image.Ready || root.artistImageUrl === "") && !!(root.track && root.track.filePath)
                 }
 
                 Image {
@@ -101,15 +129,25 @@ Item {
                     sourceSize.height: Math.max(140, Math.ceil(Math.max(height, 140) * Screen.devicePixelRatio))
                     fillMode: Image.PreserveAspectCrop
                     asynchronous: true
-                    cache: false
+                    cache: true
                     visible: status === Image.Ready && source !== ""
-                    layer.enabled: true
+                    layer.enabled: visible
                     layer.effect: MultiEffect {
                         maskEnabled: true
                         maskSource: maskCircle
                         maskThresholdMin: 0.5
                         maskSpreadAtMin: 1.0
                     }
+                }
+
+                // Subtle inner border ensuring pure black album art (e.g. Donda) has crisp definition
+                Rectangle {
+                    anchors.fill: parent
+                    radius: parent.radius
+                    color: "transparent"
+                    border.width: 1
+                    border.color: "#18FFFFFF"
+                    z: 10
                 }
             }
         }
@@ -124,7 +162,7 @@ Item {
                 Layout.minimumWidth: 0
                 horizontalAlignment: Text.AlignHCenter
                 text: root.name
-                color: artistMouse.containsMouse ? recordRedHover : textPrimary
+                color: root.highlighted ? recordRedHover : textPrimary
                 font.family: displayFont
                 font.pixelSize: 14
                 font.weight: Font.Bold
@@ -156,6 +194,10 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: root.clicked()
     }
 }

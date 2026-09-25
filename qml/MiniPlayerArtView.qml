@@ -14,7 +14,7 @@ Item {
         width: Math.min(parent.width, parent.height)
         height: width
         radius: root.miniPlayer.albumArtRadius === 0 ? 0 : (root.miniPlayer.albumArtRadius <= 8 ? 8 : 14)
-        fillMode: Image.PreserveAspectFit
+        fillMode: Image.PreserveAspectCrop
         track: root.miniPlayer.playerController.currentTrack
         keepPreviousArtwork: true
         cacheArtwork: true
@@ -55,35 +55,37 @@ Item {
     HoverHandler {
         id: artHoverHandler
     }
-    readonly property bool artHoverActive: artHoverHandler.hovered || root.miniPlayer.artSeeking || root.miniPlayer.volumePillVisible
+    readonly property bool artHoverActive: artHoverHandler.hovered || artBackgroundDrag.containsMouse || root.miniPlayer.artSeeking || root.miniPlayer.volumePillVisible
 
     Item {
         id: artOverlays
         anchors.fill: parent
-        opacity: root.artHoverActive ? 1.0 : 0.0
-        visible: opacity > 0.001
         z: 20
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 160
-                easing.type: Easing.OutCubic
-            }
-        }
-
         Rectangle {
+            id: artTopControlsPill
             anchors.top: parent.top
             anchors.right: parent.right
             anchors.topMargin: 10
             anchors.rightMargin: 10
+            width: artControlsRow.implicitWidth + 8
             height: 28
             radius: 14
-            color: "#D8141312"
+            color: "#E2141312"
             border.width: 1
             border.color: "#35FFFFFF"
             z: 20
+            opacity: root.artHoverActive ? 1.0 : 0.85
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 160
+                    easing.type: Easing.OutCubic
+                }
+            }
 
             Row {
+                id: artControlsRow
                 anchors.centerIn: parent
                 spacing: 2
                 padding: 2
@@ -235,6 +237,15 @@ Item {
             color: "#D8141312"
             border.width: 1
             border.color: "#30FFFFFF"
+            opacity: root.artHoverActive ? 1.0 : 0.0
+            visible: opacity > 0.001
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 160
+                    easing.type: Easing.OutCubic
+                }
+            }
 
             ColumnLayout {
                 anchors.fill: parent
@@ -334,50 +345,91 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 32
 
-                    Item {
+                    Row {
+                        id: artLeftControls
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        width: 28
-                        height: 28
-                        LucideIcon {
-                            anchors.centerIn: parent
-                            width: 15
-                            height: 15
-                            icon: root.miniPlayer.playerController.volume <= 0.001 ? "volume-x" : "volume-2"
-                            color: artVolM.containsMouse ? "#FFFFFF" : "#C0FFFFFF"
-                        }
-                        MouseArea {
-                            id: artVolM
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.miniPlayer.volumePillVisible = !root.miniPlayer.volumePillVisible
-                        }
-                    }
+                        spacing: 4
+                        visible: !root.miniPlayer.volumePillVisible
 
-                    Item {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 32
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 28
-                        height: 28
-                        readonly property bool isFav: root.miniPlayer.playerController.currentTrack && root.miniPlayer.favoriteTracks && !!root.miniPlayer.favoriteTracks[root.miniPlayer.playerController.currentTrack.filePath]
-                        LucideIcon { anchors.centerIn: parent; width: 15; height: 15; icon: "heart"; color: parent.isFav ? root.miniPlayer.recordRed : (artFavM.containsMouse ? "#FFFFFF" : "#C0FFFFFF") }
-                        MouseArea {
-                            id: artFavM
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                const track = root.miniPlayer.playerController.currentTrack
-                                if (track && track.filePath) root.miniPlayer.toggleFavorite(track.filePath)
+                        Item {
+                            width: 28
+                            height: 28
+                            LucideIcon {
+                                anchors.centerIn: parent
+                                width: 15
+                                height: 15
+                                icon: root.miniPlayer.playerController.volume <= 0.001 ? "volume-x" : (root.miniPlayer.playerController.volume < 0.5 ? "volume-1" : "volume-2")
+                                color: artVolM.containsMouse ? "#FFFFFF" : "#C0FFFFFF"
+                            }
+                            MouseArea {
+                                id: artVolM
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.miniPlayer.volumePillVisible = true
+                            }
+                        }
+
+                        Item {
+                            width: 28
+                            height: 28
+                            readonly property bool isFav: root.miniPlayer.playerController.currentTrack && root.miniPlayer.isFavorite(root.miniPlayer.playerController.currentTrack.filePath)
+                            LucideIcon { anchors.centerIn: parent; width: 15; height: 15; icon: "heart"; color: parent.isFav ? root.miniPlayer.recordRed : (artFavM.containsMouse ? "#FFFFFF" : "#C0FFFFFF") }
+                            MouseArea {
+                                id: artFavM
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    const track = root.miniPlayer.playerController.currentTrack
+                                    if (track && track.filePath) root.miniPlayer.toggleFavorite(track.filePath)
+                                }
                             }
                         }
                     }
 
+                    // In-Place Volume Slider
+                    MiniPlayerVolumePill {
+                        id: artInlineVolPill
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        playerController: root.miniPlayer.playerController
+                        surfacePill: root.miniPlayer.surfacePill
+                        borderCard: root.miniPlayer.borderCard
+                        accentColor: root.miniPlayer.recordRed
+                        silverDim: root.miniPlayer.silverDim
+                        volumeLimitEnabled: root.miniPlayer.volumeLimitEnabled
+                        maxVolumePercent: root.miniPlayer.maxVolumePercent
+                        visible: opacity > 0.001
+                        opacity: (root.miniPlayer.mode === "art" && root.miniPlayer.volumePillVisible) ? 1.0 : 0.0
+                        Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }
+                    }
+
                     Row {
                         anchors.centerIn: parent
-                        spacing: 20
+                        spacing: 8
+
+                        Item {
+                            width: 26
+                            height: 26
+                            anchors.verticalCenter: parent.verticalCenter
+                            readonly property bool active: root.miniPlayer.playerController.shuffleEnabled
+                            LucideIcon {
+                                anchors.centerIn: parent
+                                width: 15
+                                height: 15
+                                icon: "shuffle"
+                                color: parent.active ? root.miniPlayer.recordRed : (artShufM.containsMouse ? "#FFFFFF" : "#C0FFFFFF")
+                            }
+                            MouseArea {
+                                id: artShufM
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.miniPlayer.toggleShuffle()
+                            }
+                        }
 
                         Item {
                             width: 28
@@ -444,6 +496,27 @@ Item {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: root.miniPlayer.playNext()
+                            }
+                        }
+
+                        Item {
+                            width: 26
+                            height: 26
+                            anchors.verticalCenter: parent.verticalCenter
+                            readonly property bool active: root.miniPlayer.repeatMode > 0
+                            LucideIcon {
+                                anchors.centerIn: parent
+                                width: 15
+                                height: 15
+                                icon: root.miniPlayer.repeatMode === 2 ? "repeat-1" : "repeat"
+                                color: parent.active ? root.miniPlayer.recordRed : (artRepM.containsMouse ? "#FFFFFF" : "#C0FFFFFF")
+                            }
+                            MouseArea {
+                                id: artRepM
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.miniPlayer.toggleRepeat()
                             }
                         }
                     }

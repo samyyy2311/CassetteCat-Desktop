@@ -14,8 +14,8 @@ Rectangle {
     implicitWidth: rowLayout.implicitWidth + 8
     radius: 8
     color: (typeof surfaceInput !== "undefined" ? surfaceInput : "#1A1917")
-    border.width: 1
-    border.color: (typeof borderSubtle !== "undefined" ? borderSubtle : "#22201D")
+    border.width: 0
+    border.color: "transparent"
 
     activeFocusOnTab: true
     Accessible.role: Accessible.PageTabList
@@ -67,8 +67,8 @@ Rectangle {
                 color: isSelected
                     ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#2E2B27")
                     : (segMouse.containsMouse ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#22201D") : "transparent")
-                border.width: isSelected ? 1 : 0
-                border.color: (typeof borderVariant !== "undefined" ? borderVariant : "#383430")
+                border.width: 0
+                border.color: "transparent"
                 scale: segMouse.pressed ? 0.97 : 1.0
 
                 Behavior on color { ColorAnimation { duration: 120 } }

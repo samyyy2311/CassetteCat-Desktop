@@ -12,6 +12,16 @@ Item {
 
     signal clicked()
 
+    readonly property bool highlighted: cardMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.track.title || root.track.fileName || ""
+    Accessible.onPressAction: root.clicked()
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+
     width: cardWidth
     height: cardHeight
 
@@ -27,11 +37,11 @@ Item {
             clip: true
             color: surfaceCard
             border.width: 1
-            border.color: cardMouse.containsMouse ? borderVariant : borderSubtle
-            scale: cardMouse.containsMouse ? 1.03 : 1.0
+            border.color: root.highlighted ? borderVariant : borderSubtle
+            scale: root.highlighted ? 1.03 : 1.0
 
             Behavior on scale {
-                NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
             }
 
             Cover {
@@ -41,19 +51,21 @@ Item {
             }
 
             TransportButton {
+                Accessible.name: "Play"
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 anchors.margins: 8
                 buttonSize: 38
+                activeFocusOnTab: false
                 iconName: "play"
                 accented: true
                 iconColor: recordRed
-                opacity: cardMouse.containsMouse ? 1.0 : 0.0
-                scale: cardMouse.containsMouse ? 1.0 : 0.6
+                opacity: root.highlighted ? 1.0 : 0.0
+                scale: root.highlighted ? 1.0 : 0.6
                 z: 10
 
-                Behavior on opacity { NumberAnimation { duration: 150 } }
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutBack } }
+                Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd } }
+                Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingBounce } }
 
                 onClicked: root.clicked()
             }
@@ -86,6 +98,10 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: root.clicked()
     }
 }

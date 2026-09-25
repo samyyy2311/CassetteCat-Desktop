@@ -13,6 +13,17 @@ Item {
     signal clicked()
     signal favoriteClicked()
 
+    readonly property bool highlighted: cardMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.track.title || root.track.fileName || ""
+    Accessible.onPressAction: root.clicked()
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+    Keys.onMenuPressed: contextMenu.popup(root, 0, root.height)
+
     width: cardWidth
     height: cardHeight
 
@@ -31,9 +42,9 @@ Item {
                 radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
                 color: surfaceCard
                 clip: true
-                border.width: root.isCurrent ? 1.5 : (cardMouse.containsMouse ? 1.5 : 0)
-                border.color: root.isCurrent ? recordRed : (cardMouse.containsMouse ? recordRed : "transparent")
-                scale: cardMouse.containsMouse ? 1.03 : 1.0
+                border.width: root.isCurrent ? 1.5 : (root.highlighted ? 1.5 : 0)
+                border.color: root.isCurrent ? recordRed : (root.highlighted ? recordRed : "transparent")
+                scale: root.highlighted ? 1.03 : 1.0
 
                 Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
                 Behavior on border.color { ColorAnimation { duration: 120 } }
@@ -63,7 +74,7 @@ Item {
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
                 text: root.track.title || root.track.fileName || "Unknown Track"
-                color: root.isCurrent ? recordRed : (cardMouse.containsMouse ? recordRedHover : textPrimary)
+                color: root.isCurrent ? recordRed : (root.highlighted ? recordRedHover : textPrimary)
                 font.family: displayFont
                 font.pixelSize: 13
                 font.weight: root.isCurrent ? Font.Bold : Font.DemiBold
@@ -87,9 +98,16 @@ Item {
         }
     }
 
-    TrackContextMenu {
+    // Built on first use: a Menu per list delegate makes scrolling allocate menus nobody opens.
+    Loader {
         id: contextMenu
-        track: root.track
+        active: false
+        sourceComponent: TrackContextMenu { track: root.track }
+
+        function popup(...args) {
+            active = true
+            item.popup(...args)
+        }
     }
 
     MouseArea {
@@ -98,6 +116,10 @@ Item {
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: mouse => {
             if (mouse.button === Qt.RightButton) {
                 contextMenu.popup()

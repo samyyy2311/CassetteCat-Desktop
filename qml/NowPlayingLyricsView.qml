@@ -21,12 +21,15 @@ Item {
     visible: opacity > 0.001
     opacity: root.appWindow.nowPlayingMode === "lyrics" ? 1.0 : 0.0
     scale: root.appWindow.nowPlayingMode === "lyrics" ? 1.0 : 0.98
+    enabled: root.appWindow.nowPlayingMode === "lyrics"
+    layer.enabled: opacity < 0.999 && opacity > 0.001
+    layer.smooth: true
 
     Behavior on opacity {
-        NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
     }
     Behavior on scale {
-        NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
+        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
     }
 
     ListView {
@@ -46,9 +49,14 @@ Item {
         highlightRangeMode: ListView.ApplyRange
         preferredHighlightBegin: Math.round(height * 0.36)
         preferredHighlightEnd: Math.round(height * 0.38)
-        highlightMoveDuration: 550
+        highlightMoveDuration: UiConstants.highlightDurationFull
         boundsBehavior: Flickable.StopAtBounds
-        ScrollBar.vertical: SleekScrollBar { visible: root.appWindow.lyricDisplayItems.length > 0 }
+        flickDeceleration: UiConstants.flickDeceleration
+        maximumFlickVelocity: UiConstants.maximumFlickVelocity
+        cacheBuffer: UiConstants.cacheBuffer
+        pixelAligned: UiConstants.pixelAligned
+        reuseItems: true
+        ScrollBar.vertical: AutoHideScrollBar {}
 
         delegate: Item {
             id: lyricItem
@@ -80,8 +88,8 @@ Item {
                 opacity: isCurrent ? 1.0 : (lyricLineMouse.containsMouse ? 0.75 : (isSynced ? 0.28 : 0.85))
 
                 Behavior on color { ColorAnimation { duration: 300 } }
-                Behavior on opacity { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
-                Behavior on scale { NumberAnimation { duration: 320; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd } }
+                Behavior on scale { NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd } }
             }
 
             Row {
@@ -90,7 +98,7 @@ Item {
                 visible: lyricItem.isGap
                 opacity: lyricItem.gapActive ? 1.0 : 0.22
 
-                Behavior on opacity { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
+                Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
 
                 Repeater {
                     model: 3
@@ -129,24 +137,61 @@ Item {
                 anchors.centerIn: parent
                 spacing: 18
 
-                Row {
-                    id: waveRow
+                Item {
+                    id: waveContainer
                     Layout.alignment: Qt.AlignHCenter
-                    Layout.minimumHeight: 64
+                    Layout.preferredWidth: waveRow.implicitWidth
                     Layout.preferredHeight: 64
+                    Layout.minimumHeight: 64
                     Layout.maximumHeight: 64
-                    spacing: 7
 
-                    Repeater {
-                        model: [0.42, 0.72, 0.56, 1.0, 0.62, 0.82, 0.46]
-                        delegate: Rectangle {
-                            required property real modelData
-                            width: 6
-                            radius: 3
-                            color: recordRedHover
-                            anchors.verticalCenter: parent.verticalCenter
-                            height: 10 + (player.isPlaying ? player.audioLevel * 52 * modelData : 0)
-                            Behavior on height { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                    property real wavePhase: 0.0
+
+                    NumberAnimation {
+                        target: waveContainer
+                        property: "wavePhase"
+                        from: 0.0
+                        to: 62.83185307179586
+                        duration: 24000
+                        loops: Animation.Infinite
+                        running: player.isPlaying && waveContainer.visible
+                    }
+
+                    Row {
+                        id: waveRow
+                        anchors.centerIn: parent
+                        spacing: 7
+
+                        Repeater {
+                            model: [0.45, 0.70, 0.88, 1.0, 0.88, 0.70, 0.45]
+                            delegate: Rectangle {
+                                id: waveBar
+                                required property int index
+                                required property real modelData
+                                width: 5
+                                radius: 2.5
+                                color: recordRedHover
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                readonly property real harmonic: {
+                                    const h1 = Math.sin(waveContainer.wavePhase * 1.5 + index * 0.95)
+                                    const h2 = Math.cos(waveContainer.wavePhase * 2.2 - index * 0.65)
+                                    return (h1 * 0.6 + h2 * 0.4) * 0.5 + 0.5
+                                }
+                                readonly property real energy: Math.max(0.20, Math.min(1.0, (player.audioLevel * 1.6) + 0.25))
+                                readonly property real activeHeight: 8 + (harmonic * 46 * modelData * energy)
+
+                                height: player.isPlaying ? activeHeight : 8
+                                opacity: player.isPlaying ? (0.65 + 0.35 * Math.min(1.0, height / 50)) : 0.45
+
+                                Behavior on height {
+                                    enabled: !player.isPlaying
+                                    NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
+                                }
+                                Behavior on opacity {
+                                    NumberAnimation { duration: UiConstants.durationStd }
+                                }
+                            }
                         }
                     }
                 }

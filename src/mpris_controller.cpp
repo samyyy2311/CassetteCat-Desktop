@@ -2,6 +2,7 @@
 #include "mpris_adaptor.h"
 #include "player_controller.h"
 
+#include <QCryptographicHash>
 #include <QFileInfo>
 #include <QStringList>
 #include <QUrl>
@@ -116,13 +117,6 @@ QVariantMap MprisController::buildMetadata(const QVariantMap &track, qint64 dura
         return meta;
     }
 
-#ifdef CASSETTECAT_HAVE_DBUS
-    meta.insert(QStringLiteral("mpris:trackid"),
-                QVariant::fromValue(QDBusObjectPath(QStringLiteral("/org/mpris/MediaPlayer2/Track/Current"))));
-#else
-    meta.insert(QStringLiteral("mpris:trackid"), QStringLiteral("/org/mpris/MediaPlayer2/Track/Current"));
-#endif
-
     const QString title = track.value(QStringLiteral("title")).toString().trimmed().isEmpty()
                               ? track.value(QStringLiteral("fileName")).toString()
                               : track.value(QStringLiteral("title")).toString();
@@ -164,6 +158,16 @@ QVariantMap MprisController::buildMetadata(const QVariantMap &track, qint64 dura
         meta.insert(QStringLiteral("xesam:url"), streamUrl);
     }
 
+    const QString pathSource = !filePath.isEmpty() ? filePath : (!streamUrl.isEmpty() ? streamUrl : title);
+    const QString trackId =
+        QStringLiteral("/io/github/samyyy2311/CassetteCat/Track/") +
+        QString::fromLatin1(QCryptographicHash::hash(pathSource.toUtf8(), QCryptographicHash::Sha1).toHex());
+#ifdef CASSETTECAT_HAVE_DBUS
+    meta.insert(QStringLiteral("mpris:trackid"), QVariant::fromValue(QDBusObjectPath(trackId)));
+#else
+    meta.insert(QStringLiteral("mpris:trackid"), trackId);
+#endif
+
     return meta;
 }
 
@@ -204,13 +208,14 @@ bool MprisController::selfCheck() {
     sampleTrack.insert(QStringLiteral("artworkUrl"), QStringLiteral("https://example.com/cover.jpg"));
 
     const QVariantMap fullMeta = buildMetadata(sampleTrack, 120000);
+    const QString expectedTrackId =
+        QStringLiteral("/io/github/samyyy2311/CassetteCat/Track/") +
+        QString::fromLatin1(QCryptographicHash::hash(QByteArray("/music/test.flac"), QCryptographicHash::Sha1).toHex());
 #ifdef CASSETTECAT_HAVE_DBUS
-    if (fullMeta.value(QStringLiteral("mpris:trackid")).value<QDBusObjectPath>().path() !=
-        QLatin1String("/org/mpris/MediaPlayer2/Track/Current"))
+    if (fullMeta.value(QStringLiteral("mpris:trackid")).value<QDBusObjectPath>().path() != expectedTrackId)
         return false;
 #else
-    if (fullMeta.value(QStringLiteral("mpris:trackid")).toString() !=
-        QLatin1String("/org/mpris/MediaPlayer2/Track/Current"))
+    if (fullMeta.value(QStringLiteral("mpris:trackid")).toString() != expectedTrackId)
         return false;
 #endif
     if (fullMeta.value(QStringLiteral("xesam:title")).toString() != QLatin1String("Test Song"))

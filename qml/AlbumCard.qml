@@ -15,6 +15,16 @@ Item {
 
     signal clicked()
 
+    readonly property bool highlighted: albumCardMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.name
+    Accessible.onPressAction: root.clicked()
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+
     width: cardWidth
     height: cardHeight
 
@@ -33,11 +43,11 @@ Item {
                 radius: root.imageRadius
                 color: surfaceCard
                 clip: true
-                border.width: albumCardMouse.containsMouse ? 1.5 : 0
-                border.color: albumCardMouse.containsMouse ? recordRed : "transparent"
-                scale: albumCardMouse.containsMouse ? 1.03 : 1.0
+                border.width: root.highlighted ? 1.5 : 0
+                border.color: root.highlighted ? recordRed : "transparent"
+                scale: root.highlighted ? 1.03 : 1.0
 
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
                 Behavior on border.color { ColorAnimation { duration: 120 } }
 
                 Cover {
@@ -65,13 +75,13 @@ Item {
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
                 text: root.name
-                color: albumCardMouse.containsMouse ? recordRedHover : textPrimary
+                color: root.highlighted ? recordRedHover : textPrimary
                 font.family: displayFont
                 font.pixelSize: 13
                 font.weight: Font.Bold
                 elide: Text.ElideRight
-                maximumLineCount: 1
-                clip: true
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
             }
 
             Label {
@@ -95,6 +105,10 @@ Item {
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: mouse => {
             if (mouse.button === Qt.RightButton) {
                 if (typeof window !== "undefined" && window.openCoverSearch) {

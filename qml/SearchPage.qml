@@ -4,153 +4,168 @@ import QtQuick.Layouts
 
 Item {
     id: root
+
     required property var appWindow
     required property var libraryModel
     required property var playerController
+
     anchors.fill: parent
+
     property alias searchBox: pageSearchBox
     property alias searchInput: pageSearchInput
     readonly property bool filtering: appWindow.searchQuery.trim().length > 0 || appWindow.activeFormatFilter !== "ALL"
 
-    function getPopularGenres() {
-        const groups = root.libraryModel.catalogGroups();
-        const raw = groups.genres || [];
-        if (!Array.isArray(raw)) return [{ name: "Soundtrack", count: 1 }, { name: "Rock", count: 1 }, { name: "Pop", count: 1 }, { name: "Electronic", count: 1 }];
-        const list = raw.map(function(g) {
-            if (!g) return null;
-            if (typeof g === "object") return { name: (g.name || "").trim(), count: g.count || 0 };
-            if (typeof g === "string") return { name: g.trim(), count: 1 };
-            return null;
-        }).filter(function(g) {
-            return g && g.name.length > 0 && g.name.toLowerCase() !== "unknown";
-        });
-        list.sort(function(a, b) { return b.count - a.count; });
-        return list.length > 0 ? list.slice(0, 16) : [
-            { name: "Lossless", count: 1 },
-            { name: "Rock", count: 1 },
-            { name: "Pop", count: 1 },
-            { name: "Electronic", count: 1 },
-            { name: "Soundtrack", count: 1 },
-            { name: "Hip Hop", count: 1 },
-            { name: "Jazz", count: 1 }
-        ];
+    property var cachedGroups: ({})
+
+    function refreshCatalog() {
+        if (root.libraryModel && typeof root.libraryModel.catalogGroups === "function") {
+            cachedGroups = root.libraryModel.catalogGroups()
+        }
     }
 
-    function getTopArtists() {
-        const groups = root.libraryModel.catalogGroups();
-        const raw = groups.artists || [];
-        if (!Array.isArray(raw)) return [];
-        const list = raw.map(function(a) {
-            if (!a) return null;
-            if (typeof a === "object") return { name: (a.name || "").trim(), count: a.count || 0 };
-            if (typeof a === "string") return { name: a.trim(), count: 1 };
-            return null;
-        }).filter(function(a) {
-            return a && a.name.length > 0 && a.name.toLowerCase() !== "unknown artist";
-        });
-        list.sort(function(a, b) { return b.count - a.count; });
-        return list.slice(0, 14);
+    Component.onCompleted: refreshCatalog()
+
+    Connections {
+        target: root.libraryModel
+        function onTracksChanged() { root.refreshCatalog() }
+        function onChanged() { root.refreshCatalog() }
+    }
+
+    // Deduplicated genres by normalized lowercase name
+    readonly property var popularGenres: {
+        const raw = (cachedGroups && cachedGroups.genres) || []
+        if (!Array.isArray(raw)) return []
+        const seen = {}
+        const list = []
+        for (let i = 0; i < raw.length; ++i) {
+            const g = raw[i]
+            if (!g) continue
+            const name = (typeof g === "object" ? (g.name || "") : String(g)).trim()
+            if (!name || name.toLowerCase() === "unknown") continue
+            const normKey = name.toLowerCase()
+            if (seen[normKey]) {
+                seen[normKey].count += (g.count || 1)
+                continue
+            }
+            const item = {
+                name: name,
+                count: g.count || 1,
+                track: (typeof g === "object" && g.track) ? g.track : ({})
+            }
+            seen[normKey] = item
+            list.push(item)
+        }
+        list.sort(function(a, b) { return b.count - a.count })
+        return list.slice(0, 12)
+    }
+
+    // Deduplicated artists by normalized lowercase name
+    readonly property var topArtists: {
+        const raw = (cachedGroups && cachedGroups.artists) || []
+        if (!Array.isArray(raw)) return []
+        const seen = {}
+        const list = []
+        for (let i = 0; i < raw.length; ++i) {
+            const a = raw[i]
+            if (!a) continue
+            const name = (typeof a === "object" ? (a.name || "") : String(a)).trim()
+            if (!name || name.toLowerCase() === "unknown" || name.toLowerCase() === "unknown artist") continue
+            const normKey = name.toLowerCase()
+            if (seen[normKey]) {
+                seen[normKey].count += (a.count || 1)
+                continue
+            }
+            const item = {
+                name: name,
+                count: a.count || 1,
+                track: (typeof a === "object" && a.track) ? a.track : ({})
+            }
+            seen[normKey] = item
+            list.push(item)
+        }
+        list.sort(function(a, b) { return b.count - a.count })
+        return list.slice(0, 12)
+    }
+
+    // Deduplicated recent listens: unique track and unique artist per card, excluding current playing track
+    readonly property var recentListens: {
+        const history = root.appWindow.playbackHistory
+        if (!history || !Array.isArray(history) || !history.length) return []
+        const currentPath = (root.playerController && root.playerController.currentTrack) ? root.playerController.currentTrack.filePath : ""
+        const seenTrack = {}
+        if (currentPath) {
+            seenTrack[currentPath] = true
+        }
+        const seenArtist = {}
+        const list = []
+
+        function getArtistTokens(str) {
+            if (!str) return []
+            return str.split(/[,;&/]|(?:\s+(?:feat\.?|ft\.?|with|x)\s+)/i)
+                .map(s => s.trim().toLowerCase())
+                .filter(s => s.length > 0)
+        }
+
+        for (let i = 0; i < history.length; ++i) {
+            const t = history[i]
+            if (!t || !t.filePath) continue
+            if (seenTrack[t.filePath]) continue
+            seenTrack[t.filePath] = true
+
+            const tokens = getArtistTokens(t.artist)
+            let duplicate = false
+            for (let j = 0; j < tokens.length; ++j) {
+                if (seenArtist[tokens[j]]) {
+                    duplicate = true
+                    break
+                }
+            }
+            if (duplicate) continue
+
+            for (let j = 0; j < tokens.length; ++j) {
+                seenArtist[tokens[j]] = true
+            }
+
+            list.push(t)
+            if (list.length >= 8) break
+        }
+        return list
     }
 
     ColumnLayout {
         anchors.fill: parent
         anchors.leftMargin: 28
         anchors.rightMargin: 28
-        anchors.topMargin: 20
+        anchors.topMargin: 16
         anchors.bottomMargin: 16
-        spacing: 16
+        spacing: 14
 
-        // Header
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 14
-
-            ColumnLayout {
-                spacing: 3
-
-                Label {
-                    text: "Search Library"
-                    color: textPrimary
-                    font.family: displayFont
-                    font.pixelSize: 22
-                    font.weight: Font.Bold
-                    font.letterSpacing: -0.3
-                }
-
-                Label {
-                    text: root.filtering
-                        ? (root.libraryModel.visibleTrackCount + " matching " + (root.libraryModel.visibleTrackCount === 1 ? "track" : "tracks"))
-                        : "Search by title, artist, album, or audio format"
-                    color: textSecondary
-                    font.family: bodyFont
-                    font.pixelSize: 12
-                }
-            }
-
-            Rectangle {
-                Layout.preferredHeight: 22
-                Layout.preferredWidth: countTagLbl.implicitWidth + 14
-                radius: 11
-                color: surfaceTag
-                border.width: 1
-                border.color: borderSubtle
-
-                Label {
-                    id: countTagLbl
-                    anchors.centerIn: parent
-                    text: root.filtering
-                        ? (root.libraryModel.visibleTrackCount + " of " + root.libraryModel.trackCount + " songs")
-                        : (root.libraryModel.trackCount + " songs")
-                    color: silverDim
-                    font.family: monoFont
-                    font.pixelSize: 10
-                }
-            }
-
-            Item {
-                Layout.fillWidth: true
-            }
-
-            PressDepthIconButton {
-                visible: root.filtering
-                boxSize: 34
-                iconSize: 16
-                iconName: "rotate-ccw"
-                tint: recordRedHover
-                tooltipText: "Reset Search"
-                onClicked: {
-                    root.appWindow.searchQuery = "";
-                    root.appWindow.activeFormatFilter = "ALL";
-                }
-            }
-        }
-
-        // Search box
+        // Hero Search Box
         Rectangle {
             id: pageSearchBox
             Layout.fillWidth: true
             Layout.preferredHeight: 46
-            radius: 10
+            radius: 12
             color: pageSearchInput.activeFocus ? surfaceElevated : surfaceCard
             border.width: pageSearchInput.activeFocus ? 1.5 : 1
             border.color: pageSearchInput.activeFocus ? recordRedHover : borderVariant
 
-            Behavior on color { ColorAnimation { duration: 120 } }
-            Behavior on border.color { ColorAnimation { duration: 120 } }
+            Behavior on color { ColorAnimation { duration: UiConstants.durationFast } }
+            Behavior on border.color { ColorAnimation { duration: UiConstants.durationFast } }
 
             RowLayout {
                 anchors.fill: parent
-                anchors.leftMargin: 14
-                anchors.rightMargin: 12
-                spacing: 10
+                anchors.leftMargin: 16
+                anchors.rightMargin: 14
+                spacing: 12
 
                 LucideIcon {
-                    Layout.preferredWidth: 16
-                    Layout.preferredHeight: 16
+                    Layout.preferredWidth: 18
+                    Layout.preferredHeight: 18
                     icon: "search"
                     color: pageSearchInput.activeFocus ? recordRedHover : silverDim
 
-                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on color { ColorAnimation { duration: UiConstants.durationFast } }
                 }
 
                 TextInput {
@@ -176,17 +191,39 @@ Item {
                     }
                 }
 
+                // Keyboard shortcut hint when idle
+                Rectangle {
+                    visible: pageSearchInput.text.length === 0
+                    Layout.preferredHeight: 22
+                    Layout.preferredWidth: shortcutLabel.implicitWidth + 12
+                    radius: 5
+                    color: surfaceTag
+                    border.width: 1
+                    border.color: borderSubtle
+
+                    Label {
+                        id: shortcutLabel
+                        anchors.centerIn: parent
+                        text: "Ctrl + F"
+                        color: silverDim
+                        font.family: monoFont
+                        font.pixelSize: 10
+                        font.weight: Font.DemiBold
+                    }
+                }
+
+                // Clear button when active text exists
                 Rectangle {
                     visible: pageSearchInput.text.length > 0
-                    Layout.preferredWidth: 22
-                    Layout.preferredHeight: 22
-                    radius: 11
+                    Layout.preferredWidth: 24
+                    Layout.preferredHeight: 24
+                    radius: 12
                     color: clearMouse.containsMouse ? surfaceElevated : "transparent"
 
                     LucideIcon {
                         anchors.centerIn: parent
-                        Layout.preferredWidth: 12
-                        Layout.preferredHeight: 12
+                        Layout.preferredWidth: 14
+                        Layout.preferredHeight: 14
                         icon: "x"
                         color: clearMouse.containsMouse ? textPrimary : silverDim
                     }
@@ -197,15 +234,15 @@ Item {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            pageSearchInput.text = "";
-                            root.appWindow.searchQuery = "";
+                            pageSearchInput.text = ""
+                            root.appWindow.searchQuery = ""
                         }
                     }
                 }
             }
         }
 
-        // Format chips
+        // Format Filter Pills Bar
         RowLayout {
             Layout.fillWidth: true
             spacing: 10
@@ -225,8 +262,8 @@ Item {
 
                 Repeater {
                     model: [
-                        { id: "ALL", label: "All formats", icon: "music" },
-                        { id: "FLAC", label: "Lossless", icon: "audio-lines" },
+                        { id: "ALL", label: "All Formats", icon: "disc" },
+                        { id: "FLAC", label: "Lossless (FLAC)", icon: "audio-lines" },
                         { id: "MP3", label: "MP3", icon: "music" },
                         { id: "AAC", label: "AAC / M4A", icon: "sparkles" }
                     ]
@@ -244,8 +281,8 @@ Item {
                             ? recordRed
                             : (chipMouse.containsMouse ? borderVariant : borderSubtle)
 
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                        Behavior on border.color { ColorAnimation { duration: 120 } }
+                        Behavior on color { ColorAnimation { duration: UiConstants.durationFast } }
+                        Behavior on border.color { ColorAnimation { duration: UiConstants.durationFast } }
 
                         RowLayout {
                             id: chipRow
@@ -279,18 +316,57 @@ Item {
                 }
             }
 
+            // Stat tag when idle
+            Rectangle {
+                visible: !root.filtering && root.libraryModel.trackCount > 0
+                Layout.preferredHeight: 24
+                Layout.preferredWidth: countTagLbl.implicitWidth + 16
+                radius: 12
+                color: surfaceTag
+                border.width: 1
+                border.color: borderSubtle
+
+                Label {
+                    id: countTagLbl
+                    anchors.centerIn: parent
+                    text: root.libraryModel.trackCount + " songs"
+                    color: silverDim
+                    font.family: monoFont
+                    font.pixelSize: 10
+                    font.weight: Font.DemiBold
+                }
+            }
+
+            // Match count when filtering
             Label {
                 visible: root.filtering
-                text: root.libraryModel.visibleTrackCount + (root.libraryModel.visibleTrackCount === 1 ? " match" : " matches")
+                text: root.libraryModel.visibleTrackCount + (root.libraryModel.visibleTrackCount === 1 ? " track found" : " tracks found")
                 color: silverDim
                 font.family: monoFont
                 font.pixelSize: 11
             }
+
+            // Reset button when filtering
+            PressDepthIconButton {
+                visible: root.filtering
+                boxSize: 30
+                iconSize: 14
+                iconName: "rotate-ccw"
+                tint: recordRedHover
+                tooltipText: "Reset Search & Filters"
+                onClicked: {
+                    pageSearchInput.text = ""
+                    root.appWindow.searchQuery = ""
+                    root.appWindow.activeFormatFilter = "ALL"
+                }
+            }
         }
 
-        // Results
+        // Search Results List (visible during active query or filter)
         ListView {
             id: searchResults
+            activeFocusOnTab: true
+            onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: root.filtering
@@ -298,7 +374,12 @@ Item {
             model: root.libraryModel
             spacing: 4
             boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: SleekScrollBar {}
+            flickDeceleration: UiConstants.flickDeceleration
+            maximumFlickVelocity: UiConstants.maximumFlickVelocity
+            cacheBuffer: UiConstants.cacheBuffer
+            pixelAligned: UiConstants.pixelAligned
+            reuseItems: true
+            ScrollBar.vertical: AutoHideScrollBar {}
 
             header: Item {
                 width: searchResults.width
@@ -320,7 +401,7 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     Label {
-                        text: root.appWindow.searchQuery.length > 0 ? "Best matches first" : "Filtered by format"
+                        text: root.appWindow.searchQuery.length > 0 ? "Sorted by relevance" : "Filtered by format"
                         color: silverDim
                         font.family: monoFont
                         font.pixelSize: 10
@@ -347,33 +428,39 @@ Item {
                 subtitle: "Try a different search or clear the format filter"
                 actionLabel: "Clear Search"
                 onActionClicked: {
-                    root.appWindow.searchQuery = "";
-                    root.appWindow.activeFormatFilter = "ALL";
+                    pageSearchInput.text = ""
+                    root.appWindow.searchQuery = ""
+                    root.appWindow.activeFormatFilter = "ALL"
                 }
             }
         }
 
-        // Idle state discovery
-        ScrollView {
+        // Idle Discovery View (visible when no search query or filter is active)
+        Flickable {
+            id: idleScrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: !root.filtering
             clip: true
-            ScrollBar.horizontal.policy: ScrollBar.AlwaysOff
-            ScrollBar.vertical: SleekScrollBar {}
-            contentWidth: availableWidth
-            contentHeight: idleColumn.implicitHeight + 24
+            readonly property real availableWidth: width
+            contentWidth: width
+            contentHeight: idleColumn.implicitHeight + 32
+            flickDeceleration: UiConstants.flickDeceleration
+            maximumFlickVelocity: UiConstants.maximumFlickVelocity
+            pixelAligned: UiConstants.pixelAligned
+            boundsBehavior: Flickable.StopAtBounds
+            ScrollBar.vertical: AutoHideScrollBar {}
 
             ColumnLayout {
                 id: idleColumn
-                width: parent.width
-                spacing: 20
+                width: idleScrollView.availableWidth
+                spacing: 24
 
-                // Quick recent listens (compact list)
+                // Section 1: Recent Listens Shelf (deduplicated by artist)
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 8
-                    visible: root.appWindow.playbackHistory && root.appWindow.playbackHistory.length > 0
+                    spacing: 12
+                    visible: root.recentListens.length > 0
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -389,147 +476,116 @@ Item {
                         }
                     }
 
-                    Repeater {
-                        model: root.appWindow.playbackHistory ? root.appWindow.playbackHistory.slice(0, 4) : []
-                        delegate: SongRow {
-                            Layout.fillWidth: true
+                    ListView {
+                        activeFocusOnTab: true
+                        onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
+                        Layout.fillWidth: true
+                        height: 205
+                        orientation: ListView.Horizontal
+                        spacing: 14
+                        clip: false
+                        boundsBehavior: Flickable.StopAtBounds
+                        flickDeceleration: UiConstants.flickDeceleration
+                        maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                        cacheBuffer: UiConstants.cacheBuffer
+                        pixelAligned: UiConstants.pixelAligned
+                        reuseItems: true
+                        model: root.recentListens
+
+                        delegate: HomeSongCard {
+                            cardWidth: 135
+                            cardHeight: 200
                             track: modelData
-                            showAlbum: true
-                            showCover: true
-                            showDuration: true
-                            showHeart: true
                             onClicked: root.appWindow.playTrack(modelData)
-                            onFavoriteClicked: root.appWindow.toggleFavorite(modelData.filePath)
                         }
                     }
                 }
 
-                // Top Artists
+                // Section 2: Explore Genres Grid (deduplicated by normalized name)
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 10
-                    visible: root.libraryModel.trackCount > 0
+                    spacing: 12
+                    visible: root.popularGenres.length > 0
 
-                    SectionLabel {
-                        text: "Top Artists"
+                    RowLayout {
+                        Layout.fillWidth: true
+                        SectionLabel {
+                            text: "Explore Genres"
+                        }
+                        Item { Layout.fillWidth: true }
+                        Label {
+                            text: root.popularGenres.length + " categories"
+                            color: silverDim
+                            font.family: monoFont
+                            font.pixelSize: 10
+                        }
                     }
 
                     Flow {
+                        id: genreFlow
                         Layout.fillWidth: true
-                        spacing: 8
+                        spacing: 12
+                        readonly property int cols: Math.max(2, Math.min(5, Math.floor((width - 4) / 180)))
+                        readonly property real cardW: Math.floor((width - (cols - 1) * 12) / cols)
 
                         Repeater {
-                            model: (root.libraryModel && root.libraryModel.trackCount >= 0 && root.libraryModel.folders !== undefined) ? root.getTopArtists() : []
-
-                            Rectangle {
-                                height: 28
-                                width: artistTagRow.implicitWidth + 20
-                                radius: height / 2
-                                color: artistTagMouse.containsMouse ? surfaceElevated : surfaceTag
-                                border.width: 1
-                                border.color: artistTagMouse.containsMouse ? borderVariant : borderSubtle
-
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                                Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                                RowLayout {
-                                    id: artistTagRow
-                                    anchors.centerIn: parent
-                                    spacing: 6
-
-                                    LucideIcon {
-                                        Layout.preferredWidth: 12
-                                        Layout.preferredHeight: 12
-                                        icon: "user"
-                                        color: artistTagMouse.containsMouse ? recordRedHover : silverDim
-                                    }
-
-                                    Label {
-                                        text: (modelData && modelData.name) ? modelData.name : String(modelData)
-                                        color: artistTagMouse.containsMouse ? textPrimary : textSecondary
-                                        font.family: monoFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: artistTagMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        const q = (modelData && modelData.name) ? modelData.name : String(modelData);
-                                        pageSearchInput.text = q;
-                                        root.appWindow.searchQuery = q;
-                                    }
-                                }
+                            model: root.popularGenres
+                            delegate: GenreCard {
+                                cardWidth: genreFlow.cardW
+                                cardHeight: 95
+                                cardRadius: 12
+                                name: modelData.name
+                                count: modelData.count
+                                track: modelData.track
+                                onClicked: root.appWindow.openCatalogDetail("genre", modelData.name, modelData.track)
                             }
                         }
                     }
                 }
 
-                // Explore Genres
+                // Section 3: Popular Artists Shelf (deduplicated by normalized name)
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 10
-                    visible: root.libraryModel.trackCount > 0
+                    spacing: 12
+                    visible: root.topArtists.length > 0
 
-                    SectionLabel {
-                        text: "Explore Genres"
+                    RowLayout {
+                        Layout.fillWidth: true
+                        SectionLabel {
+                            text: "Popular Artists"
+                        }
+                        Item { Layout.fillWidth: true }
+                        Label {
+                            text: "In your library"
+                            color: silverDim
+                            font.family: monoFont
+                            font.pixelSize: 10
+                        }
                     }
 
-                    Flow {
+                    ListView {
+                        activeFocusOnTab: true
+                        onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                         Layout.fillWidth: true
-                        spacing: 8
+                        height: 180
+                        orientation: ListView.Horizontal
+                        spacing: 14
+                        clip: false
+                        boundsBehavior: Flickable.StopAtBounds
+                        flickDeceleration: UiConstants.flickDeceleration
+                        maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                        cacheBuffer: UiConstants.cacheBuffer
+                        pixelAligned: UiConstants.pixelAligned
+                        reuseItems: true
+                        model: root.topArtists
 
-                        Repeater {
-                            model: (root.libraryModel && root.libraryModel.trackCount >= 0 && root.libraryModel.folders !== undefined) ? root.getPopularGenres() : []
-
-                            Rectangle {
-                                height: 28
-                                width: genreTagRow.implicitWidth + 20
-                                radius: height / 2
-                                color: genreTagMouse.containsMouse ? surfaceElevated : surfaceTag
-                                border.width: 1
-                                border.color: genreTagMouse.containsMouse ? borderVariant : borderSubtle
-
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                                Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                                RowLayout {
-                                    id: genreTagRow
-                                    anchors.centerIn: parent
-                                    spacing: 6
-
-                                    LucideIcon {
-                                        Layout.preferredWidth: 12
-                                        Layout.preferredHeight: 12
-                                        icon: "sparkles"
-                                        color: genreTagMouse.containsMouse ? recordRedHover : silverDim
-                                    }
-
-                                    Label {
-                                        text: (modelData && modelData.name) ? modelData.name : String(modelData)
-                                        color: genreTagMouse.containsMouse ? textPrimary : textSecondary
-                                        font.family: monoFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: genreTagMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        const q = (modelData && modelData.name) ? modelData.name : String(modelData);
-                                        pageSearchInput.text = q;
-                                        root.appWindow.searchQuery = q;
-                                    }
-                                }
-                            }
+                        delegate: ArtistCard {
+                            cardWidth: 110
+                            cardHeight: 175
+                            name: modelData.name
+                            count: modelData.count
+                            track: modelData.track
+                            onClicked: root.appWindow.openCatalogDetail("artist", modelData.name, modelData.track)
                         }
                     }
                 }

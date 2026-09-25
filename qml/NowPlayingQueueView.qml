@@ -10,6 +10,17 @@ Item {
     anchors.fill: parent
     visible: opacity > 0.001
     opacity: appWindow.nowPlayingMode === "queue" ? 1.0 : 0.0
+    scale: appWindow.nowPlayingMode === "queue" ? 1.0 : 0.97
+    enabled: appWindow.nowPlayingMode === "queue"
+    layer.enabled: opacity < 0.999 && opacity > 0.001
+    layer.smooth: true
+
+    Behavior on opacity {
+        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
+    }
+    Behavior on scale {
+        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
+    }
 
     function scrollToCurrentTrack() {
         const entries = appWindow.queueEntries
@@ -34,23 +45,26 @@ Item {
         }
     }
 
-    Behavior on opacity {
-        NumberAnimation { duration: 280; easing.type: Easing.OutCubic }
-    }
-
     ColumnLayout {
         anchors.fill: parent
         spacing: 14
 
         ListView {
             id: queueListView
+            activeFocusOnTab: true
+            onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
             model: root.appWindow.queueEntries
             spacing: 4
             boundsBehavior: Flickable.StopAtBounds
-            ScrollBar.vertical: SleekScrollBar { anchors.rightMargin: 8 }
+            flickDeceleration: UiConstants.flickDeceleration
+            maximumFlickVelocity: UiConstants.maximumFlickVelocity
+            cacheBuffer: UiConstants.cacheBuffer
+            pixelAligned: UiConstants.pixelAligned
+            reuseItems: true
+            ScrollBar.vertical: AutoHideScrollBar { anchors.rightMargin: 8 }
 
             delegate: QueueTrackRow {
                 width: ListView.view.width - 24

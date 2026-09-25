@@ -37,7 +37,8 @@ void StreamingController::connectSubsonic(const QString &serverUrl, const QStrin
     const QString base = normalizeServerUrl(serverUrl, 4533);
     const QString user = username.trimmed();
     if (base.isEmpty() || user.isEmpty() || password.isEmpty()) {
-        emit serverFailed("subsonic", QString("Enter a server URL, username, and password."));
+        emit serverFailed("subsonic",
+                          QString("Enter a valid server URL, username, and password. Public servers require HTTPS."));
         return;
     }
     const QString salt = randomSalt();
@@ -96,13 +97,15 @@ void StreamingController::refreshSubsonic(const QString &base, const QString &us
     const QString token = md5Hex(password + salt);
     auto allIds = std::make_shared<QStringList>();
     auto albums = std::make_shared<QVariantList>();
-    fetchSubsonicAlbumIds(base, user, token, salt, 0, allIds, albums, tokenSnapshot);
+    auto failed = std::make_shared<bool>(false);
+    fetchSubsonicAlbumIds(base, user, token, salt, 0, allIds, albums, failed, tokenSnapshot);
 }
 
 void StreamingController::fetchSubsonicAlbumIds(const QString &base, const QString &user, const QString &token,
                                                 const QString &salt, int offset, std::shared_ptr<QStringList> ids,
-                                                std::shared_ptr<QVariantList> out, int tokenSnapshot) {
-    if (tokenSnapshot != m_refreshToken)
+                                                std::shared_ptr<QVariantList> out, std::shared_ptr<bool> failed,
+                                                int tokenSnapshot) {
+    if (tokenSnapshot != m_subsonicRefreshToken)
         return;
 
     const QList<QPair<QString, QString>> extra = {
@@ -114,20 +117,28 @@ void StreamingController::fetchSubsonicAlbumIds(const QString &base, const QStri
     request.setTransferTimeout(streaming::detail::requestTimeoutMs);
     QNetworkReply *reply = trackReply(m_net->get(request));
     connect(reply, &QNetworkReply::finished, this, [=, this] {
-        if (tokenSnapshot != m_refreshToken)
+        if (tokenSnapshot != m_subsonicRefreshToken)
             return;
 
         const QJsonObject response = parseSubsonicBody(reply->readAll());
-        if (response.contains("_error")) {
+        if (response.contains("_error") || reply->error() != QNetworkReply::NoError) {
             const QString message = reply->error() != QNetworkReply::NoError
                                         ? friendlyError(reply, response.value("_error").toString())
                                         : response.value("_error").toString();
             setStatus("subsonic", true, message);
             emit serverFailed("subsonic", message);
-            finishRefreshStage();
+            finishRefreshStage("subsonic");
             return;
         }
 
+        // An empty library still returns an albumList2 object; without one, keep the current tracks.
+        if (!response.value("albumList2").isObject()) {
+            const QString message = QString("Unexpected Subsonic response; keeping the previous library.");
+            setStatus("subsonic", true, message);
+            emit serverFailed("subsonic", message);
+            finishRefreshStage("subsonic");
+            return;
+        }
         const QJsonArray page = jsonArrayTolerant(response.value("albumList2").toObject(), "album");
         for (const QJsonValue &entry : page) {
             const QString id = entry.toObject().value("id").toString();
@@ -136,9 +147,9 @@ void StreamingController::fetchSubsonicAlbumIds(const QString &base, const QStri
         }
         if (page.size() < kSubsonicPageSize) {
             fetchSubsonicAlbum(base, user, token, salt, ids, out, std::make_shared<int>(0), std::make_shared<int>(0),
-                               tokenSnapshot);
+                               failed, tokenSnapshot);
         } else {
-            fetchSubsonicAlbumIds(base, user, token, salt, offset + kSubsonicPageSize, ids, out, tokenSnapshot);
+            fetchSubsonicAlbumIds(base, user, token, salt, offset + kSubsonicPageSize, ids, out, failed, tokenSnapshot);
         }
     });
 }
@@ -147,17 +158,20 @@ void StreamingController::fetchSubsonicAlbumIds(const QString &base, const QStri
 void StreamingController::fetchSubsonicAlbum(const QString &base, const QString &user, const QString &token,
                                              const QString &salt, std::shared_ptr<QStringList> ids,
                                              std::shared_ptr<QVariantList> out, std::shared_ptr<int> nextIndex,
-                                             std::shared_ptr<int> activeRequests, int tokenSnapshot) {
-    if (tokenSnapshot != m_refreshToken)
+                                             std::shared_ptr<int> activeRequests, std::shared_ptr<bool> failed,
+                                             int tokenSnapshot) {
+    if (tokenSnapshot != m_subsonicRefreshToken)
         return;
     if (*nextIndex >= ids->size() && *activeRequests == 0) {
-        if (!out->isEmpty()) {
-            QVariantList merged = m_remoteTracks;
-            merged += *out;
-            setRemoteTracks(merged);
+        if (*failed) {
+            const QString message = QString("Some Subsonic albums could not be loaded; keeping the previous library.");
+            setStatus("subsonic", true, message);
+            emit serverFailed("subsonic", message);
+        } else {
+            replaceProviderTracks("subsonic:", *out);
+            setStatus("subsonic", true, QString());
         }
-        setStatus("subsonic", true, QString());
-        finishRefreshStage();
+        finishRefreshStage("subsonic");
         return;
     }
 
@@ -169,12 +183,14 @@ void StreamingController::fetchSubsonicAlbum(const QString &base, const QString 
         request.setTransferTimeout(streaming::detail::requestTimeoutMs);
         QNetworkReply *reply = trackReply(m_net->get(request));
         connect(reply, &QNetworkReply::finished, this, [=, this] {
-            if (tokenSnapshot != m_refreshToken)
+            if (tokenSnapshot != m_subsonicRefreshToken)
                 return;
 
             --*activeRequests;
             const QJsonObject response = parseSubsonicBody(reply->readAll());
-            if (!response.contains("_error")) {
+            if (response.contains("_error") || reply->error() != QNetworkReply::NoError) {
+                *failed = true;
+            } else {
                 const QJsonObject album = response.value("album").toObject();
                 const QString name = album.value("name").toString();
                 const QString cover = album.value("coverArt").toString();
@@ -195,7 +211,7 @@ void StreamingController::fetchSubsonicAlbum(const QString &base, const QString 
                 }
             }
 
-            fetchSubsonicAlbum(base, user, token, salt, ids, out, nextIndex, activeRequests, tokenSnapshot);
+            fetchSubsonicAlbum(base, user, token, salt, ids, out, nextIndex, activeRequests, failed, tokenSnapshot);
         });
     }
 }
@@ -210,7 +226,8 @@ void StreamingController::connectJellyfin(const QString &serverUrl, const QStrin
     const QString base = normalizeServerUrl(serverUrl, 8096);
     const QString user = username.trimmed();
     if (base.isEmpty() || user.isEmpty() || password.isEmpty()) {
-        emit serverFailed("jellyfin", QString("Enter a server URL, username, and password."));
+        emit serverFailed("jellyfin",
+                          QString("Enter a valid server URL, username, and password. Public servers require HTTPS."));
         return;
     }
     const int attempt = ++m_jellyConnectToken;
@@ -304,7 +321,7 @@ void StreamingController::startJellyfinQuickConnect(const QString &serverUrl, bo
 
     const QString base = normalizeServerUrl(serverUrl, 8096);
     if (base.isEmpty()) {
-        emit serverFailed("jellyfin", QString("Enter a Jellyfin server URL."));
+        emit serverFailed("jellyfin", QString("Enter a valid Jellyfin server URL. Public servers require HTTPS."));
         return;
     }
 
@@ -411,7 +428,7 @@ void StreamingController::refreshJellyfin(const QString &base, const QString &us
 
 void StreamingController::fetchJellyfinPage(const QString &base, const QString &userId, const QString &accessToken,
                                             int startIndex, std::shared_ptr<QVariantList> out, int tokenSnapshot) {
-    if (tokenSnapshot != m_refreshToken)
+    if (tokenSnapshot != m_jellyfinRefreshToken)
         return;
 
     QUrl url(base + "/Users/" + userId + "/Items");
@@ -433,18 +450,27 @@ void StreamingController::fetchJellyfinPage(const QString &base, const QString &
     request.setRawHeader("X-Emby-Token", accessToken.toUtf8());
     QNetworkReply *reply = trackReply(m_net->get(request));
     connect(reply, &QNetworkReply::finished, this, [=, this] {
-        if (tokenSnapshot != m_refreshToken)
+        if (tokenSnapshot != m_jellyfinRefreshToken)
             return;
 
         if (reply->error() != QNetworkReply::NoError) {
             const QString message = friendlyError(reply, QString("Couldn't load the Jellyfin library."));
             setStatus("jellyfin", true, message);
             emit serverFailed("jellyfin", message);
-            finishRefreshStage();
+            finishRefreshStage("jellyfin");
             return;
         }
 
-        const QJsonArray items = QJsonDocument::fromJson(reply->readAll()).object().value("Items").toArray();
+        const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+        if (!doc.isObject() || !doc.object().value("Items").isArray()) {
+            const QString message = QString("Couldn't parse the Jellyfin library response.");
+            setStatus("jellyfin", true, message);
+            emit serverFailed("jellyfin", message);
+            finishRefreshStage("jellyfin");
+            return;
+        }
+
+        const QJsonArray items = doc.object().value("Items").toArray();
         for (const QJsonValue &entry : items) {
             const QJsonObject item = entry.toObject();
             if (item.value("Id").toString().isEmpty())
@@ -467,13 +493,9 @@ void StreamingController::fetchJellyfinPage(const QString &base, const QString &
         }
 
         if (items.size() < kJellyfinPageSize) {
-            if (!out->isEmpty()) {
-                QVariantList merged = m_remoteTracks;
-                merged += *out;
-                setRemoteTracks(merged);
-            }
+            replaceProviderTracks("jellyfin:", *out);
             setStatus("jellyfin", true, QString());
-            finishRefreshStage();
+            finishRefreshStage("jellyfin");
             return;
         }
 

@@ -28,9 +28,14 @@ Item {
                 highlightRangeMode: ListView.ApplyRange
                 preferredHighlightBegin: Math.round(height * 0.28)
                 preferredHighlightEnd: Math.round(height * 0.36)
-                highlightMoveDuration: 450
+                highlightMoveDuration: UiConstants.highlightDurationMini
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: SleekScrollBar { visible: root.miniPlayer.lyricDisplayItems.length > 0 }
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                cacheBuffer: UiConstants.cacheBuffer
+                pixelAligned: UiConstants.pixelAligned
+                reuseItems: true
+                ScrollBar.vertical: AutoHideScrollBar {}
 
                 delegate: Item {
                     id: lyricItem
@@ -63,9 +68,9 @@ Item {
                         scale: isCurrent ? 1.03 : 1.0
                         opacity: isCurrent ? 1.0 : (lyricLineMouse.containsMouse ? 0.75 : 0.36)
 
-                        Behavior on color { ColorAnimation { duration: 250 } }
-                        Behavior on opacity { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                        Behavior on scale { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                        Behavior on color { ColorAnimation { duration: UiConstants.durationStd } }
+                        Behavior on opacity { NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd } }
+                        Behavior on scale { NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd } }
                     }
 
                     Row {
@@ -97,22 +102,61 @@ Item {
                         anchors.centerIn: parent
                         spacing: 12
 
-                        Row {
-                            id: waveRow
+                        Item {
+                            id: waveContainer
                             Layout.alignment: Qt.AlignHCenter
+                            Layout.preferredWidth: waveRow.implicitWidth
                             Layout.preferredHeight: 40
-                            spacing: 5
+                            Layout.minimumHeight: 40
+                            Layout.maximumHeight: 40
 
-                            Repeater {
-                                model: [0.4, 0.75, 0.55, 1.0, 0.65, 0.8, 0.45]
-                                delegate: Rectangle {
-                                    required property real modelData
-                                    width: 4
-                                    radius: 2
-                                    color: root.miniPlayer.recordRedHover
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    height: 6 + (root.miniPlayer.playerController.isPlaying ? root.miniPlayer.playerController.audioLevel * 34 * modelData : 0)
-                                    Behavior on height { NumberAnimation { duration: 90; easing.type: Easing.OutCubic } }
+                            property real wavePhase: 0.0
+
+                            NumberAnimation {
+                                target: waveContainer
+                                property: "wavePhase"
+                                from: 0.0
+                                to: 62.83185307179586
+                                duration: 24000
+                                loops: Animation.Infinite
+                                running: root.miniPlayer.playerController.isPlaying && waveContainer.visible
+                            }
+
+                            Row {
+                                id: waveRow
+                                anchors.centerIn: parent
+                                spacing: 5
+
+                                Repeater {
+                                    model: [0.45, 0.70, 0.88, 1.0, 0.88, 0.70, 0.45]
+                                    delegate: Rectangle {
+                                        id: waveBar
+                                        required property int index
+                                        required property real modelData
+                                        width: 3.5
+                                        radius: 1.75
+                                        color: root.miniPlayer.recordRedHover
+                                        anchors.verticalCenter: parent.verticalCenter
+
+                                        readonly property real harmonic: {
+                                            const h1 = Math.sin(waveContainer.wavePhase * 1.5 + index * 0.95)
+                                            const h2 = Math.cos(waveContainer.wavePhase * 2.2 - index * 0.65)
+                                            return (h1 * 0.6 + h2 * 0.4) * 0.5 + 0.5
+                                        }
+                                        readonly property real energy: Math.max(0.20, Math.min(1.0, (root.miniPlayer.playerController.audioLevel * 1.6) + 0.25))
+                                        readonly property real activeHeight: 5 + (harmonic * 28 * modelData * energy)
+
+                                        height: root.miniPlayer.playerController.isPlaying ? activeHeight : 5
+                                        opacity: root.miniPlayer.playerController.isPlaying ? (0.65 + 0.35 * Math.min(1.0, height / 32)) : 0.45
+
+                                        Behavior on height {
+                                            enabled: !root.miniPlayer.playerController.isPlaying
+                                            NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
+                                        }
+                                        Behavior on opacity {
+                                            NumberAnimation { duration: UiConstants.durationStd }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -232,7 +276,7 @@ Item {
                     maxVolumePercent: root.miniPlayer.maxVolumePercent
                     visible: opacity > 0.001
                     opacity: (root.miniPlayer.mode === "lyrics" && root.miniPlayer.volumePillVisible) ? 1.0 : 0.0
-                    Behavior on opacity { NumberAnimation { duration: 120 } }
+                    Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }
                 }
 
                 Row {

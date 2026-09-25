@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <utility>
 
 namespace {
 
@@ -301,6 +302,17 @@ bool PlayerController::selfCheck() {
     if (extractReplayGain(QString()) != 0.0f)
         return false;
 
+    PlayerController restored;
+    const QString restoredPath = QStringLiteral("C:/music/restored.flac");
+    restored.restoreTrack({{"filePath", restoredPath}, {"durationSeconds", 200}}, 42000);
+    if (!restored.m_player->source().isEmpty() || restored.position() != 42000 || restored.duration() != 200000)
+        return false;
+    restored.seek(50000);
+    restored.openDeferredSource();
+    if (restored.m_pendingRestorePositionMs != 50000 ||
+        restored.m_player->source() != QUrl::fromLocalFile(restoredPath))
+        return false;
+
     QByteArray pcm(128000, '\x20');
     QByteArray wave;
     QDataStream stream(&wave, QIODevice::WriteOnly);
@@ -421,25 +433,26 @@ void PlayerController::setReplayGainMode(const QString &mode) {
 }
 
 void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs) {
-    m_pendingRestorePositionMs = positionMs;
-    if (!loadTrack(track)) {
-        m_pendingRestorePositionMs = 0;
-        return;
-    }
-    m_pauseExpected = true;
-    m_player->pause();
-    if (positionMs > 0) {
-        m_position = positionMs;
-        emit positionChanged();
-    }
-}
-
-void PlayerController::playTrack(const QVariantMap &track) {
-    m_pendingRestorePositionMs = 0;
+    // Opening media costs tens of MB in the backend, so a restored track waits until playback is requested.
     if (!loadTrack(track))
         return;
+    // stop() keeps the previous file open; clearing the source releases it until playback starts.
+    m_player->setSource(QUrl());
+    m_pendingRestorePositionMs = positionMs;
+    m_position = positionMs;
+    emit positionChanged();
+    m_duration = track.value("durationSeconds").toLongLong() * 1000;
+    emit durationChanged();
+}
+
+bool PlayerController::playTrack(const QVariantMap &track) {
+    m_pendingRestorePositionMs = 0;
+    if (!loadTrack(track))
+        return false;
+    openDeferredSource();
     m_pauseExpected = false;
     m_player->play();
+    return true;
 }
 
 /// @copydoc PlayerController::loadTrack
@@ -478,13 +491,21 @@ bool PlayerController::loadTrack(const QVariantMap &track) {
     applyEffectiveVolume();
     m_pauseExpected = true;
     m_player->stop();
-    m_player->setSource(mediaSource);
-    m_player->setActiveVideoTrack(-1);
+    m_deferredSource = mediaSource;
     return true;
 }
 
+void PlayerController::openDeferredSource() {
+    if (m_deferredSource.isEmpty())
+        return;
+    m_player->setSource(std::exchange(m_deferredSource, QUrl()));
+    m_player->setActiveVideoTrack(-1);
+}
+
 void PlayerController::togglePlay() {
-    if (m_player->playbackState() == QMediaPlayer::PlayingState) {
+    if (!m_deferredSource.isEmpty()) {
+        play();
+    } else if (m_player->playbackState() == QMediaPlayer::PlayingState) {
         qInfo().noquote() << "[PLAYER] pause source=toggle positionMs=" << m_player->position();
         m_pauseExpected = true;
         m_player->pause();
@@ -496,6 +517,10 @@ void PlayerController::togglePlay() {
 }
 
 void PlayerController::play() {
+    if (!m_deferredSource.isEmpty()) {
+        m_pauseExpected = false;
+        openDeferredSource();
+    }
     if (m_player->playbackState() != QMediaPlayer::PlayingState)
         m_player->play();
 }
@@ -512,6 +537,12 @@ void PlayerController::stop() {
 }
 
 void PlayerController::seek(qint64 positionMs) {
+    if (!m_deferredSource.isEmpty()) {
+        m_pendingRestorePositionMs = positionMs;
+        m_position = positionMs;
+        emit positionChanged();
+        return;
+    }
     m_pendingRestorePositionMs = 0;
     m_player->setPosition(positionMs);
 }

@@ -22,7 +22,16 @@ Item {
     implicitHeight: root.boxSize
 
     readonly property bool isPressed: mouseArea.pressed
-    readonly property bool isHovered: mouseArea.containsMouse
+    readonly property bool isHovered: mouseArea.containsMouse || (root.activeFocus && !root.mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.tooltipText
+    Accessible.onPressAction: root.clicked()
+    activeFocusOnTab: root.opacity > 0
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
 
     Rectangle {
         anchors.fill: parent
@@ -58,6 +67,10 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: root.clicked()
     }
 

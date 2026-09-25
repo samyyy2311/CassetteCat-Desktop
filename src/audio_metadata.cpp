@@ -2,10 +2,13 @@
 #include "image_cache.h"
 
 #include <QBuffer>
+#include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QImageReader>
+#include <QStandardPaths>
 #include <QTextStream>
 #include <QUrl>
 #include <QtEndian>
@@ -34,33 +37,90 @@ QString formatDuration(int totalSeconds) {
     return QString("%1:%2").arg(minutes).arg(seconds, 2, 10, QChar('0'));
 }
 
+namespace {
+
+// Includes the file's size and modification time so edited tags or replaced images get a fresh cover.
+QString artworkCacheKey(const QString &filePath, int targetDim) {
+    const QFileInfo info(filePath);
+    return filePath + ':' + QString::number(info.size()) + ':' +
+           QString::number(info.lastModified().toMSecsSinceEpoch()) + ':' + QString::number(targetDim);
+}
+
+// Extension-less path of the cached cover for \p key; the image is saved with ".png" or ".jpg".
+QString artworkCacheBase(const QString &key) {
+    return QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/covers_v2/" +
+           QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex());
+}
+
+} // namespace
+
 QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension) {
     if (image.isEmpty())
         return {};
-    QByteArray outputImage = image;
-    if (maxDimension > 0) {
-        QBuffer input(&outputImage);
-        if (!input.open(QIODevice::ReadOnly))
-            return {};
-        QImageReader reader(&input);
-        const QSize sourceSize = reader.size();
-        if (!sourceSize.isValid())
-            return {};
-        reader.setScaledSize(sourceSize.scaled(maxDimension, maxDimension, Qt::KeepAspectRatio));
-        const QImage thumbnail = reader.read();
-        if (thumbnail.isNull())
-            return {};
-        outputImage.clear();
-        QBuffer output(&outputImage);
-        if (!output.open(QIODevice::WriteOnly) || !thumbnail.save(&output, png ? "PNG" : "JPEG", png ? -1 : 90))
-            return {};
+    const int targetDim = maxDimension > 0 ? maxDimension : 512;
+    const QString key = artworkCacheKey(filePath, targetDim);
+    const QString targetPath = artworkCacheBase(key) + (png ? ".png" : ".jpg");
+    if (QFileInfo::exists(targetPath)) {
+        return QUrl::fromLocalFile(targetPath).toString();
     }
-    return saveCachedImage(outputImage, filePath + ':' + QString::number(maxDimension), png, "covers");
+
+    QByteArray outputImage = image;
+    QBuffer input(&outputImage);
+    if (!input.open(QIODevice::ReadOnly))
+        return {};
+    QImageReader reader(&input);
+    const QSize sourceSize = reader.size();
+    if (!sourceSize.isValid())
+        return {};
+    if (sourceSize.width() > targetDim || sourceSize.height() > targetDim) {
+        reader.setScaledSize(sourceSize.scaled(targetDim, targetDim, Qt::KeepAspectRatio));
+    }
+    const QImage thumbnail = reader.read();
+    if (thumbnail.isNull())
+        return {};
+    outputImage.clear();
+    QBuffer output(&outputImage);
+    if (!output.open(QIODevice::WriteOnly) || !thumbnail.save(&output, png ? "PNG" : "JPEG", png ? -1 : 88))
+        return {};
+    return saveCachedImage(outputImage, key, png, "covers_v2");
+}
+
+QString saveFolderArtwork(const QString &filePath, int maxDimension) {
+    if (filePath.isEmpty() || !QFileInfo::exists(filePath))
+        return {};
+    const int targetDim = maxDimension > 0 ? maxDimension : 512;
+    const QString key = artworkCacheKey(filePath, targetDim);
+    const bool png = filePath.endsWith(".png", Qt::CaseInsensitive);
+    const QString targetPath = artworkCacheBase(key) + (png ? ".png" : ".jpg");
+    if (QFileInfo::exists(targetPath)) {
+        return QUrl::fromLocalFile(targetPath).toString();
+    }
+
+    QImageReader reader(filePath);
+    const QSize sourceSize = reader.size();
+    if (!sourceSize.isValid())
+        return {};
+    if (sourceSize.width() > targetDim || sourceSize.height() > targetDim) {
+        reader.setScaledSize(sourceSize.scaled(targetDim, targetDim, Qt::KeepAspectRatio));
+    }
+    const QImage thumbnail = reader.read();
+    if (thumbnail.isNull())
+        return {};
+    QByteArray outputImage;
+    QBuffer output(&outputImage);
+    if (!output.open(QIODevice::WriteOnly) || !thumbnail.save(&output, png ? "PNG" : "JPEG", png ? -1 : 88))
+        return {};
+    return saveCachedImage(outputImage, key, png, "covers_v2");
 }
 
 QString extractEmbeddedArtwork(const QString &filePath, int maxDimension) {
     if (filePath.isEmpty())
         return {};
+    const QString cachedBase = artworkCacheBase(artworkCacheKey(filePath, maxDimension > 0 ? maxDimension : 512));
+    for (const char *extension : {".jpg", ".png"}) {
+        if (QFileInfo::exists(cachedBase + extension))
+            return QUrl::fromLocalFile(cachedBase + extension).toString();
+    }
     const QString suffix = QFileInfo(filePath).suffix().toLower();
 
     if (suffix == "m4a" || suffix == "mp4" || suffix == "alac") {
@@ -360,6 +420,8 @@ TrackInfo readTrackInfo(const QString &filePath) {
     info.filePath = filePath;
     info.fileName = fileInfo.fileName();
     info.format = fileInfo.suffix().toUpper();
+    info.fileSize = fileInfo.size();
+    info.lastModified = fileInfo.lastModified().toMSecsSinceEpoch();
     info.title = fallbackTitle;
     info.artist = "Unknown Artist";
     info.album = "Unknown Album";

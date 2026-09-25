@@ -98,8 +98,8 @@ bool ServicesController::selfCheck() {
     if (!services.m_pendingReplies.isEmpty())
         return false;
 
-    return compareVersions("0.5.2", "0.5.1") > 0 && compareVersions("0.5.1", "0.5.1") == 0 &&
-           compareVersions("0.5.0", "0.5.1") < 0 && compareVersions("v1.0.0", "0.9.9") > 0;
+    return compareVersions("0.6.1", "0.6.0") > 0 && compareVersions("0.6.0", "0.6.0") == 0 &&
+           compareVersions("0.5.1", "0.6.0") < 0 && compareVersions("v1.0.0", "0.9.9") > 0;
 }
 
 QNetworkReply *ServicesController::trackReply(QNetworkReply *reply) {
@@ -240,7 +240,7 @@ void ServicesController::checkForUpdates(bool manual) {
 
     const QUrl url(QStringLiteral("https://api.github.com/repos/samyyy2311/CassetteCat-Desktop/releases/latest"));
     QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("CassetteCat/0.5.1"));
+    request.setHeader(QNetworkRequest::UserAgentHeader, QStringLiteral("CassetteCat/0.6.0"));
     request.setRawHeader("Accept", "application/vnd.github.v3+json");
     request.setTransferTimeout(services::detail::requestTimeoutMs);
 
@@ -267,7 +267,7 @@ void ServicesController::checkForUpdates(bool manual) {
             tag = tag.mid(1);
         }
 
-        const QString currentVersion = QStringLiteral("0.5.1");
+        const QString currentVersion = QStringLiteral("0.6.0");
         const bool updateAvailable = compareVersions(tag, currentVersion) > 0;
         emit updateCheckFinished(updateAvailable, tag, releaseUrl, body, manual);
     });

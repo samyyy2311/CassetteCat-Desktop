@@ -42,7 +42,14 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE QString artworkFor(const QString &filePath);
     Q_INVOKABLE void setCustomArtwork(const QString &filePath, const QString &artworkPath);
     Q_INVOKABLE void setAlbumArtwork(const QString &album, const QString &artist, const QString &artworkPath);
-    Q_INVOKABLE QVariantMap trackForPath(const QString &filePath) const;
+    /// Returns the available track for each path, or an empty map where none matches; accepts file URLs.
+    Q_INVOKABLE QVariantList tracksForPaths(const QVariantList &paths) const;
+    Q_INVOKABLE QStringList availablePaths() const;
+    /// Orders names for display: symbols and numbers first, then letters in any script, ignoring leading articles.
+    Q_INVOKABLE int compareNames(const QString &left, const QString &right) const;
+    /// Builds the Home shelves (spotlight, quickPicks, heavyRotation, recentlyPlayed, recentlyAdded, forgottenFavs).
+    Q_INVOKABLE QVariantMap homeRecommendations(const QVariantMap &playCounts, const QVariantMap &seenAt,
+                                                const QVariantMap &favorites, const QVariantList &history) const;
     Q_INVOKABLE QVariantMap updateTrackMetadata(const QVariantMap &metadata);
     Q_INVOKABLE QVariantMap firstPlayableTrack() const;
     Q_INVOKABLE QVariantList playbackTracks() const;
@@ -69,6 +76,8 @@ class LibraryController final : public QAbstractListModel {
                    const QVariantMap &favorites, const QString &sortMetric, bool ascending,
                    const QVariantList &excludedFolders, bool ignoreShortClips);
     void rebuildVisibleRows();
+    void loadLibraryCache();
+    void saveLibraryCache();
     bool isAvailable(const QVariantMap &track) const;
     bool matchesVisibleFilter(const QVariantMap &track) const;
 

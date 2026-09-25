@@ -6,57 +6,43 @@ Rectangle {
     id: root
     property string name: ""
     property int count: 0
+    property var track: ({})
     property string iconName: "disc"
     property real cardWidth: 190
     property real cardHeight: 110
-    property real cardRadius: 16
+    property real cardRadius: 14
 
     signal clicked()
 
-    readonly property var genrePalettes: [
-        { bg1: "#C0392B", bg2: "#8E44AD", border: "#E74C3C", icon: "disc" },         // Velvet Sunset
-        { bg1: "#2980B9", bg2: "#6DD5FA", border: "#3498DB", icon: "radio" },        // Neon Cyan
-        { bg1: "#11998E", bg2: "#38EF7D", border: "#2ECC71", icon: "music" },        // Electric Emerald
-        { bg1: "#8A2387", bg2: "#E94057", border: "#F27121", icon: "zap" },          // Synthwave Horizon
-        { bg1: "#4A00E0", bg2: "#8E2DE2", border: "#7B1FA2", icon: "disc" },         // Deep Cosmic Violet
-        { bg1: "#FF416C", bg2: "#FF4B2B", border: "#FF3366", icon: "heart" },        // Cyber Coral
-        { bg1: "#F7971E", bg2: "#FFD200", border: "#F39C12", icon: "disc" },         // Golden Sun
-        { bg1: "#1A2980", bg2: "#26D0CE", border: "#00BCD4", icon: "audio-lines" },  // Ocean Aurora
-        { bg1: "#3A1C71", bg2: "#D76D77", border: "#E08283", icon: "mic" },          // Dusk Twilight
-        { bg1: "#134E5E", bg2: "#71B280", border: "#27AE60", icon: "folder" }        // Forest Mist
-    ]
+    readonly property bool highlighted: genreMouse.containsMouse || (activeFocus && !mouseFocused)
+    property bool mouseFocused: false
+    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
 
-    readonly property var currentPalette: {
-        let hash = 0
-        const str = root.name || "Music"
-        for (let i = 0; i < str.length; i++) {
-            hash = (hash * 31 + str.charCodeAt(i)) & 0xFFFFFF
-        }
-        return genrePalettes[Math.abs(hash) % genrePalettes.length]
-    }
+    Accessible.role: Accessible.Button
+    Accessible.name: root.name
+    Accessible.onPressAction: root.clicked()
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
 
     width: cardWidth
     height: cardHeight
     radius: cardRadius
     clip: true
-    color: "#181615"
-    border.width: genreMouse.containsMouse ? 1.5 : 1.0
-    border.color: genreMouse.containsMouse ? currentPalette.border : "#2A2825"
-    scale: genreMouse.containsMouse ? 1.03 : 1.0
+    color: root.highlighted ? surfaceElevated : surfaceCard
+    border.width: 1
+    border.color: root.highlighted ? recordRed : borderSubtle
+    scale: root.highlighted ? 1.02 : 1.0
 
-    Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+    Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
     Behavior on border.color { ColorAnimation { duration: 120 } }
+    Behavior on color { ColorAnimation { duration: 120 } }
 
-    Rectangle {
+    Cover {
         anchors.fill: parent
+        track: root.track
         radius: root.cardRadius
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0.0; color: root.currentPalette.bg1 }
-            GradientStop { position: 1.0; color: root.currentPalette.bg2 }
-        }
-        opacity: genreMouse.containsMouse ? 0.85 : 0.65
-        Behavior on opacity { NumberAnimation { duration: 150 } }
+        opacity: 0.28
+        visible: !!(root.track && root.track.filePath)
     }
 
     Rectangle {
@@ -64,33 +50,8 @@ Rectangle {
         radius: root.cardRadius
         gradient: Gradient {
             orientation: Gradient.Vertical
-            GradientStop { position: 0.0; color: "#20000000" }
-            GradientStop { position: 1.0; color: "#95000000" }
-        }
-    }
-
-    Rectangle {
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.rightMargin: -25
-        anchors.bottomMargin: -25
-        width: 100
-        height: 100
-        radius: 50
-        color: "transparent"
-        border.width: 10
-        border.color: "#25FFFFFF"
-        opacity: genreMouse.containsMouse ? 0.9 : 0.5
-        Behavior on opacity { NumberAnimation { duration: 150 } }
-
-        Rectangle {
-            anchors.centerIn: parent
-            width: 50
-            height: 50
-            radius: 25
-            color: "transparent"
-            border.width: 6
-            border.color: "#18FFFFFF"
+            GradientStop { position: 0.0; color: "#25000000" }
+            GradientStop { position: 1.0; color: "#E0181615" }
         }
     }
 
@@ -103,40 +64,40 @@ Rectangle {
             Layout.fillWidth: true
 
             Rectangle {
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-                radius: 16
-                color: "#35000000"
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                radius: 8
+                color: surfaceTag
                 border.width: 1
-                border.color: "#25FFFFFF"
+                border.color: borderSubtle
 
                 LucideIcon {
                     anchors.centerIn: parent
-                    width: 16
-                    height: 16
-                    icon: root.currentPalette.icon
-                    color: "#FFFFFF"
+                    width: 14
+                    height: 14
+                    icon: root.iconName || "disc"
+                    color: root.highlighted ? recordRedHover : textPrimary
                 }
             }
 
             Item { Layout.fillWidth: true }
 
             Rectangle {
-                Layout.preferredHeight: 22
-                Layout.preferredWidth: gCountLbl.implicitWidth + 14
-                radius: 11
-                color: "#40000000"
+                Layout.preferredHeight: 20
+                Layout.preferredWidth: gCountLbl.implicitWidth + 12
+                radius: 10
+                color: surfaceTag
                 border.width: 1
-                border.color: "#30FFFFFF"
+                border.color: borderSubtle
 
                 Label {
                     id: gCountLbl
                     anchors.centerIn: parent
-                    text: root.count + " songs"
-                    color: "#FFFFFF"
+                    text: root.count + (root.count === 1 ? " track" : " tracks")
+                    color: silverDim
                     font.family: monoFont
                     font.pixelSize: 10
-                    font.weight: Font.Bold
+                    font.weight: Font.DemiBold
                 }
             }
         }
@@ -146,9 +107,9 @@ Rectangle {
         Label {
             Layout.fillWidth: true
             text: root.name
-            color: "#FFFFFF"
+            color: root.highlighted ? recordRedHover : textPrimary
             font.family: displayFont
-            font.pixelSize: 16
+            font.pixelSize: 15
             font.weight: Font.Bold
             elide: Text.ElideRight
         }
@@ -159,6 +120,10 @@ Rectangle {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
         onClicked: root.clicked()
     }
 }

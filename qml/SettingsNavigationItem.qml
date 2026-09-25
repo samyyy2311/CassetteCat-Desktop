@@ -20,8 +20,8 @@ Rectangle {
     color: selected
         ? (compact ? root.accentColor : (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623"))
         : (mouse.containsMouse ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#22201D") : "transparent")
-    border.width: (!compact && selected) ? 1 : 0
-    border.color: selected ? (typeof borderVariant !== "undefined" ? borderVariant : "#2C2926") : "transparent"
+    border.width: 0
+    border.color: "transparent"
     Accessible.role: Accessible.Button
     Accessible.name: label
     Accessible.checked: selected

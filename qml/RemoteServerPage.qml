@@ -130,9 +130,6 @@ Item {
         const password = serverPassword.text
         if (!url || !username || !password) { setError("Enter server URL, username, and password."); return }
         setError("")
-        appSettings.setValue("stream/" + protocol + "Url", url)
-        appSettings.setValue("stream/" + protocol + "Username", username)
-        appSettings.setValue("stream/" + protocol + "TrustCert", root.trustCert)
         if (protocol === "jellyfin") { appWindow.jellyfinConnecting = true; streamingController.connectJellyfin(url, username, password, root.trustCert) }
         else { appWindow.subsonicConnecting = true; streamingController.connectSubsonic(url, username, password, root.trustCert) }
     }
@@ -291,6 +288,7 @@ Item {
             cardHeight: 110
             name: itemData && itemData.name ? itemData.name : (itemData && itemData.genre ? itemData.genre : "")
             count: itemData && itemData.count ? itemData.count : 0
+            track: itemData && itemData.track ? itemData.track : (itemData && itemData.filePath ? itemData : ({}))
             onClicked: if (name) appWindow.openCatalogDetail("genre", name, track)
         }
     }
@@ -399,7 +397,7 @@ Item {
                         radius: 14
                         color: "transparent"
                         border.width: isSelected ? 1.5 : 1
-                        border.color: isSelected ? recordRed : (qPillMouse.containsMouse ? "#45FFFFFF" : "#282828")
+                        border.color: isSelected ? recordRed : (qPillMouse.containsMouse ? "#45FFFFFF" : (typeof borderSubtle !== "undefined" ? borderSubtle : Qt.rgba(255, 255, 255, 0.05)))
 
                         Behavior on border.color { ColorAnimation { duration: 100 } }
 
@@ -501,6 +499,9 @@ Item {
             Layout.fillHeight: true
             Layout.topMargin: 12
 
+            // Counts what the visible view shows after search and format filters.
+            readonly property int visibleCount: trackList.visible ? trackList.count : trackGrid.count
+
             property var sortedTracks: {
                 const revision = root.modelRevision
                 const m = root.songSortMetric
@@ -547,7 +548,12 @@ Item {
                 cellWidth: Math.floor((width - 8) / cols)
                 cellHeight: root.activeTab === "albums" ? 255 : (root.activeTab === "genres" ? 120 : 240)
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: SleekScrollBar {}
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                cacheBuffer: UiConstants.cacheBuffer
+                pixelAligned: UiConstants.pixelAligned
+                reuseItems: true
+                ScrollBar.vertical: AutoHideScrollBar {}
 
                 delegate: Item {
                     width: trackGrid.cellWidth
@@ -578,7 +584,12 @@ Item {
                 clip: true
                 spacing: 2
                 boundsBehavior: Flickable.StopAtBounds
-                ScrollBar.vertical: SleekScrollBar {}
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                cacheBuffer: UiConstants.cacheBuffer
+                pixelAligned: UiConstants.pixelAligned
+                reuseItems: true
+                ScrollBar.vertical: AutoHideScrollBar {}
                 model: trackContent.sortedTracks
 
                 delegate: SongRow {
@@ -595,7 +606,7 @@ Item {
 
                 EmptyState {
                     anchors.fill: parent
-                    visible: trackList.count === 0
+                    visible: !streamingController.remoteLibraryLoading && trackList.count === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
                     title: root.searchQuery.length > 0 ? "No Results" : "No Tracks Yet"
                     subtitle: root.searchQuery.length > 0 ? "No tracks match your search" : "Refresh to pull your " + root.serviceName + " library"
@@ -604,9 +615,14 @@ Item {
                 }
             }
 
+            LoadingBar {
+                anchors.fill: parent
+                visible: root.streamingController.remoteLibraryLoading && trackContent.visibleCount === 0
+            }
+
             EmptyState {
                 anchors.fill: parent
-                visible: root.viewMode === "grid" && (root.activeTab === "songs" ? root.trackModel.rowCount() === 0 : root.displayItems.length === 0)
+                visible: !streamingController.remoteLibraryLoading && trackGrid.visible && trackGrid.count === 0
                 catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
                 title: root.activeTab === "playlists" ? "No Playlists" : (root.searchQuery.length > 0 ? "No Results" : "No Tracks Yet")
                 subtitle: root.activeTab === "playlists" ? "Playlists are not available from this server" : (root.searchQuery.length > 0 ? "No tracks match your search" : "Refresh to pull your " + root.serviceName + " library")
@@ -821,7 +837,6 @@ Item {
                         iconName: "key-round"
                         accessibleName: "Connect with Jellyfin Quick Connect"
                         onClicked: {
-                            appSettings.setValue("stream/jellyfinTrustCert", root.trustCert)
                             root.streamingController.startJellyfinQuickConnect(serverUrl.text, root.trustCert)
                         }
                     }

@@ -1062,7 +1062,15 @@ ApplicationWindow {
         const used = {}
         for (const item of shortcutDefinitions.inAppActions) {
             const defaultSequence = shortcutDefinitions.toSequence(item.defaultKey)
-            if (defaultSequence) used[defaultSequence] = true
+            if (!defaultSequence) continue
+            if (!Object.prototype.hasOwnProperty.call(source, item.action)) {
+                used[defaultSequence] = true
+                continue
+            }
+            // A cleared or reassigned action frees its default key; an invalid override falls back to it.
+            const raw = source[item.action]
+            const sequence = raw === "" ? "" : shortcutDefinitions.toSequence(raw)
+            if (raw !== "" && (!sequence || sequence === defaultSequence)) used[defaultSequence] = true
         }
         for (const item of shortcutDefinitions.inAppActions) {
             if (!Object.prototype.hasOwnProperty.call(source, item.action)) continue

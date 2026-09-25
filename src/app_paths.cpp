@@ -27,3 +27,9 @@ QString libraryCacheFilePath() {
     QDir().mkpath(cacheDir);
     return QDir(cacheDir).filePath("library_cache.json");
 }
+
+QString listeningLogFilePath() {
+    const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    QDir().mkpath(dataDir);
+    return QDir(dataDir).filePath("listening_log.jsonl");
+}

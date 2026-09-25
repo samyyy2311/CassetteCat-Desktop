@@ -107,6 +107,7 @@ ApplicationWindow {
     property double historyAccumulatedMs: 0
     property double historyPlayingSince: 0
     property bool historyRecordedForTrack: false
+    property bool historyScrobbledForTrack: false
     property var lastHandledTrack: null
     property int queueRevision: 0
     property bool playbackPending: false
@@ -154,6 +155,7 @@ ApplicationWindow {
     property bool svcAudiodb: true
     property bool svcWiki: true
     property bool svcArchive: true
+    property bool svcDiscord: false
     property bool scrobbleListenBrainzEnabled: false
     property string scrobbleListenBrainzUser: ""
     property bool scrobbleListenBrainzConnected: false
@@ -169,6 +171,12 @@ ApplicationWindow {
 
     ShortcutDefinitions {
         id: shortcutDefinitions
+    }
+
+    Binding {
+        target: discord
+        property: "enabled"
+        value: settingsInitialized && svcDiscord && !offlineBlackout
     }
 
     Binding {
@@ -533,6 +541,7 @@ ApplicationWindow {
         svcAudiodb = appSettings.value("services/audiodb", true)
         svcWiki = appSettings.value("services/wiki", true)
         svcArchive = appSettings.value("services/archive", true)
+        svcDiscord = appSettings.value("services/discord", false)
         scrobbleListenBrainzEnabled = appSettings.value("scrobble/listenbrainz_enabled", false)
         scrobbleListenBrainzUser = appSettings.value("scrobble/listenbrainz_user", "")
         scrobbleListenBrainzConnected = services.hasListenBrainzSession()
@@ -726,6 +735,7 @@ ApplicationWindow {
         playCounts = {}
         playbackHistory = []
         historyRecordedForTrack = false
+        library.clearListeningLog()
     }
 
     function isTrackSelected(path) {
@@ -1001,10 +1011,12 @@ ApplicationWindow {
     }
 
     function resetHistoryTracking(track) {
+        if (historyTrackedTrack) finishHistoryTracking()
         historyTrackedTrack = track && track.filePath ? track : null
         historyAccumulatedMs = 0
         historyPlayingSince = player.isPlaying && historyTrackedTrack ? Date.now() : 0
         historyRecordedForTrack = false
+        historyScrobbledForTrack = false
         if (track && track.format !== "STREAM") {
             services.scrobbleNowPlaying(track)
         }
@@ -1020,23 +1032,33 @@ ApplicationWindow {
         const current = player.currentTrack
         if (!current || !current.filePath) return
         if (!historyTrackedTrack || historyTrackedTrack.filePath !== current.filePath) resetHistoryTracking(current)
-        if (!historyRecordedForTrack) historyPlayingSince = Date.now()
+        historyPlayingSince = Date.now()
     }
 
+    // Plays count like Apple Music, once most of the song (90%) has been heard; without a known length, after
+    // 30 seconds. Scrobbles follow the Last.fm and ListenBrainz rule: half the song or 4 minutes.
     function recordHistoryIfQualified() {
-        if (historyRecordedForTrack || !historyTrackedTrack || historyAccumulatedMs < 30000) return
-        historyRecordedForTrack = true
-        const counts = Object.assign({}, playCounts)
-        counts[historyTrackedTrack.filePath] = (counts[historyTrackedTrack.filePath] || 0) + 1
-        playCounts = counts
-        playbackHistory = [historyTrackedTrack].concat(playbackHistory.filter(track => track.filePath !== historyTrackedTrack.filePath)).slice(0, 50)
-        if (historyTrackedTrack.format !== "STREAM") {
+        if (!historyTrackedTrack) return
+        const durationMs = (historyTrackedTrack.durationSeconds || 0) * 1000 || player.duration
+        if (!historyRecordedForTrack && historyAccumulatedMs >= (durationMs > 0 ? durationMs * 0.9 : 30000)) {
+            historyRecordedForTrack = true
+            const counts = Object.assign({}, playCounts)
+            counts[historyTrackedTrack.filePath] = (counts[historyTrackedTrack.filePath] || 0) + 1
+            playCounts = counts
+            playbackHistory = [historyTrackedTrack].concat(playbackHistory.filter(track => track.filePath !== historyTrackedTrack.filePath)).slice(0, 50)
+        }
+        if (!historyScrobbledForTrack && historyTrackedTrack.format !== "STREAM" && durationMs > 30000
+                && historyAccumulatedMs >= Math.min(durationMs / 2, 240000)) {
+            historyScrobbledForTrack = true
             services.scrobbleTrack(historyTrackedTrack, Math.floor(Date.now() / 1000))
         }
     }
 
     function finishHistoryTracking() {
         pauseHistoryTracking()
+        // Counted song plays are logged with their date and listening time for the yearly recap.
+        if (historyRecordedForTrack && historyTrackedTrack && historyTrackedTrack.format !== "STREAM")
+            library.recordListen(historyTrackedTrack, historyAccumulatedMs)
         historyTrackedTrack = null
     }
 
@@ -1259,6 +1281,7 @@ ApplicationWindow {
     onSvcAudiodbChanged: saveSetting("services/audiodb", svcAudiodb)
     onSvcWikiChanged: saveSetting("services/wiki", svcWiki)
     onSvcArchiveChanged: saveSetting("services/archive", svcArchive)
+    onSvcDiscordChanged: saveSetting("services/discord", svcDiscord)
     onScrobbleListenBrainzEnabledChanged: saveSetting("scrobble/listenbrainz_enabled", scrobbleListenBrainzEnabled)
     onScrobbleLibreFmEnabledChanged: saveSetting("scrobble/librefm_enabled", scrobbleLibreFmEnabled)
     onLyricsSyncOffsetMsChanged: if (settingsInitialized) {
@@ -1436,6 +1459,7 @@ ApplicationWindow {
             "services/audiodb": svcAudiodb,
             "services/wiki": svcWiki,
             "services/archive": svcArchive,
+            "services/discord": svcDiscord,
             "scrobble/listenbrainz_enabled": scrobbleListenBrainzEnabled,
             "scrobble/listenbrainz_user": scrobbleListenBrainzUser,
             "scrobble/librefm_enabled": scrobbleLibreFmEnabled,
@@ -2423,7 +2447,7 @@ ApplicationWindow {
     Timer {
         interval: 1000
         repeat: true
-        running: player.isPlaying && !historyRecordedForTrack
+        running: player.isPlaying && !(historyRecordedForTrack && historyScrobbledForTrack)
         onTriggered: {
             if (historyPlayingSince > 0) historyAccumulatedMs += Date.now() - historyPlayingSince
             historyPlayingSince = Date.now()
@@ -2502,6 +2526,7 @@ ApplicationWindow {
                 svcAudiodb: window.svcAudiodb,
                 svcWiki: window.svcWiki,
                 svcArchive: window.svcArchive,
+                svcDiscord: window.svcDiscord,
                 favoriteTracks: window.favoriteTracks,
                 playlists: window.playlists,
                 playCounts: window.playCounts,
@@ -2573,6 +2598,7 @@ ApplicationWindow {
                     if (data.svcAudiodb !== undefined) window.svcAudiodb = data.svcAudiodb
                     if (data.svcWiki !== undefined) window.svcWiki = data.svcWiki
                     if (data.svcArchive !== undefined) window.svcArchive = data.svcArchive
+                    if (data.svcDiscord !== undefined) window.svcDiscord = data.svcDiscord
                     if (data.favoriteTracks) {
                         window.favoriteTracks = data.favoriteTracks
                         appSettings.setValue("library/favorites", JSON.stringify(data.favoriteTracks))
@@ -3577,6 +3603,7 @@ ApplicationWindow {
                                 svcAudiodb: window.svcAudiodb
                                 svcWiki: window.svcWiki
                                 svcArchive: window.svcArchive
+                                svcDiscord: window.svcDiscord
                                 scrobbleListenBrainzEnabled: window.scrobbleListenBrainzEnabled
                                 scrobbleListenBrainzUser: window.scrobbleListenBrainzUser
                                 scrobbleListenBrainzConnected: window.scrobbleListenBrainzConnected
@@ -3638,6 +3665,7 @@ ApplicationWindow {
                                     else if (name === "audiodb") window.svcAudiodb = value
                                     else if (name === "wiki") window.svcWiki = value
                                     else if (name === "archive") window.svcArchive = value
+                                    else if (name === "discord") window.svcDiscord = value
                                     if (!value) services.cancelNetworkRequests()
                                 }
                                 onOpenJellyfinRequested: page = "jellyfin"

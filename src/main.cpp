@@ -37,6 +37,7 @@
 #include "app_settings.h"
 #include "audio_metadata.h"
 #include "credential_vault.h"
+#include "discord_presence.h"
 #include "image_cache.h"
 #include "library_controller.h"
 #include "library_scanner.h"
@@ -330,6 +331,7 @@ int main(int argc, char *argv[]) {
         check(ServicesController::selfCheck(), "services");
         check(PlayerController::selfCheck(), "player");
         check(MprisController::selfCheck(), "mpris");
+        check(DiscordPresence::selfCheck(), "discord presence");
         check(singleInstanceSelfCheck(), "single instance");
         return passed ? 0 : 1;
     }
@@ -399,6 +401,7 @@ int main(int argc, char *argv[]) {
     });
     SmtcController smtc(&player, &app);
     MprisController mpris(&player, &app);
+    DiscordPresence discord(&player, &app);
     GlobalShortcutController globalShortcuts(&app);
     TrayController tray(appIcon, &app);
 
@@ -471,6 +474,7 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("appSettings", &appSettings);
     engine.rootContext()->setContextProperty("smtc", &smtc);
     engine.rootContext()->setContextProperty("mpris", &mpris);
+    engine.rootContext()->setContextProperty("discord", &discord);
     engine.rootContext()->setContextProperty("globalShortcuts", &globalShortcuts);
     engine.rootContext()->setContextProperty("tray", &tray);
     engine.addImageProvider("cover", new CoverImageProvider);

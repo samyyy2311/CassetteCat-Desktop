@@ -11,7 +11,9 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QDateTime>
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QSaveFile>
@@ -163,6 +165,105 @@ int compareSortKeys(const QString &left, const QString &right) {
     if (catA != catB)
         return catA - catB;
     return QString::localeAwareCompare(keyA, keyB);
+}
+
+int logYear(const QJsonObject &entry) {
+    return QDateTime::fromMSecsSinceEpoch(static_cast<qint64>(entry.value("at").toDouble())).date().year();
+}
+
+QList<QJsonObject> readListeningLog(const QByteArray &log) {
+    QList<QJsonObject> entries;
+    for (const QByteArray &line : log.split('\n')) {
+        const QJsonObject entry = QJsonDocument::fromJson(line).object();
+        if (!entry.value("path").toString().isEmpty() && entry.value("at").toDouble() > 0)
+            entries.append(entry);
+    }
+    return entries;
+}
+
+QVariantMap recapFromLog(const QByteArray &log, int year) {
+    struct Tally {
+        QVariantMap item;
+        int plays = 0;
+        qint64 listenedMs = 0;
+    };
+    const auto add = [](QHash<QString, Tally> &tallies, QList<QString> &order, const QString &key,
+                        const QVariantMap &item, qint64 ms) {
+        if (!tallies.contains(key)) {
+            order.append(key);
+            tallies.insert(key, Tally{item});
+        }
+        Tally &tally = tallies[key];
+        ++tally.plays;
+        tally.listenedMs += ms;
+    };
+    const auto ranked = [](const QHash<QString, Tally> &tallies, const QList<QString> &order, int limit) {
+        QList<Tally> list;
+        for (const QString &key : order)
+            list.append(tallies.value(key));
+        std::stable_sort(list.begin(), list.end(), [](const Tally &a, const Tally &b) {
+            return a.plays != b.plays ? a.plays > b.plays : a.listenedMs > b.listenedMs;
+        });
+        QVariantList result;
+        for (qsizetype i = 0; i < qMin<qsizetype>(limit, list.size()); ++i) {
+            QVariantMap item = list[i].item;
+            item.insert("plays", list[i].plays);
+            item.insert("listenedMs", list[i].listenedMs);
+            result.append(item);
+        }
+        return result;
+    };
+
+    QHash<QString, Tally> songs, artists, albums, genres;
+    QList<QString> songOrder, artistOrder, albumOrder, genreOrder;
+    QVariantList months(12, 0.0);
+    int plays = 0;
+    qint64 listenedMs = 0;
+    qint64 firstListen = 0;
+    for (const QJsonObject &entry : readListeningLog(log)) {
+        if (logYear(entry) != year)
+            continue;
+        const qint64 at = static_cast<qint64>(entry.value("at").toDouble());
+        const qint64 ms = static_cast<qint64>(entry.value("ms").toDouble());
+        const QVariantMap track{{"filePath", entry.value("path").toString()},
+                                {"title", entry.value("title").toString()},
+                                {"artist", entry.value("artist").toString()},
+                                {"album", entry.value("album").toString()},
+                                {"genre", entry.value("genre").toString()}};
+        ++plays;
+        listenedMs += ms;
+        firstListen = firstListen == 0 ? at : qMin(firstListen, at);
+        const int month = QDateTime::fromMSecsSinceEpoch(at).date().month() - 1;
+        months[month] = months[month].toDouble() + ms;
+
+        add(songs, songOrder, pathKey(track.value("filePath").toString()), {{"track", track}}, ms);
+        for (const QString &artist : splitArtists(track.value("artist").toString()))
+            add(artists, artistOrder, artist.toLower(), {{"name", artist}, {"track", track}}, ms);
+        const QString album = track.value("album").toString().trimmed();
+        if (!album.isEmpty())
+            add(albums, albumOrder, album.toLower(), {{"name", album}, {"track", track}}, ms);
+        const QString genre = track.value("genre").toString().trimmed();
+        if (!genre.isEmpty())
+            add(genres, genreOrder, genre.toLower(), {{"name", genre}}, ms);
+    }
+
+    int busiestMonth = -1;
+    for (int i = 0; i < 12; ++i) {
+        if (months[i].toDouble() > 0 && (busiestMonth < 0 || months[i].toDouble() > months[busiestMonth].toDouble()))
+            busiestMonth = i;
+    }
+    return {{"year", year},
+            {"plays", plays},
+            {"listenedMs", listenedMs},
+            {"songCount", songOrder.size()},
+            {"artistCount", artistOrder.size()},
+            {"firstListen", firstListen},
+            {"topSongs", ranked(songs, songOrder, 10)},
+            {"topArtists", ranked(artists, artistOrder, 10)},
+            {"topAlbums", ranked(albums, albumOrder, 5)},
+            {"topGenres", ranked(genres, genreOrder, 3)},
+            {"months", months},
+            {"busiestMonth", busiestMonth}};
 }
 
 } // namespace
@@ -362,6 +463,27 @@ bool LibraryController::selfCheck() {
     const QVariantList inside = tracksInFolders(candidates, {"/Music/Live"});
     if (inside.size() != 1 || inside[0].toMap().value("filePath") != "/Music/Live/song.flac")
         return fail("folder membership");
+    const auto logLine = [](const QString &date, const QString &path, const QString &artist, qint64 ms) {
+        QJsonObject entry{{"path", path}, {"title", path}, {"artist", artist}, {"album", "Album"}};
+        entry.insert("at", QDateTime::fromString(date, Qt::ISODate).toMSecsSinceEpoch());
+        entry.insert("genre", "Pop");
+        entry.insert("ms", ms);
+        return QJsonDocument(entry).toJson(QJsonDocument::Compact) + '\n';
+    };
+    const QByteArray log = logLine("2026-03-10T12:00:00", "a.flac", "Ann & Bo", 60000) +
+                           logLine("2026-03-11T12:00:00", "a.flac", "Ann & Bo", 30000) +
+                           logLine("2026-07-01T12:00:00", "b.flac", "Ann", 200000) +
+                           logLine("2025-12-31T12:00:00", "c.flac", "Cy", 90000) + "not json\n";
+    const QVariantMap recap = recapFromLog(log, 2026);
+    const QVariantList topSongs = recap.value("topSongs").toList();
+    const QVariantList topArtists = recap.value("topArtists").toList();
+    if (recap.value("plays").toInt() != 3 || recap.value("listenedMs").toLongLong() != 290000 ||
+        recap.value("songCount").toInt() != 2 || recap.value("artistCount").toInt() != 2 ||
+        topSongs.value(0).toMap().value("track").toMap().value("filePath") != "a.flac" ||
+        topArtists.value(0).toMap().value("name") != "Ann" || topArtists.value(0).toMap().value("plays") != 3 ||
+        recap.value("busiestMonth").toInt() != 6)
+        return fail("listening recap");
+
     library.setSearchFilter({}, "ALL", {"/"}, false);
     return library.trackCount() == 0;
 }
@@ -490,6 +612,50 @@ QVariantList LibraryController::tracksForPaths(const QVariantList &paths) const 
 
 int LibraryController::compareNames(const QString &left, const QString &right) const {
     return compareSortKeys(left, right);
+}
+
+void LibraryController::recordListen(const QVariantMap &track, qint64 listenedMs) {
+    const QString path = track.value("filePath").toString();
+    if (path.isEmpty() || listenedMs <= 0)
+        return;
+    const QJsonObject entry{{"at", QDateTime::currentMSecsSinceEpoch()},
+                            {"path", path},
+                            {"title", track.value("title").toString()},
+                            {"artist", track.value("artist").toString()},
+                            {"album", track.value("album").toString()},
+                            {"genre", track.value("genre").toString()},
+                            {"ms", listenedMs}};
+    QFile file(listeningLogFilePath());
+    if (!file.open(QIODevice::Append)) {
+        qWarning() << "Could not record listen:" << file.errorString();
+        return;
+    }
+    file.write(QJsonDocument(entry).toJson(QJsonDocument::Compact) + '\n');
+}
+
+QVariantList LibraryController::listeningYears() const {
+    QFile file(listeningLogFilePath());
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    QList<int> years;
+    for (const QJsonObject &entry : readListeningLog(file.readAll())) {
+        if (!years.contains(logYear(entry)))
+            years.append(logYear(entry));
+    }
+    std::sort(years.begin(), years.end(), std::greater<>());
+    QVariantList result;
+    for (int year : years)
+        result.append(year);
+    return result;
+}
+
+QVariantMap LibraryController::listeningRecap(int year) const {
+    QFile file(listeningLogFilePath());
+    return recapFromLog(file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray(), year);
+}
+
+void LibraryController::clearListeningLog() {
+    QFile::remove(listeningLogFilePath());
 }
 
 QStringList LibraryController::availablePaths() const {

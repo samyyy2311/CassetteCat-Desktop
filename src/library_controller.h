@@ -47,6 +47,13 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE QStringList availablePaths() const;
     /// Orders names for display: symbols and numbers first, then letters in any script, ignoring leading articles.
     Q_INVOKABLE int compareNames(const QString &left, const QString &right) const;
+    /// Appends a counted play with the current date and the time listened to the listening log.
+    Q_INVOKABLE void recordListen(const QVariantMap &track, qint64 listenedMs);
+    /// Returns the years that have logged plays, newest first.
+    Q_INVOKABLE QVariantList listeningYears() const;
+    /// Summarizes the logged plays of \p year: totals, top songs, artists, albums, genres and monthly time.
+    Q_INVOKABLE QVariantMap listeningRecap(int year) const;
+    Q_INVOKABLE void clearListeningLog();
     /// Builds the Home shelves (spotlight, quickPicks, heavyRotation, recentlyPlayed, recentlyAdded, forgottenFavs).
     Q_INVOKABLE QVariantMap homeRecommendations(const QVariantMap &playCounts, const QVariantMap &seenAt,
                                                 const QVariantMap &favorites, const QVariantList &history) const;

@@ -33,6 +33,13 @@ QString normalizedPath(QString path) {
     return path;
 }
 
+// A custom cover whose image was deleted is ignored so the track falls back to its own artwork.
+QString customArtwork(const QString &filePath) {
+    const QString custom = SettingsController::globalValue("artwork/custom/" + filePath).toString();
+    const QString local = custom.startsWith("file:") ? QUrl(custom).toLocalFile() : custom;
+    return !custom.isEmpty() && QFileInfo::exists(local) ? custom : QString();
+}
+
 // Adds a trailing separator so a folder does not also match siblings that share its name as a prefix.
 QString folderPrefix(const QString &folder) {
     QString prefix = normalizedPath(folder);
@@ -290,7 +297,7 @@ LibraryController::LibraryController(QObject *parent)
             const QString path = track.value("filePath").toString();
             if (!path.isEmpty() && !seenPaths.contains(path)) {
                 seenPaths.insert(path);
-                const QString custom = SettingsController::globalValue("artwork/custom/" + path).toString();
+                const QString custom = customArtwork(path);
                 if (!custom.isEmpty()) {
                     track.insert("artworkUrl", custom);
                 }
@@ -518,9 +525,8 @@ QString LibraryController::artworkFor(const QString &filePath) {
     const auto cached = m_artworkUrls.constFind(filePath);
     if (cached != m_artworkUrls.cend())
         return *cached;
-    const QString custom = SettingsController::globalValue("artwork/custom/" + filePath).toString();
-    const QString local = custom.startsWith("file:") ? QUrl(custom).toLocalFile() : custom;
-    if (!custom.isEmpty() && QFileInfo::exists(local)) {
+    const QString custom = customArtwork(filePath);
+    if (!custom.isEmpty()) {
         m_artworkUrls.insert(filePath, custom);
         return custom;
     }
@@ -1094,11 +1100,13 @@ void LibraryController::loadLibraryCache() {
     for (QVariant &item : list) {
         QVariantMap track = item.toMap();
         const QString path = track.value("filePath").toString();
-        const QString custom = SettingsController::globalValue("artwork/custom/" + path).toString();
-        if (!custom.isEmpty()) {
+        const QString custom = customArtwork(path);
+        const QString cached = track.value("artworkUrl").toString();
+        if (!custom.isEmpty())
             track.insert("artworkUrl", custom);
-            item = track;
-        }
+        else if (cached.startsWith("file:") && !QFileInfo::exists(QUrl(cached).toLocalFile()))
+            track.remove("artworkUrl");
+        item = track;
     }
 
     beginResetModel();

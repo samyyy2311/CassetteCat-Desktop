@@ -691,9 +691,10 @@ ApplicationWindow {
     function playlistTracks(playlist) {
         if (!playlist) return []
         if (typeof playlist === "string") {
-            const pl = playlists.find(p => p.name === playlist || p.id === playlist)
-            if (pl) playlist = pl
-            else playlist = { name: playlist }
+            // Built-in names win over a custom playlist that happens to share one.
+            const builtIn = ["Favorites", "Most Played", "Recently Added", "Never Played"].includes(playlist)
+            const pl = playlists.find(p => p.id === playlist) || (builtIn ? null : playlists.find(p => p.name === playlist))
+            playlist = pl || { name: playlist }
         }
         if (Array.isArray(playlist.trackPaths)) {
             return tracksForPaths(playlist.trackPaths).filter(track => !!track)

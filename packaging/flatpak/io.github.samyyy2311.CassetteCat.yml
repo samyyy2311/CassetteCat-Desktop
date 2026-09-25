@@ -12,6 +12,9 @@ finish-args:
   - --device=dri
   - --filesystem=host:ro
   - --talk-name=org.freedesktop.secrets
+  - --own-name=org.mpris.MediaPlayer2.CassetteCat
+  - --filesystem=xdg-run/discord-ipc-0
+  - --filesystem=xdg-run/app/com.discordapp.Discord:create
 modules:
   - name: cassettecat
     buildsystem: simple

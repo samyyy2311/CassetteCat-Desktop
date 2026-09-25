@@ -51,6 +51,7 @@ Item {
             }
 
             TransportButton {
+                Accessible.name: "Play"
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
                 anchors.margins: 8

@@ -4311,6 +4311,7 @@ ApplicationWindow {
                             spacing: 10
 
                             TransportButton {
+                                Accessible.name: "Shuffle"
                                 buttonSize: 32
                                 paletteSource: window
                                 iconName: "shuffle"
@@ -4321,6 +4322,7 @@ ApplicationWindow {
                             Item { Layout.fillWidth: true }
 
                             TransportButton {
+                                Accessible.name: "Previous track"
                                 buttonSize: 38
                                 paletteSource: window
                                 iconName: "skip-back"
@@ -4329,6 +4331,7 @@ ApplicationWindow {
                             }
 
                             TransportButton {
+                                Accessible.name: playerVisuallyPlaying ? "Pause" : "Play"
                                 buttonSize: 48
                                 paletteSource: window
                                 iconName: playerVisuallyPlaying ? "pause" : "play"
@@ -4338,6 +4341,7 @@ ApplicationWindow {
                             }
 
                             TransportButton {
+                                Accessible.name: "Next track"
                                 buttonSize: 38
                                 paletteSource: window
                                 iconName: "skip-forward"
@@ -4348,6 +4352,7 @@ ApplicationWindow {
                             Item { Layout.fillWidth: true }
 
                             TransportButton {
+                                Accessible.name: "Repeat"
                                 buttonSize: 32
                                 paletteSource: window
                                 iconName: repeatMode === 2 ? "repeat-1" : "repeat"
@@ -4492,6 +4497,7 @@ ApplicationWindow {
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = true }
                 }
                 TransportButton {
+                    Accessible.name: "Close lyrics search"
                     buttonSize: 30
                     iconName: "x"
                     onClicked: lyricSearchOpen = false
@@ -4513,6 +4519,7 @@ ApplicationWindow {
                     onSubmitted: searchLyricsOnline()
                 }
                 TransportButton {
+                    Accessible.name: "Search lyrics online"
                     buttonSize: 36
                     iconName: "search"
                     accented: true

@@ -100,6 +100,7 @@ Popup {
             }
 
             TransportButton {
+                Accessible.name: "Close"
                 buttonSize: 30
                 iconName: "x"
                 onClicked: root.close()
@@ -128,6 +129,7 @@ Popup {
             }
 
             TransportButton {
+                Accessible.name: "Search"
                 buttonSize: 36
                 iconName: "search"
                 accented: true

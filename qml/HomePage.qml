@@ -155,6 +155,7 @@ Item {
                                     }
 
                                     TransportButton {
+                                        Accessible.name: "Shuffle library"
                                         id: heroShuffleBtn
                                         anchors.right: parent.right
                                         anchors.bottom: parent.bottom
@@ -354,6 +355,7 @@ Item {
                                                 }
 
                                                 TransportButton {
+                                                    Accessible.name: "Play album"
                                                     anchors.right: parent.right
                                                     anchors.bottom: parent.bottom
                                                     anchors.margins: 8

@@ -47,6 +47,7 @@ Item {
         spacing: 10
 
         TransportButton {
+            Accessible.name: "Play all"
             buttonSize: 36
             iconName: "play"
             accented: true
@@ -55,6 +56,7 @@ Item {
         }
 
         TransportButton {
+            Accessible.name: "Shuffle all"
             buttonSize: 36
             iconName: "shuffle"
             iconColor: textPrimary

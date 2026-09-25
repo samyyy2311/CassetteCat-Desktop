@@ -767,6 +767,8 @@ Item {
 
     Dialog {
         id: healthDialog
+        // A fixed width; sizing to the wrapping label made the width depend on itself.
+        width: 360 + leftPadding + rightPadding
         title: "Library health"
         modal: true
         standardButtons: Dialog.Ok

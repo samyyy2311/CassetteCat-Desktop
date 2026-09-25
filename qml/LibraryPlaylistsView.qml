@@ -6,7 +6,6 @@ Item {
     id: root
 
     required property var appWindow
-    anchors.fill: parent
 
     // availableTracks() is a plain function, so libraryRevision makes these refresh after a rescan.
     readonly property var favoritesTracks: {

@@ -59,6 +59,8 @@ TestCase {
 
     function test_menuButtonTogglesPopup() {
         const window = createTemporaryObject(windowComponent, test)
+        // Without a real display the window is laid out after creation, and placement depends on its size.
+        tryVerify(() => window.group.Overlay.overlay.height > 0)
         const button = findMenuButton(window.group)
         const popup = findPopup(window.group)
         verify(button)

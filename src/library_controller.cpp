@@ -304,7 +304,7 @@ bool LibraryController::selfCheck() {
         return fail("available paths");
     const QVariantMap home = library.homeRecommendations(
         {{"C:/Music/keep.flac", 3}}, {{"C:/Music/keep.flac", 50}, {"C:/Music/alternate.wav", 100}},
-        {{"C:/Music/alternate.wav", true}}, {QVariantMap{{"filePath", "C:/Music/keep.flac"}, {"title", "Keep"}}});
+        {{"C:/Music/alternate.wav", true}}, {QVariantMap{{"filePath", "C:\\Music\\keep.flac"}, {"title", "Keep"}}});
     const auto titles = [&](const char *shelf) {
         QStringList result;
         for (const QVariant &track : home.value(shelf).toList())
@@ -501,16 +501,19 @@ QVariantMap LibraryController::homeRecommendations(const QVariantMap &playCounts
                                                    const QVariantMap &favorites, const QVariantList &history) const {
     const auto path = [](const QVariantMap &track) { return track.value("filePath").toString(); };
     QList<QVariantMap> tracks;
-    QSet<QString> identities;
+    QHash<QString, QVariantMap> tracksByIdentity;
+    // Every available file maps to the one track shown for its identity, keyed like saved history paths.
     QHash<QString, QVariantMap> tracksByPath;
     for (const QVariant &value : m_tracks) {
         const QVariantMap track = value.toMap();
         const QString identity = trackIdentity(track);
-        if (!isAvailable(track) || identity.isEmpty() || identities.contains(identity))
+        if (!isAvailable(track) || identity.isEmpty())
             continue;
-        identities.insert(identity);
-        tracks.append(track);
-        tracksByPath.insert(path(track), track);
+        if (!tracksByIdentity.contains(identity)) {
+            tracksByIdentity.insert(identity, track);
+            tracks.append(track);
+        }
+        tracksByPath.insert(pathKey(path(track)), tracksByIdentity.value(identity));
     }
 
     QSet<QString> played;
@@ -552,7 +555,7 @@ QVariantMap LibraryController::homeRecommendations(const QVariantMap &playCounts
     QList<QVariantMap> recentlyPlayed;
     QSet<QString> recentIdentities;
     for (const QVariant &value : history) {
-        const QVariantMap track = tracksByPath.value(path(value.toMap()));
+        const QVariantMap track = tracksByPath.value(pathKey(path(value.toMap())));
         if (!track.isEmpty() && !recentIdentities.contains(trackIdentity(track))) {
             recentIdentities.insert(trackIdentity(track));
             recentlyPlayed.append(track);

@@ -499,6 +499,9 @@ Item {
             Layout.fillHeight: true
             Layout.topMargin: 12
 
+            // Counts what the visible view shows after search and format filters.
+            readonly property int visibleCount: trackList.visible ? trackList.count : trackGrid.count
+
             property var sortedTracks: {
                 const revision = root.modelRevision
                 const m = root.songSortMetric
@@ -614,12 +617,12 @@ Item {
 
             LoadingBar {
                 anchors.fill: parent
-                visible: root.streamingController.remoteLibraryLoading && (root.activeTab === "songs" ? root.trackModel.rowCount() === 0 : root.displayItems.length === 0)
+                visible: root.streamingController.remoteLibraryLoading && trackContent.visibleCount === 0
             }
 
             EmptyState {
                 anchors.fill: parent
-                visible: !streamingController.remoteLibraryLoading && root.viewMode === "grid" && (root.activeTab === "songs" ? root.trackModel.rowCount() === 0 : root.displayItems.length === 0)
+                visible: !streamingController.remoteLibraryLoading && trackGrid.visible && trackGrid.count === 0
                 catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
                 title: root.activeTab === "playlists" ? "No Playlists" : (root.searchQuery.length > 0 ? "No Results" : "No Tracks Yet")
                 subtitle: root.activeTab === "playlists" ? "Playlists are not available from this server" : (root.searchQuery.length > 0 ? "No tracks match your search" : "Refresh to pull your " + root.serviceName + " library")

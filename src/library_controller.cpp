@@ -124,8 +124,7 @@ QString sortKey(const QString &value) {
 int symbolOrNumberCategory(const QString &key) {
     if (key.isEmpty())
         return 0;
-    const QChar first = key.at(0);
-    return (first >= 'a' && first <= 'z') ? 1 : 0;
+    return key.at(0).isLetter() ? 1 : 0;
 }
 
 int compareSortKeys(const QString &left, const QString &right) {
@@ -253,6 +252,9 @@ bool LibraryController::selfCheck() {
     if (compareSortKeys(QStringLiteral("1989"), QStringLiteral("Abbey Road")) >= 0 ||
         compareSortKeys(QStringLiteral("The Beatles"), QStringLiteral("Bee Gees")) >= 0)
         return fail("compareSortKeys order");
+    if (compareSortKeys(QStringLiteral("Émile"), QStringLiteral("1989")) <= 0 ||
+        compareSortKeys(QStringLiteral("Кино"), QStringLiteral("#1 Hits")) <= 0)
+        return fail("compareSortKeys unicode letters");
     library.m_tracks = {
         QVariantMap{
             {"filePath", "C:/Music/keep.flac"}, {"title", "Keep"}, {"format", "FLAC"}, {"durationSeconds", 180}},
@@ -452,6 +454,10 @@ QVariantList LibraryController::tracksForPaths(const QVariantList &paths) const 
             result[index] = track;
     }
     return result;
+}
+
+int LibraryController::compareNames(const QString &left, const QString &right) const {
+    return compareSortKeys(left, right);
 }
 
 QStringList LibraryController::availablePaths() const {

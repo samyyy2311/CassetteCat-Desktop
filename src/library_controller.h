@@ -45,6 +45,8 @@ class LibraryController final : public QAbstractListModel {
     /// Returns the available track for each path, or an empty map where none matches; accepts file URLs.
     Q_INVOKABLE QVariantList tracksForPaths(const QVariantList &paths) const;
     Q_INVOKABLE QStringList availablePaths() const;
+    /// Orders names for display: symbols and numbers first, then letters in any script, ignoring leading articles.
+    Q_INVOKABLE int compareNames(const QString &left, const QString &right) const;
     /// Builds the Home shelves (spotlight, quickPicks, heavyRotation, recentlyPlayed, recentlyAdded, forgottenFavs).
     Q_INVOKABLE QVariantMap homeRecommendations(const QVariantMap &playCounts, const QVariantMap &seenAt,
                                                 const QVariantMap &favorites, const QVariantList &history) const;

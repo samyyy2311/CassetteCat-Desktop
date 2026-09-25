@@ -2015,25 +2015,9 @@ ApplicationWindow {
         return parts.length ? parts : [String(raw).trim()]
     }
 
-    function sortKey(value) {
-        if (!value) return ""
-        const withoutArticle = String(value).replace(/^(the|an|a)\s+/i, "")
-        const clean = withoutArticle.replace(/^['"\[\({#.\-_ \t]+/, "")
-        return (clean || withoutArticle).toLowerCase()
-    }
-
-    function symbolOrNumberFirst(value) {
-        const key = sortKey(value)
-        if (!key) return 0
-        const first = key.charAt(0)
-        return (first >= 'a' && first <= 'z') ? 1 : 0
-    }
-
+    // The library controller classifies letters in every script, which QML regular expressions cannot.
     function compareSortKey(a, b) {
-        const catA = symbolOrNumberFirst(a)
-        const catB = symbolOrNumberFirst(b)
-        if (catA !== catB) return catA - catB
-        return sortKey(a).localeCompare(sortKey(b))
+        return library.compareNames(String(a || ""), String(b || ""))
     }
 
     function refreshHomeGroups(groups) {

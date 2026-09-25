@@ -265,7 +265,7 @@ Item {
                         { id: "ALL", label: "All Formats", icon: "disc" },
                         { id: "FLAC", label: "Lossless (FLAC)", icon: "audio-lines" },
                         { id: "MP3", label: "MP3", icon: "music" },
-                        { id: "AAC", label: "AAC / M4A", icon: "sparkles" }
+                        { id: "AAC", label: "AAC / M4A", icon: "list-music" }
                     ]
 
                     Rectangle {

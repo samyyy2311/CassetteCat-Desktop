@@ -3359,7 +3359,8 @@ ApplicationWindow {
                         id: homePageLoader
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        active: page === "home"
+                        // Wait for the saved page, or Home is built and discarded when launching elsewhere.
+                        active: settingsInitialized && page === "home"
 
                         sourceComponent: Component {
                             HomePage {

@@ -210,7 +210,10 @@ QNetworkReply *StreamingController::trackReply(QNetworkReply *reply, bool allowS
                     }
 
                     bool trustAllowed = false;
-                    if (sameOrigin && allowSelfSigned) {
+                    // A saved certificate is only replaced after the user disconnects, which clears it.
+                    if (sameOrigin && allowSelfSigned && hasPinnedCertificate(m_settingsPath, currentUrl)) {
+                        trustAllowed = isServerCertTrusted(currentUrl, peerCert);
+                    } else if (sameOrigin && allowSelfSigned) {
                         if (!peerCert.isNull()) {
                             const QString digest =
                                 QString::fromLatin1(peerCert.digest(QCryptographicHash::Sha256).toHex());
@@ -291,6 +294,18 @@ bool StreamingController::isServerCertTrusted(const QUrl &url, const QSslCertifi
                 return true;
             }
         }
+    }
+    return false;
+}
+
+/// @copydoc StreamingController::hasPinnedCertificate
+bool StreamingController::hasPinnedCertificate(const QString &settingsPath, const QUrl &url) {
+    QSettings settings(settingsPath, QSettings::IniFormat);
+    for (const QString &provider : {QStringLiteral("subsonic"), QStringLiteral("jellyfin")}) {
+        const QUrl serverUrl(settings.value("stream/" + provider + "Url").toString());
+        if (serverUrl.host().compare(url.host(), Qt::CaseInsensitive) == 0 && serverUrl.port(443) == url.port(443) &&
+            !settings.value("stream/" + provider + "CertDigest").toString().isEmpty())
+            return true;
     }
     return false;
 }
@@ -799,6 +814,14 @@ bool runSelfChecks(bool includeVaultProbe) {
         settings.sync();
         const QVariantMap snapshot2 = StreamingController::serverConfigSnapshot(dir.filePath("s.ini"));
         check(snapshot2.value("subsonic/trustCert").toBool() == true, "snapshot-trust-cert-true");
+        const QString settingsPath = dir.filePath("s.ini");
+        const QUrl serverUrl("https://m.example.com/rest/ping.view");
+        check(!StreamingController::hasPinnedCertificate(settingsPath, serverUrl), "pinned-cert-absent");
+        settings.setValue("stream/subsonicCertDigest", "ab12");
+        settings.sync();
+        check(StreamingController::hasPinnedCertificate(settingsPath, serverUrl), "pinned-cert-present");
+        const QUrl otherUrl("https://other.example.com");
+        check(!StreamingController::hasPinnedCertificate(settingsPath, otherUrl), "pinned-cert-other-host");
         bool secretLeak = false;
         for (auto it = snapshot.cbegin(); it != snapshot.cend(); ++it) {
             const QString key = it.key().toLower();

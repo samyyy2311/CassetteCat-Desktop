@@ -102,6 +102,8 @@ class StreamingController final : public QObject {
     Q_INVOKABLE QVariantMap serverConfigSnapshot() const;
     /// Reads non-secret remote-server configuration from \p settingsPath.
     static QVariantMap serverConfigSnapshot(const QString &settingsPath);
+    /// Returns whether a certificate digest is already saved for the server at \p url.
+    static bool hasPinnedCertificate(const QString &settingsPath, const QUrl &url);
 
   signals:
     void remoteTracksChanged();

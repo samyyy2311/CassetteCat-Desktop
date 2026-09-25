@@ -4103,7 +4103,7 @@ ApplicationWindow {
         sourceComponent: Component {
             Rectangle {
                 id: nowPlayingOverlay
-                readonly property bool audioMeterVisible: nowPlayingLyricsView.meterVisible
+                readonly property bool audioMeterVisible: nowPlayingOpen && nowPlayingLyricsView.meterVisible
                     && window.visible && window.visibility !== Window.Minimized
                 anchors.fill: parent
                 color: "#0A0908"

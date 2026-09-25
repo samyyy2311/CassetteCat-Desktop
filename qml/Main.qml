@@ -79,6 +79,8 @@ ApplicationWindow {
     property bool catalogDetailOpen: false
     property string catalogDetailMode: "artist"
     property string catalogDetailTitle: ""
+    // What the detail view is filtered by; differs from the title for playlists, which are keyed by id.
+    property string catalogDetailKey: ""
     property var catalogDetailTracks: []
     property var catalogDetailHeroTrack: ({})
     property var catalogDetailHistory: []
@@ -966,7 +968,7 @@ ApplicationWindow {
         radioPlaybackQueue = refreshList(radioPlaybackQueue)
         originalRadioPlaybackQueue = refreshList(originalRadioPlaybackQueue)
         if (catalogDetailOpen) {
-            catalogDetailTracks = filterCatalogDetailTracks(catalogDetailMode, catalogDetailTitle, catalogDetailHeroTrack)
+            catalogDetailTracks = filterCatalogDetailTracks(catalogDetailMode, catalogDetailKey, catalogDetailHeroTrack)
             changed = true
         } else {
             catalogDetailTracks = refreshList(catalogDetailTracks)
@@ -2069,6 +2071,7 @@ ApplicationWindow {
     }
 
     function filterCatalogDetailTracks(mode, title, heroTrack) {
+        if (mode === "playlist") return playlistTracks(title)
         const trackPool = (heroTrack && heroTrack.remoteId) ? playbackTracks() : availableTracks()
         const normTitle = (title || "").trim().toLowerCase()
         const result = trackPool.filter(track => {
@@ -2089,15 +2092,6 @@ ApplicationWindow {
                 const folderName = folderPath.split('/').pop() || "Music"
                 return folderName === title || folderPath === title
             }
-            if (mode === "playlist") {
-                const pl = playlists.find(p => p.name === title || p.id === title)
-                if (pl) return (pl.trackPaths || []).includes(track.filePath)
-                if (title === "Favorites") return !!favoriteTracks[track.filePath]
-                if (title === "Most Played") return (playCounts[track.filePath] || 0) > 0
-                if (title === "Never Played") return !playCounts[track.filePath]
-                if (title === "Recently Added") return (recentlyAdded || []).some(r => r.filePath === track.filePath)
-                return false
-            }
             return (track.album || "Unknown Album") === title
         })
         if (mode === "album") {
@@ -2107,33 +2101,31 @@ ApplicationWindow {
                 if (numA !== numB) return numA - numB
                 return compareSortKey(a.title || a.fileName, b.title || b.fileName)
             })
-        } else if (mode === "playlist" && title === "Most Played") {
-            result.sort((a, b) => (playCounts[b.filePath] || 0) - (playCounts[a.filePath] || 0))
-        } else if (mode === "playlist" && title === "Recently Added") {
-            result.sort((a, b) => (seenAt[b.filePath] || 0) - (seenAt[a.filePath] || 0))
         }
         return result
     }
 
-    function openCatalogDetail(mode, title, heroTrack) {
+    function openCatalogDetail(mode, title, heroTrack, key) {
         if (catalogDetailOpen) {
             catalogDetailHistory = catalogDetailHistory.concat([{
                 mode: catalogDetailMode,
                 title: catalogDetailTitle,
+                key: catalogDetailKey,
                 heroTrack: catalogDetailHeroTrack
             }])
         }
         catalogDetailMode = mode
         catalogDetailTitle = title
+        catalogDetailKey = key || title
         catalogDetailHeroTrack = heroTrack
-        catalogDetailTracks = filterCatalogDetailTracks(mode, title, heroTrack)
+        catalogDetailTracks = filterCatalogDetailTracks(mode, catalogDetailKey, heroTrack)
         catalogDetailOpen = true
     }
     function closeCatalogDetail() {
         if (catalogDetailHistory.length) {
             const previous = catalogDetailHistory[catalogDetailHistory.length - 1]
             catalogDetailHistory = catalogDetailHistory.slice(0, -1)
-            openCatalogDetail(previous.mode, previous.title, previous.heroTrack)
+            openCatalogDetail(previous.mode, previous.title, previous.heroTrack, previous.key)
             catalogDetailHistory = catalogDetailHistory.slice(0, -1)
             return
         }

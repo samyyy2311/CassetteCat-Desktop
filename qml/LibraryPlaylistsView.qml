@@ -8,14 +8,26 @@ Item {
     required property var appWindow
     anchors.fill: parent
 
-    readonly property var favoritesTracks: root.appWindow.availableTracks().filter(track => track && root.appWindow.favoriteTracks[track.filePath])
-    readonly property var mostPlayedTracks: (root.appWindow.heavyRotation && root.appWindow.heavyRotation.length > 0)
-        ? root.appWindow.heavyRotation
-        : root.appWindow.availableTracks().filter(track => track && (root.appWindow.playCounts[track.filePath] || 0) > 0)
+    // availableTracks() is a plain function, so libraryRevision makes these refresh after a rescan.
+    readonly property var favoritesTracks: {
+        root.appWindow.libraryRevision
+        root.appWindow.favoriteTracks
+        return root.appWindow.playlistTracks("Favorites")
+    }
+    readonly property var mostPlayedTracks: {
+        root.appWindow.libraryRevision
+        root.appWindow.playCounts
+        return root.appWindow.playlistTracks("Most Played")
+    }
     readonly property var recentlyAddedTracks: root.appWindow.recentlyAdded || []
-    readonly property var neverPlayedTracks: root.appWindow.availableTracks().filter(track => track && !root.appWindow.playCounts[track.filePath])
+    readonly property var neverPlayedTracks: {
+        root.appWindow.libraryRevision
+        root.appWindow.playCounts
+        return root.appWindow.playlistTracks("Never Played")
+    }
 
     readonly property var allPlaylists: {
+        root.appWindow.libraryRevision
         const smart = [
             {
                 id: "smart_favorites",
@@ -91,7 +103,8 @@ Item {
                 track: modelData.tracks.length ? modelData.tracks[0] : ({})
                 onClicked: {
                     const hero = modelData.tracks.length ? modelData.tracks[0] : ({})
-                    root.appWindow.openCatalogDetail("playlist", modelData.name, hero)
+                    root.appWindow.openCatalogDetail("playlist", modelData.name, hero,
+                                                     modelData.isSmart ? modelData.name : modelData.id)
                 }
 
                 DropArea {
@@ -149,7 +162,9 @@ Item {
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
                     const hero = playlistRow.modelData.tracks.length ? playlistRow.modelData.tracks[0] : ({})
-                    root.appWindow.openCatalogDetail("playlist", playlistRow.modelData.name, hero)
+                    root.appWindow.openCatalogDetail("playlist", playlistRow.modelData.name, hero,
+                                                     playlistRow.modelData.isSmart ? playlistRow.modelData.name
+                                                                                   : playlistRow.modelData.id)
                 }
             }
 

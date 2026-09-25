@@ -13,6 +13,41 @@ Item {
     property var playbackHistory: []
 
     property string currentTab: "overview"
+
+    property int recapYear: new Date().getFullYear()
+    property var recapYears: []
+    property var recap: ({})
+    property var recapSongs: []
+    property var recapArtists: []
+    property var recapAlbums: []
+    property var recapGenres: []
+    readonly property bool recapHasPlays: (recap.plays || 0) > 0
+
+    // Lists from C++ arrive as sequence objects; plain arrays keep Array methods available.
+    function toArray(list) {
+        const result = []
+        for (let i = 0; i < (list ? list.length : 0); ++i) result.push(list[i])
+        return result
+    }
+
+    function refreshRecap() {
+        const years = toArray(library.listeningYears())
+        const currentYear = new Date().getFullYear()
+        if (!years.includes(currentYear)) years.unshift(currentYear)
+        recapYears = years
+        recap = library.listeningRecap(recapYear)
+        recapSongs = toArray(recap.topSongs)
+        recapArtists = toArray(recap.topArtists)
+        recapAlbums = toArray(recap.topAlbums)
+        recapGenres = toArray(recap.topGenres)
+    }
+
+    function monthName(index) {
+        return Qt.locale().standaloneMonthName(index, Locale.LongFormat)
+    }
+
+    onCurrentTabChanged: if (currentTab === "recap") refreshRecap()
+    onRecapYearChanged: if (currentTab === "recap") refreshRecap()
     property string searchQuery: ""
 
     readonly property var playedTracks: {
@@ -151,6 +186,7 @@ Item {
     }
 
     readonly property var activeTabTracks: {
+        if (root.currentTab === "recap") return root.recapSongs.map(row => row.track)
         if (root.currentTab === "history") return root.filteredHistory
         if (root.currentTab === "artists") return root.filteredArtists.map(r => r.track).filter(t => t && t.filePath)
         if (root.currentTab === "albums") return root.filteredAlbums.map(r => r.track).filter(t => t && t.filePath)
@@ -238,6 +274,8 @@ Item {
         id: rankedRow
         property var rowItem: null
         property int rankNumber: 1
+        // Replaces the all-time play count, for rankings over a shorter period.
+        property string countText: ""
 
         readonly property var trackData: rowItem && rowItem.track ? rowItem.track : ({})
 
@@ -259,10 +297,43 @@ Item {
         SongRow {
             Layout.fillWidth: true
             track: rankedRow.trackData
-            showPlayCount: true
+            showPlayCount: rankedRow.countText.length === 0
             showAlbum: true
             onFavoriteClicked: root.appWindow.toggleFavorite(rankedRow.trackData.filePath)
             onClicked: root.appWindow.playTrack(rankedRow.trackData)
+        }
+
+        Label {
+            visible: rankedRow.countText.length > 0
+            Layout.preferredWidth: 60
+            horizontalAlignment: Text.AlignRight
+            text: rankedRow.countText
+            color: root.appWindow.silverDim
+            font.family: root.appWindow.monoFont
+            font.pixelSize: 11
+        }
+    }
+
+    component RecapHeading : ColumnLayout {
+        property string title: ""
+        property string subtitle: ""
+
+        spacing: 2
+
+        Label {
+            text: title
+            color: root.appWindow.textPrimary
+            font.family: root.appWindow.displayFont
+            font.pixelSize: 18
+            font.weight: Font.Bold
+            font.letterSpacing: -0.2
+        }
+
+        Label {
+            text: subtitle
+            color: root.appWindow.textSecondary
+            font.family: root.appWindow.bodyFont
+            font.pixelSize: 12
         }
     }
 
@@ -273,7 +344,7 @@ Item {
         visible: !root.hasData
         catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
         title: "No listening history yet"
-        subtitle: "Play songs for at least 30 seconds to record your listening stats and build your personal record"
+        subtitle: "Play songs most of the way through to record your listening stats and build your personal record"
         actionLabel: "Explore Library"
         onActionClicked: root.appWindow.page = "library"
     }
@@ -304,7 +375,8 @@ Item {
                         { id: "tracks", label: "Top Tracks" },
                         { id: "artists", label: "Top Artists" },
                         { id: "albums", label: "Top Albums" },
-                        { id: "history", label: "History" }
+                        { id: "history", label: "History" },
+                        { id: "recap", label: "Recap" }
                     ]
 
                     Item {
@@ -443,7 +515,7 @@ Item {
             id: recordStack
             Layout.fillWidth: true
             Layout.fillHeight: true
-            currentIndex: root.currentTab === "overview" ? 0 : (root.currentTab === "tracks" ? 1 : (root.currentTab === "artists" ? 2 : (root.currentTab === "albums" ? 3 : 4)))
+            currentIndex: ["overview", "tracks", "artists", "albums", "history", "recap"].indexOf(root.currentTab)
 
             // Overview
             Flickable {
@@ -1101,7 +1173,7 @@ Item {
                     visible: root.filteredTracks.length === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
                     title: root.searchQuery.trim().length > 0 ? "No Tracks Found" : "No Plays Recorded"
-                    subtitle: root.searchQuery.trim().length > 0 ? ("No tracks match \"" + root.searchQuery + "\"") : "Play tracks for at least 30 seconds to record your top tracks"
+                    subtitle: root.searchQuery.trim().length > 0 ? ("No tracks match \"" + root.searchQuery + "\"") : "Play songs most of the way through to record your top tracks"
                     actionLabel: root.searchQuery.trim().length > 0 ? "Clear Search" : "Explore Library"
                     onActionClicked: {
                         if (root.searchQuery.trim().length > 0) root.searchQuery = ""
@@ -1252,6 +1324,200 @@ Item {
                     onActionClicked: {
                         if (root.searchQuery.trim().length > 0) root.searchQuery = ""
                         else root.appWindow.page = "library"
+                    }
+                }
+            }
+
+            // Recap
+            Flickable {
+                id: recapScroll
+                clip: true
+                flickableDirection: Flickable.VerticalFlick
+                boundsBehavior: Flickable.StopAtBounds
+                flickDeceleration: UiConstants.flickDeceleration
+                maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                pixelAligned: UiConstants.pixelAligned
+                ScrollBar.vertical: AutoHideScrollBar {}
+                contentWidth: width
+                contentHeight: recapCol.implicitHeight + 48
+
+                ColumnLayout {
+                    id: recapCol
+                    x: 28
+                    y: 8
+                    width: Math.max(100, recapScroll.width - 56)
+                    spacing: 28
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 16
+
+                        ColumnLayout {
+                            spacing: 4
+
+                            Label {
+                                text: "Your " + root.recapYear
+                                color: root.appWindow.textPrimary
+                                font.family: root.appWindow.displayFont
+                                font.pixelSize: 26
+                                font.weight: Font.Bold
+                            }
+
+                            Label {
+                                visible: root.recapHasPlays
+                                text: "Recorded since " + new Date(root.recap.firstListen || 0).toLocaleDateString(Qt.locale(), "d MMMM yyyy")
+                                color: root.appWindow.textSecondary
+                                font.family: root.appWindow.monoFont
+                                font.pixelSize: 11
+                            }
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Row {
+                            visible: root.recapYears.length > 1
+                            spacing: 18
+
+                            Repeater {
+                                model: root.recapYears
+
+                                Label {
+                                    required property var modelData
+                                    text: "" + modelData
+                                    color: root.recapYear === modelData ? root.appWindow.textPrimary : root.appWindow.textSecondary
+                                    font.family: root.appWindow.displayFont
+                                    font.pixelSize: 14
+                                    font.weight: root.recapYear === modelData ? Font.Bold : Font.Medium
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.recapYear = modelData
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    EmptyState {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 320
+                        visible: !root.recapHasPlays
+                        catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
+                        title: "Nothing recorded for " + root.recapYear + " yet"
+                        subtitle: "Songs you play most of the way through are counted here, with the date you played them"
+                    }
+
+                    RowLayout {
+                        visible: root.recapHasPlays
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        StatCard {
+                            label: "Listening Time"
+                            value: root.formatDurationTotal((root.recap.listenedMs || 0) / 1000)
+                            subtitle: "time spent listening"
+                        }
+
+                        StatCard {
+                            label: "Plays"
+                            value: "" + (root.recap.plays || 0)
+                            subtitle: "counted listens"
+                        }
+
+                        StatCard {
+                            label: "Songs"
+                            value: "" + (root.recap.songCount || 0)
+                            subtitle: "different songs"
+                        }
+
+                        StatCard {
+                            label: "Artists"
+                            value: "" + (root.recap.artistCount || 0)
+                            subtitle: "different artists"
+                        }
+                    }
+
+                    RowLayout {
+                        visible: root.recapHasPlays
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        StatCard {
+                            label: "Top Album"
+                            value: root.recapAlbums.length ? root.recapAlbums[0].name : "—"
+                            subtitle: root.recapAlbums.length ? root.formatCount(root.recapAlbums[0].plays) : ""
+                        }
+
+                        StatCard {
+                            label: "Top Genre"
+                            value: root.recapGenres.length ? root.recapGenres[0].name : "—"
+                            subtitle: root.recapGenres.length ? root.formatCount(root.recapGenres[0].plays) : ""
+                        }
+
+                        StatCard {
+                            label: "Busiest Month"
+                            value: (root.recap.busiestMonth ?? -1) >= 0 ? root.monthName(root.recap.busiestMonth) : "—"
+                            subtitle: (root.recap.busiestMonth ?? -1) >= 0
+                                ? root.formatDurationTotal(root.recap.months[root.recap.busiestMonth] / 1000) + " listened"
+                                : ""
+                        }
+                    }
+
+                    ColumnLayout {
+                        visible: root.recapArtists.length > 0
+                        Layout.fillWidth: true
+                        spacing: 12
+
+                        RecapHeading {
+                            title: "Top Artists"
+                            subtitle: "Who you played most in " + root.recapYear
+                        }
+
+                        ListView {
+                            Layout.fillWidth: true
+                            height: 200
+                            orientation: ListView.Horizontal
+                            spacing: 16
+                            clip: false
+                            boundsBehavior: Flickable.StopAtBounds
+                            flickDeceleration: UiConstants.flickDeceleration
+                            maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                            model: root.recapArtists
+                            delegate: ArtistCard {
+                                name: modelData.name
+                                count: modelData.plays
+                                subtitle: root.formatCount(modelData.plays)
+                                track: modelData.track
+                                cardWidth: 148
+                                cardHeight: 200
+                                onClicked: root.appWindow.openCatalogDetail("artist", modelData.name, modelData.track)
+                            }
+                        }
+                    }
+
+                    ColumnLayout {
+                        visible: root.recapSongs.length > 0
+                        Layout.fillWidth: true
+                        spacing: 4
+
+                        RecapHeading {
+                            Layout.bottomMargin: 8
+                            title: "Top Songs"
+                            subtitle: "Your most played songs of " + root.recapYear
+                        }
+
+                        Repeater {
+                            model: root.recapSongs
+
+                            RankedSongRow {
+                                required property var modelData
+                                required property int index
+                                rowItem: modelData
+                                rankNumber: index + 1
+                                countText: root.formatCount(modelData.plays)
+                            }
+                        }
                     }
                 }
             }

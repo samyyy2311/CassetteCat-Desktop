@@ -72,9 +72,13 @@ Item {
         : 1.0
 
     readonly property bool hasArtwork: artworkSource.toString() !== ""
-    readonly property bool currentHasError: useB ? (imageB.status === Image.Error) : (imageA.status === Image.Error)
-    readonly property bool anyArtVisible: (imageA.status === Image.Ready && imageA.opacity > 0.01)
-                                       || (imageB.status === Image.Ready && imageB.opacity > 0.01)
+    // The cover image provider answers "no artwork" with a 1x1 image instead of an error.
+    function hasNoArt(image) {
+        return image.status === Image.Error || (image.status === Image.Ready && image.implicitWidth <= 1)
+    }
+    readonly property bool currentHasError: hasNoArt(useB ? imageB : imageA)
+    readonly property bool anyArtVisible: (imageA.status === Image.Ready && !hasNoArt(imageA) && imageA.opacity > 0.01)
+                                       || (imageB.status === Image.Ready && !hasNoArt(imageB) && imageB.opacity > 0.01)
     readonly property bool showingFallback: (!hasArtwork || currentHasError) && !anyArtVisible
     readonly property bool currentTrackPlaying: player.isPlaying && root.track && player.currentTrack
                                               && root.track.filePath === player.currentTrack.filePath

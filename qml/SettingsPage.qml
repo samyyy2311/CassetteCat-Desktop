@@ -51,6 +51,7 @@ Item {
     property bool svcAudiodb: true
     property bool svcWiki: true
     property bool svcArchive: true
+    property bool svcDiscord: false
     property string backupStatus: ""
     property string currentSection: "library"
     property bool scrobbleListenBrainzEnabled: false
@@ -413,6 +414,7 @@ Item {
                                 svcAudiodb: root.svcAudiodb
                                 svcWiki: root.svcWiki
                                 svcArchive: root.svcArchive
+                                svcDiscord: root.svcDiscord
                                 onOfflineBlackoutSelected: value => root.offlineBlackoutSelected(value)
                                 onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
                                 onOpenJellyfinRequested: root.openJellyfinRequested()

@@ -11,6 +11,7 @@ ColumnLayout {
     property bool svcAudiodb: true
     property bool svcWiki: true
     property bool svcArchive: true
+    property bool svcDiscord: false
 
     signal offlineBlackoutSelected(bool value)
     signal serviceToggleRequested(string name, bool value)
@@ -24,6 +25,7 @@ ColumnLayout {
         if (id === "audiodb") return root.svcAudiodb
         if (id === "wiki") return root.svcWiki
         if (id === "archive") return root.svcArchive
+        if (id === "discord") return root.svcDiscord
         return false
     }
 
@@ -81,7 +83,8 @@ ColumnLayout {
                 { id: "deezer", title: "Deezer Artwork", subtitle: "High-resolution artist portraits and imagery", icon: "deezer", preserveColor: true, on: root.svcDeezer },
                 { id: "audiodb", title: "TheAudioDB", subtitle: "Artist imagery and biography metadata fallback", icon: "theaudiodb", preserveColor: true, on: root.svcAudiodb },
                 { id: "wiki", title: "Wikipedia", subtitle: "Artist biographies and summaries", icon: "wikipedia", preserveColor: true, on: root.svcWiki },
-                { id: "archive", title: "Cover Art Archive", subtitle: "Community-sourced album covers from MusicBrainz", icon: "archive", preserveColor: true, on: root.svcArchive }
+                { id: "archive", title: "Cover Art Archive", subtitle: "Community-sourced album covers from MusicBrainz", icon: "archive", preserveColor: true, on: root.svcArchive },
+                { id: "discord", title: "Discord Status", subtitle: "Show the song you are playing on your Discord profile", icon: "audio-lines", preserveColor: false, on: root.svcDiscord }
             ]
             delegate: ColumnLayout {
                 Layout.fillWidth: true

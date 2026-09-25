@@ -131,6 +131,14 @@ void StreamingController::fetchSubsonicAlbumIds(const QString &base, const QStri
             return;
         }
 
+        // An empty library still returns an albumList2 object; without one, keep the current tracks.
+        if (!response.value("albumList2").isObject()) {
+            const QString message = QString("Unexpected Subsonic response; keeping the previous library.");
+            setStatus("subsonic", true, message);
+            emit serverFailed("subsonic", message);
+            finishRefreshStage("subsonic");
+            return;
+        }
         const QJsonArray page = jsonArrayTolerant(response.value("albumList2").toObject(), "album");
         for (const QJsonValue &entry : page) {
             const QString id = entry.toObject().value("id").toString();

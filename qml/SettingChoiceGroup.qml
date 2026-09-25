@@ -53,21 +53,15 @@ SettingRow {
         Popup {
             id: choicePopup
             parent: Overlay.overlay
-            x: {
-                if (!menuButton) return 0
+            // mapToItem() is not tracked by bindings, so the position is computed each time the popup opens.
+            function reposition() {
                 const pt = menuButton.mapToItem(Overlay.overlay, 0, 0)
-                const ovW = Overlay.overlay ? Overlay.overlay.width : 800
-                return Math.max(10, Math.min(ovW - width - 10, pt.x + menuButton.width - width))
+                x = Math.max(10, Math.min(Overlay.overlay.width - width - 10, pt.x + menuButton.width - width))
+                y = pt.y + menuButton.height + height + 10 > Overlay.overlay.height
+                    ? Math.max(10, pt.y - height - 4)
+                    : pt.y + menuButton.height + 4
             }
-            y: {
-                if (!menuButton) return 0
-                const pt = menuButton.mapToItem(Overlay.overlay, 0, 0)
-                const ovH = Overlay.overlay ? Overlay.overlay.height : 600
-                if (pt.y + menuButton.height + height + 10 > ovH) {
-                    return Math.max(10, pt.y - height - 4)
-                }
-                return pt.y + menuButton.height + 4
-            }
+            onAboutToShow: reposition()
             width: Math.max(menuButton ? menuButton.width : 160, 220)
             implicitHeight: Math.min(260, Math.max(48, (root.options ? root.options.length * 38 : 0) + 12))
             padding: 6

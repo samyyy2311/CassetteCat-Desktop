@@ -33,19 +33,29 @@
 ### Your music, in one place
 
 - Choose a music folder and CassetteCat organises it by songs, artists, albums, and folders.
-- Search, sort, filter, keep favourites, and revisit recent plays.
+- Search, sort, filter, build playlists, and keep favourites.
 - Discover recently added music and your most-played tracks from Home.
+- Every screen works from the keyboard, and shortcuts can be changed.
 
 ### Playback
 
 - Play, queue, shuffle, repeat, and control your music without losing your place.
 - Use the floating MiniPlayer when you want simple controls on top of other windows.
 - Resume your queue after restarting, set a sleep timer, limit volume, or let playback continue automatically.
+- Even out loudness between songs with ReplayGain.
+- Control playback from media keys, the system tray, global shortcuts, and the Windows or Linux (MPRIS) media controls.
+
+### Listening Record
+
+- See your plays, listening time, top songs, artists, and albums, plus your full history.
+- Look back on each year with the Recap: listening time, top songs and artists, and your busiest month.
+- Plays count once most of the song has been heard, so a quick skip doesn't inflate the numbers.
+- Scrobble to Libre.fm or ListenBrainz, and show what you're playing as your Discord status.
 
 ### Lyrics, artwork, and radio
 
 - Read local, embedded, or online synced lyrics, with search and timing adjustment when needed.
-- Show cover art from your files and artist information when available.
+- Show cover art from your files or the Cover Art Archive, and artist information when available.
 - Browse internet radio without leaving the app.
 
 ### Yours to control
@@ -97,7 +107,7 @@ Expand-Archive $archive.FullName .\CassetteCat
 
 ## Build from source
 
-You need Qt 6.10 or newer with Qt Quick and Qt Quick Controls 2, CMake 3.24 or newer, and Ninja. Linux builds also require libsecret development headers, such as `libsecret-1-dev` on Debian and Ubuntu.
+You need Qt 6.10 or newer (with Qt Quick, Quick Controls 2, Multimedia, and Network), CMake 3.24 or newer, and Ninja. Linux builds also need the libsecret development headers, such as `libsecret-1-dev` on Debian and Ubuntu.
 
 ```powershell
 cmake --preset dev
@@ -105,10 +115,11 @@ cmake --build --preset dev
 .\build\dev\CassetteCat.exe
 ```
 
-Run the built-in self-check with:
+Run the self-check and the test suite with:
 
 ```powershell
 .\build\dev\CassetteCat.exe --self-check
+ctest --test-dir build/dev --output-on-failure
 ```
 
 ---
@@ -137,6 +148,7 @@ opening a pull request. For security issues, read
 - <a href="https://lrclib.net"><img src="https://img.shields.io/badge/LRCLIB-38BDF8?style=flat-square" alt="LRCLIB" /></a> Lyrics when a track has none locally.
 - <a href="https://www.radio-browser.info"><img src="https://img.shields.io/badge/Radio%20Browser-1C1917?style=flat-square" alt="Radio Browser" /></a> Internet radio stations.
 - <a href="https://wikipedia.org"><img src="https://img.shields.io/badge/Wikipedia-000000?style=flat-square&logo=wikipedia&logoColor=white" alt="Wikipedia" /></a> Artist information.
+- <a href="https://coverartarchive.org"><img src="https://img.shields.io/badge/Cover%20Art%20Archive-BA478F?style=flat-square&logo=musicbrainz&logoColor=white" alt="Cover Art Archive" /></a> Album covers.
 - <a href="https://deezer.com"><img src="https://img.shields.io/badge/Deezer-FEAA2D?style=flat-square&logo=deezer&logoColor=white" alt="Deezer" /></a> and <a href="https://theaudiodb.com"><img src="https://img.shields.io/badge/TheAudioDB-6599CD?style=flat-square" alt="TheAudioDB" /></a> Artist images and details.
 
 ### Built with

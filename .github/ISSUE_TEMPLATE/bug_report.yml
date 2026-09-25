@@ -6,7 +6,7 @@ body:
     id: version
     attributes:
       label: CassetteCat version
-      placeholder: v1.7.0 or development build
+      placeholder: 0.6.0 or development build
     validations:
       required: true
   - type: textarea

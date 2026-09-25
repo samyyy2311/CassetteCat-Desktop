@@ -46,6 +46,8 @@ qt_add_executable(CassetteCat
     src/services_covers.cpp
     src/credential_vault.h
     src/credential_vault.cpp
+    src/discord_presence.h
+    src/discord_presence.cpp
     src/streaming.h
     src/streaming.cpp
     src/streaming_library.cpp

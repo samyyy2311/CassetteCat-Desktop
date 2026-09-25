@@ -31,11 +31,8 @@ ListView {
             anchors.leftMargin: 36
             anchors.rightMargin: 36
             track: modelData
+            onClicked: root.appWindow.playTrack(modelData)
             onFavoriteClicked: if (root.appWindow) root.appWindow.toggleFavorite(modelData.filePath)
-
-            TapHandler {
-                onTapped: root.appWindow.playTrack(modelData)
-            }
         }
     }
 }

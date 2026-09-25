@@ -68,11 +68,8 @@ Column {
                         track: modelData
                         showAlbum: true
                         showFormatBadge: false
+                        onClicked: root.appWindow.playTrack(modelData)
                         onFavoriteClicked: if (root.appWindow) root.appWindow.toggleFavorite(modelData.filePath)
-
-                        TapHandler {
-                            onTapped: root.appWindow.playTrack(modelData)
-                        }
                     }
                 }
             }

@@ -436,6 +436,8 @@ void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs)
     // Opening media costs tens of MB in the backend, so a restored track waits until playback is requested.
     if (!loadTrack(track))
         return;
+    // stop() keeps the previous file open; clearing the source releases it until playback starts.
+    m_player->setSource(QUrl());
     m_pendingRestorePositionMs = positionMs;
     m_position = positionMs;
     emit positionChanged();

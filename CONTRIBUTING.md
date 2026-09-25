@@ -10,7 +10,7 @@ Keep each pull request focused on one change. Do not mix refactors, new features
 
 ## Build locally
 
-You need Qt 6.10 or newer, CMake 3.24 or newer, and Ninja.
+You need Qt 6.10 or newer, CMake 3.24 or newer, and Ninja. On Linux, also install the libsecret development headers (`libsecret-1-dev` on Debian and Ubuntu).
 
 ```powershell
 cmake --preset dev
@@ -24,7 +24,8 @@ ctest --test-dir build/dev --output-on-failure
 Before opening a pull request:
 
 - Explain what changed and why.
-- Build the app and run the self-check.
+- Build the app and run the self-check and `ctest`.
+- Format C++ changes with the repository's `.clang-format`; CI checks it.
 - Include screenshots for visible changes.
 - Do not commit `build/`, local logs, editor files, or generated converter files.
 - Keep third-party notices up to date when adding code, fonts, icons, or artwork.

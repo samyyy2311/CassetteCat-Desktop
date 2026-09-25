@@ -12,7 +12,15 @@
   </developer>
   <description>
     <p>CassetteCat is a local-first desktop music player for music you already own.</p>
-    <p>It supports local libraries, playlists, lyrics, internet radio, and optional Jellyfin and Subsonic servers.</p>
+    <p>It organises your music folder by songs, artists, albums, and folders, and plays it with a queue that survives restarts, ReplayGain, a sleep timer, and a floating mini player.</p>
+    <ul>
+      <li>Synced lyrics from your files or LRCLIB, with timing adjustment</li>
+      <li>A Listening Record with your history, top songs and artists, and a yearly recap</li>
+      <li>Scrobbling to Libre.fm and ListenBrainz, and an optional Discord status</li>
+      <li>Internet radio, and optional Jellyfin and Subsonic servers</li>
+      <li>Full keyboard control, global shortcuts, and MPRIS media controls</li>
+      <li>Offline Blackout Mode, which stops every online lookup</li>
+    </ul>
   </description>
   <launchable type="desktop-id">io.github.samyyy2311.CassetteCat.desktop</launchable>
   <provides>

@@ -119,7 +119,7 @@ Item {
                                 to: 62.83185307179586
                                 duration: 24000
                                 loops: Animation.Infinite
-                                running: root.miniPlayer.playerController.isPlaying && root.visible
+                                running: root.miniPlayer.playerController.isPlaying && waveContainer.visible
                             }
 
                             Row {

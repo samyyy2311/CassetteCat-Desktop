@@ -154,7 +154,7 @@ Item {
                         to: 62.83185307179586
                         duration: 24000
                         loops: Animation.Infinite
-                        running: player.isPlaying && root.visible
+                        running: player.isPlaying && waveContainer.visible
                     }
 
                     Row {

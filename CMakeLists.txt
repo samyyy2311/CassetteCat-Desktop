@@ -404,7 +404,8 @@ if(CASSETTECAT_BUILD_TESTING AND BUILD_TESTING)
     add_test(NAME service-cancellation COMMAND CassetteCat --services-self-check)
     add_test(NAME audio-meter COMMAND CassetteCat --player-self-check)
     add_test(NAME catalog-tracklist COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_catalogtracklist.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
-    set_tests_properties(library-scan streaming-protocol service-cancellation audio-meter catalog-tracklist PROPERTIES
+    add_test(NAME setting-choice-group COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_settingchoicegroup.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
+    set_tests_properties(library-scan streaming-protocol service-cancellation audio-meter catalog-tracklist setting-choice-group PROPERTIES
         ENVIRONMENT_MODIFICATION
             "PATH=path_list_prepend:$<TARGET_FILE_DIR:Qt6::Core>"
     )

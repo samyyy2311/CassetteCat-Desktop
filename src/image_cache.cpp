@@ -50,8 +50,14 @@ QImage CoverImageProvider::requestImage(const QString &id, QSize *size, const QS
     } else {
         imagePath = QUrl(source).toLocalFile();
     }
-    if (imagePath.isEmpty())
-        return {};
+    // Qt logs a warning for every failed request, so a missing cover is a transparent 1x1 image that Cover
+    // treats as no artwork.
+    if (imagePath.isEmpty() || !QFileInfo::exists(imagePath)) {
+        *size = QSize(1, 1);
+        QImage none(1, 1, QImage::Format_ARGB32_Premultiplied);
+        none.fill(Qt::transparent);
+        return none;
+    }
 
     QImageReader reader(imagePath);
     reader.setAutoTransform(true);

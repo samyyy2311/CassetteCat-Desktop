@@ -534,7 +534,7 @@ Item {
 
                         Repeater {
                             model: root.popularGenres
-                            delegate: GenreCard {
+                            delegate: CategoryCard {
                                 cardWidth: genreFlow.cardW
                                 cardHeight: 95
                                 cardRadius: 12

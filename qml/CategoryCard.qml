@@ -14,7 +14,7 @@ Rectangle {
 
     signal clicked()
 
-    readonly property bool highlighted: genreMouse.containsMouse || (activeFocus && !mouseFocused)
+    readonly property bool highlighted: categoryMouse.containsMouse || (activeFocus && !mouseFocused)
     property bool mouseFocused: false
     onActiveFocusChanged: if (!activeFocus) mouseFocused = false
 
@@ -75,7 +75,7 @@ Rectangle {
                     anchors.centerIn: parent
                     width: 14
                     height: 14
-                    icon: root.iconName || "disc"
+                    icon: root.iconName
                     color: root.highlighted ? recordRedHover : textPrimary
                 }
             }
@@ -84,14 +84,14 @@ Rectangle {
 
             Rectangle {
                 Layout.preferredHeight: 20
-                Layout.preferredWidth: gCountLbl.implicitWidth + 12
+                Layout.preferredWidth: countLabel.implicitWidth + 12
                 radius: 10
                 color: surfaceTag
                 border.width: 1
                 border.color: borderSubtle
 
                 Label {
-                    id: gCountLbl
+                    id: countLabel
                     anchors.centerIn: parent
                     text: root.count + (root.count === 1 ? " track" : " tracks")
                     color: silverDim
@@ -106,6 +106,8 @@ Rectangle {
 
         Label {
             Layout.fillWidth: true
+            Layout.preferredWidth: 0
+            Layout.minimumWidth: 0
             text: root.name
             color: root.highlighted ? recordRedHover : textPrimary
             font.family: displayFont
@@ -116,7 +118,7 @@ Rectangle {
     }
 
     MouseArea {
-        id: genreMouse
+        id: categoryMouse
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor

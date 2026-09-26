@@ -634,7 +634,7 @@ Item {
                         width: genreGrid.cellWidth
                         height: 115
 
-                        GenreCard {
+                        CategoryCard {
                             focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 16
@@ -703,7 +703,8 @@ Item {
                         width: folderGrid.cellWidth
                         height: 115
 
-                        FolderCard {
+                        CategoryCard {
+                            iconName: "folder"
                             focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 16

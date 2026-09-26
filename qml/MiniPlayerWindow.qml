@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
+import "LyricsText.js" as LyricsText
 
 Window {
     id: root
@@ -131,33 +132,9 @@ Window {
         return "-" + formatTime(dur - pos)
     }
 
-    function lyricHtml(text) {
-        return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    }
-
     function karaokeLyricHtml(index, text) {
-        if (index !== activeLyricIndex || !parsedLyrics || !parsedLyrics[index] || parsedLyrics[index].timeMs < 0) {
-            return lyricHtml(text)
-        }
-        const base = lyricsActiveStyle === "accent" ? accentHover : Qt.color("#FFFFFF")
-        const baseR = Math.round(base.r * 255)
-        const baseG = Math.round(base.g * 255)
-        const baseB = Math.round(base.b * 255)
-        const words = String(text || "").split(/(\s+)/)
-        const start = parsedLyrics[index].timeMs
-        const next = parsedLyrics[index + 1] && parsedLyrics[index + 1].timeMs >= 0 ? parsedLyrics[index + 1].timeMs : start + 3000
-        const progress = Math.max(0, Math.min(1, (player.position - start) / Math.max(800, next - start)))
-        const characters = Math.max(1, String(text || "").replace(/\s/g, "").length)
-        let consumed = 0
-        return words.map(function(word) {
-            if (/^\s+$/.test(word)) return word
-            const middle = (consumed + word.length * 0.5) / characters
-            consumed += word.length
-            const t = Math.max(0, Math.min(1, (progress - middle + 0.16) / 0.16))
-            const eased = t * t * (3 - 2 * t)
-            const alpha = 0.42 + eased * 0.58
-            return "<span style=\"color:rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha.toFixed(2) + ")\">" + lyricHtml(word) + "</span>"
-        }).join("")
+        const color = lyricsActiveStyle === "accent" ? accentHover : Qt.color("#FFFFFF")
+        return LyricsText.karaoke(parsedLyrics, index, activeLyricIndex, player.position, color, text)
     }
 
     MouseArea {

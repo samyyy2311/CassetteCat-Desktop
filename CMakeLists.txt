@@ -104,14 +104,14 @@ qt_add_qml_module(CassetteCat
         qml/AppToolTip.qml
         qml/SongRow.qml
         qml/TrackTitles.js
+        qml/LyricsText.js
         qml/SongCard.qml
         qml/ArtistCard.qml
         qml/AlbumCard.qml
         qml/CatalogDetail.qml
         qml/ArtistDetailBody.qml
         qml/AlbumDetailBody.qml
-        qml/GenreCard.qml
-        qml/FolderCard.qml
+        qml/CategoryCard.qml
         qml/HomeSectionHeader.qml
         qml/HomePage.qml
         qml/ListeningRecordPage.qml

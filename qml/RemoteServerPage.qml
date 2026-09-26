@@ -282,7 +282,7 @@ Item {
 
     Component {
         id: genreCard
-        GenreCard {
+        CategoryCard {
             property var itemData: ({})
             cardWidth: trackGrid.cellWidth - 16
             cardHeight: 110

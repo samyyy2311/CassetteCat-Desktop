@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Effects
+import "LyricsText.js" as LyricsText
 
 ApplicationWindow {
     id: window
@@ -1666,6 +1667,19 @@ ApplicationWindow {
         return radioFavoriteStations.some(s => s.streamUrl === streamUrl)
     }
 
+    function savedStation(station) {
+        return {
+            id: station.id || "",
+            name: station.name || "Radio Station",
+            streamUrl: station.streamUrl,
+            favicon: station.favicon || "",
+            tags: station.tags || "",
+            country: station.country || "",
+            language: station.language || "",
+            bitrate: station.bitrate || 0
+        }
+    }
+
     function toggleRadioFavorite(station) {
         if (!station || !station.streamUrl) return
         const favs = (radioFavoriteStations || []).slice()
@@ -1673,16 +1687,7 @@ ApplicationWindow {
         if (idx >= 0) {
             favs.splice(idx, 1)
         } else {
-            favs.unshift({
-                id: station.id || "",
-                name: station.name || "Radio Station",
-                streamUrl: station.streamUrl,
-                favicon: station.favicon || "",
-                tags: station.tags || "",
-                country: station.country || "",
-                language: station.language || "",
-                bitrate: station.bitrate || 0
-            })
+            favs.unshift(savedStation(station))
         }
         radioFavoriteStations = favs
         if (settingsInitialized) appSettings.setValue("radio/favorites", JSON.stringify(favs))
@@ -1693,16 +1698,7 @@ ApplicationWindow {
         const recents = (radioRecentStations || []).slice()
         const idx = recents.findIndex(s => s.streamUrl === station.streamUrl)
         if (idx >= 0) recents.splice(idx, 1)
-        recents.unshift({
-            id: station.id || "",
-            name: station.name || "Radio Station",
-            streamUrl: station.streamUrl,
-            favicon: station.favicon || "",
-            tags: station.tags || "",
-            country: station.country || "",
-            language: station.language || "",
-            bitrate: station.bitrate || 0
-        })
+        recents.unshift(savedStation(station))
         if (recents.length > 30) recents.length = 30
         radioRecentStations = recents
         if (settingsInitialized) appSettings.setValue("radio/recents", JSON.stringify(recents))
@@ -1843,31 +1839,9 @@ ApplicationWindow {
         }
     }
 
-    function lyricHtml(text) {
-        return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    }
-
     function karaokeLyricHtml(index, text) {
-        if (index !== activeLyricIndex || !parsedLyrics[index] || parsedLyrics[index].timeMs < 0) return lyricHtml(text)
-        const base = window.lyricsActiveStyle === "accent" ? recordRedHover : Qt.color("#FFFFFF")
-        const baseR = Math.round(base.r * 255)
-        const baseG = Math.round(base.g * 255)
-        const baseB = Math.round(base.b * 255)
-        const words = String(text || "").split(/(\s+)/)
-        const start = parsedLyrics[index].timeMs
-        const next = parsedLyrics[index + 1] && parsedLyrics[index + 1].timeMs >= 0 ? parsedLyrics[index + 1].timeMs : start + 3000
-        const progress = Math.max(0, Math.min(1, (player.position - start) / Math.max(800, next - start)))
-        const characters = Math.max(1, String(text || "").replace(/\s/g, "").length)
-        let consumed = 0
-        return words.map(function(word) {
-            if (/^\s+$/.test(word)) return word
-            const middle = (consumed + word.length * 0.5) / characters
-            consumed += word.length
-            const t = Math.max(0, Math.min(1, (progress - middle + 0.16) / 0.16))
-            const eased = t * t * (3 - 2 * t)
-            const alpha = 0.42 + eased * 0.58
-            return "<span style=\"color:rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha.toFixed(2) + ")\">" + lyricHtml(word) + "</span>"
-        }).join("")
+        const color = window.lyricsActiveStyle === "accent" ? recordRedHover : Qt.color("#FFFFFF")
+        return LyricsText.karaoke(parsedLyrics, index, activeLyricIndex, player.position, color, text)
     }
 
     function applyLyrics(lyrics, provider) {

@@ -13,128 +13,80 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases"><img src="https://img.shields.io/badge/Releases-E55B3C?style=flat-square&logo=git&logoColor=white" alt="Releases" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/GPL--3.0--or--later-A42E2B?style=flat-square&logo=gnu&logoColor=white" alt="GPL-3.0-or-later" /></a>
-  <img src="https://img.shields.io/badge/Windows-0078D6?style=flat-square&logo=windows&logoColor=white" alt="Windows" />
-  <img src="https://img.shields.io/badge/Linux-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux" />
-  <a href="https://www.qt.io"><img src="https://img.shields.io/badge/Qt%206-41CD52?style=flat-square&logo=qt&logoColor=white" alt="Qt 6" /></a>
-  <img src="https://img.shields.io/badge/C%2B%2B20-00599C?style=flat-square&logo=cplusplus&logoColor=white" alt="C++20" />
-  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases"><img src="https://img.shields.io/github/downloads/samyyy2311/CassetteCat-Desktop/total?style=flat-square&label=Downloads&logo=github&logoColor=white" alt="GitHub downloads" /></a>
+  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest"><img src="https://img.shields.io/github/v/release/samyyy2311/CassetteCat-Desktop?style=flat-square&label=Release&color=E55B3C" alt="Latest release" /></a>
+  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases"><img src="https://img.shields.io/github/downloads/samyyy2311/CassetteCat-Desktop/total?style=flat-square&label=Downloads&color=E55B3C" alt="Downloads" /></a>
+  <img src="https://img.shields.io/badge/Windows%20%7C%20Linux-1C1917?style=flat-square" alt="Windows and Linux" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0--or--later-A42E2B?style=flat-square" alt="GPL-3.0-or-later" /></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest"><img src="https://img.shields.io/badge/Download%20latest%20release-E55B3C?style=for-the-badge&logo=github&logoColor=white" alt="Download latest release" /></a>
+  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest"><img src="https://img.shields.io/badge/Download-E55B3C?style=for-the-badge&logo=github&logoColor=white" alt="Download" /></a>
 </p>
 
 <p align="center">
   <img src="assets/screenshots/home.png" alt="CassetteCat Home screen" />
 </p>
 
----
+## Features
 
-## What it does
+- **Library.** Browse your music folder by songs, artists, albums, genres and folders, with search, favourites and playlists.
+- **Playback.** A queue that survives restarts, ReplayGain, a sleep timer and a floating mini player.
+- **Controls.** Media keys, global shortcuts, the tray, and the Windows and Linux media controls. Every screen works from the keyboard.
+- **Lyrics and artwork.** Synced lyrics from your files or LRCLIB, covers from your files or the Cover Art Archive, and artist pictures and bios.
+- **Listening Record.** Plays, listening time, top songs, artists and albums, full history, and a Rewind of each year and month.
+- **Online extras.** Internet radio, Jellyfin and Subsonic, scrobbling to Libre.fm and ListenBrainz, and a Discord status.
+- **Privacy.** No account needed. Offline Blackout Mode turns every online lookup off.
 
-### Your music, in one place
+## Screenshots
 
-- Choose a music folder and CassetteCat organises it by songs, artists, albums, and folders.
-- Search, sort, filter, build playlists, and keep favourites.
-- Discover recently added music and your most-played tracks from Home.
-- Every screen works from the keyboard, and shortcuts can be changed.
+<table>
+  <tr>
+    <td><img src="assets/screenshots/library-albums.png" alt="Albums" /></td>
+    <td><img src="assets/screenshots/now-playing.png" alt="Player" /></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/library-songs.png" alt="Songs" /></td>
+    <td><img src="assets/screenshots/radio.png" alt="Radio" /></td>
+  </tr>
+</table>
 
-### Playback
+## Install
 
-- Play, queue, shuffle, repeat, and control your music without losing your place.
-- Use the floating MiniPlayer when you want simple controls on top of other windows.
-- Resume your queue after restarting, set a sleep timer, limit volume, or let playback continue automatically.
-- Even out loudness between songs with ReplayGain.
-- Control playback from media keys, the system tray, global shortcuts, and the Windows or Linux (MPRIS) media controls.
+Download from the [latest release](https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest).
 
-### Listening Record
+| Platform | File | Notes |
+| --- | --- | --- |
+| Windows | `setup.exe` | Installer, with optional file associations |
+| Windows | `.zip` | Portable. Run `CassetteCat\bin\CassetteCat.exe` |
+| Linux | `.AppImage` | Runs on most distributions. Make it executable and run it |
+| Linux | `.flatpak` | Install with `flatpak install --user` and the file name |
+| Linux | `.deb` | Debian, Ubuntu and derivatives |
+| Linux | `.rpm` | Fedora, openSUSE and derivatives |
+| Linux | `.tar.gz` | Portable. Run `CassetteCat/bin/CassetteCat` |
 
-- See your plays, listening time, top songs, artists, and albums, plus your full history.
-- Look back on a year or a single month with Rewind: listening time, top songs and artists, and your busiest month.
-- Plays count once most of the song has been heard, so a quick skip doesn't inflate the numbers.
-- Scrobble to Libre.fm or ListenBrainz, and show what you're playing as your Discord status.
-
-### Lyrics, artwork, and radio
-
-- Read local, embedded, or online synced lyrics, with search and timing adjustment when needed.
-- Show cover art from your files or the Cover Art Archive, and artist information when available.
-- Browse internet radio without leaving the app.
-
-### Yours to control
-
-- Connect a Jellyfin or Subsonic server if you use one.
-- Choose an accent colour, layout density, artwork style, and lyric appearance.
-- Back up or restore your settings, and use Offline Blackout Mode to stop every online lookup.
-- No account is required for your local library.
-
----
-
-## Download
-
-<p align="center">
-  Windows and Linux builds are available from the <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases">Releases page</a>.
-</p>
-
-### Linux
-
-Choose the package that matches your distribution:
-
-1. **AppImage** — broad portable option; make it executable and run it.
-2. **Flatpak** — sandboxed option for distributions with Flatpak support.
-3. **DEB** — Debian, Ubuntu, Mint, Pop!_OS, and compatible systems.
-4. **RPM** — Fedora, RHEL-compatible, and compatible openSUSE systems.
-5. **tar.gz** — manual portable install.
-
-The release page contains all five formats for x86_64 Linux. Package support
-depends on the runtime libraries provided by the target distribution.
-
-For the portable archive:
-
-```bash
-gh release download --repo samyyy2311/CassetteCat-Desktop --pattern '*linux-x64.tar.gz'
-tar -xzf CassetteCat-*-linux-x64.tar.gz
-./CassetteCat/bin/CassetteCat
-```
-
-### Windows
-
-The installer adds a Start menu entry and can optionally associate common audio files with CassetteCat. The ZIP remains portable:
-
-```powershell
-gh release download --repo samyyy2311/CassetteCat-Desktop --pattern '*windows-x64.zip'
-$archive = Get-ChildItem 'CassetteCat-*-windows-x64.zip' | Select-Object -First 1
-Expand-Archive $archive.FullName .\CassetteCat
-.\CassetteCat\CassetteCat\bin\CassetteCat.exe
-```
+Linux builds are x86_64. Each release includes `SHA256SUMS.txt` to verify downloads.
 
 ## Build from source
 
-You need Qt 6.10 or newer (with Qt Quick, Quick Controls 2, Multimedia, and Network), CMake 3.24 or newer, and Ninja. Linux builds also need the libsecret development headers, such as `libsecret-1-dev` on Debian and Ubuntu.
+Requires Qt 6.10 or newer (Quick, Quick Controls 2, Multimedia, Network), CMake 3.24 or newer, and Ninja. On Linux, also install the libsecret headers (`libsecret-1-dev` on Debian and Ubuntu).
 
-```powershell
+```bash
 cmake --preset dev
 cmake --build --preset dev
-.\build\dev\CassetteCat.exe
 ```
 
-Run the self-check and the test suite with:
+The app is built to `build/dev/`. Run the checks with:
 
-```powershell
-.\build\dev\CassetteCat.exe --self-check
+```bash
+build/dev/CassetteCat --self-check
 ctest --test-dir build/dev --output-on-failure
 ```
-
----
 
 ## Contributing
 
 Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before
 opening a pull request. For security issues, read
 [SECURITY.md](.github/SECURITY.md).
-
----
 
 ## Support
 
@@ -163,8 +115,6 @@ opening a pull request. For security issues, read
 - <a href="https://github.com/IBM/plex"><img src="https://img.shields.io/badge/IBM%20Plex-0F62FE?style=flat-square&logo=ibm&logoColor=white" alt="IBM Plex" /></a> and <a href="https://github.com/floriankarsten/space-grotesk"><img src="https://img.shields.io/badge/Space%20Grotesk-242424?style=flat-square" alt="Space Grotesk" /></a> Typefaces.
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for all included notices.
-
----
 
 ## License
 

@@ -29,11 +29,12 @@
 
 ## Features
 
-- **Library.** Browse your music folder by songs, artists, albums, genres and folders, with search, favourites and playlists.
-- **Playback.** A queue that survives restarts, ReplayGain, a sleep timer and a floating mini player.
+- **Library.** Browse your music folder by songs, artists, albums, genres and folders, with search, favourites, playlists and tag editing for many songs at once.
+- **Playback.** A queue that survives restarts, crossfade, Autoplay with similar songs, ReplayGain, a sleep timer and a floating mini player.
 - **Controls.** Media keys, global shortcuts, the tray, and the Windows and Linux media controls. Every screen works from the keyboard.
-- **Lyrics and artwork.** Synced lyrics from your files or LRCLIB, covers from your files or the Cover Art Archive, and artist pictures and bios.
+- **Lyrics and artwork.** Synced lyrics from your files or LRCLIB, or synced by tapping along, covers from your files or the Cover Art Archive, and artist pictures and bios.
 - **Listening Record.** Plays, listening time, top songs, artists and albums, full history, and a Rewind of each year and month.
+- **Phone remote.** Control CassetteCat from the [Android app](https://github.com/samyyy2311/CassetteCat) on the same Wi-Fi, and move a song, its queue and position between phone and computer.
 - **Online extras.** Internet radio, Jellyfin and Subsonic, scrobbling to Libre.fm and ListenBrainz, and a Discord status.
 - **Privacy.** No account needed. Offline Blackout Mode turns every online lookup off.
 

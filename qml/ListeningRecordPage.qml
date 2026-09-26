@@ -8,6 +8,7 @@ Item {
     id: root
 
     required property var appWindow
+    property alias searchBox: recordSearchBar
     property var tracks: []
     property var playCounts: ({})
     property var playbackHistory: []

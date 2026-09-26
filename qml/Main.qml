@@ -1531,27 +1531,30 @@ ApplicationWindow {
         }
     }
 
+    function openSearchPage() {
+        nowPlayingOpen = false
+        page = "search"
+        if (searchPageLoader.item) focusSearchInput()
+        else searchPageLoader.focusOnLoad = true
+    }
+
     Shortcut {
         sequence: inAppShortcut("search")
         enabled: shortcutAllowed(sequence)
         onActivated: {
-            if (!miniPlayerMode) {
-                nowPlayingOpen = false
-                page = "search"
-            }
+            if (miniPlayerMode) return
+            const loaders = { library: libraryPageLoader, radio: radioPageLoader, jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader, stats: listeningRecordPageLoader }
+            const pageItem = !nowPlayingOpen && loaders[page] ? loaders[page].item : null
+            const box = pageItem ? pageItem.searchBox : null
+            if (box && box.visible && box.enabled) box.expand()
+            else openSearchPage()
         }
     }
 
     Shortcut {
         sequence: inAppShortcut("quickSwitcher")
         enabled: shortcutAllowed(sequence)
-        onActivated: {
-            if (miniPlayerMode) return
-            nowPlayingOpen = false
-            page = "search"
-            if (searchPageLoader.item) focusSearchInput()
-            else searchPageLoader.focusOnLoad = true
-        }
+        onActivated: if (!miniPlayerMode) openSearchPage()
     }
 
     Shortcut {

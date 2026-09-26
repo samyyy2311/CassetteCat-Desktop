@@ -52,7 +52,7 @@
 ### Listening Record
 
 - See your plays, listening time, top songs, artists, and albums, plus your full history.
-- Look back on each year with the Recap: listening time, top songs and artists, and your busiest month.
+- Look back on a year or a single month with Rewind: listening time, top songs and artists, and your busiest month.
 - Plays count once most of the song has been heard, so a quick skip doesn't inflate the numbers.
 - Scrobble to Libre.fm or ListenBrainz, and show what you're playing as your Discord status.
 

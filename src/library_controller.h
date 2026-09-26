@@ -51,8 +51,9 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE void recordListen(const QVariantMap &track, qint64 listenedMs);
     /// Returns the years that have logged plays, newest first.
     Q_INVOKABLE QVariantList listeningYears() const;
-    /// Summarizes the logged plays of \p year: totals, top songs, artists, albums, genres and monthly time.
-    Q_INVOKABLE QVariantMap listeningRecap(int year) const;
+    /// Summarizes the logged plays of \p year, or of one \p month (0-11) of it: totals, top songs, artists,
+    /// albums, genres, and the year's time per month.
+    Q_INVOKABLE QVariantMap listeningRecap(int year, int month = -1) const;
     Q_INVOKABLE void clearListeningLog();
     /// Builds the Home shelves (spotlight, quickPicks, heavyRotation, recentlyPlayed, recentlyAdded, forgottenFavs).
     Q_INVOKABLE QVariantMap homeRecommendations(const QVariantMap &playCounts, const QVariantMap &seenAt,

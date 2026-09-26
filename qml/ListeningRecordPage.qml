@@ -16,6 +16,12 @@ Item {
     property string currentTab: "overview"
 
     property int recapYear: new Date().getFullYear()
+    property int recapMonth: -1
+    readonly property string recapPeriod: recapMonth >= 0 ? monthName(recapMonth) + " " + recapYear : "" + recapYear
+    readonly property var recapMonths: {
+        const months = toArray(recap.months)
+        return months.map((ms, index) => index).filter(index => months[index] > 0)
+    }
     property var recapYears: []
     property var recap: ({})
     property var recapSongs: []
@@ -36,7 +42,7 @@ Item {
         const currentYear = new Date().getFullYear()
         if (!years.includes(currentYear)) years.unshift(currentYear)
         recapYears = years
-        recap = library.listeningRecap(recapYear)
+        recap = library.listeningRecap(recapYear, recapMonth)
         recapSongs = toArray(recap.topSongs)
         recapArtists = toArray(recap.topArtists)
         recapAlbums = toArray(recap.topAlbums)
@@ -48,7 +54,11 @@ Item {
     }
 
     onCurrentTabChanged: if (currentTab === "recap") refreshRecap()
-    onRecapYearChanged: if (currentTab === "recap") refreshRecap()
+    onRecapYearChanged: {
+        recapMonth = -1
+        if (currentTab === "recap") refreshRecap()
+    }
+    onRecapMonthChanged: if (currentTab === "recap") refreshRecap()
     property string searchQuery: ""
 
     readonly property var playedTracks: {
@@ -374,7 +384,7 @@ Item {
                     { id: "artists", label: "Top Artists" },
                     { id: "albums", label: "Top Albums" },
                     { id: "history", label: "History" },
-                    { id: "recap", label: "Recap" }
+                    { id: "recap", label: "Rewind" }
                 ]
                 current: root.currentTab
                 onSelected: id => {
@@ -1245,7 +1255,7 @@ Item {
                 }
             }
 
-            // Recap
+            // Rewind
             AppFlickable {
                 id: recapScroll
                 clip: true
@@ -1269,7 +1279,7 @@ Item {
                             spacing: 4
 
                             Label {
-                                text: "Your " + root.recapYear
+                                text: "Your " + root.recapPeriod
                                 color: root.appWindow.textPrimary
                                 font.family: root.appWindow.displayFont
                                 font.pixelSize: 26
@@ -1289,25 +1299,40 @@ Item {
 
                         Row {
                             visible: root.recapYears.length > 1
-                            spacing: 18
+                            spacing: 8
 
                             Repeater {
                                 model: root.recapYears
 
-                                Label {
+                                FilterChip {
                                     required property var modelData
                                     text: "" + modelData
-                                    color: root.recapYear === modelData ? root.appWindow.textPrimary : root.appWindow.textSecondary
-                                    font.family: root.appWindow.displayFont
-                                    font.pixelSize: 14
-                                    font.weight: root.recapYear === modelData ? Font.Bold : Font.Medium
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: root.recapYear = modelData
-                                    }
+                                    selected: root.recapYear === modelData
+                                    onClicked: root.recapYear = modelData
                                 }
+                            }
+                        }
+                    }
+
+                    Flow {
+                        visible: root.recapMonths.length > 1
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        FilterChip {
+                            text: "Whole year"
+                            selected: root.recapMonth < 0
+                            onClicked: root.recapMonth = -1
+                        }
+
+                        Repeater {
+                            model: root.recapMonths
+
+                            FilterChip {
+                                required property var modelData
+                                text: Qt.locale().standaloneMonthName(modelData, Locale.ShortFormat)
+                                selected: root.recapMonth === modelData
+                                onClicked: root.recapMonth = modelData
                             }
                         }
                     }
@@ -1317,7 +1342,7 @@ Item {
                         Layout.preferredHeight: 320
                         visible: !root.recapHasPlays
                         catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
-                        title: "Nothing recorded for " + root.recapYear + " yet"
+                        title: "Nothing recorded for " + root.recapPeriod + " yet"
                         subtitle: "Songs you play most of the way through are counted here, with the date you played them"
                     }
 
@@ -1369,6 +1394,7 @@ Item {
                         }
 
                         StatCard {
+                            visible: root.recapMonth < 0
                             label: "Busiest Month"
                             value: (root.recap.busiestMonth ?? -1) >= 0 ? root.monthName(root.recap.busiestMonth) : "—"
                             subtitle: (root.recap.busiestMonth ?? -1) >= 0
@@ -1384,7 +1410,7 @@ Item {
 
                         RecapHeading {
                             title: "Top Artists"
-                            subtitle: "Who you played most in " + root.recapYear
+                            subtitle: "Who you played most in " + root.recapPeriod
                         }
 
                         AppListView {
@@ -1414,7 +1440,7 @@ Item {
                         RecapHeading {
                             Layout.bottomMargin: 8
                             title: "Top Songs"
-                            subtitle: "Your most played songs of " + root.recapYear
+                            subtitle: "Your most played songs of " + root.recapPeriod
                         }
 
                         Repeater {

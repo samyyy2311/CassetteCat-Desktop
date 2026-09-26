@@ -1342,11 +1342,11 @@ ApplicationWindow {
     onPlaylistsChanged: if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
     onPlayCountsChanged: {
         if (settingsInitialized) appSettings.setValue("library/playCounts", JSON.stringify(playCounts))
-        refreshHomeRecommendations()
+        refreshHomeActivity()
     }
     onSeenAtChanged: {
         if (settingsInitialized) appSettings.setValue("library/seenAt", JSON.stringify(seenAt))
-        refreshHomeRecommendations()
+        refreshHomeActivity()
     }
     onExcludedFoldersChanged: {
         saveSetting("library/excludedFolders", excludedFolders)
@@ -1356,7 +1356,7 @@ ApplicationWindow {
     onOriginalPlaybackQueueChanged: if (settingsInitialized) appSettings.setValue("player/originalQueue", savedTrackPaths(originalPlaybackQueue))
     onPlaybackHistoryChanged: {
         if (settingsInitialized) appSettings.setValue("player/history", savedTrackPaths(playbackHistory))
-        refreshHomeRecommendations()
+        refreshHomeActivity()
     }
     onRepeatModeChanged: {
         if (settingsInitialized) appSettings.setValue("player/repeatMode", repeatMode)
@@ -2011,12 +2011,28 @@ ApplicationWindow {
         forgottenFavs = home.forgottenFavs
     }
 
+    // Listening updates the activity rows only, so the picks don't reshuffle mid-session.
+    function refreshHomeActivity() {
+        const home = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory)
+        heavyRotation = home.heavyRotation
+        recentlyPlayed = home.recentlyPlayed
+        forgottenFavs = home.forgottenFavs
+    }
+
+    property int homePickedTrackCount: -1
+
     function refreshLibraryState() {
         const groups = library.catalogGroups()
         refreshHomeGroups(groups)
         if (page === "library") refreshLibraryGroups(groups)
         else clearLibraryGroups()
-        refreshHomeRecommendations()
+        // Artwork and tag edits also land here; only a changed library gets new picks.
+        if (library.trackCount !== homePickedTrackCount) {
+            homePickedTrackCount = library.trackCount
+            refreshHomeRecommendations()
+        } else {
+            refreshHomeActivity()
+        }
         restoreLastPlayedTrack()
         restorePlaybackQueue()
         restorePlaybackHistory()

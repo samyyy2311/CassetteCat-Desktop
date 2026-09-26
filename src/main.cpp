@@ -326,6 +326,7 @@ int main(int argc, char *argv[]) {
             passed = false;
         };
         check(scanSelfCheck(), "library scan");
+        check(SettingsController::selfCheck(), "settings");
         check(LibraryController::selfCheck(), "library controller");
         check(streaming::runSelfChecks(), "streaming");
         check(GlobalShortcutController::selfCheck(), "global shortcuts");
@@ -520,7 +521,7 @@ int main(int argc, char *argv[]) {
                 setupWindowsFrameless(quickWin);
                 smtc.initialize(static_cast<quintptr>(quickWin->winId()));
             } else {
-                quickWin->show();
+                quickWin->setVisible(true);
                 setupWindowsFrameless(quickWin);
                 smtc.initialize(static_cast<quintptr>(quickWin->winId()));
                 activateWindow(quickWin);
@@ -529,7 +530,7 @@ int main(int argc, char *argv[]) {
             if (startMinimized) {
                 quickWin->create();
             } else {
-                quickWin->show();
+                quickWin->setVisible(true);
             }
 #endif
             break;

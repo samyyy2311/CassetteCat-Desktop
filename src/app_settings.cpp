@@ -33,8 +33,12 @@ QVariant coerceSettingsValue(const QVariant &val, const QVariant &defaultValue) 
             }
             return val.toBool();
         }
-        case QMetaType::Int:
-            return val.toInt();
+        case QMetaType::Int: {
+            // QML passes whole-number defaults such as 1.0 as int, so keep a stored fraction.
+            bool isInt = false;
+            const int number = val.toInt(&isInt);
+            return isInt ? QVariant(number) : QVariant(val.toDouble());
+        }
         case QMetaType::Double:
             return val.toDouble();
         case QMetaType::Float:
@@ -239,4 +243,10 @@ void SettingsController::openLogFile() {
     if (QFileInfo::exists(path)) {
         QDesktopServices::openUrl(QUrl::fromLocalFile(path));
     }
+}
+
+bool SettingsController::selfCheck() {
+    return coerceSettingsValue(QStringLiteral("0.5"), 1).toDouble() == 0.5 &&
+           coerceSettingsValue(QStringLiteral("3"), 1).toInt() == 3 &&
+           coerceSettingsValue(QStringLiteral("true"), false).toBool();
 }

@@ -34,6 +34,16 @@ ListModel {
             rowKeys = keys
             return
         }
+        let changed = 0
+        for (let i = 0; i < keys.length && changed <= 64; ++i) {
+            if (rowKeys[i] !== keys[i]) ++changed
+        }
+        if (changed > 64) {
+            clear()
+            append(keys.map(key => ({ key: key })))
+            rowKeys = keys
+            return
+        }
         const rows = rowKeys.slice()
         for (let i = 0; i < keys.length; ++i) {
             if (rows[i] === keys[i]) continue

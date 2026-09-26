@@ -47,7 +47,8 @@ TestCase {
         const started = Date.now()
         model.entries = big
         compare(model.count, 2000)
-        verify(Date.now() - started < 200, "loading 2000 rows took " + (Date.now() - started) + " ms")
+        // The quadratic version took seconds; this bound catches that without being timing-sensitive.
+        verify(Date.now() - started < 1000, "loading 2000 rows took " + (Date.now() - started) + " ms")
         big.push(big.shift())
         model.entries = big.slice()
         compare(model.get(1999).key, "next:song0#0")

@@ -188,11 +188,12 @@ Item {
     }
 
     function addToGroup(result, name, track, query) {
-        if (query.length > 0 && !name.toLowerCase().includes(query)
-                && !(track.artist || "").toLowerCase().includes(query) && !(track.title || "").toLowerCase().includes(query))
-            return
-        if (!result[name]) result[name] = { name: name, count: 0, track: track, artist: track.artist || "" }
-        result[name].count++
+        if (!result[name]) result[name] = { name: name, count: 0, track: track, artist: track.artist || "", matches: query.length === 0 }
+        const group = result[name]
+        group.count++
+        if (!group.matches && (name.toLowerCase().includes(query) || (track.artist || "").toLowerCase().includes(query)
+                || (track.title || "").toLowerCase().includes(query)))
+            group.matches = true
     }
 
     function groups(field) {
@@ -220,7 +221,7 @@ Item {
 
         const metric = currentSortMetric
         const asc = currentSortAscending
-        const list = Object.values(result)
+        const list = Object.values(result).filter(group => group.matches)
 
         list.sort((a, b) => {
             if (metric === "count") {

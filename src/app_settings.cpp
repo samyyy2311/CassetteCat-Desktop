@@ -2,6 +2,8 @@
 
 #include "app_paths.h"
 
+#include <cmath>
+
 #include <QClipboard>
 #include <QDebug>
 #include <QDesktopServices>
@@ -35,9 +37,11 @@ QVariant coerceSettingsValue(const QVariant &val, const QVariant &defaultValue) 
         }
         case QMetaType::Int: {
             // QML passes whole-number defaults such as 1.0 as int, so keep a stored fraction.
-            bool isInt = false;
-            const int number = val.toInt(&isInt);
-            return isInt ? QVariant(number) : QVariant(val.toDouble());
+            bool isNumber = false;
+            const double number = val.toDouble(&isNumber);
+            if (isNumber && number != std::floor(number))
+                return number;
+            return val.toInt();
         }
         case QMetaType::Double:
             return val.toDouble();
@@ -247,6 +251,7 @@ void SettingsController::openLogFile() {
 
 bool SettingsController::selfCheck() {
     return coerceSettingsValue(QStringLiteral("0.5"), 1).toDouble() == 0.5 &&
+           coerceSettingsValue(0.5, 1).toDouble() == 0.5 &&
            coerceSettingsValue(QStringLiteral("3"), 1).toInt() == 3 &&
            coerceSettingsValue(QStringLiteral("true"), false).toBool();
 }

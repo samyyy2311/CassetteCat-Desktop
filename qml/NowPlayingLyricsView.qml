@@ -130,6 +130,7 @@ Item {
             MouseArea {
                 id: lyricLineMouse
                 anchors.fill: parent
+                enabled: !lyricsSwap.running
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: player.seek(modelData.startMs)

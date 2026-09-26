@@ -1183,6 +1183,7 @@ ApplicationWindow {
     }
 
     onPageChanged: {
+        catalogDetailOpen = false
         if (settingsInitialized) appSettings.setValue("ui/page", page)
         updateVisibleLibrary()
         if (page === "library") refreshLibraryGroups(library.catalogGroups())
@@ -1544,6 +1545,7 @@ ApplicationWindow {
         enabled: shortcutAllowed(sequence)
         onActivated: {
             if (miniPlayerMode) return
+            catalogDetailOpen = false
             const loaders = { library: libraryPageLoader, radio: radioPageLoader, jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader, stats: listeningRecordPageLoader }
             const pageItem = !nowPlayingOpen && loaders[page] ? loaders[page].item : null
             const box = pageItem ? pageItem.searchBox : null
@@ -2023,6 +2025,14 @@ ApplicationWindow {
 
     property int homePickedTrackCount: -1
 
+    // Swaps in the current copy of each picked track, so tag and cover edits show without reshuffling.
+    function refreshHomePicks() {
+        const fresh = tracks => tracksForPaths(tracks.map(track => track.filePath)).filter(track => !!track)
+        quickPicks = fresh(quickPicks)
+        recentlyAdded = fresh(recentlyAdded)
+        if (spotlightTrack) spotlightTrack = fresh([spotlightTrack])[0] || null
+    }
+
     function refreshLibraryState() {
         const groups = library.catalogGroups()
         refreshHomeGroups(groups)
@@ -2034,6 +2044,7 @@ ApplicationWindow {
             refreshHomeRecommendations()
         } else {
             refreshHomeActivity()
+            refreshHomePicks()
         }
         restoreLastPlayedTrack()
         restorePlaybackQueue()

@@ -134,16 +134,15 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 28
-        anchors.rightMargin: 28
         anchors.topMargin: 16
-        anchors.bottomMargin: 16
         spacing: 14
 
         // Hero Search Box
         Rectangle {
             id: pageSearchBox
             Layout.fillWidth: true
+            Layout.leftMargin: 28
+            Layout.rightMargin: 28
             Layout.preferredHeight: 46
             radius: 12
             color: pageSearchInput.activeFocus ? surfaceElevated : surfaceCard
@@ -245,6 +244,8 @@ Item {
         // Format Filter Pills Bar
         RowLayout {
             Layout.fillWidth: true
+            Layout.leftMargin: 28
+            Layout.rightMargin: 28
             spacing: 10
 
             Label {
@@ -373,6 +374,9 @@ Item {
             clip: true
             model: root.libraryModel
             spacing: 4
+            leftMargin: 28
+            rightMargin: 28
+            bottomMargin: 24
             boundsBehavior: Flickable.StopAtBounds
             flickDeceleration: UiConstants.flickDeceleration
             maximumFlickVelocity: UiConstants.maximumFlickVelocity
@@ -382,7 +386,7 @@ Item {
             ScrollBar.vertical: AutoHideScrollBar {}
 
             header: Item {
-                width: searchResults.width
+                width: searchResults.width - 56
                 height: 32
 
                 RowLayout {
@@ -410,7 +414,7 @@ Item {
             }
 
             delegate: SongRow {
-                width: searchResults.width
+                width: searchResults.width - 56
                 track: model.track
                 showAlbum: true
                 showCover: true
@@ -442,7 +446,6 @@ Item {
             Layout.fillHeight: true
             visible: !root.filtering
             clip: true
-            readonly property real availableWidth: width
             contentWidth: width
             contentHeight: idleColumn.implicitHeight + 32
             flickDeceleration: UiConstants.flickDeceleration
@@ -453,7 +456,8 @@ Item {
 
             ColumnLayout {
                 id: idleColumn
-                width: idleScrollView.availableWidth
+                x: 28
+                width: idleScrollView.width - 56
                 spacing: 24
 
                 // Section 1: Recent Listens Shelf (deduplicated by artist)

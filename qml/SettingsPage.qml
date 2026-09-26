@@ -171,7 +171,6 @@ Item {
             anchors.leftMargin: 28
             anchors.rightMargin: 28
             anchors.topMargin: 14
-            anchors.bottomMargin: 16
             spacing: 0
 
             Item {

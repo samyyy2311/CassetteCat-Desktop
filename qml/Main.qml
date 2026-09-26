@@ -1136,12 +1136,15 @@ ApplicationWindow {
         inAppShortcutStatus = shortcut === "" ? "Shortcut cleared" : "Shortcut saved"
     }
 
-    function isInputActive() {
+    // While typing, only shortcuts that a text field would not use for itself stay active.
+    function shortcutAllowed(sequence) {
+        if (sequence.length === 0) return false
         const item = window.activeFocusItem
-        if (!item) return false
-        if (item.isShortcutCapture === true) return true
-        if (typeof item.cursorPosition !== "undefined" || typeof item.selectedText !== "undefined") return true
-        return false
+        if (!item) return true
+        if (item.isShortcutCapture === true) return false
+        if (typeof item.cursorPosition === "undefined" && typeof item.selectedText === "undefined") return true
+        return /^(Ctrl|Alt|Meta)\+/i.test(sequence)
+            && !/^Ctrl\+(Shift\+)?(Left|Right|Home|End|Backspace|Delete|A|C|V|X|Y|Z)$/i.test(sequence)
     }
 
     function focusSearchInput() {
@@ -1516,13 +1519,13 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("toggleMiniPlayer")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: toggleMiniPlayer()
     }
 
     Shortcut {
         sequence: inAppShortcut("toggleSidebar")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: {
             if (!miniPlayerMode) sidebarCollapsed = !sidebarCollapsed
         }
@@ -1530,7 +1533,7 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("search")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: {
             if (!miniPlayerMode) {
                 nowPlayingOpen = false
@@ -1541,7 +1544,7 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("quickSwitcher")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: {
             if (miniPlayerMode) return
             nowPlayingOpen = false
@@ -1554,7 +1557,7 @@ ApplicationWindow {
     Shortcut {
         sequence: inAppShortcut("closePlayerView")
         // An open sheet handles Escape itself; two enabled shortcuts on one key would both be ignored as ambiguous.
-        enabled: sequence.length > 0 && !isInputActive() && !refineSheetOpen && !radioRefineOpen && !trackActionSheet.isOpen
+        enabled: shortcutAllowed(sequence) && !refineSheetOpen && !radioRefineOpen && !trackActionSheet.isOpen
         onActivated: {
             if (miniPlayerMode) {
                 toggleMiniPlayer()
@@ -1566,7 +1569,7 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("playPause")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: {
             if (!player.currentTrack.filePath && library.trackCount > 0) {
                 shuffleAll()
@@ -1578,43 +1581,43 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("volumeUp")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: setPlayerVolume(player.volume + 0.05)
     }
 
     Shortcut {
         sequence: inAppShortcut("volumeDown")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: setPlayerVolume(player.volume - 0.05)
     }
 
     Shortcut {
         sequence: inAppShortcut("seekForward")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: player.seek(Math.min(player.duration, player.position + 5000))
     }
 
     Shortcut {
         sequence: inAppShortcut("seekBackward")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: player.seek(Math.max(0, player.position - 5000))
     }
 
     Shortcut {
         sequence: inAppShortcut("nowPlayingNext")
-        enabled: sequence.length > 0 && nowPlayingOpen && !isInputActive()
+        enabled: nowPlayingOpen && shortcutAllowed(sequence)
         onActivated: window.playNext()
     }
 
     Shortcut {
         sequence: inAppShortcut("nowPlayingPrevious")
-        enabled: sequence.length > 0 && nowPlayingOpen && !isInputActive()
+        enabled: nowPlayingOpen && shortcutAllowed(sequence)
         onActivated: window.playPrevious()
     }
 
     Shortcut {
         sequence: inAppShortcut("mute")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: setPlayerVolume(player.volume > 0.001 ? 0.0 : 0.8)
     }
 

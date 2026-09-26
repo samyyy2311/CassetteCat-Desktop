@@ -3362,37 +3362,13 @@ ApplicationWindow {
                     anchors.fill: parent
                     currentIndex: page === "home" ? 0 : (page === "library" ? 1 : (page === "search" ? 2 : (page === "radio" ? 3 : (page === "jellyfin" ? 4 : (page === "subsonic" ? 5 : (page === "stats" ? 6 : 7))))))
 
-                    layer.enabled: pageSwitchAnim.running
-                    layer.smooth: true
+                    transform: Translate { id: pageTranslate }
+                    onCurrentIndexChanged: pageEnter.restart()
 
-                    transform: Translate {
-                        id: pageTranslate
-                        y: 0
-                    }
-
-                    onCurrentIndexChanged: {
-                        pageSwitchAnim.restart()
-                        pageSlideAnim.restart()
-                    }
-
-                    NumberAnimation {
-                        id: pageSwitchAnim
+                    EnterAnimation {
+                        id: pageEnter
                         target: mainStack
-                        property: "opacity"
-                        from: 0.85
-                        to: 1.0
-                        duration: 160
-                        easing.type: Easing.OutCubic
-                    }
-
-                    NumberAnimation {
-                        id: pageSlideAnim
-                        target: pageTranslate
-                        property: "y"
-                        from: 5
-                        to: 0
-                        duration: 160
-                        easing.type: Easing.OutCubic
+                        shift: pageTranslate
                     }
 
                     Loader {
@@ -3723,7 +3699,40 @@ ApplicationWindow {
             anchors.right: parent.right
             anchors.bottom: miniPlayerDock.top
             z: 350
-            active: catalogDetailOpen
+            // Stays loaded while the close animation plays.
+            active: catalogDetailOpen || detailExit.running
+            transform: Translate { id: detailShift }
+            onLoaded: detailEnter.restart()
+
+            EnterAnimation {
+                id: detailEnter
+                target: catalogDetailLoader
+                shift: detailShift
+                axis: "x"
+                distance: 32
+            }
+
+            ParallelAnimation {
+                id: detailExit
+                NumberAnimation { target: catalogDetailLoader; property: "opacity"; to: 0; duration: UiConstants.durationFast; easing.type: Easing.InCubic }
+                NumberAnimation { target: detailShift; property: "x"; to: 24; duration: UiConstants.durationFast; easing.type: Easing.InCubic }
+            }
+
+            Connections {
+                target: window
+                function onCatalogDetailOpenChanged() {
+                    if (catalogDetailOpen) {
+                        detailExit.stop()
+                        if (catalogDetailLoader.item) detailEnter.restart()
+                    } else {
+                        detailExit.restart()
+                    }
+                }
+                function onCatalogDetailTitleChanged() {
+                    if (catalogDetailOpen && catalogDetailLoader.item) detailEnter.restart()
+                }
+            }
+
             sourceComponent: Component {
                 CatalogDetail {
                     anchors.fill: parent

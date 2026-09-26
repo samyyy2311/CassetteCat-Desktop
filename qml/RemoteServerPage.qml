@@ -431,6 +431,20 @@ Item {
             id: trackContent
             Layout.fillWidth: true
             Layout.fillHeight: true
+            transform: Translate { id: tabShift }
+
+            Connections {
+                target: root
+                function onActiveTabChanged() { tabEnter.restart() }
+            }
+
+            EnterAnimation {
+                id: tabEnter
+                target: trackContent
+                shift: tabShift
+                distance: 6
+                duration: UiConstants.durationFast
+            }
 
             // Counts what the visible view shows after search and format filters.
             readonly property int visibleCount: trackList.visible ? trackList.count : trackGrid.count

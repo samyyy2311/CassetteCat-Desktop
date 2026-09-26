@@ -457,6 +457,17 @@ Item {
 
         StackLayout {
             id: recordStack
+            transform: Translate { id: tabShift }
+            onCurrentIndexChanged: tabEnter.restart()
+
+            EnterAnimation {
+                id: tabEnter
+                target: recordStack
+                shift: tabShift
+                distance: 6
+                duration: UiConstants.durationFast
+            }
+
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: ["overview", "tracks", "artists", "albums", "history", "recap"].indexOf(root.currentTab)

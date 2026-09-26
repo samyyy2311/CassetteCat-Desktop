@@ -7,10 +7,6 @@ Rectangle {
     id: root
     property var appWindow
     property string mode: "artist"
-    opacity: 0.0
-    Behavior on opacity {
-        NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
-    }
     property string title: ""
     property var tracks: []
     property var heroTrack: ({})
@@ -68,10 +64,7 @@ Rectangle {
         else if (albumDetail) loadAlbumProfile()
     }
 
-    Component.onCompleted: {
-        opacity = 1.0
-        loadDetailProfile()
-    }
+    Component.onCompleted: loadDetailProfile()
     onVisibleChanged: if (visible) loadDetailProfile()
     onModeChanged: {
         scrollView.positionViewAtBeginning()

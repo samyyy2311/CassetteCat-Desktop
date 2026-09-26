@@ -25,6 +25,14 @@ Popup {
         color: "#B8000000"
     }
 
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: UiConstants.durationFast }
+        NumberAnimation { property: "scale"; from: 0.96; to: 1; duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
+    }
+    exit: Transition {
+        NumberAnimation { property: "opacity"; to: 0; duration: UiConstants.durationFast }
+    }
+
     background: Rectangle {
         radius: 14
         color: surfaceCard

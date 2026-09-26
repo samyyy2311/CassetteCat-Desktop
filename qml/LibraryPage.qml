@@ -249,6 +249,17 @@ Item {
 
         StackLayout {
             id: libraryStack
+            transform: Translate { id: tabShift }
+            onCurrentIndexChanged: tabEnter.restart()
+
+            EnterAnimation {
+                id: tabEnter
+                target: libraryStack
+                shift: tabShift
+                distance: 6
+                duration: UiConstants.durationFast
+            }
+
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: root.appWindow.libraryTab === "songs" ? 0 : (root.appWindow.libraryTab === "artists" ? 1 : (root.appWindow.libraryTab === "albums" ? 2 : (root.appWindow.libraryTab === "genres" ? 3 : (root.appWindow.libraryTab === "folders" ? 4 : 5))))

@@ -71,6 +71,21 @@
 
 ---
 
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="assets/screenshots/library-albums.png" alt="Albums" /><p align="center">Albums</p></td>
+    <td><img src="assets/screenshots/now-playing.png" alt="Player" /><p align="center">Player</p></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/library-songs.png" alt="Songs" /><p align="center">Songs</p></td>
+    <td><img src="assets/screenshots/radio.png" alt="Radio" /><p align="center">Radio</p></td>
+  </tr>
+</table>
+
+---
+
 ## Download
 
 <p align="center">

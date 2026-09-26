@@ -47,6 +47,8 @@ QImage CoverImageProvider::requestImage(const QString &id, QSize *size, const QS
         const QString trackPath =
             QString::fromUtf8(QByteArray::fromBase64(source.mid(6).toLatin1(), QByteArray::Base64UrlEncoding));
         imagePath = QUrl(extractEmbeddedArtwork(trackPath)).toLocalFile();
+    } else if (source.startsWith(QStringLiteral("qrc:"))) {
+        imagePath = ':' + QUrl(source).path();
     } else {
         imagePath = QUrl(source).toLocalFile();
     }

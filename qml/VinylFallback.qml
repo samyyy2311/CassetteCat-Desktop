@@ -22,23 +22,14 @@ Item {
             sourceSize.width: Math.ceil(width * 2)
             smooth: true
 
-            Canvas {
-                id: labelCanvas
+            // The cover provider crops the label to a circle at the screen's real pixel size, keeping it sharp.
+            Image {
                 anchors.centerIn: parent
                 width: parent.width * 0.305
                 height: width
-                property url fallbackArtwork: "qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png"
-                Component.onCompleted: loadImage(fallbackArtwork)
-                onWidthChanged: requestPaint()
-                onImageLoaded: requestPaint()
-                onPaint: {
-                    const ctx = getContext("2d")
-                    ctx.reset()
-                    ctx.beginPath()
-                    ctx.arc(width / 2, height / 2, width / 2, 0, Math.PI * 2)
-                    ctx.clip()
-                    if (isImageLoaded(fallbackArtwork)) ctx.drawImage(fallbackArtwork, 0, 0, width, height)
-                }
+                source: "image://cover/0.5/qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png"
+                sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
+                sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
             }
             RotationAnimator on rotation {
                 from: 0

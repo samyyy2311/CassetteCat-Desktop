@@ -2996,7 +2996,7 @@ ApplicationWindow {
                     text: pageItem && pageItem.item ? pageItem.item.countText : ""
                     color: silverDim
                     font.family: bodyFont
-                    font.pixelSize: 14
+                    font.pixelSize: 12
                 }
 
                 Item { Layout.fillWidth: true }

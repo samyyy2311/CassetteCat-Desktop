@@ -19,10 +19,6 @@ Item {
     property int recapYear: new Date().getFullYear()
     property int recapMonth: -1
     readonly property string recapPeriod: recapMonth >= 0 ? monthName(recapMonth) + " " + recapYear : "" + recapYear
-    readonly property var recapMonths: {
-        const months = toArray(recap.months)
-        return months.map((ms, index) => index).filter(index => months[index] > 0)
-    }
     property var recapYears: []
     property var recap: ({})
     property var recapSongs: []
@@ -249,7 +245,7 @@ Item {
                 text: value
                 color: root.appWindow.textPrimary
                 font.family: root.appWindow.displayFont
-                font.pixelSize: 26
+                font.pixelSize: 22
                 font.weight: Font.Bold
                 elide: Text.ElideRight
             }
@@ -1162,10 +1158,10 @@ Item {
 
                             Label {
                                 visible: root.recapHasPlays
-                                text: "Recorded since " + new Date(root.recap.firstListen || 0).toLocaleDateString(Qt.locale(), "d MMMM yyyy")
+                                text: "Since " + new Date(root.recap.firstListen || 0).toLocaleDateString(Qt.locale(), "d MMMM yyyy")
                                 color: root.appWindow.textSecondary
-                                font.family: root.appWindow.monoFont
-                                font.pixelSize: 11
+                                font.family: root.appWindow.bodyFont
+                                font.pixelSize: 13
                             }
                         }
 
@@ -1188,29 +1184,6 @@ Item {
                         }
                     }
 
-                    Flow {
-                        visible: root.recapMonths.length > 1
-                        Layout.fillWidth: true
-                        spacing: 8
-
-                        FilterChip {
-                            text: "Whole year"
-                            selected: root.recapMonth < 0
-                            onClicked: root.recapMonth = -1
-                        }
-
-                        Repeater {
-                            model: root.recapMonths
-
-                            FilterChip {
-                                required property var modelData
-                                text: Qt.locale().standaloneMonthName(modelData, Locale.ShortFormat)
-                                selected: root.recapMonth === modelData
-                                onClicked: root.recapMonth = modelData
-                            }
-                        }
-                    }
-
                     EmptyState {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 320
@@ -1223,30 +1196,102 @@ Item {
                     RowLayout {
                         visible: root.recapHasPlays
                         Layout.fillWidth: true
-                        spacing: 24
+                        spacing: 40
 
-                        StatCard {
-                            label: "Listening Time"
-                            value: root.formatDurationTotal((root.recap.listenedMs || 0) / 1000)
-                            subtitle: "time spent listening"
+                        ColumnLayout {
+                            Layout.alignment: Qt.AlignBottom
+                            spacing: 2
+
+                            Label {
+                                text: root.formatDurationTotal((root.recap.listenedMs || 0) / 1000)
+                                color: root.appWindow.textPrimary
+                                font.family: root.appWindow.displayFont
+                                font.pixelSize: 40
+                                font.weight: Font.Bold
+                                font.letterSpacing: -0.6
+                            }
+
+                            Label {
+                                text: "of listening"
+                                color: root.appWindow.textSecondary
+                                font.family: root.appWindow.bodyFont
+                                font.pixelSize: 15
+                            }
+
+                            Label {
+                                Layout.topMargin: 10
+                                text: root.formatCount(root.recap.plays || 0) + "  \u2022  "
+                                      + (root.recap.songCount || 0) + (root.recap.songCount === 1 ? " song" : " songs") + "  \u2022  "
+                                      + (root.recap.artistCount || 0) + (root.recap.artistCount === 1 ? " artist" : " artists")
+                                color: root.appWindow.silverDim
+                                font.family: root.appWindow.bodyFont
+                                font.pixelSize: 13
+                            }
                         }
 
-                        StatCard {
-                            label: "Plays"
-                            value: "" + (root.recap.plays || 0)
-                            subtitle: "counted listens"
-                        }
+                        Item {
+                            id: monthChart
+                            readonly property var months: root.toArray(root.recap.months)
+                            readonly property real peak: Math.max(1, ...months)
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 150
+                            Layout.alignment: Qt.AlignBottom
 
-                        StatCard {
-                            label: "Songs"
-                            value: "" + (root.recap.songCount || 0)
-                            subtitle: "different songs"
-                        }
+                            Row {
+                                anchors.fill: parent
+                                spacing: 6
 
-                        StatCard {
-                            label: "Artists"
-                            value: "" + (root.recap.artistCount || 0)
-                            subtitle: "different artists"
+                                Repeater {
+                                    model: 12
+
+                                    Item {
+                                        id: monthBar
+                                        required property int index
+                                        readonly property real value: monthChart.months[index] || 0
+                                        readonly property bool selected: root.recapMonth === index
+                                        width: (monthChart.width - 11 * 6) / 12
+                                        height: monthChart.height
+
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: root.monthName(index)
+                                        Accessible.onPressAction: barMouse.clicked(null)
+
+                                        Rectangle {
+                                            anchors.bottom: monthLabel.top
+                                            anchors.bottomMargin: 8
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            width: Math.min(parent.width, 28)
+                                            height: Math.max(3, (parent.height - 28) * monthBar.value / monthChart.peak)
+                                            radius: 4
+                                            color: monthBar.selected ? root.appWindow.recordRed
+                                                 : (barMouse.containsMouse && monthBar.value > 0 ? root.appWindow.recordRedHover
+                                                 : (monthBar.value > 0 ? root.appWindow.borderVariant : root.appWindow.borderSubtle))
+
+                                            Behavior on height { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
+                                        }
+
+                                        Label {
+                                            id: monthLabel
+                                            anchors.bottom: parent.bottom
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: Qt.locale().standaloneMonthName(monthBar.index, Locale.NarrowFormat)
+                                            color: monthBar.selected ? root.appWindow.textPrimary : root.appWindow.silverDim
+                                            font.family: root.appWindow.bodyFont
+                                            font.pixelSize: 12
+                                            font.weight: monthBar.selected ? Font.Bold : Font.Normal
+                                        }
+
+                                        MouseArea {
+                                            id: barMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            enabled: monthBar.value > 0
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: root.recapMonth = monthBar.selected ? -1 : monthBar.index
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -1255,22 +1300,37 @@ Item {
                         Layout.fillWidth: true
                         spacing: 24
 
-                        StatCard {
-                            label: "Top Album"
-                            value: root.recapAlbums.length ? root.recapAlbums[0].name : "—"
-                            subtitle: root.recapAlbums.length ? root.formatCount(root.recapAlbums[0].plays) : ""
+                        RowLayout {
+                            visible: root.recapAlbums.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            spacing: 14
+
+                            Cover {
+                                Layout.preferredWidth: 64
+                                Layout.preferredHeight: 64
+                                radius: 8
+                                track: root.recapAlbums.length ? root.recapAlbums[0].track : ({})
+                            }
+
+                            StatCard {
+                                label: "Top album"
+                                value: root.recapAlbums.length ? root.recapAlbums[0].name : ""
+                                subtitle: root.recapAlbums.length ? root.formatCount(root.recapAlbums[0].plays) : ""
+                            }
                         }
 
                         StatCard {
-                            label: "Top Genre"
-                            value: root.recapGenres.length ? root.recapGenres[0].name : "—"
+                            visible: root.recapGenres.length > 0
+                            label: "Top genre"
+                            value: root.recapGenres.length ? root.recapGenres[0].name : ""
                             subtitle: root.recapGenres.length ? root.formatCount(root.recapGenres[0].plays) : ""
                         }
 
                         StatCard {
-                            visible: root.recapMonth < 0
-                            label: "Busiest Month"
-                            value: (root.recap.busiestMonth ?? -1) >= 0 ? root.monthName(root.recap.busiestMonth) : "—"
+                            visible: root.recapMonth < 0 && (root.recap.busiestMonth ?? -1) >= 0
+                            label: "Busiest month"
+                            value: (root.recap.busiestMonth ?? -1) >= 0 ? root.monthName(root.recap.busiestMonth) : ""
                             subtitle: (root.recap.busiestMonth ?? -1) >= 0
                                 ? root.formatDurationTotal(root.recap.months[root.recap.busiestMonth] / 1000) + " listened"
                                 : ""

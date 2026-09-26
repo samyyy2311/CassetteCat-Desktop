@@ -10,13 +10,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
-  security-events: write
 
 jobs:
   analyze:
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
     env:
       QT_QPA_PLATFORM: offscreen
       QT_QPA_OFFSCREEN_NO_GLX: "1"

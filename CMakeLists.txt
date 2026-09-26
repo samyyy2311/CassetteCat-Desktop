@@ -111,6 +111,7 @@ qt_add_qml_module(CassetteCat
         qml/CatalogDetail.qml
         qml/ArtistDetailBody.qml
         qml/AlbumDetailBody.qml
+        qml/CardBase.qml
         qml/CategoryCard.qml
         qml/HomeSectionHeader.qml
         qml/HomePage.qml

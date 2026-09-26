@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "TrackTitles.js" as TrackTitles
 
-Item {
+CardBase {
     id: root
     property var track: ({})
     property real cardWidth: 170
@@ -11,18 +11,10 @@ Item {
     property bool isCurrent: !!(player.currentTrack && track && player.currentTrack.filePath === track.filePath)
     property bool isPlaying: isCurrent && player.isPlaying
 
-    signal clicked()
     signal favoriteClicked()
 
-    readonly property bool highlighted: cardMouse.containsMouse || (activeFocus && !mouseFocused)
-    property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
-
-    Accessible.role: Accessible.Button
-    Accessible.name: root.track.title || root.track.fileName || ""
-    Accessible.onPressAction: root.clicked()
-    Keys.onReturnPressed: root.clicked()
-    Keys.onEnterPressed: root.clicked()
+    accessibleName: root.track.title || root.track.fileName || ""
+    onRightClicked: contextMenu.popup()
     Keys.onMenuPressed: contextMenu.popup(root, 0, root.height)
 
     width: cardWidth
@@ -94,25 +86,6 @@ Item {
         function popup(...args) {
             active = true
             item.popup(...args)
-        }
-    }
-
-    MouseArea {
-        id: cardMouse
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: Qt.PointingHandCursor
-        onPressed: {
-            root.mouseFocused = true
-            root.forceActiveFocus()
-        }
-        onClicked: mouse => {
-            if (mouse.button === Qt.RightButton) {
-                contextMenu.popup()
-            } else {
-                root.clicked()
-            }
         }
     }
 }

@@ -2,7 +2,7 @@ import QtQuick.Controls
 import QtQuick
 import QtQuick.Layouts
 
-Item {
+CardBase {
     id: root
     property string name: ""
     property string artist: ""
@@ -13,17 +13,12 @@ Item {
     property real cardHeight: 235
     property real imageRadius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
 
-    signal clicked()
-
-    readonly property bool highlighted: albumCardMouse.containsMouse || (activeFocus && !mouseFocused)
-    property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
-
-    Accessible.role: Accessible.Button
-    Accessible.name: root.name
-    Accessible.onPressAction: root.clicked()
-    Keys.onReturnPressed: root.clicked()
-    Keys.onEnterPressed: root.clicked()
+    accessibleName: root.name
+    onRightClicked: {
+        if (typeof window !== "undefined" && window.openCoverSearch) {
+            window.openCoverSearch(root.name, root.artist, root.track ? root.track.filePath : "")
+        }
+    }
 
     width: cardWidth
     height: cardHeight
@@ -85,26 +80,5 @@ Item {
 
         // Keeps the cover at the top when the title wraps to two lines.
         Item { Layout.fillHeight: true }
-    }
-
-    MouseArea {
-        id: albumCardMouse
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: Qt.PointingHandCursor
-        onPressed: {
-            root.mouseFocused = true
-            root.forceActiveFocus()
-        }
-        onClicked: mouse => {
-            if (mouse.button === Qt.RightButton) {
-                if (typeof window !== "undefined" && window.openCoverSearch) {
-                    window.openCoverSearch(root.name, root.artist, root.track ? root.track.filePath : "")
-                }
-            } else {
-                root.clicked()
-            }
-        }
     }
 }

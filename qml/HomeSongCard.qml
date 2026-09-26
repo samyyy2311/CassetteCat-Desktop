@@ -3,7 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import "TrackTitles.js" as TrackTitles
 
-Item {
+CardBase {
     id: root
 
     property var track: ({})
@@ -11,17 +11,7 @@ Item {
     property real cardHeight: 225
     property real coverRadius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
 
-    signal clicked()
-
-    readonly property bool highlighted: cardMouse.containsMouse || (activeFocus && !mouseFocused)
-    property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
-
-    Accessible.role: Accessible.Button
-    Accessible.name: root.track.title || root.track.fileName || ""
-    Accessible.onPressAction: root.clicked()
-    Keys.onReturnPressed: root.clicked()
-    Keys.onEnterPressed: root.clicked()
+    accessibleName: root.track.title || root.track.fileName || ""
 
     width: cardWidth
     height: cardHeight
@@ -63,17 +53,5 @@ Item {
         }
 
         Item { Layout.fillHeight: true }
-    }
-
-    MouseArea {
-        id: cardMouse
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onPressed: {
-            root.mouseFocused = true
-            root.forceActiveFocus()
-        }
-        onClicked: root.clicked()
     }
 }

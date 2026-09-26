@@ -2,7 +2,7 @@ import QtQuick.Controls
 import QtQuick
 import QtQuick.Layouts
 
-Rectangle {
+CardBase {
     id: root
     property string name: ""
     property int count: 0
@@ -12,17 +12,7 @@ Rectangle {
     property real cardHeight: 110
     property real cardRadius: 14
 
-    signal clicked()
-
-    readonly property bool highlighted: categoryMouse.containsMouse || (activeFocus && !mouseFocused)
-    property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
-
-    Accessible.role: Accessible.Button
-    Accessible.name: root.name
-    Accessible.onPressAction: root.clicked()
-    Keys.onReturnPressed: root.clicked()
-    Keys.onEnterPressed: root.clicked()
+    accessibleName: root.name
 
     width: cardWidth
     height: cardHeight
@@ -115,17 +105,5 @@ Rectangle {
             font.weight: Font.Bold
             elide: Text.ElideRight
         }
-    }
-
-    MouseArea {
-        id: categoryMouse
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onPressed: {
-            root.mouseFocused = true
-            root.forceActiveFocus()
-        }
-        onClicked: root.clicked()
     }
 }

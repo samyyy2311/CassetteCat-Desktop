@@ -1,10 +1,9 @@
 import QtQuick
 import QtQuick.Controls
 
-// Underlined page tabs. `tabs` is a list of { id, label }; selecting one emits its id.
 Row {
     id: root
-    property var tabs: []
+    property var tabs: [] // [{ id, label }]
     property string current: ""
 
     signal selected(string id)

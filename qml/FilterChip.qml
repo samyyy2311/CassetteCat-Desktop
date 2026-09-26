@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// A rounded filter chip, such as ALL / FAVORITES or a radio genre.
 Rectangle {
     id: root
     property string text: ""

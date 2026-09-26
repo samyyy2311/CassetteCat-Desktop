@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-// Asks before an action that cannot be undone.
 Popup {
     id: root
     property string title: ""

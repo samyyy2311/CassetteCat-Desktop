@@ -64,7 +64,7 @@ QImage CoverImageProvider::requestImage(const QString &id, QSize *size, const QS
     QImageReader reader(imagePath);
     reader.setAutoTransform(true);
     *size = reader.size();
-    // An item that has not been laid out yet asks for 0x0, which would scale the image away to nothing.
+    // Items that are not laid out yet request 0x0.
     if (requestedSize.isEmpty() || !size->isValid())
         return reader.read();
 

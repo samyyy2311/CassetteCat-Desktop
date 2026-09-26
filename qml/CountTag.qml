@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 
-// The small count pill beside page tabs, such as "1064 songs".
 Rectangle {
     property alias text: countLabel.text
 

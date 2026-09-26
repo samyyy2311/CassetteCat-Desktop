@@ -38,7 +38,6 @@ Rectangle {
         return list
     }
     readonly property bool uniformFormat: tracks.every(track => track.format === tracks[0].format)
-    // The window bar shows the title once the large heading has scrolled out of view.
     readonly property bool headingScrolledAway: scrollView.contentY - scrollView.originY > 200
     property bool bioExpanded: false
 
@@ -74,7 +73,6 @@ Rectangle {
         loadDetailProfile()
     }
     onVisibleChanged: if (visible) loadDetailProfile()
-    // The list is reused from page to page, so each new page scrolls back to the top.
     onModeChanged: {
         scrollView.positionViewAtBeginning()
         loadDetailProfile()

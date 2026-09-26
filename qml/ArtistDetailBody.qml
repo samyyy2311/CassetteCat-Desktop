@@ -136,7 +136,7 @@ Column {
 
                         ListView {
                             id: releaseList
-                            // Card width is chosen so a row always shows whole cards, never a cut-off one.
+                            // Sized so a row shows whole cards only.
                             readonly property int visibleCards: Math.max(2, Math.floor((width + spacing) / (180 + spacing)))
                             readonly property real cardWidth: Math.floor((width - (visibleCards - 1) * spacing) / visibleCards)
                             activeFocusOnTab: true
@@ -145,7 +145,7 @@ Column {
                             Layout.preferredHeight: cardWidth + 72 + topMargin
                             orientation: ListView.Horizontal
                             clip: true
-                            // Room for the hover zoom, which the clip would otherwise cut off.
+                            // Keeps the hover zoom inside the clip.
                             topMargin: 6
                             spacing: 16
                             snapMode: ListView.SnapToItem

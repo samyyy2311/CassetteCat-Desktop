@@ -7,7 +7,7 @@ ListView {
     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
     property var tracks: []
     property var appWindow
-    // Set on album pages: rows show track numbers and leave this artist out of their credits.
+    // Album pages only: numbered rows without the album artist.
     property string albumArtist: ""
     property bool showFormatBadge: true
 

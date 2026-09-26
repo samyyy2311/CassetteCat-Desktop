@@ -9,7 +9,6 @@ Rectangle {
     property bool isCurrent: !!(player.currentTrack && track && player.currentTrack.filePath === track.filePath)
     property bool showAlbum: true
     property bool showCover: true
-    // On an album page the track number replaces the cover, and the album's own artist is left out.
     property int number: 0
     property string omitArtist: ""
     property bool showDuration: true
@@ -66,8 +65,7 @@ Rectangle {
 
     Behavior on color { ColorAnimation { duration: 120 } }
 
-    // Declared before the content so it sits underneath it. With z: -1 instead, presses never
-    // reached it and rows could not be clicked.
+    // Declared first so the content stays above it; at z: -1 it received no presses.
     MouseArea {
         id: rowMouse
         anchors.fill: parent

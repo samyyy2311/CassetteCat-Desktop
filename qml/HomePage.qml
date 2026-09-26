@@ -110,7 +110,6 @@ Item {
                                     }
                                 }
 
-                                // A small, heavily blurred copy of the artwork reads as colour instead of a stretched image.
                                 Cover {
                                     anchors.centerIn: parent
                                     width: parent.width * 1.2

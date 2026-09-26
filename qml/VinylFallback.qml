@@ -22,7 +22,6 @@ Item {
             sourceSize.width: Math.ceil(width * 2)
             smooth: true
 
-            // The cover provider crops the label to a circle at the screen's real pixel size, keeping it sharp.
             Image {
                 anchors.centerIn: parent
                 width: parent.width * 0.305

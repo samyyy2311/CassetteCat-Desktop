@@ -1,6 +1,5 @@
 import QtQuick
 
-// Artwork frame shared by the cards, so hover and now-playing states look the same on every page.
 Rectangle {
     id: root
     property bool highlighted: false

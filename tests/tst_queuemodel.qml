@@ -39,4 +39,17 @@ TestCase {
         model.entries = []
         compare(model.count, 0)
     }
+
+    function test_large_queue_loads_quickly() {
+        const big = []
+        for (let i = 0; i < 2000; ++i) big.push(next("song" + i, i))
+        model.entries = []
+        const started = Date.now()
+        model.entries = big
+        compare(model.count, 2000)
+        verify(Date.now() - started < 200, "loading 2000 rows took " + (Date.now() - started) + " ms")
+        big.push(big.shift())
+        model.entries = big.slice()
+        compare(model.get(1999).key, "next:song0#0")
+    }
 }

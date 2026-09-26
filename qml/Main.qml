@@ -4244,13 +4244,17 @@ ApplicationWindow {
                 readonly property int lyricsArtY: Math.max(10, Math.round((parent.height - (lyricsArtSize + 16 + 160)) / 2))
                 readonly property int targetArtY: compactPlayerMode ? lyricsArtY : normalArtY
 
+                // Resized with scale, a GPU transform, so the artwork and its mask are drawn once instead of
+                // being laid out and re-rendered on every frame of the animation.
                 Rectangle {
                     id: npArtworkCard
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: npLeftColumn.targetArtY
-                    width: npLeftColumn.currentArtSize
-                    height: npLeftColumn.currentArtSize
-                    radius: window.albumArtRadius === 0 ? 0 : (window.albumArtRadius <= 8 ? (npLeftColumn.compactPlayerMode ? 8 : 10) : (npLeftColumn.compactPlayerMode ? 16 : 22))
+                    width: npLeftColumn.normalArtSize
+                    height: npLeftColumn.normalArtSize
+                    transformOrigin: Item.Top
+                    scale: npLeftColumn.currentArtSize / Math.max(1, npLeftColumn.normalArtSize)
+                    radius: window.albumArtRadius === 0 ? 0 : (window.albumArtRadius <= 8 ? 10 : 22)
                     clip: true
                     color: surfaceCard
                     border.width: 1
@@ -4259,10 +4263,7 @@ ApplicationWindow {
                     Behavior on y {
                         NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
                     }
-                    Behavior on width {
-                        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
-                    }
-                    Behavior on height {
+                    Behavior on scale {
                         NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
                     }
 
@@ -4290,8 +4291,7 @@ ApplicationWindow {
 
                 Item {
                     id: underArtControls
-                    anchors.top: npArtworkCard.bottom
-                    anchors.topMargin: 16
+                    y: npLeftColumn.lyricsArtY + npLeftColumn.lyricsArtSize + 16
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: Math.min(parent.width - 24, 320)
                     height: 160

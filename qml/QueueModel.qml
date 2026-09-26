@@ -17,12 +17,8 @@ ListModel {
         return base + "#" + n
     }
 
-    function indexOfKey(key, from) {
-        for (let i = from; i < count; ++i) {
-            if (get(i).key === key) return i
-        }
-        return -1
-    }
+    // Mirrors the row order, so lookups avoid reading rows back out of the model.
+    property var rowKeys: []
 
     function sync() {
         const seen = {}
@@ -33,13 +29,28 @@ ListModel {
             return key
         })
         entryByKey = lookup
-        for (let i = 0; i < keys.length; ++i) {
-            if (i < count && get(i).key === keys[i]) continue
-            const found = indexOfKey(keys[i], i + 1)
-            if (found >= 0) move(found, i, 1)
-            else insert(i, { key: keys[i] })
+        if (count === 0) {
+            append(keys.map(key => ({ key: key })))
+            rowKeys = keys
+            return
         }
-        if (count > keys.length) remove(keys.length, count - keys.length)
+        const rows = rowKeys.slice()
+        for (let i = 0; i < keys.length; ++i) {
+            if (rows[i] === keys[i]) continue
+            const found = rows.indexOf(keys[i], i + 1)
+            if (found >= 0) {
+                move(found, i, 1)
+                rows.splice(i, 0, rows.splice(found, 1)[0])
+            } else {
+                insert(i, { key: keys[i] })
+                rows.splice(i, 0, keys[i])
+            }
+        }
+        if (rows.length > keys.length) {
+            remove(keys.length, rows.length - keys.length)
+            rows.length = keys.length
+        }
+        rowKeys = rows
     }
 
     onEntriesChanged: sync()

@@ -9,6 +9,7 @@ Popup {
     property string message: ""
     property string iconName: ""
     property string confirmText: ""
+    property string cancelText: "Cancel"
 
     signal confirmed()
 
@@ -102,7 +103,7 @@ Popup {
             Item { Layout.fillWidth: true }
 
             SettingButton {
-                text: "Cancel"
+                text: root.cancelText
                 onClicked: root.close()
             }
 

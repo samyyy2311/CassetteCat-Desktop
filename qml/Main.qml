@@ -415,6 +415,10 @@ ApplicationWindow {
             updateUrl = releaseUrl
             if (updateAvailable) {
                 updateStatusText = "Update available: v" + latestVersion
+                if (!manual && appSettings.value("updates/promptedVersion", "") !== latestVersion) {
+                    updatePrompt.version = latestVersion
+                    updatePrompt.open()
+                }
             } else {
                 updateStatusText = "CassetteCat is up to date (v" + Qt.application.version + ")"
             }
@@ -429,6 +433,13 @@ ApplicationWindow {
     property bool updateChecking: false
     property bool updateAvailableState: false
     property string updateUrl: ""
+
+    // Checked at most once a day on launch; a manual check in Settings is always available.
+    function checkForUpdatesOnLaunch() {
+        if (Date.now() - Number(appSettings.value("updates/lastCheck", 0)) < 24 * 60 * 60 * 1000) return
+        appSettings.setValue("updates/lastCheck", Date.now())
+        services.checkForUpdates(false)
+    }
 
     function checkForUpdates() {
         updateChecking = true
@@ -616,6 +627,7 @@ ApplicationWindow {
         playCounts = numberMapFromSetting("library/playCounts")
         seenAt = numberMapFromSetting("library/seenAt")
         settingsInitialized = true
+        checkForUpdatesOnLaunch()
         reconcileLibraryMaps()
         refreshHomeRecommendations()
         updateVisibleLibrary()
@@ -4995,6 +5007,20 @@ ApplicationWindow {
 
     CoverSearchPopup {
         id: coverSearchPopup
+    }
+
+    // Asks once per version; Settings keeps showing the update after "Later".
+    ConfirmPopup {
+        id: updatePrompt
+        property string version: ""
+        title: "Update available"
+        subtitle: "CassetteCat v" + version
+        message: "A new version is ready to download. Your library, playlists and settings stay as they are."
+        iconName: "arrow-down"
+        confirmText: "Download"
+        cancelText: "Later"
+        onConfirmed: downloadUpdate()
+        onClosed: appSettings.setValue("updates/promptedVersion", version)
     }
 
     TrackMetadataDialog {

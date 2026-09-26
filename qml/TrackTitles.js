@@ -25,6 +25,7 @@ function artist(track) {
 function otherArtists(track, omit) {
     const credited = artist(track)
     const names = credited.split(/\s*(?:,|&|\band\b)\s*/i).filter(name => name)
-    const others = names.filter(name => name.toLowerCase() !== omit.toLowerCase())
+    const omitted = omit.toLowerCase().split(/\s*(?:,|&|\band\b)\s*/)
+    const others = names.filter(name => omitted.indexOf(name.toLowerCase()) < 0)
     return others.length === names.length ? credited : others.join(", ")
 }

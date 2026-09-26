@@ -82,6 +82,9 @@ Item {
                 clip: true
             }
         }
+
+        // Keeps the cover at the top when the title wraps to two lines.
+        Item { Layout.fillHeight: true }
     }
 
     MouseArea {

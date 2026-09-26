@@ -27,21 +27,20 @@ Column {
 
     Item {
         width: root.contentWidth
-        height: Math.max(popularTracksCol.implicitHeight, (discographyCol.visible ? discographyCol.implicitHeight : 0))
+        height: artistSections.implicitHeight
         visible: root.tracks.length > 0
 
-        RowLayout {
-            anchors.fill: parent
+        ColumnLayout {
+            id: artistSections
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.leftMargin: 36
             anchors.rightMargin: 36
-            spacing: 40
+            spacing: 36
 
             ColumnLayout {
                 id: popularTracksCol
                 Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                Layout.maximumWidth: 560
-                Layout.alignment: Qt.AlignTop
                 spacing: 8
 
                 RowLayout {
@@ -87,8 +86,6 @@ Column {
             ColumnLayout {
                 id: discographyCol
                 Layout.fillWidth: true
-                Layout.preferredWidth: 0
-                Layout.alignment: Qt.AlignTop
                 spacing: 8
                 visible: root.albumGroups.length > 0
 

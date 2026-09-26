@@ -28,6 +28,9 @@ TestCase {
         compare(TrackTitles.otherArtists(track, "travis scott"), "Sheck Wes, Don Toliver")
         compare(TrackTitles.otherArtists({ title: "SICKO MODE", artist: "Travis Scott" }, "Travis Scott"), "")
         compare(TrackTitles.otherArtists({ title: "Mr. Brightside", artist: "The Killers" }, "Travis Scott"), "The Killers")
+        const albumTrack = { title: "ALL THE LOVE", artist: "Kanye West & Andre Troutman" }
+        compare(TrackTitles.otherArtists(albumTrack, "Kanye West & Travis Scott"), "Andre Troutman")
+        compare(TrackTitles.otherArtists({ title: "FATHER", artist: "Kanye West & Travis Scott" }, "Kanye West & Travis Scott"), "")
     }
 
     function test_plain_titles_are_unchanged() {

@@ -1646,6 +1646,16 @@ ApplicationWindow {
         favoriteTracks = favs
     }
 
+    function setFavorites(filePaths, favorite) {
+        const favs = Object.assign({}, favoriteTracks)
+        for (const filePath of filePaths) {
+            delete favs[filePath]
+            if (favorite) favs[normalizedPlaylistPath(filePath)] = true
+            else delete favs[normalizedPlaylistPath(filePath)]
+        }
+        favoriteTracks = favs
+    }
+
     function isFavorite(filePath) {
         if (!filePath) return false
         return !!(favoriteTracks[filePath] || favoriteTracks[normalizedPlaylistPath(filePath)])

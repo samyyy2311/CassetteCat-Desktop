@@ -395,25 +395,24 @@ Rectangle {
                                 }
                             }
 
+                            // Only songs can be favorites, so on an album the heart covers all of its songs.
                             PressDepthIconButton {
+                                readonly property bool allFavorite: root.tracks.length > 0 && root.tracks.every(track => root.appWindow.isFavorite(track.filePath))
+                                visible: root.albumDetail && root.tracks.length > 0
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 36
                                 iconSize: 16
                                 iconName: "heart"
-                                tint: (root.tracks.length && root.appWindow.isFavorite(root.tracks[0].filePath)) ? (root.appWindow ? root.appWindow.recordRed : "#C23B30") : (root.appWindow ? root.appWindow.silverDim : "#6E6C68")
-                                tooltipText: "Favorite"
-                                onClicked: {
-                                    if (root.tracks.length && root.appWindow) {
-                                        root.appWindow.toggleFavorite(root.tracks[0].filePath)
-                                    }
-                                }
+                                tint: allFavorite ? root.appWindow.recordRed : root.appWindow.silverDim
+                                tooltipText: allFavorite ? "Remove songs from favorites" : "Favorite all songs"
+                                onClicked: root.appWindow.setFavorites(root.tracks.map(track => track.filePath), !allFavorite)
                             }
                         }
                     }
                 }
             }
 
-            Item { width: 1; height: 24 }
+            Item { width: 1; height: root.artistDetail ? 24 : 4 }
 
             ArtistDetailBody {
                 visible: root.artistDetail

@@ -29,52 +29,23 @@ Item {
         anchors.fill: parent
         spacing: 8
 
-        Rectangle {
-            id: coverBox
+        CoverFrame {
             Layout.preferredWidth: root.cardWidth
             Layout.preferredHeight: root.cardWidth
             radius: root.coverRadius
-            clip: true
-            color: surfaceCard
-            border.width: 1
-            border.color: root.highlighted ? borderVariant : borderSubtle
-            scale: root.highlighted ? 1.03 : 1.0
-
-            Behavior on scale {
-                NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
-            }
+            highlighted: root.highlighted
 
             Cover {
                 anchors.fill: parent
                 track: root.track
                 radius: root.coverRadius
             }
-
-            TransportButton {
-                Accessible.name: "Play"
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                anchors.margins: 8
-                buttonSize: 38
-                activeFocusOnTab: false
-                iconName: "play"
-                accented: true
-                iconColor: recordRed
-                opacity: root.highlighted ? 1.0 : 0.0
-                scale: root.highlighted ? 1.0 : 0.6
-                z: 10
-
-                Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd } }
-                Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingBounce } }
-
-                onClicked: root.clicked()
-            }
         }
 
         Label {
             Layout.fillWidth: true
             text: root.track.title || root.track.fileName
-            color: textPrimary
+            color: root.highlighted ? recordRedHover : textPrimary
             font.family: displayFont
             font.pixelSize: 13
             font.weight: Font.DemiBold

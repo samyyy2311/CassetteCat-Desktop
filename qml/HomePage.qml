@@ -312,101 +312,13 @@ Item {
                                     reuseItems: true
                                     model: albumsRotation
 
-                                    delegate: Item {
-                                        id: albumTile
-                                        width: 150
-                                        height: 225
-                                        readonly property bool highlighted: albumHover.hovered || (activeFocus && !mouseFocused)
-                                        property bool mouseFocused: false
-                                        onActiveFocusChanged: if (!activeFocus) mouseFocused = false
-
-                                        Accessible.role: Accessible.Button
-                                        Accessible.name: modelData.name
-                                        Accessible.onPressAction: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
-                                        Keys.onReturnPressed: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
-                                        Keys.onEnterPressed: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
-
-                                        HoverHandler { id: albumHover }
-
-                                        ColumnLayout {
-                                            z: 1
-                                            anchors.fill: parent
-                                            spacing: 8
-
-                                            Rectangle {
-                                                id: albCoverBox
-                                                Layout.preferredWidth: 150
-                                                Layout.preferredHeight: 150
-                                                radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
-                                                clip: true
-                                                color: surfaceCard
-                                                border.width: 1
-                                                border.color: albumTile.highlighted ? borderVariant : borderSubtle
-                                                scale: albumTile.highlighted ? 1.03 : 1.0
-
-                                                Behavior on scale {
-                                                    NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
-                                                }
-
-                                                Cover {
-                                                    anchors.fill: parent
-                                                    track: modelData.track
-                                                    radius: albCoverBox.radius
-                                                }
-
-                                                TransportButton {
-                                                    Accessible.name: "Play album"
-                                                    anchors.right: parent.right
-                                                    anchors.bottom: parent.bottom
-                                                    anchors.margins: 8
-                                                    buttonSize: 38
-                                                    activeFocusOnTab: false
-                                                    iconName: "play"
-                                                    accented: true
-                                                    iconColor: recordRed
-                                                    opacity: albumTile.highlighted ? 1.0 : 0.0
-                                                    scale: albumTile.highlighted ? 1.0 : 0.6
-                                                    z: 10
-
-                                                    Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd } }
-                                                    Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingBounce } }
-
-                                                    onClicked: root.appWindow.playTrack(modelData.track)
-                                                }
-                                            }
-
-                                            Label {
-                                                Layout.fillWidth: true
-                                                text: modelData.name
-                                                color: textPrimary
-                                                font.family: displayFont
-                                                font.pixelSize: 13
-                                                font.weight: Font.DemiBold
-                                                elide: Text.ElideRight
-                                            }
-
-                                            Label {
-                                                Layout.fillWidth: true
-                                                text: modelData.count + " songs"
-                                                color: silverDim
-                                                font.family: monoFont
-                                                font.pixelSize: 10
-                                            }
-
-                                            Item { Layout.fillHeight: true }
-                                        }
-
-                                        MouseArea {
-                                            id: albumCardMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onPressed: {
-                                                albumTile.mouseFocused = true
-                                                albumTile.forceActiveFocus()
-                                            }
-                                            onClicked: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
-                                        }
+                                    delegate: AlbumCard {
+                                        cardWidth: 150
+                                        cardHeight: 225
+                                        name: modelData.name
+                                        count: modelData.count
+                                        track: modelData.track
+                                        onClicked: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
                                     }
                                 }
                             }

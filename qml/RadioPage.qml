@@ -318,18 +318,12 @@ Item {
                             Layout.preferredHeight: width
                             Layout.alignment: Qt.AlignHCenter
 
-                            Rectangle {
+                            CoverFrame {
                                 id: coverBox
                                 anchors.fill: parent
                                 radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
-                                color: surfaceCard
-                                clip: true
-                                border.width: isCurrent ? 1.5 : (cardMouse.containsMouse ? 1.5 : 0)
-                                border.color: isCurrent ? recordRed : (cardMouse.containsMouse ? recordRed : "transparent")
-                                scale: cardMouse.containsMouse ? 1.03 : 1.0
-
-                                Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
-                                Behavior on border.color { ColorAnimation { duration: 120 } }
+                                highlighted: cardMouse.containsMouse
+                                current: isCurrent
 
                                 Image {
                                     id: stationImg
@@ -346,14 +340,6 @@ Item {
                                 }
 
                                 VinylFallback { anchors.fill: parent; visible: stationImg.status !== Image.Ready }
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: parent.radius
-                                    color: "transparent"
-                                    border.width: 1
-                                    border.color: isCurrent ? recordRed : "#15FFFFFF"
-                                }
 
                                 TransportButton {
                                     anchors.right: parent.right

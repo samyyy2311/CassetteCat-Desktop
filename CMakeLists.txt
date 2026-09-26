@@ -99,6 +99,7 @@ qt_add_qml_module(CassetteCat
         qml/AudioSeeker.qml
         qml/VolumeControl.qml
         qml/Cover.qml
+        qml/CoverFrame.qml
         qml/VinylFallback.qml
         qml/AppToolTip.qml
         qml/SongRow.qml

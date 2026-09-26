@@ -1914,6 +1914,10 @@ ApplicationWindow {
         coverSearchPopup.openFor(album, artist, filePath)
     }
 
+    function openBatchMetadataEditor() {
+        metadataDialog.openForMany(selectedTracks())
+    }
+
     function openTrackMetadataEditor() {
         if (player.currentTrack && player.currentTrack.filePath) metadataDialog.openFor(player.currentTrack)
     }

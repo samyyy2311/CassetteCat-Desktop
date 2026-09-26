@@ -7,6 +7,7 @@
 #include "library_scanner.h"
 
 #include <QCoreApplication>
+#include <QDataStream>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -18,6 +19,7 @@
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QSettings>
+#include <QTemporaryDir>
 #include <QTimer>
 
 #include <algorithm>
@@ -492,6 +494,30 @@ bool LibraryController::selfCheck() {
         march.value("months").toList().value(6).toDouble() != 200000)
         return fail("monthly listening recap");
 
+    // Half a second of 8 kHz mono silence is enough for TagLib to accept the file.
+    QTemporaryDir tagDir;
+    const QString wavPath = tagDir.filePath("tags.wav");
+    QFile wav(wavPath);
+    if (!wav.open(QIODevice::WriteOnly))
+        return fail("batch tag file");
+    QDataStream wavOut(&wav);
+    wavOut.setByteOrder(QDataStream::LittleEndian);
+    wavOut.writeRawData("RIFF", 4);
+    wavOut << quint32(36 + 8000);
+    wavOut.writeRawData("WAVEfmt ", 8);
+    wavOut << quint32(16) << quint16(1) << quint16(1) << quint32(8000) << quint32(16000) << quint16(2) << quint16(16);
+    wavOut.writeRawData("data", 4);
+    wavOut << quint32(8000);
+    wavOut.writeRawData(QByteArray(8000, ' ').constData(), 8000);
+    wav.close();
+    LibraryController tagged;
+    tagged.m_tracks = {QVariantMap{{"filePath", wavPath}}};
+    writeTrackInfo({{"filePath", wavPath}, {"title", "Keep"}, {"artist", "Old"}});
+    tagged.updateTracksMetadata({wavPath}, {{"artist", "New"}});
+    const TrackInfo saved = readTrackInfo(wavPath);
+    if (saved.title != "Keep" || saved.artist != "New")
+        return fail("batch tag edit keeps other fields");
+
     library.setSearchFilter({}, "ALL", {"/"}, false);
     return library.trackCount() == 0;
 }
@@ -771,25 +797,51 @@ QVariantMap LibraryController::updateTrackMetadata(const QVariantMap &metadata) 
         return {};
     }
 
-    const TrackInfo info = readTrackInfo(filePath);
-    for (int i = 0; i < m_tracks.size(); ++i) {
-        QVariantMap track = m_tracks.at(i).toMap();
-        if (track.value("filePath").toString() != filePath)
+    const QVariantMap track = refreshTrack(filePath);
+    publishTrackChanges();
+    return track;
+}
+
+int LibraryController::updateTracksMetadata(const QStringList &filePaths, const QVariantMap &changes) {
+    int updated = 0;
+    for (const QString &filePath : filePaths) {
+        QVariantMap metadata = changes;
+        metadata.insert("filePath", filePath);
+        QString error;
+        if (!writeTrackInfo(metadata, &error)) {
+            qWarning().noquote() << "METADATA_UPDATE_FAILED:" << filePath << error;
             continue;
-        const QString artwork = track.value("artworkUrl").toString();
-        track = info.toMap();
+        }
+        refreshTrack(filePath);
+        ++updated;
+    }
+    if (updated > 0)
+        publishTrackChanges();
+    return updated;
+}
+
+QVariantMap LibraryController::refreshTrack(const QString &filePath) {
+    QVariantMap track = readTrackInfo(filePath).toMap();
+    for (int i = 0; i < m_tracks.size(); ++i) {
+        const QVariantMap existing = m_tracks.at(i).toMap();
+        if (existing.value("filePath").toString() != filePath)
+            continue;
+        const QString artwork = existing.value("artworkUrl").toString();
         if (!artwork.isEmpty())
             track.insert("artworkUrl", artwork);
         m_tracks[i] = track;
-        beginResetModel();
-        rebuildVisibleRows();
-        endResetModel();
-        emit changed();
-        emit tracksChanged();
-        emit visibleTracksChanged();
-        return track;
+        break;
     }
-    return info.toMap();
+    return track;
+}
+
+void LibraryController::publishTrackChanges() {
+    beginResetModel();
+    rebuildVisibleRows();
+    endResetModel();
+    emit changed();
+    emit tracksChanged();
+    emit visibleTracksChanged();
 }
 
 QVariantMap LibraryController::firstPlayableTrack() const {

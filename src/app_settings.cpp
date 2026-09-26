@@ -250,8 +250,9 @@ void SettingsController::openLogFile() {
 }
 
 bool SettingsController::selfCheck() {
-    return coerceSettingsValue(QStringLiteral("0.5"), 1).toDouble() == 0.5 &&
-           coerceSettingsValue(0.5, 1).toDouble() == 0.5 &&
-           coerceSettingsValue(QStringLiteral("3"), 1).toInt() == 3 &&
-           coerceSettingsValue(QStringLiteral("true"), false).toBool();
+    const bool keepsTextFraction = coerceSettingsValue(QStringLiteral("0.5"), 1).toDouble() == 0.5;
+    const bool keepsNumberFraction = coerceSettingsValue(0.5, 1).toDouble() == 0.5;
+    const bool keepsInteger = coerceSettingsValue(QStringLiteral("3"), 1).toInt() == 3;
+    const bool readsBool = coerceSettingsValue(QStringLiteral("true"), false).toBool();
+    return keepsTextFraction && keepsNumberFraction && keepsInteger && readsBool;
 }

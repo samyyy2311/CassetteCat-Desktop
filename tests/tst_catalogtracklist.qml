@@ -45,6 +45,7 @@ TestCase {
             tracks.push({ filePath: i + ".mp3" })
         list.tracks = tracks
         tryCompare(list, "count", 100)
+        tryCompare(list.populate, "running", false)
         list.forceActiveFocus()
         for (let i = 0; i < 20; ++i)
             keyClick(Qt.Key_Down)

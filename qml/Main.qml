@@ -1535,6 +1535,7 @@ ApplicationWindow {
 
     function openSearchPage() {
         nowPlayingOpen = false
+        catalogDetailOpen = false
         page = "search"
         if (searchPageLoader.item) focusSearchInput()
         else searchPageLoader.focusOnLoad = true

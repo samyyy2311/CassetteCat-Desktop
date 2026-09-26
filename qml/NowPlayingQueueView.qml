@@ -22,6 +22,11 @@ Item {
         NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
     }
 
+    QueueModel {
+        id: queueModel
+        entries: root.appWindow.queueEntries
+    }
+
     function scrollToCurrentTrack() {
         const entries = appWindow.queueEntries
         if (!entries || !entries.length) return
@@ -56,18 +61,21 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: root.appWindow.queueEntries
+            model: queueModel
             spacing: 4
             reuseItems: true
             ScrollBar.vertical: AutoHideScrollBar { anchors.rightMargin: 8 }
 
+            move: Transition { NumberAnimation { property: "y"; duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
+            displaced: Transition { NumberAnimation { property: "y"; duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
+
             delegate: QueueTrackRow {
                 width: ListView.view.width - 24
                 paletteSource: root.appWindow
-                entry: modelData
-                removeEnabled: modelData.queueEditable === true
-                playNextEnabled: modelData.queueEditable === true
-                reorderEnabled: modelData.queueEditable === true
+                entry: queueModel.entryByKey[model.key] || ({})
+                removeEnabled: entry.queueEditable === true
+                playNextEnabled: entry.queueEditable === true
+                reorderEnabled: entry.queueEditable === true
                 onTrackActivated: track => root.appWindow.playFromQueue(track)
                 onPlayNextRequested: track => root.appWindow.moveQueuedTrackNext(track)
                 onTrackRemovalRequested: track => root.appWindow.removeQueuedTrack(track)

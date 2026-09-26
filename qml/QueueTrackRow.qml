@@ -68,8 +68,10 @@ Item {
             }
         }
 
+        // Marks where the dragged song lands: above this row when moving up, below it when moving down.
         Rectangle {
-            anchors.top: parent.top
+            readonly property bool below: dropArea.drag.source && dropArea.drag.source.dragIndex < root.queueIndex
+            y: below ? parent.height - height : 0
             anchors.left: parent.left
             anchors.right: parent.right
             height: 2

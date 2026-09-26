@@ -38,21 +38,29 @@ Item {
             Layout.fillHeight: true
             clip: true
 
+            QueueModel {
+                id: queueModel
+                entries: miniPlayer.queueEntries
+            }
+
             AppListView {
                 id: queueListView
                 activeFocusOnTab: true
                 onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                 anchors.fill: parent
                 clip: true
-                model: miniPlayer.queueEntries
+                model: queueModel
                 spacing: 2
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
 
+                move: Transition { NumberAnimation { property: "y"; duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
+                displaced: Transition { NumberAnimation { property: "y"; duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
+
                 delegate: QueueTrackRow {
                     width: ListView.view.width - 4
                     paletteSource: miniPlayer
-                    entry: modelData
+                    entry: queueModel.entryByKey[model.key] || ({})
                     compact: true
                     allowCurrentActivation: true
                     onTrackActivated: track => miniPlayer.playTrack(track)

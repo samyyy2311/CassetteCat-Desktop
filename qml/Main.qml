@@ -1840,6 +1840,8 @@ ApplicationWindow {
     }
 
     function karaokeLyricHtml(index, text) {
+        // Checked before reading the position, so only the active line re-renders as the song plays.
+        if (index !== activeLyricIndex) return LyricsText.escape(text)
         const color = window.lyricsActiveStyle === "accent" ? recordRedHover : Qt.color("#FFFFFF")
         return LyricsText.karaoke(parsedLyrics, index, activeLyricIndex, player.position, color, text)
     }
@@ -2290,8 +2292,7 @@ ApplicationWindow {
         if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx || fromIdx <= currentIndex || toIdx <= currentIndex) return
         const nextQueue = queue.slice()
         const [moved] = nextQueue.splice(fromIdx, 1)
-        const insertIdx = fromIdx < toIdx ? toIdx - 1 : toIdx
-        nextQueue.splice(insertIdx, 0, moved)
+        nextQueue.splice(toIdx, 0, moved)
         if (player.currentTrack && player.currentTrack.format === "STREAM") radioPlaybackQueue = nextQueue
         else playbackQueue = nextQueue
         queueRevision++
@@ -3774,15 +3775,6 @@ ApplicationWindow {
                 }
             }
 
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.NoButton
-                onWheel: wheel => {
-                    const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05
-                    setPlayerVolume(player.volume + step)
-                }
-            }
-
             Rectangle {
                 anchors.top: parent.top
                 anchors.left: parent.left
@@ -4167,10 +4159,7 @@ ApplicationWindow {
             onReleased: mouse => mouse.accepted = true
             onClicked: mouse => mouse.accepted = true
             onDoubleClicked: mouse => mouse.accepted = true
-            onWheel: wheel => {
-                const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05
-                setPlayerVolume(player.volume + step)
-            }
+            onWheel: wheel => wheel.accepted = true
         }
 
         Item {

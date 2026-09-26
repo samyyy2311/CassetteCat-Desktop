@@ -84,7 +84,7 @@ ColumnLayout {
                 { id: "audiodb", title: "TheAudioDB", subtitle: "Artist imagery and biography metadata fallback", icon: "theaudiodb", preserveColor: true, on: root.svcAudiodb },
                 { id: "wiki", title: "Wikipedia", subtitle: "Artist biographies and summaries", icon: "wikipedia", preserveColor: true, on: root.svcWiki },
                 { id: "archive", title: "Cover Art Archive", subtitle: "Community-sourced album covers from MusicBrainz", icon: "archive", preserveColor: true, on: root.svcArchive },
-                { id: "discord", title: "Discord Status", subtitle: "Show the song you are playing on your Discord profile", icon: "audio-lines", preserveColor: false, on: root.svcDiscord }
+                { id: "discord", title: "Discord Status", subtitle: "Show the song you are playing on your Discord profile", icon: "discord", preserveColor: true, on: root.svcDiscord }
             ]
             delegate: ColumnLayout {
                 Layout.fillWidth: true

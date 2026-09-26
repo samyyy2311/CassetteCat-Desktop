@@ -133,6 +133,7 @@ Window {
     }
 
     function karaokeLyricHtml(index, text) {
+        if (index !== activeLyricIndex) return LyricsText.escape(text)
         const color = lyricsActiveStyle === "accent" ? accentHover : Qt.color("#FFFFFF")
         return LyricsText.karaoke(parsedLyrics, index, activeLyricIndex, player.position, color, text)
     }

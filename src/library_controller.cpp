@@ -914,13 +914,14 @@ QVariantList LibraryController::similarTracks(const QVariantMap &seed, const QSt
     const QSet<QString> seedArtists = artists(seed);
     const QString seedArtist = seed.value("artist").toString();
     const int seedYear = seed.value("year").toInt();
-    const QSet<QString> excluded(excludePaths.cbegin(), excludePaths.cend());
+    QSet<QString> excluded{pathKey(seed.value("filePath").toString())};
+    for (const QString &path : excludePaths)
+        excluded.insert(pathKey(path));
 
     QList<QPair<int, QVariantMap>> scored;
     for (const QVariant &value : playbackTracks()) {
         const QVariantMap track = value.toMap();
-        const QString path = track.value("filePath").toString();
-        if (path == seed.value("filePath").toString() || excluded.contains(path))
+        if (excluded.contains(pathKey(track.value("filePath").toString())))
             continue;
         const int sharedGenres = int((genres(track) & seedGenres).size());
         const int artistScore = track.value("artist").toString().compare(seedArtist, Qt::CaseInsensitive) == 0 ? 2

@@ -2828,13 +2828,21 @@ ApplicationWindow {
         function onRepeatCycleRequested() { window.toggleRepeat() }
         function onVolumeRequested(volume) { window.setPlayerVolume(volume) }
         function onSeekRequested(positionMs) { player.seek(positionMs) }
-        function onQueueTrackRequested(index) { window.playFromQueue(window.activePlaybackQueue()[index]) }
+        // Indexes come from the phone's last poll, so the queue may have changed since.
+        function onQueueTrackRequested(index) {
+            const queue = window.activePlaybackQueue()
+            if (index >= 0 && index < queue.length) window.playFromQueue(queue[index])
+        }
         function onHandoffRequested(tracks, index, positionMs, playing) { window.continueHandoff(tracks, index, positionMs, playing) }
         function onQueueMoveRequested(from, to) {
             const queue = window.activePlaybackQueue()
-            window.reorderQueuedTrack(queue[from], queue[to], from, to)
+            if (from >= 0 && to >= 0 && from < queue.length && to < queue.length)
+                window.reorderQueuedTrack(queue[from], queue[to], from, to)
         }
-        function onQueueRemoveRequested(index) { window.removeQueuedTrack(window.activePlaybackQueue()[index]) }
+        function onQueueRemoveRequested(index) {
+            const queue = window.activePlaybackQueue()
+            if (index >= 0 && index < queue.length) window.removeQueuedTrack(queue[index])
+        }
         function onCodeChanged() { appSettings.setValue("services/phoneRemoteCode", phoneRemote.code) }
     }
 

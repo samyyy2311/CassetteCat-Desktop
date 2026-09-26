@@ -11,7 +11,9 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # The Store requires four version parts with the last one zero.
-if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw "Version must look like 1.2.3, got '$Version'." }
+if ($Version -notmatch '^(\d+)\.(\d+)\.(\d+)$') { throw "Version must look like 1.2.3, got '$Version'." }
+# It also rejects a zero first part, so the major version is shifted up one (0.8.0 becomes 1.8.0.0).
+$storeVersion = "$([int]$Matches[1] + 1).$($Matches[2]).$($Matches[3]).0"
 
 $stage = Join-Path ([IO.Path]::GetTempPath()) "cassettecat-msix-$([Guid]::NewGuid())"
 try {
@@ -21,7 +23,7 @@ try {
         Replace('@IDENTITY_NAME@', [Security.SecurityElement]::Escape($IdentityName)).
         Replace('@PUBLISHER@', [Security.SecurityElement]::Escape($Publisher)).
         Replace('@PUBLISHER_DISPLAY_NAME@', [Security.SecurityElement]::Escape($PublisherDisplayName)).
-        Replace('@VERSION@', "$Version.0")
+        Replace('@VERSION@', $storeVersion)
     Set-Content -Encoding utf8 (Join-Path $stage 'AppxManifest.xml') $manifest
 
     $makeAppx = Get-Command makeappx.exe -ErrorAction SilentlyContinue

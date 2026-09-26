@@ -93,7 +93,7 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
         const float progress = std::min(1.0f, float(m_fadeClock.elapsed()) / float(std::max(1, m_crossfadeMs)));
         m_fadeIn = progress;
         applyEffectiveVolume();
-        m_fadingOutput->setVolume(m_fadingStartVolume * (1.0f - progress));
+        m_fadingOutput->setVolume(m_fadingGain * m_baseVolume * (1.0f - progress));
         if (progress >= 1.0f)
             finishCrossfade();
     });
@@ -503,7 +503,8 @@ void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs)
 
 bool PlayerController::playTrack(const QVariantMap &track) {
     // At a track's natural end the next one fades in on the other player while this one keeps playing out.
-    const bool crossfade = m_crossfadeReady && m_player->playbackState() == QMediaPlayer::PlayingState;
+    const bool crossfade = m_crossfadeReady && m_crossfadeMs > 0 && m_position >= m_duration - m_crossfadeMs &&
+                           m_player->playbackState() == QMediaPlayer::PlayingState;
     if (m_fadeTimer->isActive())
         finishCrossfade();
     if (crossfade) {
@@ -512,7 +513,8 @@ bool PlayerController::playTrack(const QVariantMap &track) {
         m_audioOutput->setDevice(m_fadingOutput->device());
         m_player->setAudioBufferOutput(m_fadingPlayer->audioBufferOutput());
         m_fadingPlayer->setAudioBufferOutput(nullptr);
-        m_fadingStartVolume = m_fadingOutput->volume();
+        // The outgoing track keeps its own ReplayGain but follows volume changes made during the fade.
+        m_fadingGain = m_baseVolume > 0.0f ? m_fadingOutput->volume() / m_baseVolume : 1.0f;
         m_fadeIn = 0.0f;
     }
     m_pendingRestorePositionMs = 0;

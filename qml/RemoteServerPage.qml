@@ -4,6 +4,14 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    readonly property string countText: {
+        if (root.activeTab === "songs") {
+            const n = (root.viewMode === "list" ? trackList.count : trackGrid.count)
+            return n + (n === 1 ? " song" : " songs")
+        }
+        const count = root.displayItems.length
+        return count + " " + root.activeTab
+    }
     required property var appWindow
     required property var streamingController
     required property string protocol
@@ -324,17 +332,6 @@ Item {
                 onSelected: id => {
                     root.activeTab = id
                     if (id !== "songs") root.viewMode = "grid"
-                }
-            }
-
-            CountTag {
-                text: {
-                    if (root.activeTab === "songs") {
-                        const n = (root.viewMode === "list" ? trackList.count : trackGrid.count)
-                        return n + (n === 1 ? " song" : " songs")
-                    }
-                    const count = root.displayItems.length
-                    return count + " " + root.activeTab
                 }
             }
 

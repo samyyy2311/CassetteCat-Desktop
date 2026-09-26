@@ -4,6 +4,16 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    readonly property string countText: {
+        switch (root.appWindow.libraryTab) {
+        case "artists": return root.appWindow.artists.length + " artists"
+        case "albums": return root.appWindow.albums.length + " albums"
+        case "genres": return root.appWindow.genreGroups.length + " genres"
+        case "folders": return root.appWindow.folderGroups.length + " folders"
+        case "playlists": return (root.appWindow.playlists.length + 4) + " playlists"
+        default: return root.libraryModel.trackCount + " songs"
+        }
+    }
     required property var appWindow
     required property var libraryModel
     anchors.fill: parent
@@ -51,19 +61,6 @@ Item {
                 ]
                 current: root.appWindow.libraryTab
                 onSelected: id => root.appWindow.libraryTab = id
-            }
-
-            CountTag {
-                text: {
-                    switch (root.appWindow.libraryTab) {
-                    case "artists": return root.appWindow.artists.length + " artists"
-                    case "albums": return root.appWindow.albums.length + " albums"
-                    case "genres": return root.appWindow.genreGroups.length + " genres"
-                    case "folders": return root.appWindow.folderGroups.length + " folders"
-                    case "playlists": return (root.appWindow.playlists.length + 4) + " playlists"
-                    default: return root.libraryModel.trackCount + " songs"
-                    }
-                }
             }
 
 

@@ -2987,6 +2987,18 @@ ApplicationWindow {
                     Layout.alignment: Qt.AlignVCenter
                 }
 
+                Label {
+                    readonly property var pageItem: ({ library: libraryPageLoader, search: searchPageLoader, radio: radioPageLoader,
+                                                       jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader,
+                                                       stats: listeningRecordPageLoader })[page]
+                    Layout.leftMargin: 12
+                    Layout.alignment: Qt.AlignBaseline
+                    text: pageItem && pageItem.item ? pageItem.item.countText : ""
+                    color: silverDim
+                    font.family: bodyFont
+                    font.pixelSize: 14
+                }
+
                 Item { Layout.fillWidth: true }
             }
         }

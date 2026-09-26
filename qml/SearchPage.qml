@@ -4,6 +4,7 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    readonly property string countText: !filtering && libraryModel.trackCount > 0 ? libraryModel.trackCount + " songs" : ""
 
     required property var appWindow
     required property var libraryModel
@@ -280,10 +281,6 @@ Item {
             }
 
             // Stat tag when idle
-            CountTag {
-                visible: !root.filtering && root.libraryModel.trackCount > 0
-                text: root.libraryModel.trackCount + " songs"
-            }
 
             // Match count when filtering
             Label {

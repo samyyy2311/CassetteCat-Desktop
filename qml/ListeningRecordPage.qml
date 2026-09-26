@@ -6,6 +6,7 @@ import QtQuick.Window
 
 Item {
     id: root
+    readonly property string countText: root.totalPlays + " plays • " + root.uniquePlayed + " tracks"
 
     required property var appWindow
     property alias searchBox: recordSearchBar
@@ -163,7 +164,6 @@ Item {
 
     readonly property bool hasData: totalPlays > 0 || recentTracks.length > 0
 
-
     readonly property var filteredTracks: {
         if (!searchQuery.trim()) return mostPlayed
         const q = searchQuery.toLowerCase().trim()
@@ -219,7 +219,6 @@ Item {
         }
         return Math.max(1, mins) + "m"
     }
-
 
 
     component StatCard : Item {
@@ -343,7 +342,6 @@ Item {
     }
 
 
-
     EmptyState {
         anchors.centerIn: parent
         visible: !root.hasData
@@ -353,7 +351,6 @@ Item {
         actionLabel: "Explore Library"
         onActionClicked: root.appWindow.page = "library"
     }
-
 
 
     ColumnLayout {
@@ -387,12 +384,7 @@ Item {
                 }
             }
 
-            CountTag {
-                text: root.totalPlays + " plays • " + root.uniquePlayed + " tracks"
-            }
-
             Item { Layout.fillWidth: true }
-
 
 
             Row {
@@ -466,7 +458,6 @@ Item {
                 }
             }
         }
-
 
         StackLayout {
             id: recordStack
@@ -647,7 +638,6 @@ Item {
                             }
                         }
                     }
-
 
                     RowLayout {
                         Layout.fillWidth: true
@@ -846,7 +836,6 @@ Item {
                                 anchors.margins: 16
                                 spacing: 12
 
-
                                 Rectangle {
                                     Layout.fillWidth: true
                                     height: 6
@@ -868,7 +857,6 @@ Item {
                                         }
                                     }
                                 }
-
 
                                 Flow {
                                     Layout.fillWidth: true

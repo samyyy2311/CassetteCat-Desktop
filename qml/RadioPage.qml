@@ -4,6 +4,7 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    readonly property string countText: root.displayedStations.length + " stations"
     required property var appWindow
     required property var playerController
     anchors.fill: parent
@@ -120,10 +121,6 @@ Item {
                     }
                 }
 
-                CountTag {
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: root.displayedStations.length + " stations"
-                }
             }
 
             Item {
@@ -293,7 +290,6 @@ Item {
                                     track: ({ artworkUrl: modelData.favicon || "" })
                                     radius: coverBox.radius
                                 }
-
 
                                 TransportButton {
                                     anchors.right: parent.right

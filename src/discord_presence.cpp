@@ -9,6 +9,7 @@
 #include <QFileInfo>
 #include <QJsonDocument>
 #include <QLocalServer>
+#include <QThread>
 #include <QUuid>
 #include <QtEndian>
 
@@ -201,7 +202,8 @@ void DiscordPresence::readFrames() {
 }
 
 void DiscordPresence::scheduleUpdate() {
-    if (!m_ready)
+    // Restarting a pending update would let steady position ticks postpone it forever.
+    if (!m_ready || m_updateTimer.isActive())
         return;
     // Discord accepts about five updates every 20 seconds, so bursts of changes are combined.
     const qint64 sinceLastMs = QDateTime::currentMSecsSinceEpoch() - m_lastSentMs;
@@ -271,8 +273,15 @@ bool DiscordPresence::selfCheck() {
     });
     loop.exec();
 
+    presence.m_lastSentMs = 0;
+    presence.scheduleUpdate();
+    const int firstWaitMs = presence.m_updateTimer.remainingTime();
+    QThread::msleep(20);
+    presence.scheduleUpdate();
+    const bool keepsPendingUpdate = presence.m_updateTimer.remainingTime() < firstWaitMs;
+
     // The player is paused, so the first update clears the activity.
-    return frames.size() == 2 && frames[0].first == Handshake &&
+    return keepsPendingUpdate && frames.size() == 2 && frames[0].first == Handshake &&
            frames[0].second.value("client_id").toString() == kClientId && frames[1].first == Frame &&
            frames[1].second.value("cmd") == "SET_ACTIVITY" &&
            frames[1].second.value("args").toObject().value("activity").isNull();

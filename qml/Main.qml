@@ -1606,10 +1606,18 @@ ApplicationWindow {
     }
 
     Shortcut {
+        sequence: "Backspace"
+        enabled: lyricsTapSyncing && shortcutAllowed(sequence)
+        onActivated: lyricsTapStamps = lyricsTapStamps.slice(0, -1)
+    }
+
+    Shortcut {
         sequence: inAppShortcut("playPause")
         enabled: shortcutAllowed(sequence)
         onActivated: {
-            if (!player.currentTrack.filePath && library.trackCount > 0) {
+            if (lyricsTapSyncing) {
+                stampLyricLine()
+            } else if (!player.currentTrack.filePath && library.trackCount > 0) {
                 shuffleAll()
             } else {
                 player.togglePlay()
@@ -1813,12 +1821,35 @@ ApplicationWindow {
         return result
     }
 
+    // Tap to Sync: the next line is stamped with the playback position on each tap, and the
+    // finished timings are written into the file's lyrics.
+    property bool lyricsTapSyncing: false
+    property var lyricsTapStamps: []
+
+    function startLyricsTapSync() {
+        lyricsTapStamps = []
+        lyricsTapSyncing = true
+        if (!player.isPlaying) player.play()
+    }
+
+    function stampLyricLine() {
+        const stamps = lyricsTapStamps.concat([player.position])
+        if (stamps.length < parsedLyrics.length) {
+            lyricsTapStamps = stamps
+            return
+        }
+        lyricsTapSyncing = false
+        const updated = library.updateTrackMetadata({ filePath: player.currentTrack.filePath, lyrics: LyricsText.toLrc(parsedLyrics, stamps) })
+        if (updated.filePath) player.updateCurrentTrackMetadata(updated)
+    }
+
     function lyricsSyncKey(track) {
         return "lyrics/sync/" + encodeURIComponent((track && track.filePath) || "")
     }
 
     function buildLyricDisplayItems(lines) {
-        if (!lines || lines.length === 0 || lines[0].timeMs < 0) return []
+        if (!lines || lines.length === 0) return []
+        if (lines[0].timeMs < 0) return lines.map((line, i) => ({ type: "line", lineIndex: i, startMs: -1, text: line.text }))
         const items = []
         if (lines[0].timeMs >= 4500) items.push({ type: "gap", startMs: 0, endMs: lines[0].timeMs - 150 })
         for (let i = 0; i < lines.length; ++i) {
@@ -2486,6 +2517,7 @@ ApplicationWindow {
             updateActiveLyric()
         }
         function onCurrentTrackChanged() {
+            lyricsTapSyncing = false
             const currentTrack = player.currentTrack || ({})
             const sameTrack = lastHandledTrack && currentTrack.filePath
                 && lastHandledTrack.filePath === currentTrack.filePath

@@ -37,45 +37,63 @@ Item {
         spacing: 12
 
         Row {
+            readonly property var lines: root.appWindow.parsedLyrics
+            readonly property bool synced: lines.length > 0 && lines[0].timeMs >= 0
+            readonly property bool syncing: root.appWindow.lyricsTapSyncing
+            readonly property var track: player.currentTrack
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
-            visible: root.appWindow.nowPlayingMode === "lyrics" && root.appWindow.parsedLyrics.length > 0
+            visible: root.appWindow.nowPlayingMode === "lyrics" && lines.length > 0
 
-            Rectangle {
-                width: chooseLyricsLabel.implicitWidth + 20
-                height: 32
-                radius: 16
-                color: chooseLyricsMouse.containsMouse ? root.appWindow.surfaceElevated : root.appWindow.surfaceCard
-                border.width: 1
-                border.color: chooseLyricsMouse.containsMouse ? root.appWindow.borderVariant : root.appWindow.borderSubtle
-
-                Label {
-                    id: chooseLyricsLabel
-                    anchors.centerIn: parent
-                    text: "Choose lyrics"
-                    color: chooseLyricsMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.textSecondary
-                    font.family: root.appWindow.displayFont
-                    font.pixelSize: 11
-                }
-
-                MouseArea {
-                    id: chooseLyricsMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.appWindow.openLyricsSearch()
-                }
+            Label {
+                visible: parent.syncing
+                anchors.verticalCenter: parent.verticalCenter
+                text: "Press Space as each line starts  " + root.appWindow.lyricsTapStamps.length + " / " + parent.lines.length
+                color: root.appWindow.textSecondary
+                font.family: root.appWindow.bodyFont
+                font.pixelSize: 12
             }
 
-            Rectangle {
-                width: 28; height: 28; radius: 14
-                color: offsetBack.containsMouse ? root.appWindow.surfaceElevated : root.appWindow.surfaceCard
-                border.width: 1; border.color: root.appWindow.borderSubtle
-                Label { anchors.centerIn: parent; text: "−"; color: root.appWindow.textSecondary; font.pixelSize: 16 }
-                MouseArea { id: offsetBack; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.appWindow.lyricsSyncOffsetMs -= 100 }
+            SettingButton {
+                visible: parent.syncing
+                text: "Undo"
+                iconName: "rotate-ccw"
+                enabled: root.appWindow.lyricsTapStamps.length > 0
+                onClicked: root.appWindow.lyricsTapStamps = root.appWindow.lyricsTapStamps.slice(0, -1)
+            }
+
+            SettingButton {
+                visible: parent.syncing
+                text: "Cancel"
+                onClicked: root.appWindow.lyricsTapSyncing = false
+            }
+
+            SettingButton {
+                visible: !parent.syncing
+                text: "Choose Lyrics"
+                iconName: "search"
+                onClicked: root.appWindow.openLyricsSearch()
+            }
+
+            SettingButton {
+                visible: !parent.syncing && !parent.synced && !!parent.track.filePath && !parent.track.remoteId && parent.track.format !== "STREAM"
+                text: "Tap to Sync"
+                iconName: "clock"
+                onClicked: root.appWindow.startLyricsTapSync()
+            }
+
+            PressDepthIconButton {
+                visible: parent.synced
+                anchors.verticalCenter: parent.verticalCenter
+                boxSize: 28
+                iconSize: 14
+                iconName: "minus"
+                tooltipText: "Lyrics earlier"
+                onClicked: root.appWindow.lyricsSyncOffsetMs -= 100
             }
 
             Label {
+                visible: parent.synced
                 anchors.verticalCenter: parent.verticalCenter
                 text: (root.appWindow.lyricsSyncOffsetMs >= 0 ? "+" : "") + (root.appWindow.lyricsSyncOffsetMs / 1000).toFixed(1) + "s"
                 color: root.appWindow.textSecondary
@@ -83,15 +101,16 @@ Item {
                 font.pixelSize: 10
             }
 
-            Rectangle {
-                width: 28; height: 28; radius: 14
-                color: offsetForward.containsMouse ? root.appWindow.surfaceElevated : root.appWindow.surfaceCard
-                border.width: 1; border.color: root.appWindow.borderSubtle
-                Label { anchors.centerIn: parent; text: "+"; color: root.appWindow.textSecondary; font.pixelSize: 16 }
-                MouseArea { id: offsetForward; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.appWindow.lyricsSyncOffsetMs += 100 }
+            PressDepthIconButton {
+                visible: parent.synced
+                anchors.verticalCenter: parent.verticalCenter
+                boxSize: 28
+                iconSize: 14
+                iconName: "plus"
+                tooltipText: "Lyrics later"
+                onClicked: root.appWindow.lyricsSyncOffsetMs += 100
             }
         }
-
 
         GlassButton {
             visible: phoneRemote.controllerName !== ""

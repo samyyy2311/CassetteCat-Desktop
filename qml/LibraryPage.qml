@@ -80,48 +80,11 @@ Item {
                         },
                     ]
 
-                    Rectangle {
-                        id: qPill
-                        property bool isSelected: root.appWindow.songFilterMode === modelData.id
-                        width: qPillLbl.implicitWidth + 20
-                        height: 28
-                        radius: height / 2
-                        color: isSelected
-                            ? "#262320"
-                            : (qPillMouse.containsMouse ? surfaceElevated : surfaceTag)
-                        border.width: 1
-                        border.color: isSelected
-                            ? recordRed
-                            : (qPillMouse.containsMouse ? borderVariant : borderSubtle)
-
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: 120
-                            }
-                        }
-                        Behavior on border.color {
-                            ColorAnimation {
-                                duration: 120
-                            }
-                        }
-
-                        Label {
-                            id: qPillLbl
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: qPill.isSelected ? recordRedHover : (qPillMouse.containsMouse ? textPrimary : textSecondary)
-                            font.family: monoFont
-                            font.pixelSize: 11
-                            font.weight: qPill.isSelected ? Font.Bold : Font.DemiBold
-                        }
-
-                        MouseArea {
-                            id: qPillMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.appWindow.songFilterMode = modelData.id
-                        }
+                    FilterChip {
+                        required property var modelData
+                        text: modelData.label
+                        selected: root.appWindow.songFilterMode === modelData.id
+                        onClicked: root.appWindow.songFilterMode = modelData.id
                     }
                 }
             }

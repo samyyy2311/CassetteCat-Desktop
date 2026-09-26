@@ -269,50 +269,12 @@ Item {
                         { id: "AAC", label: "AAC / M4A", icon: "list-music" }
                     ]
 
-                    Rectangle {
-                        property bool isSelected: root.appWindow.activeFormatFilter === modelData.id
-                        width: chipRow.implicitWidth + 20
-                        height: 28
-                        radius: height / 2
-                        color: isSelected
-                            ? "#262320"
-                            : (chipMouse.containsMouse ? surfaceElevated : surfaceTag)
-                        border.width: 1
-                        border.color: isSelected
-                            ? recordRed
-                            : (chipMouse.containsMouse ? borderVariant : borderSubtle)
-
-                        Behavior on color { ColorAnimation { duration: UiConstants.durationFast } }
-                        Behavior on border.color { ColorAnimation { duration: UiConstants.durationFast } }
-
-                        RowLayout {
-                            id: chipRow
-                            anchors.centerIn: parent
-                            spacing: 6
-
-                            LucideIcon {
-                                Layout.preferredWidth: 12
-                                Layout.preferredHeight: 12
-                                icon: modelData.icon
-                                color: parent.parent.isSelected ? recordRedHover : (chipMouse.containsMouse ? textPrimary : textSecondary)
-                            }
-
-                            Label {
-                                text: modelData.label
-                                color: parent.parent.isSelected ? recordRedHover : (chipMouse.containsMouse ? textPrimary : textSecondary)
-                                font.family: monoFont
-                                font.pixelSize: 11
-                                font.weight: parent.parent.isSelected ? Font.Bold : Font.DemiBold
-                            }
-                        }
-
-                        MouseArea {
-                            id: chipMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.appWindow.activeFormatFilter = modelData.id
-                        }
+                    FilterChip {
+                        required property var modelData
+                        text: modelData.label
+                        iconName: modelData.icon
+                        selected: root.appWindow.activeFormatFilter === modelData.id
+                        onClicked: root.appWindow.activeFormatFilter = modelData.id
                     }
                 }
             }

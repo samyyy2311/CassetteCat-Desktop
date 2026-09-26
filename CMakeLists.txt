@@ -142,6 +142,7 @@ qt_add_qml_module(CassetteCat
         qml/SettingButton.qml
         qml/ConfirmPopup.qml
         qml/CountTag.qml
+        qml/FilterChip.qml
         qml/PageTabs.qml
         qml/SettingColorPicker.qml
         qml/SettingDivider.qml

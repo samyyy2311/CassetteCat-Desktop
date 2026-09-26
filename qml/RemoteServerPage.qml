@@ -345,35 +345,11 @@ Item {
                         { id: "FAVORITES", label: "♥ FAVORITES" }
                     ]
 
-                    Rectangle {
-                        id: qPill
-                        property bool isSelected: root.formatFilter === modelData.id
-                        width: qPillLbl.implicitWidth + 20
-                        height: 28
-                        radius: 14
-                        color: "transparent"
-                        border.width: isSelected ? 1.5 : 1
-                        border.color: isSelected ? recordRed : (qPillMouse.containsMouse ? "#45FFFFFF" : (typeof borderSubtle !== "undefined" ? borderSubtle : Qt.rgba(255, 255, 255, 0.05)))
-
-                        Behavior on border.color { ColorAnimation { duration: 100 } }
-
-                        Label {
-                            id: qPillLbl
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: qPill.isSelected ? recordRedHover : (qPillMouse.containsMouse ? textPrimary : textSecondary)
-                            font.family: monoFont
-                            font.pixelSize: 11
-                            font.weight: qPill.isSelected ? Font.Bold : Font.DemiBold
-                        }
-
-                        MouseArea {
-                            id: qPillMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.formatFilter = modelData.id
-                        }
+                    FilterChip {
+                        required property var modelData
+                        text: modelData.label
+                        selected: root.formatFilter === modelData.id
+                        onClicked: root.formatFilter = modelData.id
                     }
                 }
             }

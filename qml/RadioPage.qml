@@ -193,41 +193,14 @@ Item {
                 Repeater {
                     model: ["ALL", "FAVORITES", "RECENTS", "CUSTOM", "pop", "rock", "electronic", "jazz", "lofi", "classical", "news", "ambient"]
 
-                    Rectangle {
-                        id: qPill
-                        property bool isSelected: root.appWindow.radioActiveTag === modelData
-                        width: qPillLbl.implicitWidth + 22
-                        height: 28
-                        radius: 14
-                        color: isSelected
-                            ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#262320")
-                            : (qPillMouse.containsMouse ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#1C1A18") : (typeof surfaceInput !== "undefined" ? surfaceInput : "#141312"))
-                        border.width: 1
-                        border.color: isSelected ? recordRed : (qPillMouse.containsMouse ? borderVariant : borderSubtle)
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                        Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                        Label {
-                            id: qPillLbl
-                            anchors.centerIn: parent
-                            text: modelData.toUpperCase()
-                            color: qPill.isSelected ? recordRedHover : (qPillMouse.containsMouse ? textPrimary : textSecondary)
-                            font.family: monoFont
-                            font.pixelSize: 11
-                            font.weight: qPill.isSelected ? Font.Bold : Font.Medium
-                        }
-
-                        MouseArea {
-                            id: qPillMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                root.appWindow.radioActiveTag = modelData
-                                if (modelData !== "FAVORITES" && modelData !== "RECENTS" && modelData !== "CUSTOM") {
-                                    root.appWindow.refreshRadio()
-                                }
+                    FilterChip {
+                        required property var modelData
+                        text: modelData.toUpperCase()
+                        selected: root.appWindow.radioActiveTag === modelData
+                        onClicked: {
+                            root.appWindow.radioActiveTag = modelData
+                            if (modelData !== "FAVORITES" && modelData !== "RECENTS" && modelData !== "CUSTOM") {
+                                root.appWindow.refreshRadio()
                             }
                         }
                     }

@@ -51,6 +51,7 @@
 #include <shobjidl.h>
 #include <propkey.h>
 #include <propvarutil.h>
+#include <appmodel.h>
 #endif
 
 namespace {
@@ -63,6 +64,16 @@ qint64 gDebugLogBytes = 0;
 #ifdef _WIN32
 constexpr auto kInstanceMutexName = L"CassetteCat.AudioEngine.Desktop.InstanceMutex";
 #endif
+
+// MSIX installs come only from the Microsoft Store, which delivers their updates itself.
+bool installedFromStore() {
+#ifdef Q_OS_WIN
+    UINT32 length = 0;
+    return GetCurrentPackageFullName(&length, nullptr) == ERROR_INSUFFICIENT_BUFFER;
+#else
+    return false;
+#endif
+}
 
 bool notifyRunningInstance(const QString &serverName, const QString &openPath = {}) {
     QLocalSocket socket;
@@ -480,6 +491,7 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("player", &player);
     engine.rootContext()->setContextProperty("services", &services);
     engine.rootContext()->setContextProperty("appSettings", &appSettings);
+    engine.rootContext()->setContextProperty("installedFromStore", installedFromStore());
     engine.rootContext()->setContextProperty("smtc", &smtc);
     engine.rootContext()->setContextProperty("mpris", &mpris);
     engine.rootContext()->setContextProperty("discord", &discord);

@@ -436,6 +436,7 @@ ApplicationWindow {
 
     // Checked at most once a day on launch; a manual check in Settings is always available.
     function checkForUpdatesOnLaunch() {
+        if (installedFromStore) return
         if (Date.now() - Number(appSettings.value("updates/lastCheck", 0)) < 24 * 60 * 60 * 1000) return
         appSettings.setValue("updates/lastCheck", Date.now())
         services.checkForUpdates(false)

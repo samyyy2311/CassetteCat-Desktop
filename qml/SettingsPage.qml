@@ -52,6 +52,7 @@ Item {
     property bool svcWiki: true
     property bool svcArchive: true
     property bool svcDiscord: false
+    property bool svcPhoneRemote: false
     property string backupStatus: ""
     property string currentSection: "library"
     property bool scrobbleListenBrainzEnabled: false
@@ -406,6 +407,7 @@ Item {
                                 svcWiki: root.svcWiki
                                 svcArchive: root.svcArchive
                                 svcDiscord: root.svcDiscord
+                                svcPhoneRemote: root.svcPhoneRemote
                                 onOfflineBlackoutSelected: value => root.offlineBlackoutSelected(value)
                                 onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
                                 onOpenJellyfinRequested: root.openJellyfinRequested()

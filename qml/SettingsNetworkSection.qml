@@ -12,6 +12,7 @@ ColumnLayout {
     property bool svcWiki: true
     property bool svcArchive: true
     property bool svcDiscord: false
+    property bool svcPhoneRemote: false
 
     signal offlineBlackoutSelected(bool value)
     signal serviceToggleRequested(string name, bool value)
@@ -106,6 +107,45 @@ ColumnLayout {
                         onToggled: val => root.serviceToggleRequested(modelData.id, val)
                     }
                 }
+            }
+        }
+    }
+
+    SectionLabel { text: "Phone Remote" }
+
+    SettingCard {
+        SettingRow {
+            iconName: "smartphone"
+            title: "Control From Your Phone" + (root.offlineBlackout ? " (paused)" : "")
+            subtitle: "Let the CassetteCat Android app on this Wi-Fi control playback"
+
+            SettingSwitch {
+                enabled: !root.offlineBlackout
+                checked: root.svcPhoneRemote && !root.offlineBlackout
+                onToggled: val => root.serviceToggleRequested("phoneRemote", val)
+            }
+        }
+
+        SettingDivider { visible: pairingRow.visible }
+
+        SettingRow {
+            id: pairingRow
+            readonly property string pairingAddress: phoneRemote.address + "#" + phoneRemote.code
+            visible: phoneRemote.enabled
+            iconName: "key-round"
+            title: phoneRemote.address ? pairingRow.pairingAddress : "No network connection"
+            subtitle: "Enter this in the Android app under Settings > Desktop Remote"
+
+            SettingButton {
+                text: "Copy"
+                enabled: phoneRemote.address !== ""
+                onClicked: appSettings.copyToClipboard(pairingRow.pairingAddress)
+            }
+
+            SettingButton {
+                text: "New Code"
+                iconName: "refresh-cw"
+                onClicked: phoneRemote.regenerateCode()
             }
         }
     }

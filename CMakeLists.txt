@@ -48,6 +48,8 @@ qt_add_executable(CassetteCat
     src/credential_vault.cpp
     src/discord_presence.h
     src/discord_presence.cpp
+    src/remote_control.h
+    src/remote_control.cpp
     src/streaming.h
     src/streaming.cpp
     src/streaming_library.cpp
@@ -182,6 +184,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/info.svg
         qml/icons/shield.svg
         qml/icons/refresh-cw.svg
+        qml/icons/smartphone.svg
         qml/icons/zap.svg
         qml/icons/compass.svg
         qml/icons/sliders-horizontal.svg

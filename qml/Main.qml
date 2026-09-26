@@ -157,6 +157,7 @@ ApplicationWindow {
     property bool svcWiki: true
     property bool svcArchive: true
     property bool svcDiscord: false
+    property bool svcPhoneRemote: false
     property bool scrobbleListenBrainzEnabled: false
     property string scrobbleListenBrainzUser: ""
     property bool scrobbleListenBrainzConnected: false
@@ -178,6 +179,12 @@ ApplicationWindow {
         target: discord
         property: "enabled"
         value: settingsInitialized && svcDiscord && !offlineBlackout
+    }
+
+    Binding {
+        target: phoneRemote
+        property: "enabled"
+        value: settingsInitialized && svcPhoneRemote && !offlineBlackout
     }
 
     Binding {
@@ -543,6 +550,8 @@ ApplicationWindow {
         svcWiki = appSettings.value("services/wiki", true)
         svcArchive = appSettings.value("services/archive", true)
         svcDiscord = appSettings.value("services/discord", false)
+        svcPhoneRemote = appSettings.value("services/phoneRemote", false)
+        phoneRemote.code = appSettings.value("services/phoneRemoteCode", "")
         scrobbleListenBrainzEnabled = appSettings.value("scrobble/listenbrainz_enabled", false)
         scrobbleListenBrainzUser = appSettings.value("scrobble/listenbrainz_user", "")
         scrobbleListenBrainzConnected = services.hasListenBrainzSession()
@@ -1287,6 +1296,7 @@ ApplicationWindow {
     onSvcWikiChanged: saveSetting("services/wiki", svcWiki)
     onSvcArchiveChanged: saveSetting("services/archive", svcArchive)
     onSvcDiscordChanged: saveSetting("services/discord", svcDiscord)
+    onSvcPhoneRemoteChanged: saveSetting("services/phoneRemote", svcPhoneRemote)
     onScrobbleListenBrainzEnabledChanged: saveSetting("scrobble/listenbrainz_enabled", scrobbleListenBrainzEnabled)
     onScrobbleLibreFmEnabledChanged: saveSetting("scrobble/librefm_enabled", scrobbleLibreFmEnabled)
     onLyricsSyncOffsetMsChanged: if (settingsInitialized) {
@@ -1364,6 +1374,7 @@ ApplicationWindow {
         if (typeof mpris !== "undefined" && mpris && mpris.repeatMode !== repeatMode) {
             mpris.repeatMode = repeatMode
         }
+        phoneRemote.repeatMode = repeatMode
     }
 
     onVisibilityChanged: {
@@ -1465,6 +1476,7 @@ ApplicationWindow {
             "services/wiki": svcWiki,
             "services/archive": svcArchive,
             "services/discord": svcDiscord,
+            "services/phoneRemote": svcPhoneRemote,
             "scrobble/listenbrainz_enabled": scrobbleListenBrainzEnabled,
             "scrobble/listenbrainz_user": scrobbleListenBrainzUser,
             "scrobble/librefm_enabled": scrobbleLibreFmEnabled,
@@ -2699,6 +2711,19 @@ ApplicationWindow {
     }
 
     Connections {
+        target: phoneRemote
+        function onPlayRequested() { player.play() }
+        function onPauseRequested() { player.pause() }
+        function onNextRequested() { window.playNext() }
+        function onPreviousRequested() { window.playPrevious() }
+        function onShuffleToggleRequested() { window.toggleQueueShuffle() }
+        function onRepeatCycleRequested() { window.toggleRepeat() }
+        function onVolumeRequested(volume) { window.setPlayerVolume(volume) }
+        function onSeekRequested(positionMs) { player.seek(positionMs) }
+        function onCodeChanged() { appSettings.setValue("services/phoneRemoteCode", phoneRemote.code) }
+    }
+
+    Connections {
         target: globalShortcuts
         function onPlayPauseRequested() { player.togglePlay() }
         function onNextRequested() { window.playNext() }
@@ -3610,6 +3635,7 @@ ApplicationWindow {
                                 svcWiki: window.svcWiki
                                 svcArchive: window.svcArchive
                                 svcDiscord: window.svcDiscord
+                                svcPhoneRemote: window.svcPhoneRemote
                                 scrobbleListenBrainzEnabled: window.scrobbleListenBrainzEnabled
                                 scrobbleListenBrainzUser: window.scrobbleListenBrainzUser
                                 scrobbleListenBrainzConnected: window.scrobbleListenBrainzConnected
@@ -3672,6 +3698,7 @@ ApplicationWindow {
                                     else if (name === "wiki") window.svcWiki = value
                                     else if (name === "archive") window.svcArchive = value
                                     else if (name === "discord") window.svcDiscord = value
+                                    else if (name === "phoneRemote") window.svcPhoneRemote = value
                                     if (!value) services.cancelNetworkRequests()
                                 }
                                 onOpenJellyfinRequested: page = "jellyfin"

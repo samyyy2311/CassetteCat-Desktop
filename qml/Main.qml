@@ -143,6 +143,7 @@ ApplicationWindow {
     property bool sleepFadeOut: true
     property int sleepTimerRemainingSeconds: 0
     property bool autoplayEnabled: false
+    property int crossfadeSeconds: 0
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 80
     property string replayGainMode: "off"
@@ -179,6 +180,12 @@ ApplicationWindow {
         target: discord
         property: "enabled"
         value: settingsInitialized && svcDiscord && !offlineBlackout
+    }
+
+    Binding {
+        target: player
+        property: "crossfadeMs"
+        value: crossfadeSeconds * 1000
     }
 
     Binding {
@@ -551,6 +558,7 @@ ApplicationWindow {
             excludedFolders = []
         }
         autoplayEnabled = appSettings.value("player/autoplayEnabled", false)
+        crossfadeSeconds = Number(appSettings.value("player/crossfadeSeconds", 0))
         sleepFadeOut = appSettings.value("player/sleepFadeOut", true)
         sleepTimerMode = appSettings.value("player/sleepTimerMode", "off")
         volumeLimitEnabled = appSettings.value("player/volumeLimitEnabled", false)
@@ -1293,6 +1301,7 @@ ApplicationWindow {
     onSleepFadeOutChanged: saveSetting("player/sleepFadeOut", sleepFadeOut)
     onSleepTimerModeChanged: saveSetting("player/sleepTimerMode", sleepTimerMode)
     onAutoplayEnabledChanged: saveSetting("player/autoplayEnabled", autoplayEnabled)
+    onCrossfadeSecondsChanged: saveSetting("player/crossfadeSeconds", crossfadeSeconds)
     onVolumeLimitEnabledChanged: saveSetting("player/volumeLimitEnabled", volumeLimitEnabled)
     onMaxVolumePercentChanged: saveSetting("player/maxVolumePercent", maxVolumePercent)
     onReplayGainModeChanged: {
@@ -1482,6 +1491,7 @@ ApplicationWindow {
             "lyrics/activeStyle": lyricsActiveStyle,
             "lyrics/preferLocal": preferLocalLyrics,
             "player/autoplayEnabled": autoplayEnabled,
+            "player/crossfadeSeconds": crossfadeSeconds,
             "player/sleepFadeOut": sleepFadeOut,
             "player/sleepTimerMode": sleepTimerMode,
             "player/volumeLimitEnabled": volumeLimitEnabled,
@@ -2492,6 +2502,10 @@ ApplicationWindow {
             if (nextIndex < 0) nextIndex = 0
             startPlayback(filtered, nextIndex, false)
         }
+        // Repeat-one and "stop after this track" let the song play to its very end instead.
+        function onCrossfadeReady() {
+            if (sleepTimerMode !== "track" && repeatMode !== 2) playNext()
+        }
         function onTrackEnded() {
             if (sleepTimerMode === "track") {
                 triggerSleepTimerStop()
@@ -2628,6 +2642,7 @@ ApplicationWindow {
                 inAppShortcutBindings: window.inAppShortcutBindings,
                 miniPlayerAlwaysOnTop: window.miniPlayerAlwaysOnTop,
                 autoplayEnabled: window.autoplayEnabled,
+                crossfadeSeconds: window.crossfadeSeconds,
                 sleepFadeOut: window.sleepFadeOut,
                 volumeLimitEnabled: window.volumeLimitEnabled,
                 maxVolumePercent: window.maxVolumePercent,
@@ -2700,6 +2715,7 @@ ApplicationWindow {
                     }
                     if (data.miniPlayerAlwaysOnTop !== undefined) { window.miniPlayerAlwaysOnTop = data.miniPlayerAlwaysOnTop; appSettings.setValue("ui/miniPlayerAlwaysOnTop", data.miniPlayerAlwaysOnTop) }
                     if (data.autoplayEnabled !== undefined) { window.autoplayEnabled = data.autoplayEnabled; appSettings.setValue("player/autoplayEnabled", data.autoplayEnabled) }
+                    if (data.crossfadeSeconds !== undefined) window.crossfadeSeconds = data.crossfadeSeconds
                     if (data.sleepFadeOut !== undefined) { window.sleepFadeOut = data.sleepFadeOut; appSettings.setValue("player/sleepFadeOut", data.sleepFadeOut) }
                     if (data.volumeLimitEnabled !== undefined) { window.volumeLimitEnabled = data.volumeLimitEnabled; appSettings.setValue("player/volumeLimitEnabled", data.volumeLimitEnabled) }
                     if (data.maxVolumePercent !== undefined) { window.maxVolumePercent = data.maxVolumePercent; appSettings.setValue("player/maxVolumePercent", data.maxVolumePercent) }
@@ -3720,6 +3736,7 @@ ApplicationWindow {
                                 sleepTimerStatus: window.sleepTimerStatus
                                 sleepFadeOut: window.sleepFadeOut
                                 autoplayEnabled: window.autoplayEnabled
+                                crossfadeSeconds: window.crossfadeSeconds
                                 volumeLimitEnabled: window.volumeLimitEnabled
                                 maxVolumePercent: window.maxVolumePercent
                                 replayGainMode: window.replayGainMode
@@ -3780,6 +3797,7 @@ ApplicationWindow {
                                 onSleepTimerCancelled: window.cancelSleepTimer()
                                 onSleepFadeOutSelected: value => window.sleepFadeOut = value
                                 onAutoplaySelected: value => window.autoplayEnabled = value
+                                onCrossfadeSelected: value => window.crossfadeSeconds = value
                                 onVolumeLimitSelected: value => { window.volumeLimitEnabled = value; window.enforceVolumeLimit() }
                                 onMaxVolumeSelected: value => { window.maxVolumePercent = value; window.enforceVolumeLimit() }
                                 onReplayGainModeSelected: value => window.replayGainMode = value

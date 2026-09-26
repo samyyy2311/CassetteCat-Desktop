@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QElapsedTimer>
 #include <QObject>
 #include <QString>
 #include <QUrl>
@@ -10,6 +11,7 @@ class QMediaDevices;
 class QAudioOutput;
 class QMediaPlayer;
 class QQuickWindow;
+class QTimer;
 class StreamingController;
 
 class PlayerController final : public QObject {
@@ -29,6 +31,8 @@ class PlayerController final : public QObject {
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
     Q_PROPERTY(QString currentLyrics READ currentLyrics NOTIFY currentLyricsChanged)
     Q_PROPERTY(QString replayGainMode READ replayGainMode WRITE setReplayGainMode NOTIFY replayGainModeChanged)
+    /// How long the next track fades in over the end of the current one; 0 turns crossfade off.
+    Q_PROPERTY(int crossfadeMs MEMBER m_crossfadeMs)
   public:
     /// Creates a player backed by \p streaming for authenticated remote tracks.
     explicit PlayerController(QObject *parent = nullptr, StreamingController *streaming = nullptr);
@@ -95,6 +99,8 @@ class PlayerController final : public QObject {
     /// Announces that the ReplayGain mode changed.
     void replayGainModeChanged();
     void trackEnded();
+    /// The playing track is close enough to its end for the next one to fade in over it.
+    void crossfadeReady();
 
   private:
     // Local files resolve to file URLs; remote tracks resolve to an
@@ -107,6 +113,12 @@ class PlayerController final : public QObject {
     void setAudioLevel(qreal level);
     /// Applies ReplayGain and the configured ceiling to the audio output.
     void applyEffectiveVolume();
+    /// The base volume with ReplayGain and the configured ceiling applied.
+    float effectiveVolume() const;
+    /// Wires \p player's signals; only the current player's signals are acted on.
+    void connectPlayer(QMediaPlayer *player);
+    /// Ends a crossfade now: the outgoing track stops and the incoming one plays at full volume.
+    void finishCrossfade();
 
     QAudioOutput *m_audioOutput = nullptr;
     QMediaDevices *m_mediaDevices = nullptr;
@@ -128,4 +140,13 @@ class PlayerController final : public QObject {
     QString m_replayGainMode = QStringLiteral("off");
     float m_currentReplayGainDb = 0.0f;
     float m_baseVolume = 1.0f;
+    // Crossfade plays the outgoing track on a second player while the next one fades in on the first.
+    QMediaPlayer *m_fadingPlayer = nullptr;
+    QAudioOutput *m_fadingOutput = nullptr;
+    QTimer *m_fadeTimer = nullptr;
+    QElapsedTimer m_fadeClock;
+    int m_crossfadeMs = 0;
+    bool m_crossfadeReady = false;
+    float m_fadingStartVolume = 0.0f;
+    float m_fadeIn = 1.0f;
 };

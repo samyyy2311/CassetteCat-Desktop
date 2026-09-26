@@ -365,7 +365,7 @@ Item {
                     text: {
                         if (root.activeTab === "songs") {
                             const n = (root.viewMode === "list" ? trackList.count : trackGrid.count)
-                            return n + (n === 1 ? " track" : " tracks")
+                            return n + (n === 1 ? " song" : " songs")
                         }
                         const count = root.displayItems.length
                         return count + " " + root.activeTab
@@ -426,9 +426,9 @@ Item {
                 visible: root.activeTab === "songs"
                 boxSize: 34
                 iconSize: 16
-                iconName: root.viewMode === "list" ? "grid-2x2" : "list"
+                iconName: root.viewMode === "grid" ? "grid-2x2" : "list"
                 tint: textPrimary
-                tooltipText: root.viewMode === "list" ? "Detailed Grid View (Click for List)" : "List View (Click for Grid)"
+                tooltipText: root.viewMode === "grid" ? "Detailed Grid View (Click for List)" : "List View (Click for Grid)"
                 onClicked: root.viewMode = (root.viewMode === "list" ? "grid" : "list")
             }
 
@@ -489,7 +489,7 @@ Item {
                 iconName: "log-out"
                 tint: textSecondary
                 tooltipText: "Disconnect server"
-                onClicked: streamingController.disconnectServer(root.protocol)
+                onClicked: disconnectPopup.open()
             }
         }
 
@@ -497,7 +497,6 @@ Item {
             id: trackContent
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.topMargin: 12
 
             // Counts what the visible view shows after search and format filters.
             readonly property int visibleCount: trackList.visible ? trackList.count : trackGrid.count
@@ -887,5 +886,15 @@ Item {
     Component.onCompleted: {
         root.loadSavedConnection()
         root.loadState()
+    }
+
+    ConfirmPopup {
+        id: disconnectPopup
+        title: "Disconnect " + root.serviceName + "?"
+        subtitle: "You will need to sign in again"
+        message: "Your saved login is removed and this server's songs leave your library until you connect again. Nothing is deleted from the server."
+        iconName: "log-out"
+        confirmText: "Disconnect"
+        onConfirmed: streamingController.disconnectServer(root.protocol)
     }
 }

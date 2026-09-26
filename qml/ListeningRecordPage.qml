@@ -1525,106 +1525,12 @@ Item {
         }
     }
 
-
-
-    Popup {
+    ConfirmPopup {
         id: clearPopup
-        parent: Overlay.overlay
-        modal: true
-        focus: true
-        x: Math.round(((parent ? parent.width : 800) - width) / 2)
-        y: Math.round(((parent ? parent.height : 600) - height) / 2)
-        width: Math.min((parent ? parent.width - 64 : 420), 420)
-        padding: 24
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        Overlay.modal: Rectangle {
-            color: "#B8000000"
-        }
-
-        background: Rectangle {
-            radius: 14
-            color: root.appWindow.surfaceCard
-            border.width: 1
-            border.color: root.appWindow.borderSubtle
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 16
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
-
-                Rectangle {
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
-                    radius: 18
-                    color: Qt.rgba(1, 0.2, 0.2, 0.12)
-                    border.width: 1
-                    border.color: Qt.rgba(1, 0.2, 0.2, 0.25)
-
-                    LucideIcon {
-                        anchors.centerIn: parent
-                        width: 18
-                        height: 18
-                        icon: "rotate-ccw"
-                        color: root.appWindow.recordRed
-                    }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-
-                    Label {
-                        text: "Clear Listening Record?"
-                        color: root.appWindow.textPrimary
-                        font.family: root.appWindow.displayFont
-                        font.pixelSize: 16
-                        font.weight: Font.Bold
-                    }
-
-                    Label {
-                        text: "This cannot be undone"
-                        color: root.appWindow.silverDim
-                        font.family: root.appWindow.monoFont
-                        font.pixelSize: 11
-                    }
-                }
-            }
-
-            Label {
-                Layout.fillWidth: true
-                text: "This will reset all your play counts, top statistics, and playback history. Your music library files and playlists will not be affected."
-                color: root.appWindow.textSecondary
-                font.family: root.appWindow.bodyFont
-                font.pixelSize: 13
-                wrapMode: Text.WordWrap
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 8
-                spacing: 10
-
-                Item { Layout.fillWidth: true }
-
-                SettingButton {
-                    text: "Cancel"
-                    onClicked: clearPopup.close()
-                }
-
-                SettingButton {
-                    text: "Clear Record"
-                    iconName: "rotate-ccw"
-                    destructive: true
-                    onClicked: {
-                        root.appWindow.clearListeningRecord()
-                        clearPopup.close()
-                    }
-                }
-            }
-        }
+        title: "Clear Listening Record?"
+        message: "This will reset all your play counts, top statistics, and playback history. Your music library files and playlists will not be affected."
+        iconName: "rotate-ccw"
+        confirmText: "Clear Record"
+        onConfirmed: root.appWindow.clearListeningRecord()
     }
 }

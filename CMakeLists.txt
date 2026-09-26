@@ -140,6 +140,7 @@ qt_add_qml_module(CassetteCat
         qml/SettingSegmentedControl.qml
         qml/SettingChoiceGroup.qml
         qml/SettingButton.qml
+        qml/ConfirmPopup.qml
         qml/SettingColorPicker.qml
         qml/SettingDivider.qml
         qml/SettingsPathList.qml

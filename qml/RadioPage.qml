@@ -44,6 +44,67 @@ Item {
         return list
     }
 
+    readonly property var ownLists: ["ALL", "FAVORITES", "RECENTS", "CUSTOM"]
+    readonly property var genres: ["pop", "rock", "electronic", "jazz", "lofi", "classical", "news", "ambient"]
+
+    function stationTags(station) {
+        const tags = String(station.tags || "").split(",").map(tag => tag.trim()).filter(tag => tag.length > 0)
+        if (tags.length === 0)
+            return station.country || "Internet Radio"
+        return tags.slice(0, 2).map(tag => tag.charAt(0).toUpperCase() + tag.slice(1)).join(" \u2022 ")
+    }
+
+    // Bitrate is only worth showing when it stands out from the usual 128 kbps.
+    function stationSubtitle(station) {
+        const kbps = station.bitrate || 0
+        const notable = kbps >= 256 || (kbps > 0 && kbps <= 64)
+        return stationTags(station) + (notable ? " \u2022 " + kbps + " kbps" : "")
+    }
+
+    function stationInitials(name) {
+        const words = String(name || "").replace(/[^A-Za-z0-9 ]/g, " ").split(/\s+/).filter(word => word.length > 0)
+        if (words.length === 0)
+            return String(name || "?").trim().charAt(0)
+        if (words.length === 1)
+            return words[0].slice(0, 2).toUpperCase()
+        return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase()
+    }
+
+    function stationColor(name) {
+        let hash = 0
+        for (const ch of String(name || ""))
+            hash = (hash * 31 + ch.charCodeAt(0)) % 360
+        return Qt.hsla(hash / 360, 0.35, 0.3, 1)
+    }
+
+    component StationArt: Item {
+        property var station: ({})
+        property real radius: 8
+
+        Cover {
+            id: art
+            anchors.fill: parent
+            radius: parent.radius
+            track: ({ artworkUrl: parent.station.favicon || "" })
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            visible: art.showingFallback
+            radius: parent.radius
+            color: root.stationColor(parent.station.name)
+
+            Label {
+                anchors.centerIn: parent
+                text: root.stationInitials(parent.parent.station.name)
+                color: "#F2FFFFFF"
+                font.family: displayFont
+                font.pixelSize: Math.round(parent.height * 0.34)
+                font.weight: Font.Bold
+            }
+        }
+    }
+
     function stationTrack(station) {
         return {
             title: station.name || "Live Radio Stream",
@@ -132,10 +193,17 @@ Item {
                 PressDepthIconButton {
                     boxSize: 34
                     iconSize: 16
-                    iconName: "radio"
+                    iconName: "plus"
                     tint: textPrimary
-                    tooltipText: "Add Custom Station"
+                    tooltipText: "Add a stream URL"
                     onClicked: customStationPopup.open()
+                }
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 1
+                    height: 18
+                    color: borderVariant
                 }
 
                 PressDepthIconButton {
@@ -153,7 +221,7 @@ Item {
                     iconName: "refresh-cw"
                     enabled: !root.radioUnavailable && root.appWindow.radioActiveTag !== "FAVORITES" && root.appWindow.radioActiveTag !== "RECENTS" && root.appWindow.radioActiveTag !== "CUSTOM"
                     tint: textPrimary
-                    tooltipText: "Refresh Stations"
+                    tooltipText: "Refresh stations"
                     onClicked: root.appWindow.refreshRadio()
                 }
 
@@ -164,7 +232,7 @@ Item {
                     enabled: !root.radioUnavailable && root.appWindow.radioActiveTag !== "FAVORITES" && root.appWindow.radioActiveTag !== "RECENTS" && root.appWindow.radioActiveTag !== "CUSTOM"
                     tint: textPrimary
                     highlighted: root.appWindow.radioIsCustomized || root.appWindow.radioRefineOpen
-                    tooltipText: "Refine & Sort Stations"
+                    tooltipText: "Filter and sort stations"
                     onClicked: root.appWindow.radioRefineOpen = !root.appWindow.radioRefineOpen
                 }
             }
@@ -187,7 +255,30 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
 
                 Repeater {
-                    model: ["ALL", "FAVORITES", "RECENTS", "CUSTOM", "pop", "rock", "electronic", "jazz", "lofi", "classical", "news", "ambient"]
+                    model: root.ownLists
+
+                    FilterChip {
+                        required property var modelData
+                        text: modelData.toUpperCase()
+                        selected: root.appWindow.radioActiveTag === modelData
+                        onClicked: {
+                            root.appWindow.radioActiveTag = modelData
+                            if (modelData !== "FAVORITES" && modelData !== "RECENTS" && modelData !== "CUSTOM") {
+                                root.appWindow.refreshRadio()
+                            }
+                        }
+                    }
+                }
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 1
+                    height: 18
+                    color: borderVariant
+                }
+
+                Repeater {
+                    model: root.genres
 
                     FilterChip {
                         required property var modelData
@@ -255,21 +346,12 @@ Item {
                                 highlighted: cardMouse.containsMouse
                                 current: isCurrent
 
-                                Image {
-                                    id: stationImg
+                                StationArt {
                                     anchors.fill: parent
-                                    anchors.margins: 14
-                                    source: modelData.favicon || ""
-                                    sourceSize.width: Math.ceil(120 * Screen.devicePixelRatio)
-                                    sourceSize.height: Math.ceil(120 * Screen.devicePixelRatio)
-                                    fillMode: Image.PreserveAspectCrop
-                                    visible: status === Image.Ready
-                                    asynchronous: true
-                                    smooth: true
-                                    mipmap: true
+                                    station: modelData
+                                    radius: coverBox.radius
                                 }
 
-                                VinylFallback { anchors.fill: parent; visible: stationImg.status !== Image.Ready }
 
                                 TransportButton {
                                     anchors.right: parent.right
@@ -340,7 +422,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 0
                                 Layout.minimumWidth: 0
-                                text: modelData.country ? (modelData.country + (modelData.bitrate ? (" \u2022 " + modelData.bitrate + " kbps") : (modelData.tags ? (" \u2022 " + modelData.tags.split(",")[0].trim()) : ""))) : (modelData.tags || "Internet Radio")
+                                text: root.stationSubtitle(modelData)
                                 color: textSecondary
                                 font.family: bodyFont
                                 font.pixelSize: 11
@@ -394,29 +476,12 @@ Item {
                         anchors.rightMargin: 16
                         spacing: 12
 
-                        Rectangle {
+                        StationArt {
                             Layout.preferredWidth: 40
                             Layout.preferredHeight: 40
                             Layout.alignment: Qt.AlignVCenter
+                            station: modelData
                             radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 8
-                            color: surfaceCard
-                            clip: true
-                            border.width: 1
-                            border.color: isCurrent ? recordRed : "#15FFFFFF"
-
-                            Image {
-                                id: listImg
-                                anchors.fill: parent
-                                anchors.margins: 4
-                                source: modelData.favicon || ""
-                                sourceSize.width: Math.ceil(40 * Screen.devicePixelRatio)
-                                sourceSize.height: Math.ceil(40 * Screen.devicePixelRatio)
-                                fillMode: Image.PreserveAspectCrop
-                                visible: status === Image.Ready
-                                asynchronous: true
-                            }
-
-                            VinylFallback { anchors.fill: parent; visible: listImg.status !== Image.Ready }
                         }
 
                         ColumnLayout {
@@ -443,7 +508,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 0
                                 Layout.minimumWidth: 0
-                                text: modelData.country ? (modelData.country + (modelData.tags ? (" \u2022 " + modelData.tags.split(",")[0].trim()) : "")) : (modelData.tags || "Internet Radio")
+                                text: root.stationTags(modelData)
                                 color: textSecondary
                                 font.family: bodyFont
                                 font.pixelSize: 11

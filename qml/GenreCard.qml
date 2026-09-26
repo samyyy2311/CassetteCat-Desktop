@@ -31,7 +31,7 @@ Rectangle {
     color: root.highlighted ? surfaceElevated : surfaceCard
     border.width: 1
     border.color: root.highlighted ? recordRed : borderSubtle
-    scale: root.highlighted ? 1.02 : 1.0
+    scale: root.highlighted ? 1.03 : 1.0
 
     Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
     Behavior on border.color { ColorAnimation { duration: 120 } }

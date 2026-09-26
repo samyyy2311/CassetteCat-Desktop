@@ -70,7 +70,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: Math.min(root.cardWidth - 20, 140)
             Layout.preferredHeight: width
-            scale: root.highlighted ? 1.04 : 1.0
+            scale: root.highlighted ? 1.03 : 1.0
 
             Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
 
@@ -90,7 +90,7 @@ Item {
                 anchors.fill: parent
                 radius: width / 2
                 color: surfaceCard
-                border.width: root.highlighted ? 2 : 1
+                border.width: root.highlighted ? 1.5 : 1
                 border.color: root.highlighted ? recordRed : "#30FFFFFF"
                 clip: true
                 z: 2

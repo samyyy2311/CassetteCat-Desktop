@@ -37,31 +37,16 @@ Item {
             Layout.preferredHeight: width
             Layout.alignment: Qt.AlignHCenter
 
-            Rectangle {
+            CoverFrame {
                 id: coverContainer
                 anchors.fill: parent
                 radius: root.imageRadius
-                color: surfaceCard
-                clip: true
-                border.width: root.highlighted ? 1.5 : 0
-                border.color: root.highlighted ? recordRed : "transparent"
-                scale: root.highlighted ? 1.03 : 1.0
-
-                Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
-                Behavior on border.color { ColorAnimation { duration: 120 } }
+                highlighted: root.highlighted
 
                 Cover {
                     anchors.fill: parent
                     track: root.track
                     radius: root.imageRadius
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: root.imageRadius
-                    color: "transparent"
-                    border.width: 1
-                    border.color: "#15FFFFFF"
                 }
             }
         }

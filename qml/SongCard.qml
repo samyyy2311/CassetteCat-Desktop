@@ -36,31 +36,17 @@ Item {
             Layout.preferredHeight: width
             Layout.alignment: Qt.AlignHCenter
 
-            Rectangle {
+            CoverFrame {
                 id: coverContainer
                 anchors.fill: parent
                 radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
-                color: surfaceCard
-                clip: true
-                border.width: root.isCurrent ? 1.5 : (root.highlighted ? 1.5 : 0)
-                border.color: root.isCurrent ? recordRed : (root.highlighted ? recordRed : "transparent")
-                scale: root.highlighted ? 1.03 : 1.0
-
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                Behavior on border.color { ColorAnimation { duration: 120 } }
+                highlighted: root.highlighted
+                current: root.isCurrent
 
                 Cover {
                     anchors.fill: parent
                     track: root.track
                     radius: coverContainer.radius
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: coverContainer.radius
-                    color: "transparent"
-                    border.width: 1
-                    border.color: root.isCurrent ? recordRed : "#15FFFFFF"
                 }
             }
         }

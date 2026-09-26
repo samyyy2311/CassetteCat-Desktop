@@ -188,6 +188,12 @@ ApplicationWindow {
     }
 
     Binding {
+        target: phoneRemote
+        property: "upNext"
+        value: phoneRemote.enabled ? remoteUpNext() : []
+    }
+
+    Binding {
         target: player
         property: "audioMeterEnabled"
         value: (nowPlayingLoader.item !== null && nowPlayingLoader.item.audioMeterVisible)
@@ -2255,6 +2261,17 @@ ApplicationWindow {
         return playbackQueue.length ? playbackQueue : uniqueTracks(availableTracks())
     }
 
+    function remoteUpNext() {
+        const queue = activePlaybackQueue()
+        const start = currentQueueIndex() + 1
+        return queue.slice(start, start + 30).map((track, offset) => ({
+            index: start + offset,
+            title: track.title || track.fileName || "",
+            artist: track.artist || "",
+            durationMs: (track.durationSeconds || 0) * 1000
+        }))
+    }
+
     function currentQueueIndex() {
         const queue = activePlaybackQueue()
         const filePath = player.currentTrack ? player.currentTrack.filePath : ""
@@ -2720,6 +2737,7 @@ ApplicationWindow {
         function onRepeatCycleRequested() { window.toggleRepeat() }
         function onVolumeRequested(volume) { window.setPlayerVolume(volume) }
         function onSeekRequested(positionMs) { player.seek(positionMs) }
+        function onQueueTrackRequested(index) { window.playFromQueue(window.activePlaybackQueue()[index]) }
         function onCodeChanged() { appSettings.setValue("services/phoneRemoteCode", phoneRemote.code) }
     }
 

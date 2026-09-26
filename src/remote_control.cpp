@@ -3,12 +3,16 @@
 #include "player_controller.h"
 
 #include <QEventLoop>
+#include <QFile>
+#include <QFileInfo>
 #include <QHostAddress>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QNetworkInterface>
 #include <QRandomGenerator>
 #include <QTcpSocket>
 #include <QTimer>
+#include <QUrl>
 
 #include <algorithm>
 #include <cmath>
@@ -163,8 +167,8 @@ void RemoteControlServer::serve(QTcpSocket *socket) {
                                 : response.status == 200 ? QByteArray(R"({"ok":true})")
                                                          : QByteArray(R"({"ok":false})");
         socket->write("HTTP/1.1 " + QByteArray::number(response.status) + ' ' + reasonPhrase(response.status) +
-                      "\r\nContent-Type: application/json\r\nContent-Length: " + QByteArray::number(body.size()) +
-                      "\r\nConnection: close\r\n\r\n" + body);
+                      "\r\nContent-Type: " + response.contentType + "\r\nContent-Length: " +
+                      QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body);
         socket->disconnectFromHost();
     });
 }
@@ -187,6 +191,15 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
 
     if (method == "GET" && path == "/api/playback")
         return {200, QJsonDocument(status()).toJson(QJsonDocument::Compact)};
+    if (method == "GET" && path == "/api/artwork") {
+        QFile file(artworkPath());
+        if (!file.open(QIODevice::ReadOnly))
+            return {404, {}};
+        return {200, file.readAll(), file.fileName().endsWith(".png") ? "image/png" : "image/jpeg"};
+    }
+    if (method == "GET" && path == "/api/queue")
+        return {200, QJsonDocument(QJsonObject{{"tracks", QJsonArray::fromVariantList(m_upNext)}})
+                         .toJson(QJsonDocument::Compact)};
     if (method != "POST")
         return {404, {}};
 
@@ -213,6 +226,10 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         emit volumeRequested(qBound(0, request.value("percent").toInt(), 100) / 100.0);
         return {200, {}};
     }
+    if (path == "/api/queue" && request.contains("index")) {
+        emit queueTrackRequested(request.value("index").toInt());
+        return {200, {}};
+    }
     if (path == "/api/seek" && request.contains("positionMs")) {
         emit seekRequested(qMax<qint64>(0, request.value("positionMs").toInteger()));
         return {200, {}};
@@ -223,6 +240,7 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
 QJsonObject RemoteControlServer::status() const {
     const QVariantMap track = m_player->currentTrack();
     const QString title = track.value("title").toString();
+    const QString artwork = artworkPath();
     return {
         {"isPlaying", m_player->isPlaying()},
         {"trackTitle", title.isEmpty() ? track.value("fileName").toString() : title},
@@ -232,7 +250,14 @@ QJsonObject RemoteControlServer::status() const {
         {"volumePercent", int(std::lround(m_player->volume() * 100))},
         {"shuffleEnabled", m_player->shuffleEnabled()},
         {"repeatMode", m_repeatMode},
+        // Changes with the cover, so the phone only downloads artwork when it changes.
+        {"artworkKey", artwork.isEmpty() ? QString() : QString::number(qHash(artwork), 16)},
     };
+}
+
+QString RemoteControlServer::artworkPath() const {
+    const QUrl url(m_player->currentTrack().value("artworkUrl").toString());
+    return url.isLocalFile() && QFileInfo::exists(url.toLocalFile()) ? url.toLocalFile() : QString();
 }
 
 bool RemoteControlServer::selfCheck() {
@@ -261,6 +286,16 @@ bool RemoteControlServer::selfCheck() {
         remote.respond("POST", "/api/playback", auth, R"({"action":"next"})", lan).status == 200 && nextCount == 1;
     const bool clampsVolume =
         remote.respond("POST", "/api/volume", auth, R"({"percent":140})", lan).status == 200 && volume == 1.0;
+    int queuedIndex = -1;
+    connect(&remote, &RemoteControlServer::queueTrackRequested, [&](int index) { queuedIndex = index; });
+    remote.m_upNext = {QVariantMap{{"index", 4}, {"title", "Next"}}};
+    const QJsonArray upNext = QJsonDocument::fromJson(remote.respond("GET", "/api/queue", auth, {}, lan).body)
+                                  .object()
+                                  .value("tracks")
+                                  .toArray();
+    const bool servesQueue = upNext.size() == 1 && upNext[0].toObject().value("title") == "Next" &&
+                             remote.respond("POST", "/api/queue", auth, R"({"index":4})", lan).status == 200 &&
+                             queuedIndex == 4;
     const bool rejectsUnknownAction =
         remote.respond("POST", "/api/playback", auth, R"({"action":"reset"})", lan).status == 400;
 
@@ -283,9 +318,10 @@ bool RemoteControlServer::selfCheck() {
     const bool locksOutGuessing = remote.respond("GET", "/api/playback", auth, {}, lan).status == 429;
 
     const bool ok = rejectsPublicPeer && rejectsWrongCode && reportsStatus && routesNext && clampsVolume &&
-                    rejectsUnknownAction && servesHttp && locksOutGuessing;
+                    rejectsUnknownAction && servesQueue && servesHttp && locksOutGuessing;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
-                   << routesNext << clampsVolume << rejectsUnknownAction << servesHttp << locksOutGuessing;
+                   << routesNext << clampsVolume << rejectsUnknownAction << servesQueue << servesHttp
+                   << locksOutGuessing;
     return ok;
 }

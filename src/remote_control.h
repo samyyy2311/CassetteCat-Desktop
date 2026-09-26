@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QString>
 #include <QTcpServer>
+#include <QVariantList>
 
 class PlayerController;
 class QHostAddress;
@@ -19,6 +20,8 @@ class RemoteControlServer final : public QObject {
     Q_PROPERTY(QString code READ code WRITE setCode NOTIFY codeChanged)
     Q_PROPERTY(QString address READ address NOTIFY addressChanged)
     Q_PROPERTY(int repeatMode MEMBER m_repeatMode)
+    /// The next few queued tracks as {index, title, artist, durationMs}, kept current by QML.
+    Q_PROPERTY(QVariantList upNext MEMBER m_upNext)
 
   public:
     explicit RemoteControlServer(PlayerController *player, QObject *parent = nullptr);
@@ -46,23 +49,28 @@ class RemoteControlServer final : public QObject {
     void repeatCycleRequested();
     void volumeRequested(double volume);
     void seekRequested(qint64 positionMs);
+    /// Requests playback of the track at \p index in the active queue.
+    void queueTrackRequested(int index);
 
   private:
     struct Response {
         int status;
         QByteArray body;
+        QByteArray contentType = "application/json";
     };
 
     void serve(QTcpSocket *socket);
     Response respond(const QByteArray &method, const QByteArray &path, const QByteArray &authorization,
                      const QByteArray &body, const QHostAddress &peer);
     QJsonObject status() const;
+    QString artworkPath() const;
 
     PlayerController *m_player = nullptr;
     QTcpServer m_server;
     QString m_code;
     bool m_enabled = false;
     int m_repeatMode = 0;
+    QVariantList m_upNext;
     int m_failedAttempts = 0;
     QElapsedTimer m_lockedSince;
 };

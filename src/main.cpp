@@ -333,6 +333,9 @@ int main(int argc, char *argv[]) {
         check(PlayerController::selfCheck(), "player");
         check(MprisController::selfCheck(), "mpris");
         check(DiscordPresence::selfCheck(), "discord presence");
+        QSize labelSize;
+        const QString bundledLabel = QStringLiteral("0.5/qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png");
+        check(!CoverImageProvider().requestImage(bundledLabel, &labelSize, QSize(0, 0)).isNull(), "bundled cover");
         check(singleInstanceSelfCheck(), "single instance");
         return passed ? 0 : 1;
     }

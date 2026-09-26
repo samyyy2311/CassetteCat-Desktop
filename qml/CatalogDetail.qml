@@ -74,9 +74,14 @@ Rectangle {
         loadDetailProfile()
     }
     onVisibleChanged: if (visible) loadDetailProfile()
-    onModeChanged: loadDetailProfile()
+    // The list is reused from page to page, so each new page scrolls back to the top.
+    onModeChanged: {
+        scrollView.positionViewAtBeginning()
+        loadDetailProfile()
+    }
     onTitleChanged: {
         bioExpanded = false
+        scrollView.positionViewAtBeginning()
         loadDetailProfile()
     }
     onHeroTrackChanged: if (albumDetail) loadAlbumProfile()

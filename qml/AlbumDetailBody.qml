@@ -34,7 +34,7 @@ ListView {
             anchors.leftMargin: 36
             anchors.rightMargin: 36
             track: modelData
-            number: root.albumArtist ? (modelData.trackNumber > 0 ? modelData.trackNumber : index + 1) : 0
+            number: root.albumArtist ? index + 1 : 0
             omitArtist: root.albumArtist
             showAlbum: !root.albumArtist
             showFormatBadge: root.showFormatBadge && (typeof window === "undefined" || window.showFormatBadges !== false)

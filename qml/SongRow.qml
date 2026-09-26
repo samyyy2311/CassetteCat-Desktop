@@ -66,6 +66,27 @@ Rectangle {
 
     Behavior on color { ColorAnimation { duration: 120 } }
 
+    // Declared before the content so it sits underneath it. With z: -1 instead, presses never
+    // reached it and rows could not be clicked.
+    MouseArea {
+        id: rowMouse
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
+        onClicked: mouse => {
+            if (mouse.button === Qt.RightButton) {
+                contextMenu.popup()
+            } else {
+                root.clicked(mouse.modifiers)
+            }
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 14
@@ -235,26 +256,6 @@ Rectangle {
         function popup(...args) {
             active = true
             item.popup(...args)
-        }
-    }
-
-    MouseArea {
-        id: rowMouse
-        anchors.fill: parent
-        z: -1
-        hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: Qt.PointingHandCursor
-        onPressed: {
-            root.mouseFocused = true
-            root.forceActiveFocus()
-        }
-        onClicked: mouse => {
-            if (mouse.button === Qt.RightButton) {
-                contextMenu.popup()
-            } else {
-                root.clicked(mouse.modifiers)
-            }
         }
     }
 }

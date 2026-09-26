@@ -64,7 +64,8 @@ QImage CoverImageProvider::requestImage(const QString &id, QSize *size, const QS
     QImageReader reader(imagePath);
     reader.setAutoTransform(true);
     *size = reader.size();
-    if (!requestedSize.isValid() || !size->isValid())
+    // An item that has not been laid out yet asks for 0x0, which would scale the image away to nothing.
+    if (requestedSize.isEmpty() || !size->isValid())
         return reader.read();
 
     // Crop to the requested box and round the corners here, so QML needs no per-cover mask layers.

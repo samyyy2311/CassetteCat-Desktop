@@ -136,13 +136,19 @@ Column {
 
                         ListView {
                             id: releaseList
+                            // Card width is chosen so a row always shows whole cards, never a cut-off one.
+                            readonly property int visibleCards: Math.max(2, Math.floor((width + spacing) / (180 + spacing)))
+                            readonly property real cardWidth: Math.floor((width - (visibleCards - 1) * spacing) / visibleCards)
                             activeFocusOnTab: true
                             onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                             Layout.fillWidth: true
-                            Layout.preferredHeight: 262
+                            Layout.preferredHeight: cardWidth + 72 + topMargin
                             orientation: ListView.Horizontal
                             clip: true
+                            // Room for the hover zoom, which the clip would otherwise cut off.
+                            topMargin: 6
                             spacing: 16
+                            snapMode: ListView.SnapToItem
                             model: modelData.releases
                             boundsBehavior: Flickable.StopAtBounds
                             flickDeceleration: UiConstants.flickDeceleration
@@ -153,29 +159,13 @@ Column {
 
                             delegate: AlbumCard {
                                 required property var modelData
-                                width: 184
-                                height: 255
-                                cardWidth: 184
-                                cardHeight: 255
+                                cardWidth: releaseList.cardWidth
+                                cardHeight: releaseList.cardWidth + 72
                                 name: modelData.name
                                 subtitle: (modelData.year ? modelData.year + " • " : "") + modelData.count + (modelData.count === 1 ? " song" : " songs")
                                 count: modelData.count
                                 track: modelData.track
                                 onClicked: root.albumRequested(modelData.name, modelData.track)
-                            }
-
-                            // Fades the cut-off card so the row reads as scrollable.
-                            Rectangle {
-                                anchors.right: parent.right
-                                anchors.top: parent.top
-                                anchors.bottom: parent.bottom
-                                width: 56
-                                visible: releaseList.contentWidth > releaseList.width && !releaseList.atXEnd
-                                gradient: Gradient {
-                                    orientation: Gradient.Horizontal
-                                    GradientStop { position: 0.0; color: "#000B0A09" }
-                                    GradientStop { position: 1.0; color: "#0B0A09" }
-                                }
                             }
                         }
                     }

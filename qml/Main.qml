@@ -4263,7 +4263,7 @@ ApplicationWindow {
                         keepPreviousArtwork: true
                         cacheArtwork: true
                         showTonearm: true
-                        stableSourceSize: 512
+                        stableSourceSize: 1024
                     }
 
                     MouseArea {

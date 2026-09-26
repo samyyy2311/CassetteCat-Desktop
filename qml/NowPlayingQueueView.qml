@@ -12,8 +12,6 @@ Item {
     opacity: appWindow.nowPlayingMode === "queue" ? 1.0 : 0.0
     scale: appWindow.nowPlayingMode === "queue" ? 1.0 : 0.97
     enabled: appWindow.nowPlayingMode === "queue"
-    layer.enabled: opacity < 0.999 && opacity > 0.001
-    layer.smooth: true
 
     Behavior on opacity {
         NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }

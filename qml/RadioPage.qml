@@ -44,7 +44,8 @@ Item {
         return list
     }
 
-    readonly property var ownLists: ["ALL", "FAVORITES", "RECENTS", "CUSTOM"]
+    readonly property var ownLists: ["FAVORITES", "RECENTS", "CUSTOM"]
+    readonly property string currentTab: ownLists.includes(appWindow.radioActiveTag) ? appWindow.radioActiveTag : "ALL"
     readonly property var genres: ["pop", "rock", "electronic", "jazz", "lofi", "classical", "news", "ambient"]
 
     function stationTags(station) {
@@ -59,50 +60,6 @@ Item {
         const kbps = station.bitrate || 0
         const notable = kbps >= 256 || (kbps > 0 && kbps <= 64)
         return stationTags(station) + (notable ? " \u2022 " + kbps + " kbps" : "")
-    }
-
-    function stationInitials(name) {
-        const words = String(name || "").replace(/[^A-Za-z0-9 ]/g, " ").split(/\s+/).filter(word => word.length > 0)
-        if (words.length === 0)
-            return String(name || "?").trim().charAt(0)
-        if (words.length === 1)
-            return words[0].slice(0, 2).toUpperCase()
-        return (words[0].charAt(0) + words[1].charAt(0)).toUpperCase()
-    }
-
-    function stationColor(name) {
-        let hash = 0
-        for (const ch of String(name || ""))
-            hash = (hash * 31 + ch.charCodeAt(0)) % 360
-        return Qt.hsla(hash / 360, 0.35, 0.3, 1)
-    }
-
-    component StationArt: Item {
-        property var station: ({})
-        property real radius: 8
-
-        Cover {
-            id: art
-            anchors.fill: parent
-            radius: parent.radius
-            track: ({ artworkUrl: parent.station.favicon || "" })
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            visible: art.showingFallback
-            radius: parent.radius
-            color: root.stationColor(parent.station.name)
-
-            Label {
-                anchors.centerIn: parent
-                text: root.stationInitials(parent.parent.station.name)
-                color: "#F2FFFFFF"
-                font.family: displayFont
-                font.pixelSize: Math.round(parent.height * 0.34)
-                font.weight: Font.Bold
-            }
-        }
     }
 
     function stationTrack(station) {
@@ -150,8 +107,17 @@ Item {
                 Layout.alignment: Qt.AlignVCenter
 
                 PageTabs {
-                    tabs: [{ id: "stations", label: "Radio Stations" }]
-                    current: "stations"
+                    tabs: [
+                        { id: "ALL", label: "All Stations" },
+                        { id: "FAVORITES", label: "Favorites" },
+                        { id: "RECENTS", label: "Recents" },
+                        { id: "CUSTOM", label: "Custom" }
+                    ]
+                    current: root.currentTab
+                    onSelected: id => {
+                        root.appWindow.radioActiveTag = id
+                        if (id === "ALL") root.appWindow.refreshRadio()
+                    }
                 }
 
                 CountTag {
@@ -239,6 +205,7 @@ Item {
         }
 
         AppFlickable {
+            visible: root.currentTab === "ALL"
             Layout.fillWidth: true
             Layout.leftMargin: 28
             Layout.rightMargin: 28
@@ -255,29 +222,6 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
 
                 Repeater {
-                    model: root.ownLists
-
-                    FilterChip {
-                        required property var modelData
-                        text: modelData.toUpperCase()
-                        selected: root.appWindow.radioActiveTag === modelData
-                        onClicked: {
-                            root.appWindow.radioActiveTag = modelData
-                            if (modelData !== "FAVORITES" && modelData !== "RECENTS" && modelData !== "CUSTOM") {
-                                root.appWindow.refreshRadio()
-                            }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    width: 1
-                    height: 18
-                    color: borderVariant
-                }
-
-                Repeater {
                     model: root.genres
 
                     FilterChip {
@@ -285,10 +229,8 @@ Item {
                         text: modelData.toUpperCase()
                         selected: root.appWindow.radioActiveTag === modelData
                         onClicked: {
-                            root.appWindow.radioActiveTag = modelData
-                            if (modelData !== "FAVORITES" && modelData !== "RECENTS" && modelData !== "CUSTOM") {
-                                root.appWindow.refreshRadio()
-                            }
+                            root.appWindow.radioActiveTag = selected ? "ALL" : modelData
+                            root.appWindow.refreshRadio()
                         }
                     }
                 }
@@ -346,9 +288,9 @@ Item {
                                 highlighted: cardMouse.containsMouse
                                 current: isCurrent
 
-                                StationArt {
+                                Cover {
                                     anchors.fill: parent
-                                    station: modelData
+                                    track: ({ artworkUrl: modelData.favicon || "" })
                                     radius: coverBox.radius
                                 }
 
@@ -476,11 +418,11 @@ Item {
                         anchors.rightMargin: 16
                         spacing: 12
 
-                        StationArt {
+                        Cover {
                             Layout.preferredWidth: 40
                             Layout.preferredHeight: 40
                             Layout.alignment: Qt.AlignVCenter
-                            station: modelData
+                            track: ({ artworkUrl: modelData.favicon || "" })
                             radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 8
                         }
 

@@ -67,7 +67,7 @@ Item {
     }
 
     // Grid View (default, matches AlbumCard / ArtistCard layout)
-    GridView {
+    AppGridView {
         id: playlistGrid
         visible: root.appWindow.libraryViewMode === "grid"
         anchors.fill: parent
@@ -79,11 +79,6 @@ Item {
         readonly property int cols: Math.max(2, Math.floor((width - 8) / 195))
         cellWidth: Math.floor((width - 8) / cols)
         cellHeight: 255
-        boundsBehavior: Flickable.StopAtBounds
-        flickDeceleration: UiConstants.flickDeceleration
-        maximumFlickVelocity: UiConstants.maximumFlickVelocity
-        cacheBuffer: UiConstants.cacheBuffer
-        pixelAligned: UiConstants.pixelAligned
         reuseItems: true
         ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -121,7 +116,7 @@ Item {
     }
 
     // List View (matches SongRow / Library ListView layout)
-    ListView {
+    AppListView {
         id: playlistList
         visible: root.appWindow.libraryViewMode !== "grid"
         anchors.fill: parent
@@ -131,11 +126,6 @@ Item {
         clip: true
         model: root.allPlaylists
         spacing: 6
-        boundsBehavior: Flickable.StopAtBounds
-        flickDeceleration: UiConstants.flickDeceleration
-        maximumFlickVelocity: UiConstants.maximumFlickVelocity
-        cacheBuffer: UiConstants.cacheBuffer
-        pixelAligned: UiConstants.pixelAligned
         reuseItems: true
         ScrollBar.vertical: AutoHideScrollBar {}
 

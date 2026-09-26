@@ -12,14 +12,17 @@ Item {
     opacity: appWindow.nowPlayingMode === "queue" ? 1.0 : 0.0
     scale: appWindow.nowPlayingMode === "queue" ? 1.0 : 0.97
     enabled: appWindow.nowPlayingMode === "queue"
-    layer.enabled: opacity < 0.999 && opacity > 0.001
-    layer.smooth: true
 
     Behavior on opacity {
         NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
     }
     Behavior on scale {
         NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
+    }
+
+    QueueModel {
+        id: queueModel
+        entries: root.appWindow.queueEntries
     }
 
     function scrollToCurrentTrack() {
@@ -49,30 +52,28 @@ Item {
         anchors.fill: parent
         spacing: 14
 
-        ListView {
+        AppListView {
             id: queueListView
             activeFocusOnTab: true
             onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
             Layout.fillWidth: true
             Layout.fillHeight: true
             clip: true
-            model: root.appWindow.queueEntries
+            model: queueModel
             spacing: 4
-            boundsBehavior: Flickable.StopAtBounds
-            flickDeceleration: UiConstants.flickDeceleration
-            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-            cacheBuffer: UiConstants.cacheBuffer
-            pixelAligned: UiConstants.pixelAligned
             reuseItems: true
             ScrollBar.vertical: AutoHideScrollBar { anchors.rightMargin: 8 }
+
+            move: Transition { NumberAnimation { property: "y"; duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
+            displaced: Transition { NumberAnimation { property: "y"; duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
 
             delegate: QueueTrackRow {
                 width: ListView.view.width - 24
                 paletteSource: root.appWindow
-                entry: modelData
-                removeEnabled: modelData.queueEditable === true
-                playNextEnabled: modelData.queueEditable === true
-                reorderEnabled: modelData.queueEditable === true
+                entry: queueModel.entryByKey[model.key] || ({})
+                removeEnabled: entry.queueEditable === true
+                playNextEnabled: entry.queueEditable === true
+                reorderEnabled: entry.queueEditable === true
                 onTrackActivated: track => root.appWindow.playFromQueue(track)
                 onPlayNextRequested: track => root.appWindow.moveQueuedTrackNext(track)
                 onTrackRemovalRequested: track => root.appWindow.removeQueuedTrack(track)

@@ -4,6 +4,7 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    readonly property string countText: root.displayedStations.length + " stations"
     required property var appWindow
     required property var playerController
     anchors.fill: parent
@@ -42,6 +43,24 @@ Item {
             })
         }
         return list
+    }
+
+    readonly property var ownLists: ["FAVORITES", "RECENTS", "CUSTOM"]
+    readonly property string currentTab: ownLists.includes(appWindow.radioActiveTag) ? appWindow.radioActiveTag : "ALL"
+    readonly property var genres: ["pop", "rock", "electronic", "jazz", "lofi", "classical", "news", "ambient"]
+
+    function stationTags(station) {
+        const tags = String(station.tags || "").split(",").map(tag => tag.trim()).filter(tag => tag.length > 0)
+        if (tags.length === 0)
+            return station.country || "Internet Radio"
+        return tags.slice(0, 2).map(tag => tag.charAt(0).toUpperCase() + tag.slice(1)).join(" \u2022 ")
+    }
+
+    // Bitrate is only worth showing when it stands out from the usual 128 kbps.
+    function stationSubtitle(station) {
+        const kbps = station.bitrate || 0
+        const notable = kbps >= 256 || (kbps > 0 && kbps <= 64)
+        return stationTags(station) + (notable ? " \u2022 " + kbps + " kbps" : "")
     }
 
     function stationTrack(station) {
@@ -88,49 +107,20 @@ Item {
                 spacing: 12
                 Layout.alignment: Qt.AlignVCenter
 
-                Item {
-                    width: tabLbl.implicitWidth
-                    height: 32
-
-                    Label {
-                        id: tabLbl
-                        anchors.centerIn: parent
-                        text: "Radio Stations"
-                        color: textPrimary
-                        font.family: displayFont
-                        font.pixelSize: 15
-                        font.weight: Font.Bold
-                    }
-
-                    Rectangle {
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width
-                        height: 2.5
-                        radius: 1.25
-                        color: recordRed
+                PageTabs {
+                    tabs: [
+                        { id: "ALL", label: "All Stations" },
+                        { id: "FAVORITES", label: "Favorites" },
+                        { id: "RECENTS", label: "Recents" },
+                        { id: "CUSTOM", label: "Custom" }
+                    ]
+                    current: root.currentTab
+                    onSelected: id => {
+                        root.appWindow.radioActiveTag = id
+                        if (id === "ALL") root.appWindow.refreshRadio()
                     }
                 }
 
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: 22
-                    width: countTagLbl.implicitWidth + 14
-                    radius: 11
-                    color: surfaceTag
-                    border.width: 1
-                    border.color: borderSubtle
-
-                    Label {
-                        id: countTagLbl
-                        anchors.centerIn: parent
-                        text: root.displayedStations.length + " stations"
-                        color: silverDim
-                        font.family: monoFont
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                    }
-                }
             }
 
             Item {
@@ -166,10 +156,17 @@ Item {
                 PressDepthIconButton {
                     boxSize: 34
                     iconSize: 16
-                    iconName: "radio"
+                    iconName: "plus"
                     tint: textPrimary
-                    tooltipText: "Add Custom Station"
+                    tooltipText: "Add a stream URL"
                     onClicked: customStationPopup.open()
+                }
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 1
+                    height: 18
+                    color: borderVariant
                 }
 
                 PressDepthIconButton {
@@ -187,7 +184,7 @@ Item {
                     iconName: "refresh-cw"
                     enabled: !root.radioUnavailable && root.appWindow.radioActiveTag !== "FAVORITES" && root.appWindow.radioActiveTag !== "RECENTS" && root.appWindow.radioActiveTag !== "CUSTOM"
                     tint: textPrimary
-                    tooltipText: "Refresh Stations"
+                    tooltipText: "Refresh stations"
                     onClicked: root.appWindow.refreshRadio()
                 }
 
@@ -198,13 +195,14 @@ Item {
                     enabled: !root.radioUnavailable && root.appWindow.radioActiveTag !== "FAVORITES" && root.appWindow.radioActiveTag !== "RECENTS" && root.appWindow.radioActiveTag !== "CUSTOM"
                     tint: textPrimary
                     highlighted: root.appWindow.radioIsCustomized || root.appWindow.radioRefineOpen
-                    tooltipText: "Refine & Sort Stations"
+                    tooltipText: "Filter and sort stations"
                     onClicked: root.appWindow.radioRefineOpen = !root.appWindow.radioRefineOpen
                 }
             }
         }
 
-        Flickable {
+        AppFlickable {
+            visible: root.currentTab === "ALL"
             Layout.fillWidth: true
             Layout.leftMargin: 28
             Layout.rightMargin: 28
@@ -213,10 +211,6 @@ Item {
             contentWidth: pillsRow.implicitWidth
             contentHeight: height
             clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            flickDeceleration: UiConstants.flickDeceleration
-            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-            pixelAligned: UiConstants.pixelAligned
             flickableDirection: Flickable.HorizontalFlick
 
             Row {
@@ -225,44 +219,15 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
 
                 Repeater {
-                    model: ["ALL", "FAVORITES", "RECENTS", "CUSTOM", "pop", "rock", "electronic", "jazz", "lofi", "classical", "news", "ambient"]
+                    model: root.genres
 
-                    Rectangle {
-                        id: qPill
-                        property bool isSelected: root.appWindow.radioActiveTag === modelData
-                        width: qPillLbl.implicitWidth + 22
-                        height: 28
-                        radius: 14
-                        color: isSelected
-                            ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#262320")
-                            : (qPillMouse.containsMouse ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#1C1A18") : (typeof surfaceInput !== "undefined" ? surfaceInput : "#141312"))
-                        border.width: 1
-                        border.color: isSelected ? recordRed : (qPillMouse.containsMouse ? borderVariant : borderSubtle)
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                        Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                        Label {
-                            id: qPillLbl
-                            anchors.centerIn: parent
-                            text: modelData.toUpperCase()
-                            color: qPill.isSelected ? recordRedHover : (qPillMouse.containsMouse ? textPrimary : textSecondary)
-                            font.family: monoFont
-                            font.pixelSize: 11
-                            font.weight: qPill.isSelected ? Font.Bold : Font.Medium
-                        }
-
-                        MouseArea {
-                            id: qPillMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                root.appWindow.radioActiveTag = modelData
-                                if (modelData !== "FAVORITES" && modelData !== "RECENTS" && modelData !== "CUSTOM") {
-                                    root.appWindow.refreshRadio()
-                                }
-                            }
+                    FilterChip {
+                        required property var modelData
+                        text: modelData.toUpperCase()
+                        selected: root.appWindow.radioActiveTag === modelData
+                        onClicked: {
+                            root.appWindow.radioActiveTag = selected ? "ALL" : modelData
+                            root.appWindow.refreshRadio()
                         }
                     }
                 }
@@ -273,7 +238,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            GridView {
+            AppGridView {
                 id: radGrid
                 visible: root.appWindow.radioViewMode === "grid" && root.displayedStations.length > 0
                 anchors.fill: parent
@@ -282,11 +247,6 @@ Item {
                 bottomMargin: 32
                 clip: true
                 model: root.displayedStations
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
                 readonly property int cols: Math.max(2, Math.floor((width - 16) / 185))
@@ -318,41 +278,17 @@ Item {
                             Layout.preferredHeight: width
                             Layout.alignment: Qt.AlignHCenter
 
-                            Rectangle {
+                            CoverFrame {
                                 id: coverBox
                                 anchors.fill: parent
                                 radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
-                                color: surfaceCard
-                                clip: true
-                                border.width: isCurrent ? 1.5 : (cardMouse.containsMouse ? 1.5 : 0)
-                                border.color: isCurrent ? recordRed : (cardMouse.containsMouse ? recordRed : "transparent")
-                                scale: cardMouse.containsMouse ? 1.03 : 1.0
+                                highlighted: cardMouse.containsMouse
+                                current: isCurrent
 
-                                Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
-                                Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                                Image {
-                                    id: stationImg
+                                Cover {
                                     anchors.fill: parent
-                                    anchors.margins: 14
-                                    source: modelData.favicon || ""
-                                    sourceSize.width: Math.ceil(120 * Screen.devicePixelRatio)
-                                    sourceSize.height: Math.ceil(120 * Screen.devicePixelRatio)
-                                    fillMode: Image.PreserveAspectCrop
-                                    visible: status === Image.Ready
-                                    asynchronous: true
-                                    smooth: true
-                                    mipmap: true
-                                }
-
-                                VinylFallback { anchors.fill: parent; visible: stationImg.status !== Image.Ready }
-
-                                Rectangle {
-                                    anchors.fill: parent
-                                    radius: parent.radius
-                                    color: "transparent"
-                                    border.width: 1
-                                    border.color: isCurrent ? recordRed : "#15FFFFFF"
+                                    track: ({ artworkUrl: modelData.favicon || "" })
+                                    radius: coverBox.radius
                                 }
 
                                 TransportButton {
@@ -424,7 +360,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 0
                                 Layout.minimumWidth: 0
-                                text: modelData.country ? (modelData.country + (modelData.bitrate ? (" \u2022 " + modelData.bitrate + " kbps") : (modelData.tags ? (" \u2022 " + modelData.tags.split(",")[0].trim()) : ""))) : (modelData.tags || "Internet Radio")
+                                text: root.stationSubtitle(modelData)
                                 color: textSecondary
                                 font.family: bodyFont
                                 font.pixelSize: 11
@@ -437,7 +373,7 @@ Item {
                 }
             }
 
-            ListView {
+            AppListView {
                 id: radList
                 visible: root.appWindow.radioViewMode === "list" && root.displayedStations.length > 0
                 anchors.fill: parent
@@ -447,11 +383,6 @@ Item {
                 clip: true
                 model: root.displayedStations
                 spacing: 4
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -483,29 +414,12 @@ Item {
                         anchors.rightMargin: 16
                         spacing: 12
 
-                        Rectangle {
+                        Cover {
                             Layout.preferredWidth: 40
                             Layout.preferredHeight: 40
                             Layout.alignment: Qt.AlignVCenter
+                            track: ({ artworkUrl: modelData.favicon || "" })
                             radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 8
-                            color: surfaceCard
-                            clip: true
-                            border.width: 1
-                            border.color: isCurrent ? recordRed : "#15FFFFFF"
-
-                            Image {
-                                id: listImg
-                                anchors.fill: parent
-                                anchors.margins: 4
-                                source: modelData.favicon || ""
-                                sourceSize.width: Math.ceil(40 * Screen.devicePixelRatio)
-                                sourceSize.height: Math.ceil(40 * Screen.devicePixelRatio)
-                                fillMode: Image.PreserveAspectCrop
-                                visible: status === Image.Ready
-                                asynchronous: true
-                            }
-
-                            VinylFallback { anchors.fill: parent; visible: listImg.status !== Image.Ready }
                         }
 
                         ColumnLayout {
@@ -532,7 +446,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 0
                                 Layout.minimumWidth: 0
-                                text: modelData.country ? (modelData.country + (modelData.tags ? (" \u2022 " + modelData.tags.split(",")[0].trim()) : "")) : (modelData.tags || "Internet Radio")
+                                text: root.stationTags(modelData)
                                 color: textSecondary
                                 font.family: bodyFont
                                 font.pixelSize: 11

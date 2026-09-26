@@ -4,6 +4,7 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    readonly property string countText: !filtering && libraryModel.trackCount > 0 ? libraryModel.trackCount + " songs" : ""
 
     required property var appWindow
     required property var libraryModel
@@ -134,16 +135,15 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.leftMargin: 28
-        anchors.rightMargin: 28
         anchors.topMargin: 16
-        anchors.bottomMargin: 16
         spacing: 14
 
         // Hero Search Box
         Rectangle {
             id: pageSearchBox
             Layout.fillWidth: true
+            Layout.leftMargin: 28
+            Layout.rightMargin: 28
             Layout.preferredHeight: 46
             radius: 12
             color: pageSearchInput.activeFocus ? surfaceElevated : surfaceCard
@@ -245,6 +245,8 @@ Item {
         // Format Filter Pills Bar
         RowLayout {
             Layout.fillWidth: true
+            Layout.leftMargin: 28
+            Layout.rightMargin: 28
             spacing: 10
 
             Label {
@@ -268,74 +270,17 @@ Item {
                         { id: "AAC", label: "AAC / M4A", icon: "list-music" }
                     ]
 
-                    Rectangle {
-                        property bool isSelected: root.appWindow.activeFormatFilter === modelData.id
-                        width: chipRow.implicitWidth + 20
-                        height: 28
-                        radius: height / 2
-                        color: isSelected
-                            ? "#262320"
-                            : (chipMouse.containsMouse ? surfaceElevated : surfaceTag)
-                        border.width: 1
-                        border.color: isSelected
-                            ? recordRed
-                            : (chipMouse.containsMouse ? borderVariant : borderSubtle)
-
-                        Behavior on color { ColorAnimation { duration: UiConstants.durationFast } }
-                        Behavior on border.color { ColorAnimation { duration: UiConstants.durationFast } }
-
-                        RowLayout {
-                            id: chipRow
-                            anchors.centerIn: parent
-                            spacing: 6
-
-                            LucideIcon {
-                                Layout.preferredWidth: 12
-                                Layout.preferredHeight: 12
-                                icon: modelData.icon
-                                color: parent.parent.isSelected ? recordRedHover : (chipMouse.containsMouse ? textPrimary : textSecondary)
-                            }
-
-                            Label {
-                                text: modelData.label
-                                color: parent.parent.isSelected ? recordRedHover : (chipMouse.containsMouse ? textPrimary : textSecondary)
-                                font.family: monoFont
-                                font.pixelSize: 11
-                                font.weight: parent.parent.isSelected ? Font.Bold : Font.DemiBold
-                            }
-                        }
-
-                        MouseArea {
-                            id: chipMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.appWindow.activeFormatFilter = modelData.id
-                        }
+                    FilterChip {
+                        required property var modelData
+                        text: modelData.label
+                        iconName: modelData.icon
+                        selected: root.appWindow.activeFormatFilter === modelData.id
+                        onClicked: root.appWindow.activeFormatFilter = modelData.id
                     }
                 }
             }
 
             // Stat tag when idle
-            Rectangle {
-                visible: !root.filtering && root.libraryModel.trackCount > 0
-                Layout.preferredHeight: 24
-                Layout.preferredWidth: countTagLbl.implicitWidth + 16
-                radius: 12
-                color: surfaceTag
-                border.width: 1
-                border.color: borderSubtle
-
-                Label {
-                    id: countTagLbl
-                    anchors.centerIn: parent
-                    text: root.libraryModel.trackCount + " songs"
-                    color: silverDim
-                    font.family: monoFont
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
-                }
-            }
 
             // Match count when filtering
             Label {
@@ -363,7 +308,7 @@ Item {
         }
 
         // Search Results List (visible during active query or filter)
-        ListView {
+        AppListView {
             id: searchResults
             activeFocusOnTab: true
             onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -373,16 +318,14 @@ Item {
             clip: true
             model: root.libraryModel
             spacing: 4
-            boundsBehavior: Flickable.StopAtBounds
-            flickDeceleration: UiConstants.flickDeceleration
-            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-            cacheBuffer: UiConstants.cacheBuffer
-            pixelAligned: UiConstants.pixelAligned
+            leftMargin: 28
+            rightMargin: 28
+            bottomMargin: 24
             reuseItems: true
             ScrollBar.vertical: AutoHideScrollBar {}
 
             header: Item {
-                width: searchResults.width
+                width: searchResults.width - 56
                 height: 32
 
                 RowLayout {
@@ -410,7 +353,7 @@ Item {
             }
 
             delegate: SongRow {
-                width: searchResults.width
+                width: searchResults.width - 56
                 track: model.track
                 showAlbum: true
                 showCover: true
@@ -436,24 +379,20 @@ Item {
         }
 
         // Idle Discovery View (visible when no search query or filter is active)
-        Flickable {
+        AppFlickable {
             id: idleScrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: !root.filtering
             clip: true
-            readonly property real availableWidth: width
             contentWidth: width
             contentHeight: idleColumn.implicitHeight + 32
-            flickDeceleration: UiConstants.flickDeceleration
-            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-            pixelAligned: UiConstants.pixelAligned
-            boundsBehavior: Flickable.StopAtBounds
             ScrollBar.vertical: AutoHideScrollBar {}
 
             ColumnLayout {
                 id: idleColumn
-                width: idleScrollView.availableWidth
+                x: 28
+                width: idleScrollView.width - 56
                 spacing: 24
 
                 // Section 1: Recent Listens Shelf (deduplicated by artist)
@@ -476,7 +415,7 @@ Item {
                         }
                     }
 
-                    ListView {
+                    AppListView {
                         activeFocusOnTab: true
                         onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                         Layout.fillWidth: true
@@ -484,11 +423,6 @@ Item {
                         orientation: ListView.Horizontal
                         spacing: 14
                         clip: false
-                        boundsBehavior: Flickable.StopAtBounds
-                        flickDeceleration: UiConstants.flickDeceleration
-                        maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                        cacheBuffer: UiConstants.cacheBuffer
-                        pixelAligned: UiConstants.pixelAligned
                         reuseItems: true
                         model: root.recentListens
 
@@ -530,7 +464,7 @@ Item {
 
                         Repeater {
                             model: root.popularGenres
-                            delegate: GenreCard {
+                            delegate: CategoryCard {
                                 cardWidth: genreFlow.cardW
                                 cardHeight: 95
                                 cardRadius: 12
@@ -563,7 +497,7 @@ Item {
                         }
                     }
 
-                    ListView {
+                    AppListView {
                         activeFocusOnTab: true
                         onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                         Layout.fillWidth: true
@@ -571,11 +505,6 @@ Item {
                         orientation: ListView.Horizontal
                         spacing: 14
                         clip: false
-                        boundsBehavior: Flickable.StopAtBounds
-                        flickDeceleration: UiConstants.flickDeceleration
-                        maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                        cacheBuffer: UiConstants.cacheBuffer
-                        pixelAligned: UiConstants.pixelAligned
                         reuseItems: true
                         model: root.topArtists
 

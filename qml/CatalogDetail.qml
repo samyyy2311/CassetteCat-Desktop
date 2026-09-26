@@ -7,10 +7,6 @@ Rectangle {
     id: root
     property var appWindow
     property string mode: "artist"
-    opacity: 0.0
-    Behavior on opacity {
-        NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
-    }
     property string title: ""
     property var tracks: []
     property var heroTrack: ({})
@@ -29,13 +25,17 @@ Rectangle {
         const groups = {}
         tracks.forEach(track => {
             const name = track.album || "Unknown Album"
-            if (!groups[name]) groups[name] = { name: name, track: track, count: 0 }
+            if (!groups[name]) groups[name] = { name: name, track: track, count: 0, year: 0 }
             groups[name].count++
+            groups[name].year = Math.max(groups[name].year, track.year || 0)
         })
         const list = Object.keys(groups).map(name => groups[name])
-        list.sort((a, b) => root.appWindow ? root.appWindow.compareSortKey(a.name, b.name) : a.name.localeCompare(b.name))
+        list.sort((a, b) => (b.year - a.year) || root.appWindow.compareSortKey(a.name, b.name))
         return list
     }
+    readonly property bool uniformFormat: tracks.every(track => track.format === tracks[0].format)
+    readonly property bool headingScrolledAway: scrollView.contentY - scrollView.originY > 200
+    property bool bioExpanded: false
 
     signal backRequested()
     signal albumRequested(string name, var track)
@@ -64,13 +64,17 @@ Rectangle {
         else if (albumDetail) loadAlbumProfile()
     }
 
-    Component.onCompleted: {
-        opacity = 1.0
+    Component.onCompleted: loadDetailProfile()
+    onVisibleChanged: if (visible) loadDetailProfile()
+    onModeChanged: {
+        scrollView.positionViewAtBeginning()
         loadDetailProfile()
     }
-    onVisibleChanged: if (visible) loadDetailProfile()
-    onModeChanged: loadDetailProfile()
-    onTitleChanged: loadDetailProfile()
+    onTitleChanged: {
+        bioExpanded = false
+        scrollView.positionViewAtBeginning()
+        loadDetailProfile()
+    }
     onHeroTrackChanged: if (albumDetail) loadAlbumProfile()
 
     Connections {
@@ -99,6 +103,8 @@ Rectangle {
         anchors.fill: parent
         tracks: (root.artistDetail && root.tracks.length <= 5) ? [] : root.tracks
         appWindow: root.appWindow
+        albumArtist: root.albumDetail ? (root.heroTrack.artist || "") : ""
+        showFormatBadge: !(root.albumDetail && root.uniformFormat)
         footer: Item { width: 1; height: 100 }
 
         header: Column {
@@ -107,7 +113,7 @@ Rectangle {
 
             Item {
                 width: parent.width
-                height: root.albumDetail ? 344 : (root.artistDetail ? 282 : 250)
+                height: Math.max(root.albumDetail ? 300 : (root.artistDetail ? 282 : 250), heroInfo.implicitHeight + 60)
 
                 Rectangle {
                     anchors.fill: parent
@@ -214,8 +220,10 @@ Rectangle {
                             }
                         }
 
+                        HoverHandler { id: heroCoverHover }
+
                         PressDepthIconButton {
-                            visible: root.albumDetail
+                            visible: root.albumDetail && heroCoverHover.hovered
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
                             anchors.rightMargin: 8
@@ -224,21 +232,22 @@ Rectangle {
                             boxSize: 32
                             iconSize: 15
                             iconName: "disc"
-                            tint: root.appWindow ? root.appWindow.textPrimary : "#F5F0EC"
+                            tint: root.appWindow.textPrimary
                             tooltipText: "Change cover art"
                             onClicked: root.appWindow.openCoverSearch(root.title, root.heroTrack.artist || "", root.heroTrack.filePath || "")
                         }
                     }
 
                     ColumnLayout {
+                        id: heroInfo
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignVCenter
                         spacing: 6
 
                         Label {
                             text: root.artistDetail ? "ARTIST" : (root.albumDetail ? "ALBUM" : root.mode.toUpperCase())
-                            color: root.appWindow ? root.appWindow.recordRed : "#C23B30"
-                            font.family: root.appWindow ? root.appWindow.monoFont : "IBM Plex Mono"
+                            color: root.appWindow.recordRed
+                            font.family: root.appWindow.monoFont
                             font.pixelSize: 11
                             font.weight: Font.Bold
                             font.letterSpacing: 2
@@ -248,7 +257,7 @@ Rectangle {
                             Layout.fillWidth: true
                             text: root.title
                             color: "#FFFFFF"
-                            font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
+                            font.family: root.appWindow.displayFont
                             font.pixelSize: root.featuredDetail ? 40 : 36
                             font.weight: Font.Bold
                             font.letterSpacing: -0.8
@@ -268,51 +277,82 @@ Rectangle {
                                 if (root.mode === "playlist") {
                                     return root.tracks.length + (root.tracks.length === 1 ? " track" : " tracks") + " • " + root.durationText
                                 }
-                                return (root.heroTrack.artist || "Unknown Artist") + " • " + (root.heroTrack.format || "Music") + (root.heroTrack.label ? (" • " + root.heroTrack.label) : "") + " • " + root.tracks.length + (root.tracks.length === 1 ? " track" : " tracks") + " • " + root.durationText
+                                return [root.albumGroups.length ? root.albumGroups[0].year : 0, root.heroTrack.format, root.heroTrack.label]
+                                    .filter(part => part)
+                                    .concat([root.tracks.length + (root.tracks.length === 1 ? " track" : " tracks"), root.durationText])
+                                    .join(" • ")
                             }
-                            color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
-                            font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
+                            color: root.appWindow.textSecondary
+                            font.family: root.appWindow.bodyFont
                             font.pixelSize: 13
                             font.weight: Font.Medium
                         }
 
                         Label {
-                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             visible: root.albumDetail && root.heroTrack && root.heroTrack.artist
                             text: root.heroTrack.artist || ""
-                            color: "#F5F0EC"
-                            font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
+                            color: artistLinkMouse.containsMouse ? root.appWindow.recordRedHover : "#F5F0EC"
+                            font.family: root.appWindow.displayFont
                             font.pixelSize: 18
                             font.weight: Font.DemiBold
+                            font.underline: artistLinkMouse.containsMouse
                             elide: Text.ElideRight
+                            Accessible.role: Accessible.Link
+                            Accessible.name: "Open artist " + text
+                            Accessible.onPressAction: root.appWindow.openCatalogDetail("artist", root.heroTrack.artist, root.heroTrack)
+
+                            MouseArea {
+                                id: artistLinkMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.appWindow.openCatalogDetail("artist", root.heroTrack.artist, root.heroTrack)
+                            }
                         }
 
                         Label {
                             Layout.fillWidth: true
                             visible: root.featuredDetail && root.detailBio.length > 0
                             text: root.artistDetail ? "ABOUT THIS ARTIST" : "ABOUT THIS ALBUM"
-                            color: root.appWindow ? root.appWindow.recordRed : "#C23B30"
-                            font.family: root.appWindow ? root.appWindow.monoFont : "IBM Plex Mono"
+                            color: root.appWindow.recordRed
+                            font.family: root.appWindow.monoFont
                             font.pixelSize: 10
                             font.weight: Font.Bold
                             font.letterSpacing: 1.2
                         }
 
                         Text {
+                            id: bioText
                             Layout.fillWidth: true
                             visible: root.featuredDetail && root.detailBio.length > 0
                             text: root.detailBio
-                            color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
-                            font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
+                            color: root.appWindow.textSecondary
+                            font.family: root.appWindow.bodyFont
                             font.pixelSize: 13
                             wrapMode: Text.Wrap
-                            maximumLineCount: 3
+                            maximumLineCount: root.bioExpanded ? 12 : 3
                             elide: Text.ElideRight
+                        }
+
+                        Label {
+                            visible: bioText.visible && (bioText.truncated || root.bioExpanded)
+                            text: root.bioExpanded ? "Less" : "More"
+                            color: bioToggleMouse.containsMouse ? "#FFFFFF" : root.appWindow.textPrimary
+                            font.family: root.appWindow.bodyFont
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                            font.underline: bioToggleMouse.containsMouse
+                            Accessible.role: Accessible.Button
+                            Accessible.name: root.bioExpanded ? "Show less" : "Show more"
+                            Accessible.onPressAction: root.bioExpanded = !root.bioExpanded
 
                             MouseArea {
+                                id: bioToggleMouse
                                 anchors.fill: parent
+                                hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: detailAboutPopup.open()
+                                onClicked: root.bioExpanded = !root.bioExpanded
                             }
                         }
 
@@ -351,25 +391,24 @@ Rectangle {
                                 }
                             }
 
+                            // Only songs can be favorites, so on an album the heart covers all of its songs.
                             PressDepthIconButton {
+                                readonly property bool allFavorite: root.tracks.length > 0 && root.tracks.every(track => root.appWindow.isFavorite(track.filePath))
+                                visible: root.albumDetail && root.tracks.length > 0
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 36
                                 iconSize: 16
                                 iconName: "heart"
-                                tint: (root.tracks.length && root.appWindow.isFavorite(root.tracks[0].filePath)) ? (root.appWindow ? root.appWindow.recordRed : "#C23B30") : (root.appWindow ? root.appWindow.silverDim : "#6E6C68")
-                                tooltipText: "Favorite"
-                                onClicked: {
-                                    if (root.tracks.length && root.appWindow) {
-                                        root.appWindow.toggleFavorite(root.tracks[0].filePath)
-                                    }
-                                }
+                                tint: allFavorite ? root.appWindow.recordRed : root.appWindow.silverDim
+                                tooltipText: allFavorite ? "Remove songs from favorites" : "Favorite all songs"
+                                onClicked: root.appWindow.setFavorites(root.tracks.map(track => track.filePath), !allFavorite)
                             }
                         }
                     }
                 }
             }
 
-            Item { width: 1; height: 24 }
+            Item { width: 1; height: root.artistDetail ? 24 : 4 }
 
             ArtistDetailBody {
                 visible: root.artistDetail
@@ -382,14 +421,6 @@ Rectangle {
                 onAlbumRequested: (name, track) => root.albumRequested(name, track)
             }
 
-            Rectangle {
-                visible: !root.artistDetail || root.tracks.length > 5
-                width: scrollView.width - 72
-                x: 36
-                height: 1
-                color: root.appWindow ? root.appWindow.borderSubtle : "#1AFFFFFF"
-            }
-
             Label {
                 visible: !root.artistDetail || root.tracks.length > 5
                 topPadding: root.artistDetail ? 20 : 16
@@ -398,110 +429,11 @@ Rectangle {
                 bottomPadding: 12
                 text: root.artistDetail ? "All Songs (" + root.tracks.length + ")" : "Tracklist (" + root.tracks.length + ")"
                 color: "#FFFFFF"
-                font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
+                font.family: root.appWindow.displayFont
                 font.pixelSize: 19
                 font.weight: Font.Bold
                 font.letterSpacing: -0.3
             }
         }
     }
-
-    Popup {
-        id: detailAboutPopup
-        parent: Overlay.overlay
-        modal: true
-        focus: true
-        x: Math.round((root.width - width) / 2)
-        y: Math.round((root.height - height) / 2)
-        width: Math.min(root.width - 96, 720)
-        height: Math.min(root.height - 96, 680)
-        padding: 0
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        Overlay.modal: Rectangle { color: "#B8000000" }
-
-        background: Rectangle {
-            radius: 14
-            color: root.appWindow ? root.appWindow.surfaceCard : "#181715"
-            border.width: 1
-            border.color: root.appWindow ? root.appWindow.borderVariant : Qt.rgba(1, 1, 1, 0.09)
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 0
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 24
-                Layout.rightMargin: 18
-                Layout.topMargin: 18
-                Layout.bottomMargin: 14
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-
-                    Label {
-                        text: root.artistDetail ? "About " + root.title : "About this album"
-                        color: root.appWindow ? root.appWindow.textPrimary : "#F5F0EC"
-                        font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
-                        font.pixelSize: 20
-                        font.weight: Font.Bold
-                    }
-
-                    Label {
-                        text: root.title + (root.heroTrack && root.heroTrack.artist ? " • " + root.heroTrack.artist : "")
-                        color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
-                        font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
-                        font.pixelSize: 12
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                    }
-                }
-
-                PressDepthIconButton {
-                    boxSize: 32
-                    iconSize: 16
-                    iconName: "x"
-                    tooltipText: "Close"
-                    onClicked: detailAboutPopup.close()
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: root.appWindow ? root.appWindow.borderSubtle : "#1AFFFFFF"
-            }
-
-            Flickable {
-                id: aboutScroll
-                readonly property real availableWidth: width
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.margins: 24
-                clip: true
-                contentWidth: availableWidth
-                contentHeight: aboutBioText.implicitHeight
-                flickableDirection: Flickable.VerticalFlick
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                pixelAligned: UiConstants.pixelAligned
-                ScrollBar.vertical: AutoHideScrollBar {}
-
-                Text {
-                    id: aboutBioText
-                    width: aboutScroll.availableWidth
-                    text: root.detailBio
-                    wrapMode: Text.Wrap
-                    color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
-                    font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
-                    font.pixelSize: 15
-                    lineHeight: 1.42
-                }
-            }
-        }
-    }
-
 }

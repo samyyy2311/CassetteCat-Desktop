@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Effects
 import QtQuick.Layouts
+import QtQuick.Effects
 
 Item {
     id: root
@@ -23,17 +23,13 @@ Item {
     property real initialScrollPosition: 0
 
     signal scrollPositionChanged(real position)
-    Flickable {
+    AppFlickable {
         id: homeScrollView
         anchors.fill: parent
         clip: true
         readonly property real availableWidth: width
         contentWidth: width
         contentHeight: homeContentCol.implicitHeight + 48
-        flickDeceleration: UiConstants.flickDeceleration
-        maximumFlickVelocity: UiConstants.maximumFlickVelocity
-        pixelAligned: UiConstants.pixelAligned
-        boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: AutoHideScrollBar {}
 
         Component.onCompleted: Qt.callLater(() => {
@@ -84,13 +80,13 @@ Item {
 
                             Rectangle {
                                 id: heroCard
+                                readonly property var heroTrack: spotlightTrack || root.libraryModel.firstPlayableTrack()
+                                readonly property real cornerRadius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
                                 x: 32
                                 width: homeScrollView.availableWidth - 64
-                                height: 175
-                                radius: 12
+                                height: 150
+                                radius: cornerRadius
                                 color: surfaceCard
-                                border.width: 1
-                                border.color: heroCardMouse.containsMouse ? borderVariant : borderSubtle
                                 visible: root.libraryModel.trackCount > 0
                                 layer.enabled: true
                                 layer.effect: MultiEffect {
@@ -105,76 +101,119 @@ Item {
                                     visible: false
                                     Rectangle {
                                         anchors.fill: parent
-                                        radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
+                                        radius: heroCard.cornerRadius
                                         color: "white"
                                     }
                                 }
 
                                 Cover {
-                                    anchors.fill: parent
-                                    track: spotlightTrack || root.libraryModel.firstPlayableTrack()
-                                    radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
+                                    anchors.centerIn: parent
+                                    width: parent.width * 1.2
+                                    height: width
+                                    track: heroCard.heroTrack
+                                    stableSourceSize: 160
+                                    layer.enabled: true
+                                    layer.textureSize: Qt.size(200, 200)
+                                    layer.smooth: true
+                                    layer.effect: MultiEffect {
+                                        blurEnabled: true
+                                        blur: 1.0
+                                        blurMax: 48
+                                        saturation: 0.3
+                                        brightness: -0.3
+                                    }
                                 }
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
                                     gradient: Gradient {
-                                        GradientStop { position: 0.0; color: "#40000000" }
-                                        GradientStop { position: 0.45; color: "#A00E0D0C" }
-                                        GradientStop { position: 1.0; color: "#F00E0D0C" }
-                                    }
-                                }
-
-                                Item {
-                                    anchors.fill: parent
-                                    anchors.margins: 22
-                                    z: 2
-
-                                    ColumnLayout {
-                                        anchors.left: parent.left
-                                        anchors.right: heroShuffleBtn.left
-                                        anchors.rightMargin: 16
-                                        anchors.bottom: parent.bottom
-                                        spacing: 3
-
-                                        Label {
-                                            text: "Shuffle your library"
-                                            color: "#FFFFFF"
-                                            font.family: displayFont
-                                            font.pixelSize: 22
-                                            font.weight: Font.Bold
-                                        }
-
-                                        Label {
-                                            text: "Play something different from " + root.libraryModel.trackCount + " songs"
-                                            color: silver
-                                            font.family: bodyFont
-                                            font.pixelSize: 13
-                                        }
-                                    }
-
-                                    TransportButton {
-                                        Accessible.name: "Shuffle library"
-                                        id: heroShuffleBtn
-                                        anchors.right: parent.right
-                                        anchors.bottom: parent.bottom
-                                        buttonSize: 46
-                                        iconName: "shuffle"
-                                        accented: true
-                                        iconColor: recordRed
-                                        onClicked: root.appWindow.shuffleAll()
+                                        orientation: Gradient.Horizontal
+                                        GradientStop { position: 0.0; color: "#700E0D0C" }
+                                        GradientStop { position: 1.0; color: "#D00E0D0C" }
                                     }
                                 }
 
                                 MouseArea {
                                     id: heroCardMouse
                                     anchors.fill: parent
-                                    anchors.rightMargin: 200
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    z: 1
                                     onClicked: root.appWindow.shuffleAll()
+                                }
+
+                                CoverFrame {
+                                    id: heroArt
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 20
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 110
+                                    height: 110
+                                    radius: 10
+                                    highlighted: heroCardMouse.containsMouse
+
+                                    Cover {
+                                        anchors.fill: parent
+                                        track: heroCard.heroTrack
+                                        radius: heroArt.radius
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    anchors.left: heroArt.right
+                                    anchors.leftMargin: 22
+                                    anchors.right: heroShuffleBtn.left
+                                    anchors.rightMargin: 20
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 4
+
+                                    Label {
+                                        text: "SHUFFLE"
+                                        color: recordRedHover
+                                        font.family: monoFont
+                                        font.pixelSize: 10
+                                        font.weight: Font.Bold
+                                        font.letterSpacing: 1.0
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: "Your whole library, in a new order"
+                                        color: "#FFFFFF"
+                                        font.family: displayFont
+                                        font.pixelSize: 22
+                                        font.weight: Font.Bold
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: "Play something different from " + root.libraryModel.trackCount + " songs"
+                                        color: silver
+                                        font.family: bodyFont
+                                        font.pixelSize: 13
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                                TransportButton {
+                                    id: heroShuffleBtn
+                                    Accessible.name: "Shuffle library"
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 24
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    buttonSize: 52
+                                    iconName: "shuffle"
+                                    accented: true
+                                    iconColor: recordRed
+                                    onClicked: root.appWindow.shuffleAll()
+                                }
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: heroCard.cornerRadius
+                                    color: "transparent"
+                                    border.width: 1
+                                    border.color: heroCardMouse.containsMouse ? borderVariant : borderSubtle
                                 }
                             }
 
@@ -196,7 +235,7 @@ Item {
                                     }
                                 }
 
-                                ListView {
+                                AppListView {
                                     width: parent.width
                                     activeFocusOnTab: true
                                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -204,11 +243,6 @@ Item {
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
-                                    boundsBehavior: Flickable.StopAtBounds
-                                    flickDeceleration: UiConstants.flickDeceleration
-                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                                    cacheBuffer: UiConstants.cacheBuffer
-                                    pixelAligned: UiConstants.pixelAligned
                                     reuseItems: true
                                     model: quickPicks
 
@@ -234,7 +268,7 @@ Item {
                                     onShuffleClicked: root.appWindow.shuffleAll()
                                 }
 
-                                ListView {
+                                AppListView {
                                     width: parent.width
                                     activeFocusOnTab: true
                                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -242,11 +276,6 @@ Item {
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
-                                    boundsBehavior: Flickable.StopAtBounds
-                                    flickDeceleration: UiConstants.flickDeceleration
-                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                                    cacheBuffer: UiConstants.cacheBuffer
-                                    pixelAligned: UiConstants.pixelAligned
                                     reuseItems: true
                                     model: heavyRotation
 
@@ -296,7 +325,7 @@ Item {
                                     onShuffleClicked: root.appWindow.shuffleAll()
                                 }
 
-                                ListView {
+                                AppListView {
                                     width: parent.width
                                     activeFocusOnTab: true
                                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -304,109 +333,16 @@ Item {
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
-                                    boundsBehavior: Flickable.StopAtBounds
-                                    flickDeceleration: UiConstants.flickDeceleration
-                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                                    cacheBuffer: UiConstants.cacheBuffer
-                                    pixelAligned: UiConstants.pixelAligned
                                     reuseItems: true
                                     model: albumsRotation
 
-                                    delegate: Item {
-                                        id: albumTile
-                                        width: 150
-                                        height: 225
-                                        readonly property bool highlighted: albumHover.hovered || (activeFocus && !mouseFocused)
-                                        property bool mouseFocused: false
-                                        onActiveFocusChanged: if (!activeFocus) mouseFocused = false
-
-                                        Accessible.role: Accessible.Button
-                                        Accessible.name: modelData.name
-                                        Accessible.onPressAction: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
-                                        Keys.onReturnPressed: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
-                                        Keys.onEnterPressed: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
-
-                                        HoverHandler { id: albumHover }
-
-                                        ColumnLayout {
-                                            z: 1
-                                            anchors.fill: parent
-                                            spacing: 8
-
-                                            Rectangle {
-                                                id: albCoverBox
-                                                Layout.preferredWidth: 150
-                                                Layout.preferredHeight: 150
-                                                radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
-                                                clip: true
-                                                color: surfaceCard
-                                                border.width: 1
-                                                border.color: albumTile.highlighted ? borderVariant : borderSubtle
-                                                scale: albumTile.highlighted ? 1.03 : 1.0
-
-                                                Behavior on scale {
-                                                    NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
-                                                }
-
-                                                Cover {
-                                                    anchors.fill: parent
-                                                    track: modelData.track
-                                                    radius: albCoverBox.radius
-                                                }
-
-                                                TransportButton {
-                                                    Accessible.name: "Play album"
-                                                    anchors.right: parent.right
-                                                    anchors.bottom: parent.bottom
-                                                    anchors.margins: 8
-                                                    buttonSize: 38
-                                                    activeFocusOnTab: false
-                                                    iconName: "play"
-                                                    accented: true
-                                                    iconColor: recordRed
-                                                    opacity: albumTile.highlighted ? 1.0 : 0.0
-                                                    scale: albumTile.highlighted ? 1.0 : 0.6
-                                                    z: 10
-
-                                                    Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd } }
-                                                    Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingBounce } }
-
-                                                    onClicked: root.appWindow.playTrack(modelData.track)
-                                                }
-                                            }
-
-                                            Label {
-                                                Layout.fillWidth: true
-                                                text: modelData.name
-                                                color: textPrimary
-                                                font.family: displayFont
-                                                font.pixelSize: 13
-                                                font.weight: Font.DemiBold
-                                                elide: Text.ElideRight
-                                            }
-
-                                            Label {
-                                                Layout.fillWidth: true
-                                                text: modelData.count + " songs"
-                                                color: silverDim
-                                                font.family: monoFont
-                                                font.pixelSize: 10
-                                            }
-
-                                            Item { Layout.fillHeight: true }
-                                        }
-
-                                        MouseArea {
-                                            id: albumCardMouse
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            cursorShape: Qt.PointingHandCursor
-                                            onPressed: {
-                                                albumTile.mouseFocused = true
-                                                albumTile.forceActiveFocus()
-                                            }
-                                            onClicked: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
-                                        }
+                                    delegate: AlbumCard {
+                                        cardWidth: 150
+                                        cardHeight: 225
+                                        name: modelData.name
+                                        count: modelData.count
+                                        track: modelData.track
+                                        onClicked: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
                                     }
                                 }
                             }
@@ -426,7 +362,7 @@ Item {
                                     onShuffleClicked: root.appWindow.shuffleAll()
                                 }
 
-                                ListView {
+                                AppListView {
                                     width: parent.width
                                     activeFocusOnTab: true
                                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -434,11 +370,6 @@ Item {
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
-                                    boundsBehavior: Flickable.StopAtBounds
-                                    flickDeceleration: UiConstants.flickDeceleration
-                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                                    cacheBuffer: UiConstants.cacheBuffer
-                                    pixelAligned: UiConstants.pixelAligned
                                     reuseItems: true
                                     model: artistsRotation
 

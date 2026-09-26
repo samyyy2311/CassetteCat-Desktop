@@ -2,6 +2,8 @@
 
 #include "app_paths.h"
 
+#include <cmath>
+
 #include <QClipboard>
 #include <QDebug>
 #include <QDesktopServices>
@@ -33,8 +35,14 @@ QVariant coerceSettingsValue(const QVariant &val, const QVariant &defaultValue) 
             }
             return val.toBool();
         }
-        case QMetaType::Int:
+        case QMetaType::Int: {
+            // QML passes whole-number defaults such as 1.0 as int, so keep a stored fraction.
+            bool isNumber = false;
+            const double number = val.toDouble(&isNumber);
+            if (isNumber && std::isfinite(number) && number != std::floor(number))
+                return number;
             return val.toInt();
+        }
         case QMetaType::Double:
             return val.toDouble();
         case QMetaType::Float:
@@ -239,4 +247,13 @@ void SettingsController::openLogFile() {
     if (QFileInfo::exists(path)) {
         QDesktopServices::openUrl(QUrl::fromLocalFile(path));
     }
+}
+
+bool SettingsController::selfCheck() {
+    const bool keepsTextFraction = coerceSettingsValue(QStringLiteral("0.5"), 1).toDouble() == 0.5;
+    const bool keepsNumberFraction = coerceSettingsValue(0.5, 1).toDouble() == 0.5;
+    const bool keepsInteger = coerceSettingsValue(QStringLiteral("3"), 1).toInt() == 3;
+    const bool rejectsNaN = coerceSettingsValue(std::nan(""), 1).toInt() == 0;
+    const bool readsBool = coerceSettingsValue(QStringLiteral("true"), false).toBool();
+    return keepsTextFraction && keepsNumberFraction && keepsInteger && rejectsNaN && readsBool;
 }

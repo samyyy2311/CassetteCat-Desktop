@@ -181,7 +181,7 @@ QList<QJsonObject> readListeningLog(const QByteArray &log) {
     return entries;
 }
 
-QVariantMap recapFromLog(const QByteArray &log, int year) {
+QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
     struct Tally {
         QVariantMap item;
         int plays = 0;
@@ -225,6 +225,11 @@ QVariantMap recapFromLog(const QByteArray &log, int year) {
             continue;
         const qint64 at = static_cast<qint64>(entry.value("at").toDouble());
         const qint64 ms = static_cast<qint64>(entry.value("ms").toDouble());
+        // The monthly totals always cover the whole year, so a month view can still offer the others.
+        const int entryMonth = QDateTime::fromMSecsSinceEpoch(at).date().month() - 1;
+        months[entryMonth] = months[entryMonth].toDouble() + ms;
+        if (month >= 0 && entryMonth != month)
+            continue;
         const QVariantMap track{{"filePath", entry.value("path").toString()},
                                 {"title", entry.value("title").toString()},
                                 {"artist", entry.value("artist").toString()},
@@ -233,8 +238,6 @@ QVariantMap recapFromLog(const QByteArray &log, int year) {
         ++plays;
         listenedMs += ms;
         firstListen = firstListen == 0 ? at : qMin(firstListen, at);
-        const int month = QDateTime::fromMSecsSinceEpoch(at).date().month() - 1;
-        months[month] = months[month].toDouble() + ms;
 
         add(songs, songOrder, pathKey(track.value("filePath").toString()), {{"track", track}}, ms);
         for (const QString &artist : splitArtists(track.value("artist").toString()))
@@ -253,6 +256,7 @@ QVariantMap recapFromLog(const QByteArray &log, int year) {
             busiestMonth = i;
     }
     return {{"year", year},
+            {"month", month},
             {"plays", plays},
             {"listenedMs", listenedMs},
             {"songCount", songOrder.size()},
@@ -474,7 +478,7 @@ bool LibraryController::selfCheck() {
                            logLine("2026-03-11T12:00:00", "a.flac", "Ann & Bo", 30000) +
                            logLine("2026-07-01T12:00:00", "b.flac", "Ann", 200000) +
                            logLine("2025-12-31T12:00:00", "c.flac", "Cy", 90000) + "not json\n";
-    const QVariantMap recap = recapFromLog(log, 2026);
+    const QVariantMap recap = recapFromLog(log, 2026, -1);
     const QVariantList topSongs = recap.value("topSongs").toList();
     const QVariantList topArtists = recap.value("topArtists").toList();
     if (recap.value("plays").toInt() != 3 || recap.value("listenedMs").toLongLong() != 290000 ||
@@ -483,6 +487,10 @@ bool LibraryController::selfCheck() {
         topArtists.value(0).toMap().value("name") != "Ann" || topArtists.value(0).toMap().value("plays") != 3 ||
         recap.value("busiestMonth").toInt() != 6)
         return fail("listening recap");
+    const QVariantMap march = recapFromLog(log, 2026, 2);
+    if (march.value("plays").toInt() != 2 || march.value("listenedMs").toLongLong() != 90000 ||
+        march.value("months").toList().value(6).toDouble() != 200000)
+        return fail("monthly listening recap");
 
     library.setSearchFilter({}, "ALL", {"/"}, false);
     return library.trackCount() == 0;
@@ -614,6 +622,10 @@ int LibraryController::compareNames(const QString &left, const QString &right) c
     return compareSortKeys(left, right);
 }
 
+QStringList LibraryController::artistNames(const QString &artist) const {
+    return splitArtists(artist);
+}
+
 void LibraryController::recordListen(const QVariantMap &track, qint64 listenedMs) {
     const QString path = track.value("filePath").toString();
     if (path.isEmpty() || listenedMs <= 0)
@@ -649,9 +661,9 @@ QVariantList LibraryController::listeningYears() const {
     return result;
 }
 
-QVariantMap LibraryController::listeningRecap(int year) const {
+QVariantMap LibraryController::listeningRecap(int year, int month) const {
     QFile file(listeningLogFilePath());
-    return recapFromLog(file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray(), year);
+    return recapFromLog(file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray(), year, month);
 }
 
 void LibraryController::clearListeningLog() {

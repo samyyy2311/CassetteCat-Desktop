@@ -16,7 +16,7 @@ Item {
             Layout.fillHeight: true
             clip: true
 
-            ListView {
+            AppListView {
                 id: lyricsListView
                 anchors.fill: parent
                 clip: true
@@ -29,11 +29,6 @@ Item {
                 preferredHighlightBegin: Math.round(height * 0.28)
                 preferredHighlightEnd: Math.round(height * 0.36)
                 highlightMoveDuration: UiConstants.highlightDurationMini
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
 

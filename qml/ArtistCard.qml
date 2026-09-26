@@ -4,7 +4,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import QtQuick.Window
 
-Item {
+CardBase {
     id: root
     property string name: ""
     property int count: 0
@@ -16,17 +16,7 @@ Item {
     property bool imageAllowed: true
     property bool imageRequested: false
 
-    signal clicked()
-
-    readonly property bool highlighted: artistMouse.containsMouse || (activeFocus && !mouseFocused)
-    property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
-
-    Accessible.role: Accessible.Button
-    Accessible.name: root.name
-    Accessible.onPressAction: root.clicked()
-    Keys.onReturnPressed: root.clicked()
-    Keys.onEnterPressed: root.clicked()
+    accessibleName: root.name
 
     width: cardWidth
     height: cardHeight
@@ -70,7 +60,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: Math.min(root.cardWidth - 20, 140)
             Layout.preferredHeight: width
-            scale: root.highlighted ? 1.04 : 1.0
+            scale: root.highlighted ? 1.03 : 1.0
 
             Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
 
@@ -90,7 +80,7 @@ Item {
                 anchors.fill: parent
                 radius: width / 2
                 color: surfaceCard
-                border.width: root.highlighted ? 2 : 1
+                border.width: root.highlighted ? 1.5 : 1
                 border.color: root.highlighted ? recordRed : "#30FFFFFF"
                 clip: true
                 z: 2
@@ -187,17 +177,5 @@ Item {
                 clip: true
             }
         }
-    }
-
-    MouseArea {
-        id: artistMouse
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onPressed: {
-            root.mouseFocused = true
-            root.forceActiveFocus()
-        }
-        onClicked: root.clicked()
     }
 }

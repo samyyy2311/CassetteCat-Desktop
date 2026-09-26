@@ -4,8 +4,8 @@ QtObject {
     readonly property var inAppActions: [
         { action: "toggleMiniPlayer", label: "Toggle Mini Player", defaultKey: "Ctrl+M", icon: "pip" },
         { action: "toggleSidebar", label: "Toggle Sidebar", defaultKey: "Ctrl+B", icon: "panel-left" },
-        { action: "search", label: "Open Search", defaultKey: "Ctrl+F", icon: "search" },
-        { action: "quickSwitcher", label: "Quick Switcher", defaultKey: "Ctrl+K", icon: "command" },
+        { action: "search", label: "Search This Page", defaultKey: "Ctrl+F", icon: "search" },
+        { action: "quickSwitcher", label: "Open Search", defaultKey: "Ctrl+K", icon: "command" },
         { action: "closePlayerView", label: "Close Player View", defaultKey: "Escape", icon: "chevron-down" },
         { action: "playPause", label: "Play / Pause", defaultKey: "Space", icon: "play" },
         { action: "volumeUp", label: "Volume Up", defaultKey: "Ctrl+Up", icon: "volume-2" },

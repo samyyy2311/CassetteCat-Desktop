@@ -171,7 +171,6 @@ Item {
             anchors.leftMargin: 28
             anchors.rightMargin: 28
             anchors.topMargin: 14
-            anchors.bottomMargin: 16
             spacing: 0
 
             Item {
@@ -179,7 +178,7 @@ Item {
                 Layout.fillHeight: true
                 readonly property bool compact: width < 840
 
-                Flickable {
+                AppFlickable {
                     id: compactNav
                     visible: parent.compact
                     anchors.top: parent.top
@@ -188,10 +187,6 @@ Item {
                     height: 48
                     contentWidth: compactRow.implicitWidth
                     clip: true
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    pixelAligned: UiConstants.pixelAligned
 
                     Row {
                         id: compactRow
@@ -245,7 +240,7 @@ Item {
                     color: Qt.rgba(255, 255, 255, 0.05)
                 }
 
-                Flickable {
+                AppFlickable {
                     id: contentScroll
                     readonly property real availableWidth: width
                     anchors.top: parent.compact ? compactNav.bottom : parent.top
@@ -258,10 +253,6 @@ Item {
                     contentWidth: availableWidth
                     contentHeight: Math.max(height, sectionContent.implicitHeight + 48)
                     flickableDirection: Flickable.VerticalFlick
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    pixelAligned: UiConstants.pixelAligned
                     ScrollBar.vertical: AutoHideScrollBar {}
 
                         ColumnLayout {

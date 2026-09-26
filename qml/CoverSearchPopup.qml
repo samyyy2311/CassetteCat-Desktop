@@ -206,7 +206,7 @@ Popup {
                 }
             }
 
-            GridView {
+            AppGridView {
                 id: grid
                 anchors.fill: parent
                 anchors.leftMargin: 16
@@ -217,11 +217,6 @@ Popup {
                 cellHeight: cellWidth + 58
                 clip: true
                 model: root.searchResults
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
 

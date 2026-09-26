@@ -4,6 +4,16 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    readonly property string countText: {
+        switch (root.appWindow.libraryTab) {
+        case "artists": return root.appWindow.artists.length + " artists"
+        case "albums": return root.appWindow.albums.length + " albums"
+        case "genres": return root.appWindow.genreGroups.length + " genres"
+        case "folders": return root.appWindow.folderGroups.length + " folders"
+        case "playlists": return (root.appWindow.playlists.length + 4) + " playlists"
+        default: return root.libraryModel.trackCount + " songs"
+        }
+    }
     required property var appWindow
     required property var libraryModel
     anchors.fill: parent
@@ -40,88 +50,17 @@ Item {
             Layout.bottomMargin: 14
             spacing: 16
 
-            Row {
-                spacing: 22
-                Repeater {
-                    model: [
-                        {
-                            id: "songs",
-                            label: "Songs"
-                        },
-                        {
-                            id: "artists",
-                            label: "Artists"
-                        },
-                        {
-                            id: "albums",
-                            label: "Albums"
-                        },
-                        {
-                            id: "genres",
-                            label: "Genres"
-                        },
-                        {
-                            id: "folders",
-                            label: "Folders"
-                        },
-                        {
-                            id: "playlists",
-                            label: "Playlists"
-                        }
-                    ]
-
-                    Item {
-                        width: tabLbl.implicitWidth
-                        height: 32
-
-                        Label {
-                            id: tabLbl
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: root.appWindow.libraryTab === modelData.id ? textPrimary : textSecondary
-                            font.family: displayFont
-                            font.pixelSize: 15
-                            font.weight: root.appWindow.libraryTab === modelData.id ? Font.Bold : Font.Medium
-                        }
-
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: parent.width
-                            height: 2.5
-                            radius: 1.25
-                            color: recordRed
-                            visible: root.appWindow.libraryTab === modelData.id
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.appWindow.libraryTab = modelData.id
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.preferredHeight: 22
-                Layout.preferredWidth: countTagLbl.implicitWidth + 14
-                radius: 11
-                color: surfaceTag
-                border.width: 1
-                border.color: borderSubtle
-
-                Label {
-                    id: countTagLbl
-                    anchors.centerIn: parent
-                    text: root.appWindow.libraryTab === "playlists"
-                        ? ((root.appWindow.playlists.length + 4) + " playlists")
-                        : (root.libraryModel.trackCount + " songs")
-                    color: silverDim
-                    font.family: monoFont
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
-                }
+            PageTabs {
+                tabs: [
+                    { id: "songs", label: "Songs" },
+                    { id: "artists", label: "Artists" },
+                    { id: "albums", label: "Albums" },
+                    { id: "genres", label: "Genres" },
+                    { id: "folders", label: "Folders" },
+                    { id: "playlists", label: "Playlists" }
+                ]
+                current: root.appWindow.libraryTab
+                onSelected: id => root.appWindow.libraryTab = id
             }
 
 
@@ -145,48 +84,11 @@ Item {
                         },
                     ]
 
-                    Rectangle {
-                        id: qPill
-                        property bool isSelected: root.appWindow.songFilterMode === modelData.id
-                        width: qPillLbl.implicitWidth + 20
-                        height: 28
-                        radius: height / 2
-                        color: isSelected
-                            ? "#262320"
-                            : (qPillMouse.containsMouse ? surfaceElevated : surfaceTag)
-                        border.width: 1
-                        border.color: isSelected
-                            ? recordRed
-                            : (qPillMouse.containsMouse ? borderVariant : borderSubtle)
-
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: 120
-                            }
-                        }
-                        Behavior on border.color {
-                            ColorAnimation {
-                                duration: 120
-                            }
-                        }
-
-                        Label {
-                            id: qPillLbl
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: qPill.isSelected ? recordRedHover : (qPillMouse.containsMouse ? textPrimary : textSecondary)
-                            font.family: monoFont
-                            font.pixelSize: 11
-                            font.weight: qPill.isSelected ? Font.Bold : Font.DemiBold
-                        }
-
-                        MouseArea {
-                            id: qPillMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.appWindow.songFilterMode = modelData.id
-                        }
+                    FilterChip {
+                        required property var modelData
+                        text: modelData.label
+                        selected: root.appWindow.songFilterMode === modelData.id
+                        onClicked: root.appWindow.songFilterMode = modelData.id
                     }
                 }
             }
@@ -347,12 +249,23 @@ Item {
 
         StackLayout {
             id: libraryStack
+            transform: Translate { id: tabShift }
+            onCurrentIndexChanged: tabEnter.restart()
+
+            EnterAnimation {
+                id: tabEnter
+                target: libraryStack
+                shift: tabShift
+                distance: 6
+                duration: UiConstants.durationFast
+            }
+
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: root.appWindow.libraryTab === "songs" ? 0 : (root.appWindow.libraryTab === "artists" ? 1 : (root.appWindow.libraryTab === "albums" ? 2 : (root.appWindow.libraryTab === "genres" ? 3 : (root.appWindow.libraryTab === "folders" ? 4 : 5))))
 
             Item {
-                GridView {
+                AppGridView {
                     id: songsGridView
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
@@ -366,11 +279,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 180))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 240
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -390,7 +298,7 @@ Item {
                     }
                 }
 
-                ListView {
+                AppListView {
                     id: songsListView
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -401,11 +309,6 @@ Item {
                     clip: true
                     model: library
                     spacing: 4
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -463,7 +366,7 @@ Item {
                     return list;
                 }
 
-                GridView {
+                AppGridView {
                     id: artistGrid
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
@@ -476,11 +379,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 190))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 245
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -539,7 +437,7 @@ Item {
                     return list;
                 }
 
-                GridView {
+                AppGridView {
                     id: albumGrid
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
@@ -552,11 +450,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 195))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 255
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -609,7 +502,7 @@ Item {
                     return list;
                 }
 
-                GridView {
+                AppGridView {
                     id: genreGrid
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
@@ -622,11 +515,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 210))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 125
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -634,7 +522,7 @@ Item {
                         width: genreGrid.cellWidth
                         height: 115
 
-                        GenreCard {
+                        CategoryCard {
                             focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 16
@@ -678,7 +566,7 @@ Item {
                     return list;
                 }
 
-                GridView {
+                AppGridView {
                     id: folderGrid
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
@@ -691,11 +579,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 210))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 125
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -703,7 +586,8 @@ Item {
                         width: folderGrid.cellWidth
                         height: 115
 
-                        FolderCard {
+                        CategoryCard {
+                            iconName: "folder"
                             focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 16

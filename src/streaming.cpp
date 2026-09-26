@@ -8,6 +8,7 @@
 #include "streaming_protocols.h"
 
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -438,6 +439,7 @@ void StreamingController::setBlackoutEnabled(bool enabled) {
     cancelPendingRequests();
     m_remoteArt.clear();
     m_remoteArtSource.clear();
+    m_remoteArtFailedAt.clear();
     m_remoteArtPending.clear();
     m_remoteArtDownloads = 0;
     setRemoteTracks({});
@@ -583,6 +585,10 @@ QString StreamingController::remoteArtwork(const QString &filePath) {
     if (m_remoteArtPending.contains(filePath) || m_remoteArtDownloads >= kMaxArtDownloads) {
         return {};
     }
+    // A failed download is retried after a pause rather than on every rebind.
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - m_remoteArtFailedAt.value(filePath, 0) < 60000)
+        return {};
     const auto source = m_remoteArtSource.constFind(filePath);
     if (source == m_remoteArtSource.cend() || source->isEmpty()) {
         return {};
@@ -599,15 +605,26 @@ QString StreamingController::remoteArtwork(const QString &filePath) {
         if (blackoutEnabled() || m_remoteArtSource.value(filePath) != artworkSource)
             return;
 
-        QString local;
-        if (reply->error() == QNetworkReply::NoError) {
-            const QByteArray data = reply->readAll();
-            const QString contentType = reply->header(QNetworkRequest::ContentTypeHeader).toString();
-            // Bound what we keep: small embedded-style artwork only.
-            if (data.size() > 32 && data.size() <= kMaxArtBytes) {
-                local = saveCachedImage(data, filePath, contentType.contains("png", Qt::CaseInsensitive), "covers");
+        if (reply->error() != QNetworkReply::NoError) {
+            // Network errors are often temporary, so they are not cached as "no artwork".
+            m_remoteArtFailedAt.insert(filePath, QDateTime::currentMSecsSinceEpoch());
+            if (!m_remoteArtRetryScheduled) {
+                // Covers only ask again when their binding re-evaluates, so prompt that once the pause is over.
+                m_remoteArtRetryScheduled = true;
+                QTimer::singleShot(61000, this, [this] {
+                    m_remoteArtRetryScheduled = false;
+                    ++m_remoteArtRevision;
+                    emit remoteArtChanged();
+                });
             }
+            return;
         }
+        QString local;
+        const QByteArray data = reply->readAll();
+        const QString contentType = reply->header(QNetworkRequest::ContentTypeHeader).toString();
+        // Bound what we keep: small embedded-style artwork only.
+        if (data.size() > 32 && data.size() <= kMaxArtBytes)
+            local = saveCachedImage(data, filePath, contentType.contains("png", Qt::CaseInsensitive), "covers");
         m_remoteArt.insert(filePath, local);
         ++m_remoteArtRevision;
         emit remoteArtChanged();

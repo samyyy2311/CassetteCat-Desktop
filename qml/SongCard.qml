@@ -1,8 +1,9 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "TrackTitles.js" as TrackTitles
 
-Item {
+CardBase {
     id: root
     property var track: ({})
     property real cardWidth: 170
@@ -10,18 +11,10 @@ Item {
     property bool isCurrent: !!(player.currentTrack && track && player.currentTrack.filePath === track.filePath)
     property bool isPlaying: isCurrent && player.isPlaying
 
-    signal clicked()
     signal favoriteClicked()
 
-    readonly property bool highlighted: cardMouse.containsMouse || (activeFocus && !mouseFocused)
-    property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
-
-    Accessible.role: Accessible.Button
-    Accessible.name: root.track.title || root.track.fileName || ""
-    Accessible.onPressAction: root.clicked()
-    Keys.onReturnPressed: root.clicked()
-    Keys.onEnterPressed: root.clicked()
+    accessibleName: root.track.title || root.track.fileName || ""
+    onRightClicked: contextMenu.popup()
     Keys.onMenuPressed: contextMenu.popup(root, 0, root.height)
 
     width: cardWidth
@@ -36,31 +29,17 @@ Item {
             Layout.preferredHeight: width
             Layout.alignment: Qt.AlignHCenter
 
-            Rectangle {
+            CoverFrame {
                 id: coverContainer
                 anchors.fill: parent
                 radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
-                color: surfaceCard
-                clip: true
-                border.width: root.isCurrent ? 1.5 : (root.highlighted ? 1.5 : 0)
-                border.color: root.isCurrent ? recordRed : (root.highlighted ? recordRed : "transparent")
-                scale: root.highlighted ? 1.03 : 1.0
-
-                Behavior on scale { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-                Behavior on border.color { ColorAnimation { duration: 120 } }
+                highlighted: root.highlighted
+                current: root.isCurrent
 
                 Cover {
                     anchors.fill: parent
                     track: root.track
                     radius: coverContainer.radius
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    radius: coverContainer.radius
-                    color: "transparent"
-                    border.width: 1
-                    border.color: root.isCurrent ? recordRed : "#15FFFFFF"
                 }
             }
         }
@@ -73,7 +52,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
-                text: root.track.title || root.track.fileName || "Unknown Track"
+                text: TrackTitles.title(root.track) || root.track.fileName || "Unknown Track"
                 color: root.isCurrent ? recordRed : (root.highlighted ? recordRedHover : textPrimary)
                 font.family: displayFont
                 font.pixelSize: 13
@@ -87,7 +66,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
-                text: root.track.artist || "Unknown Artist"
+                text: TrackTitles.artist(root.track) || "Unknown Artist"
                 color: textSecondary
                 font.family: bodyFont
                 font.pixelSize: 11
@@ -107,25 +86,6 @@ Item {
         function popup(...args) {
             active = true
             item.popup(...args)
-        }
-    }
-
-    MouseArea {
-        id: cardMouse
-        anchors.fill: parent
-        hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: Qt.PointingHandCursor
-        onPressed: {
-            root.mouseFocused = true
-            root.forceActiveFocus()
-        }
-        onClicked: mouse => {
-            if (mouse.button === Qt.RightButton) {
-                contextMenu.popup()
-            } else {
-                root.clicked()
-            }
         }
     }
 }

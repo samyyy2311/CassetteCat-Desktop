@@ -4,6 +4,14 @@ import QtQuick.Layouts
 
 Item {
     id: root
+    readonly property string countText: {
+        if (root.activeTab === "songs") {
+            const n = (root.viewMode === "list" ? trackList.count : trackGrid.count)
+            return n + (n === 1 ? " song" : " songs")
+        }
+        const count = root.displayItems.length
+        return count + " " + root.activeTab
+    }
     required property var appWindow
     required property var streamingController
     required property string protocol
@@ -179,35 +187,41 @@ Item {
         return root.displayItems.map(item => item.track).filter(track => !!track)
     }
 
+    function addToGroup(result, name, track, query) {
+        if (!result[name]) result[name] = { name: name, count: 0, track: track, artist: track.artist || "", matches: query.length === 0 }
+        const group = result[name]
+        group.count++
+        if (!group.matches && (name.toLowerCase().includes(query) || (track.artist || "").toLowerCase().includes(query)
+                || (track.title || "").toLowerCase().includes(query)))
+            group.matches = true
+    }
+
     function groups(field) {
         const result = {}
         const q = searchQuery.toLowerCase()
         collectTracks().forEach(track => {
             if (!matchesFormatFilter(track)) return
-            let name = ""
             if (field === "artist") {
-                name = appWindow.extractPrimaryArtist(track.artist || "Unknown Artist")
-            } else if (field === "album") {
+                const names = library.artistNames(track.artist || "")
+                const credited = names.length > 0 ? names : ["Unknown Artist"]
+                credited.forEach(artist => addToGroup(result, artist, track, q))
+                return
+            }
+            let name = ""
+            if (field === "album") {
                 name = (track.album || "Unknown Album").trim()
             } else if (field === "genre") {
                 name = (track.genre || "Soundtrack").trim()
             } else {
                 name = (track[field] || "Unknown").trim()
             }
-            if (!name) name = (field === "album" ? "Unknown Album" : (field === "genre" ? "Soundtrack" : "Unknown Artist"))
-            if (q.length > 0) {
-                const matchesName = name.toLowerCase().includes(q)
-                const matchesArtist = (track.artist || "").toLowerCase().includes(q)
-                const matchesTitle = (track.title || "").toLowerCase().includes(q)
-                if (!matchesName && !matchesArtist && !matchesTitle) return
-            }
-            if (!result[name]) result[name] = { name: name, count: 0, track: track, artist: track.artist || "" }
-            result[name].count++
+            if (!name) name = (field === "album" ? "Unknown Album" : "Soundtrack")
+            addToGroup(result, name, track, q)
         })
 
         const metric = currentSortMetric
         const asc = currentSortAscending
-        const list = Object.values(result)
+        const list = Object.values(result).filter(group => group.matches)
 
         list.sort((a, b) => {
             if (metric === "count") {
@@ -282,7 +296,7 @@ Item {
 
     Component {
         id: genreCard
-        GenreCard {
+        CategoryCard {
             property var itemData: ({})
             cardWidth: trackGrid.cellWidth - 16
             cardHeight: 110
@@ -307,73 +321,18 @@ Item {
             Layout.bottomMargin: 14
             spacing: 16
 
-            Row {
-                spacing: 18
-
-                Repeater {
-                    model: [
-                        { id: "songs", label: "Songs" },
-                        { id: "artists", label: "Artists" },
-                        { id: "albums", label: "Albums" },
-                        { id: "genres", label: "Genres" },
-                        { id: "playlists", label: "Playlists" }
-                    ]
-
-                    Item {
-                        width: tabLabel.implicitWidth
-                        height: 32
-
-                        Label {
-                            id: tabLabel
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: root.activeTab === modelData.id ? textPrimary : textSecondary
-                            font.family: displayFont
-                            font.pixelSize: 15
-                            font.weight: root.activeTab === modelData.id ? Font.Bold : Font.Medium
-                        }
-
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            width: parent.width
-                            height: 2.5
-                            radius: 1.25
-                            color: recordRed
-                            visible: root.activeTab === modelData.id
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: { root.activeTab = modelData.id; if (modelData.id !== "songs") root.viewMode = "grid" }
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.preferredHeight: 22
-                Layout.preferredWidth: countLbl.implicitWidth + 14
-                radius: 11
-                color: surfaceTag
-                border.width: 1
-                border.color: borderSubtle
-
-                Label {
-                    id: countLbl
-                    anchors.centerIn: parent
-                    text: {
-                        if (root.activeTab === "songs") {
-                            const n = (root.viewMode === "list" ? trackList.count : trackGrid.count)
-                            return n + (n === 1 ? " track" : " tracks")
-                        }
-                        const count = root.displayItems.length
-                        return count + " " + root.activeTab
-                    }
-                    color: silverDim
-                    font.family: monoFont
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
+            PageTabs {
+                tabs: [
+                    { id: "songs", label: "Songs" },
+                    { id: "artists", label: "Artists" },
+                    { id: "albums", label: "Albums" },
+                    { id: "genres", label: "Genres" },
+                    { id: "playlists", label: "Playlists" }
+                ]
+                current: root.activeTab
+                onSelected: id => {
+                    root.activeTab = id
+                    if (id !== "songs") root.viewMode = "grid"
                 }
             }
 
@@ -389,35 +348,11 @@ Item {
                         { id: "FAVORITES", label: "♥ FAVORITES" }
                     ]
 
-                    Rectangle {
-                        id: qPill
-                        property bool isSelected: root.formatFilter === modelData.id
-                        width: qPillLbl.implicitWidth + 20
-                        height: 28
-                        radius: 14
-                        color: "transparent"
-                        border.width: isSelected ? 1.5 : 1
-                        border.color: isSelected ? recordRed : (qPillMouse.containsMouse ? "#45FFFFFF" : (typeof borderSubtle !== "undefined" ? borderSubtle : Qt.rgba(255, 255, 255, 0.05)))
-
-                        Behavior on border.color { ColorAnimation { duration: 100 } }
-
-                        Label {
-                            id: qPillLbl
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: qPill.isSelected ? recordRedHover : (qPillMouse.containsMouse ? textPrimary : textSecondary)
-                            font.family: monoFont
-                            font.pixelSize: 11
-                            font.weight: qPill.isSelected ? Font.Bold : Font.DemiBold
-                        }
-
-                        MouseArea {
-                            id: qPillMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.formatFilter = modelData.id
-                        }
+                    FilterChip {
+                        required property var modelData
+                        text: modelData.label
+                        selected: root.formatFilter === modelData.id
+                        onClicked: root.formatFilter = modelData.id
                     }
                 }
             }
@@ -426,9 +361,9 @@ Item {
                 visible: root.activeTab === "songs"
                 boxSize: 34
                 iconSize: 16
-                iconName: root.viewMode === "list" ? "grid-2x2" : "list"
+                iconName: root.viewMode === "grid" ? "grid-2x2" : "list"
                 tint: textPrimary
-                tooltipText: root.viewMode === "list" ? "Detailed Grid View (Click for List)" : "List View (Click for Grid)"
+                tooltipText: root.viewMode === "grid" ? "Detailed Grid View (Click for List)" : "List View (Click for Grid)"
                 onClicked: root.viewMode = (root.viewMode === "list" ? "grid" : "list")
             }
 
@@ -489,7 +424,7 @@ Item {
                 iconName: "log-out"
                 tint: textSecondary
                 tooltipText: "Disconnect server"
-                onClicked: streamingController.disconnectServer(root.protocol)
+                onClicked: disconnectPopup.open()
             }
         }
 
@@ -497,7 +432,20 @@ Item {
             id: trackContent
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.topMargin: 12
+            transform: Translate { id: tabShift }
+
+            Connections {
+                target: root
+                function onActiveTabChanged() { tabEnter.restart() }
+            }
+
+            EnterAnimation {
+                id: tabEnter
+                target: trackContent
+                shift: tabShift
+                distance: 6
+                duration: UiConstants.durationFast
+            }
 
             // Counts what the visible view shows after search and format filters.
             readonly property int visibleCount: trackList.visible ? trackList.count : trackGrid.count
@@ -533,13 +481,13 @@ Item {
                 return list
             }
 
-            GridView {
+            AppGridView {
                 id: trackGrid
                 visible: root.viewMode === "grid" || root.activeTab !== "songs"
                 anchors.fill: parent
                 anchors.leftMargin: 24
                 anchors.rightMargin: 8
-                anchors.bottomMargin: 32
+                bottomMargin: 32
                 clip: true
                 model: root.activeTab === "songs" && root.formatFilter === "ALL"
                     && root.searchQuery.length === 0 && root.songSortMetric === "title" && root.songSortAscending
@@ -547,11 +495,6 @@ Item {
                 readonly property int cols: Math.max(2, Math.floor((width - 8) / (root.activeTab === "albums" ? 195 : 180)))
                 cellWidth: Math.floor((width - 8) / cols)
                 cellHeight: root.activeTab === "albums" ? 255 : (root.activeTab === "genres" ? 120 : 240)
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -577,17 +520,12 @@ Item {
                 }
             }
 
-            ListView {
+            AppListView {
                 id: trackList
                 visible: root.viewMode === "list" && root.activeTab === "songs"
                 anchors.fill: parent
                 clip: true
                 spacing: 2
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
                 model: trackContent.sortedTracks
@@ -887,5 +825,15 @@ Item {
     Component.onCompleted: {
         root.loadSavedConnection()
         root.loadState()
+    }
+
+    ConfirmPopup {
+        id: disconnectPopup
+        title: "Disconnect " + root.serviceName + "?"
+        subtitle: "You will need to sign in again"
+        message: "Your saved login is removed and this server's songs leave your library until you connect again. Nothing is deleted from the server."
+        iconName: "log-out"
+        confirmText: "Disconnect"
+        onConfirmed: streamingController.disconnectServer(root.protocol)
     }
 }

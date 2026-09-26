@@ -46,7 +46,11 @@ QImage CoverImageProvider::requestImage(const QString &id, QSize *size, const QS
     if (source.startsWith(QStringLiteral("track:"))) {
         const QString trackPath =
             QString::fromUtf8(QByteArray::fromBase64(source.mid(6).toLatin1(), QByteArray::Base64UrlEncoding));
-        imagePath = QUrl(extractEmbeddedArtwork(trackPath)).toLocalFile();
+        // Most covers are small; only large views pay for a full-size extraction.
+        const int longEdge = qMax(requestedSize.width(), requestedSize.height());
+        imagePath = QUrl(extractEmbeddedArtwork(trackPath, longEdge > 512 ? 1536 : 512)).toLocalFile();
+    } else if (source.startsWith(QStringLiteral("qrc:"))) {
+        imagePath = ':' + QUrl(source).path();
     } else {
         imagePath = QUrl(source).toLocalFile();
     }
@@ -62,7 +66,8 @@ QImage CoverImageProvider::requestImage(const QString &id, QSize *size, const QS
     QImageReader reader(imagePath);
     reader.setAutoTransform(true);
     *size = reader.size();
-    if (!requestedSize.isValid() || !size->isValid())
+    // Items that are not laid out yet request 0x0.
+    if (requestedSize.isEmpty() || !size->isValid())
         return reader.read();
 
     // Crop to the requested box and round the corners here, so QML needs no per-cover mask layers.

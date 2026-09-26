@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Effects
+import "LyricsText.js" as LyricsText
 
 ApplicationWindow {
     id: window
@@ -1136,12 +1137,15 @@ ApplicationWindow {
         inAppShortcutStatus = shortcut === "" ? "Shortcut cleared" : "Shortcut saved"
     }
 
-    function isInputActive() {
+    // While typing, only shortcuts that a text field would not use for itself stay active.
+    function shortcutAllowed(sequence) {
+        if (sequence.length === 0) return false
         const item = window.activeFocusItem
-        if (!item) return false
-        if (item.isShortcutCapture === true) return true
-        if (typeof item.cursorPosition !== "undefined" || typeof item.selectedText !== "undefined") return true
-        return false
+        if (!item) return true
+        if (item.isShortcutCapture === true) return false
+        if (typeof item.cursorPosition === "undefined" && typeof item.selectedText === "undefined") return true
+        return /^(Ctrl|Alt|Meta)\+/i.test(sequence)
+            && !/^Ctrl\+(Shift\+)?(Left|Right|Home|End|Backspace|Delete|A|C|V|X|Y|Z)$/i.test(sequence)
     }
 
     function focusSearchInput() {
@@ -1179,6 +1183,7 @@ ApplicationWindow {
     }
 
     onPageChanged: {
+        catalogDetailOpen = false
         if (settingsInitialized) appSettings.setValue("ui/page", page)
         updateVisibleLibrary()
         if (page === "library") refreshLibraryGroups(library.catalogGroups())
@@ -1338,11 +1343,11 @@ ApplicationWindow {
     onPlaylistsChanged: if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
     onPlayCountsChanged: {
         if (settingsInitialized) appSettings.setValue("library/playCounts", JSON.stringify(playCounts))
-        refreshHomeRecommendations()
+        refreshHomeActivity()
     }
     onSeenAtChanged: {
         if (settingsInitialized) appSettings.setValue("library/seenAt", JSON.stringify(seenAt))
-        refreshHomeRecommendations()
+        refreshHomeActivity()
     }
     onExcludedFoldersChanged: {
         saveSetting("library/excludedFolders", excludedFolders)
@@ -1352,7 +1357,7 @@ ApplicationWindow {
     onOriginalPlaybackQueueChanged: if (settingsInitialized) appSettings.setValue("player/originalQueue", savedTrackPaths(originalPlaybackQueue))
     onPlaybackHistoryChanged: {
         if (settingsInitialized) appSettings.setValue("player/history", savedTrackPaths(playbackHistory))
-        refreshHomeRecommendations()
+        refreshHomeActivity()
     }
     onRepeatModeChanged: {
         if (settingsInitialized) appSettings.setValue("player/repeatMode", repeatMode)
@@ -1516,45 +1521,50 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("toggleMiniPlayer")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: toggleMiniPlayer()
     }
 
     Shortcut {
         sequence: inAppShortcut("toggleSidebar")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: {
             if (!miniPlayerMode) sidebarCollapsed = !sidebarCollapsed
         }
     }
 
+    function openSearchPage() {
+        nowPlayingOpen = false
+        catalogDetailOpen = false
+        page = "search"
+        if (searchPageLoader.item) focusSearchInput()
+        else searchPageLoader.focusOnLoad = true
+    }
+
     Shortcut {
         sequence: inAppShortcut("search")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: {
-            if (!miniPlayerMode) {
-                nowPlayingOpen = false
-                page = "search"
-            }
+            if (miniPlayerMode) return
+            catalogDetailOpen = false
+            const loaders = { library: libraryPageLoader, radio: radioPageLoader, jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader, stats: listeningRecordPageLoader }
+            const pageItem = !nowPlayingOpen && loaders[page] ? loaders[page].item : null
+            const box = pageItem ? pageItem.searchBox : null
+            if (box && box.visible && box.enabled) box.expand()
+            else openSearchPage()
         }
     }
 
     Shortcut {
         sequence: inAppShortcut("quickSwitcher")
-        enabled: sequence.length > 0 && !isInputActive()
-        onActivated: {
-            if (miniPlayerMode) return
-            nowPlayingOpen = false
-            page = "search"
-            if (searchPageLoader.item) focusSearchInput()
-            else searchPageLoader.focusOnLoad = true
-        }
+        enabled: shortcutAllowed(sequence)
+        onActivated: if (!miniPlayerMode) openSearchPage()
     }
 
     Shortcut {
         sequence: inAppShortcut("closePlayerView")
         // An open sheet handles Escape itself; two enabled shortcuts on one key would both be ignored as ambiguous.
-        enabled: sequence.length > 0 && !isInputActive() && !refineSheetOpen && !radioRefineOpen && !trackActionSheet.isOpen
+        enabled: shortcutAllowed(sequence) && !refineSheetOpen && !radioRefineOpen && !trackActionSheet.isOpen
         onActivated: {
             if (miniPlayerMode) {
                 toggleMiniPlayer()
@@ -1566,7 +1576,7 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("playPause")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: {
             if (!player.currentTrack.filePath && library.trackCount > 0) {
                 shuffleAll()
@@ -1578,43 +1588,43 @@ ApplicationWindow {
 
     Shortcut {
         sequence: inAppShortcut("volumeUp")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: setPlayerVolume(player.volume + 0.05)
     }
 
     Shortcut {
         sequence: inAppShortcut("volumeDown")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: setPlayerVolume(player.volume - 0.05)
     }
 
     Shortcut {
         sequence: inAppShortcut("seekForward")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: player.seek(Math.min(player.duration, player.position + 5000))
     }
 
     Shortcut {
         sequence: inAppShortcut("seekBackward")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: player.seek(Math.max(0, player.position - 5000))
     }
 
     Shortcut {
         sequence: inAppShortcut("nowPlayingNext")
-        enabled: sequence.length > 0 && nowPlayingOpen && !isInputActive()
+        enabled: nowPlayingOpen && shortcutAllowed(sequence)
         onActivated: window.playNext()
     }
 
     Shortcut {
         sequence: inAppShortcut("nowPlayingPrevious")
-        enabled: sequence.length > 0 && nowPlayingOpen && !isInputActive()
+        enabled: nowPlayingOpen && shortcutAllowed(sequence)
         onActivated: window.playPrevious()
     }
 
     Shortcut {
         sequence: inAppShortcut("mute")
-        enabled: sequence.length > 0 && !isInputActive()
+        enabled: shortcutAllowed(sequence)
         onActivated: setPlayerVolume(player.volume > 0.001 ? 0.0 : 0.8)
     }
 
@@ -1640,6 +1650,16 @@ ApplicationWindow {
         favoriteTracks = favs
     }
 
+    function setFavorites(filePaths, favorite) {
+        const favs = Object.assign({}, favoriteTracks)
+        for (const filePath of filePaths) {
+            delete favs[filePath]
+            if (favorite) favs[normalizedPlaylistPath(filePath)] = true
+            else delete favs[normalizedPlaylistPath(filePath)]
+        }
+        favoriteTracks = favs
+    }
+
     function isFavorite(filePath) {
         if (!filePath) return false
         return !!(favoriteTracks[filePath] || favoriteTracks[normalizedPlaylistPath(filePath)])
@@ -1650,6 +1670,19 @@ ApplicationWindow {
         return radioFavoriteStations.some(s => s.streamUrl === streamUrl)
     }
 
+    function savedStation(station) {
+        return {
+            id: station.id || "",
+            name: station.name || "Radio Station",
+            streamUrl: station.streamUrl,
+            favicon: station.favicon || "",
+            tags: station.tags || "",
+            country: station.country || "",
+            language: station.language || "",
+            bitrate: station.bitrate || 0
+        }
+    }
+
     function toggleRadioFavorite(station) {
         if (!station || !station.streamUrl) return
         const favs = (radioFavoriteStations || []).slice()
@@ -1657,16 +1690,7 @@ ApplicationWindow {
         if (idx >= 0) {
             favs.splice(idx, 1)
         } else {
-            favs.unshift({
-                id: station.id || "",
-                name: station.name || "Radio Station",
-                streamUrl: station.streamUrl,
-                favicon: station.favicon || "",
-                tags: station.tags || "",
-                country: station.country || "",
-                language: station.language || "",
-                bitrate: station.bitrate || 0
-            })
+            favs.unshift(savedStation(station))
         }
         radioFavoriteStations = favs
         if (settingsInitialized) appSettings.setValue("radio/favorites", JSON.stringify(favs))
@@ -1677,16 +1701,7 @@ ApplicationWindow {
         const recents = (radioRecentStations || []).slice()
         const idx = recents.findIndex(s => s.streamUrl === station.streamUrl)
         if (idx >= 0) recents.splice(idx, 1)
-        recents.unshift({
-            id: station.id || "",
-            name: station.name || "Radio Station",
-            streamUrl: station.streamUrl,
-            favicon: station.favicon || "",
-            tags: station.tags || "",
-            country: station.country || "",
-            language: station.language || "",
-            bitrate: station.bitrate || 0
-        })
+        recents.unshift(savedStation(station))
         if (recents.length > 30) recents.length = 30
         radioRecentStations = recents
         if (settingsInitialized) appSettings.setValue("radio/recents", JSON.stringify(recents))
@@ -1827,31 +1842,11 @@ ApplicationWindow {
         }
     }
 
-    function lyricHtml(text) {
-        return String(text || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-    }
-
     function karaokeLyricHtml(index, text) {
-        if (index !== activeLyricIndex || !parsedLyrics[index] || parsedLyrics[index].timeMs < 0) return lyricHtml(text)
-        const base = window.lyricsActiveStyle === "accent" ? recordRedHover : Qt.color("#FFFFFF")
-        const baseR = Math.round(base.r * 255)
-        const baseG = Math.round(base.g * 255)
-        const baseB = Math.round(base.b * 255)
-        const words = String(text || "").split(/(\s+)/)
-        const start = parsedLyrics[index].timeMs
-        const next = parsedLyrics[index + 1] && parsedLyrics[index + 1].timeMs >= 0 ? parsedLyrics[index + 1].timeMs : start + 3000
-        const progress = Math.max(0, Math.min(1, (player.position - start) / Math.max(800, next - start)))
-        const characters = Math.max(1, String(text || "").replace(/\s/g, "").length)
-        let consumed = 0
-        return words.map(function(word) {
-            if (/^\s+$/.test(word)) return word
-            const middle = (consumed + word.length * 0.5) / characters
-            consumed += word.length
-            const t = Math.max(0, Math.min(1, (progress - middle + 0.16) / 0.16))
-            const eased = t * t * (3 - 2 * t)
-            const alpha = 0.42 + eased * 0.58
-            return "<span style=\"color:rgba(" + baseR + "," + baseG + "," + baseB + "," + alpha.toFixed(2) + ")\">" + lyricHtml(word) + "</span>"
-        }).join("")
+        // Checked before reading the position, so only the active line re-renders as the song plays.
+        if (index !== activeLyricIndex) return LyricsText.escape(text)
+        const color = window.lyricsActiveStyle === "accent" ? recordRedHover : Qt.color("#FFFFFF")
+        return LyricsText.karaoke(parsedLyrics, index, activeLyricIndex, player.position, color, text)
     }
 
     function applyLyrics(lyrics, provider) {
@@ -2021,23 +2016,40 @@ ApplicationWindow {
         forgottenFavs = home.forgottenFavs
     }
 
+    // Listening updates the activity rows only, so the picks don't reshuffle mid-session.
+    function refreshHomeActivity() {
+        const home = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory)
+        heavyRotation = home.heavyRotation
+        recentlyPlayed = home.recentlyPlayed
+        forgottenFavs = home.forgottenFavs
+    }
+
+    property int homePickedTrackCount: -1
+
+    // Swaps in the current copy of each picked track, so tag and cover edits show without reshuffling.
+    function refreshHomePicks() {
+        const fresh = tracks => tracksForPaths(tracks.map(track => track.filePath)).filter(track => !!track)
+        quickPicks = fresh(quickPicks)
+        recentlyAdded = fresh(recentlyAdded)
+        if (spotlightTrack) spotlightTrack = fresh([spotlightTrack])[0] || null
+    }
+
     function refreshLibraryState() {
         const groups = library.catalogGroups()
         refreshHomeGroups(groups)
         if (page === "library") refreshLibraryGroups(groups)
         else clearLibraryGroups()
-        refreshHomeRecommendations()
+        // Artwork and tag edits also land here; only a changed library gets new picks.
+        if (library.trackCount !== homePickedTrackCount) {
+            homePickedTrackCount = library.trackCount
+            refreshHomeRecommendations()
+        } else {
+            refreshHomeActivity()
+            refreshHomePicks()
+        }
         restoreLastPlayedTrack()
         restorePlaybackQueue()
         restorePlaybackHistory()
-    }
-
-    function extractPrimaryArtist(raw) {
-        if (!raw) return "Unknown Artist"
-        const str = raw.trim()
-        if (!str) return "Unknown Artist"
-        const match = str.split(/[,&;/]|\bfeat\.?\b|\bft\.?\b/i).find(part => part.trim().length > 0)
-        return match ? match.trim() : str
     }
 
     function splitArtists(raw) {
@@ -2124,6 +2136,7 @@ ApplicationWindow {
     }
 
     function openCatalogDetail(mode, title, heroTrack, key) {
+        nowPlayingOpen = false
         if (catalogDetailOpen) {
             catalogDetailHistory = catalogDetailHistory.concat([{
                 mode: catalogDetailMode,
@@ -2292,8 +2305,7 @@ ApplicationWindow {
         if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx || fromIdx <= currentIndex || toIdx <= currentIndex) return
         const nextQueue = queue.slice()
         const [moved] = nextQueue.splice(fromIdx, 1)
-        const insertIdx = fromIdx < toIdx ? toIdx - 1 : toIdx
-        nextQueue.splice(insertIdx, 0, moved)
+        nextQueue.splice(toIdx, 0, moved)
         if (player.currentTrack && player.currentTrack.format === "STREAM") radioPlaybackQueue = nextQueue
         else playbackQueue = nextQueue
         queueRevision++
@@ -3005,6 +3017,18 @@ ApplicationWindow {
                     Layout.alignment: Qt.AlignVCenter
                 }
 
+                Label {
+                    readonly property var pageItem: ({ library: libraryPageLoader, search: searchPageLoader, radio: radioPageLoader,
+                                                       jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader,
+                                                       stats: listeningRecordPageLoader })[page]
+                    Layout.leftMargin: 12
+                    Layout.alignment: Qt.AlignBaseline
+                    text: pageItem && pageItem.item ? pageItem.item.countText : ""
+                    color: silverDim
+                    font.family: bodyFont
+                    font.pixelSize: 12
+                }
+
                 Item { Layout.fillWidth: true }
             }
         }
@@ -3031,6 +3055,8 @@ ApplicationWindow {
             Label {
                 Layout.fillWidth: true
                 text: catalogDetailTitle
+                opacity: catalogDetailLoader.item && catalogDetailLoader.item.headingScrolledAway ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }
                 color: textPrimary
                 font.family: displayFont
                 font.pixelSize: 20
@@ -3348,37 +3374,13 @@ ApplicationWindow {
                     anchors.fill: parent
                     currentIndex: page === "home" ? 0 : (page === "library" ? 1 : (page === "search" ? 2 : (page === "radio" ? 3 : (page === "jellyfin" ? 4 : (page === "subsonic" ? 5 : (page === "stats" ? 6 : 7))))))
 
-                    layer.enabled: pageSwitchAnim.running
-                    layer.smooth: true
+                    transform: Translate { id: pageTranslate }
+                    onCurrentIndexChanged: pageEnter.restart()
 
-                    transform: Translate {
-                        id: pageTranslate
-                        y: 0
-                    }
-
-                    onCurrentIndexChanged: {
-                        pageSwitchAnim.restart()
-                        pageSlideAnim.restart()
-                    }
-
-                    NumberAnimation {
-                        id: pageSwitchAnim
+                    EnterAnimation {
+                        id: pageEnter
                         target: mainStack
-                        property: "opacity"
-                        from: 0.85
-                        to: 1.0
-                        duration: 160
-                        easing.type: Easing.OutCubic
-                    }
-
-                    NumberAnimation {
-                        id: pageSlideAnim
-                        target: pageTranslate
-                        property: "y"
-                        from: 5
-                        to: 0
-                        duration: 160
-                        easing.type: Easing.OutCubic
+                        shift: pageTranslate
                     }
 
                     Loader {
@@ -3709,7 +3711,40 @@ ApplicationWindow {
             anchors.right: parent.right
             anchors.bottom: miniPlayerDock.top
             z: 350
-            active: catalogDetailOpen
+            // Stays loaded while the close animation plays.
+            active: catalogDetailOpen || detailExit.running
+            transform: Translate { id: detailShift }
+            onLoaded: detailEnter.restart()
+
+            EnterAnimation {
+                id: detailEnter
+                target: catalogDetailLoader
+                shift: detailShift
+                axis: "x"
+                distance: 32
+            }
+
+            ParallelAnimation {
+                id: detailExit
+                NumberAnimation { target: catalogDetailLoader; property: "opacity"; to: 0; duration: UiConstants.durationFast; easing.type: Easing.InCubic }
+                NumberAnimation { target: detailShift; property: "x"; to: 24; duration: UiConstants.durationFast; easing.type: Easing.InCubic }
+            }
+
+            Connections {
+                target: window
+                function onCatalogDetailOpenChanged() {
+                    if (catalogDetailOpen) {
+                        detailExit.stop()
+                        if (catalogDetailLoader.item) detailEnter.restart()
+                    } else {
+                        detailExit.restart()
+                    }
+                }
+                function onCatalogDetailTitleChanged() {
+                    if (catalogDetailOpen && catalogDetailLoader.item) detailEnter.restart()
+                }
+            }
+
             sourceComponent: Component {
                 CatalogDetail {
                     anchors.fill: parent
@@ -3759,15 +3794,6 @@ ApplicationWindow {
                         font.pixelSize: 11
                         font.weight: Font.Bold
                     }
-                }
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.NoButton
-                onWheel: wheel => {
-                    const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05
-                    setPlayerVolume(player.volume + step)
                 }
             }
 
@@ -4155,10 +4181,7 @@ ApplicationWindow {
             onReleased: mouse => mouse.accepted = true
             onClicked: mouse => mouse.accepted = true
             onDoubleClicked: mouse => mouse.accepted = true
-            onWheel: wheel => {
-                const step = wheel.angleDelta.y > 0 ? 0.05 : -0.05
-                setPlayerVolume(player.volume + step)
-            }
+            onWheel: wheel => wheel.accepted = true
         }
 
         Item {
@@ -4233,13 +4256,17 @@ ApplicationWindow {
                 readonly property int lyricsArtY: Math.max(10, Math.round((parent.height - (lyricsArtSize + 16 + 160)) / 2))
                 readonly property int targetArtY: compactPlayerMode ? lyricsArtY : normalArtY
 
+                // Resized with scale, a GPU transform, so the artwork and its mask are drawn once instead of
+                // being laid out and re-rendered on every frame of the animation.
                 Rectangle {
                     id: npArtworkCard
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: npLeftColumn.targetArtY
-                    width: npLeftColumn.currentArtSize
-                    height: npLeftColumn.currentArtSize
-                    radius: window.albumArtRadius === 0 ? 0 : (window.albumArtRadius <= 8 ? (npLeftColumn.compactPlayerMode ? 8 : 10) : (npLeftColumn.compactPlayerMode ? 16 : 22))
+                    width: npLeftColumn.normalArtSize
+                    height: npLeftColumn.normalArtSize
+                    transformOrigin: Item.Top
+                    scale: npLeftColumn.currentArtSize / Math.max(1, npLeftColumn.normalArtSize)
+                    radius: window.albumArtRadius === 0 ? 0 : (window.albumArtRadius <= 8 ? 10 : 22)
                     clip: true
                     color: surfaceCard
                     border.width: 1
@@ -4248,10 +4275,7 @@ ApplicationWindow {
                     Behavior on y {
                         NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
                     }
-                    Behavior on width {
-                        NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
-                    }
-                    Behavior on height {
+                    Behavior on scale {
                         NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
                     }
 
@@ -4262,7 +4286,7 @@ ApplicationWindow {
                         keepPreviousArtwork: true
                         cacheArtwork: true
                         showTonearm: true
-                        stableSourceSize: 512
+                        stableSourceSize: 1024
                     }
 
                     MouseArea {
@@ -4279,8 +4303,7 @@ ApplicationWindow {
 
                 Item {
                     id: underArtControls
-                    anchors.top: npArtworkCard.bottom
-                    anchors.topMargin: 16
+                    y: npLeftColumn.lyricsArtY + npLeftColumn.lyricsArtSize + 16
                     anchors.horizontalCenter: parent.horizontalCenter
                     width: Math.min(parent.width - 24, 320)
                     height: 160
@@ -4588,18 +4611,13 @@ ApplicationWindow {
                 }
             }
 
-            ListView {
+            AppListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: !lyricCustomEditorOpen && (lyricSearchLoading || lyricSearchResults.length > 0)
                 clip: true
                 visible: !lyricCustomEditorOpen
                 model: lyricSearchResults
                 spacing: 4
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
 

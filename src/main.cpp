@@ -326,6 +326,7 @@ int main(int argc, char *argv[]) {
             passed = false;
         };
         check(scanSelfCheck(), "library scan");
+        check(SettingsController::selfCheck(), "settings");
         check(LibraryController::selfCheck(), "library controller");
         check(streaming::runSelfChecks(), "streaming");
         check(GlobalShortcutController::selfCheck(), "global shortcuts");
@@ -333,6 +334,9 @@ int main(int argc, char *argv[]) {
         check(PlayerController::selfCheck(), "player");
         check(MprisController::selfCheck(), "mpris");
         check(DiscordPresence::selfCheck(), "discord presence");
+        QSize labelSize;
+        const QString bundledLabel = QStringLiteral("0.5/qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png");
+        check(!CoverImageProvider().requestImage(bundledLabel, &labelSize, QSize(0, 0)).isNull(), "bundled cover");
         check(singleInstanceSelfCheck(), "single instance");
         return passed ? 0 : 1;
     }
@@ -517,7 +521,7 @@ int main(int argc, char *argv[]) {
                 setupWindowsFrameless(quickWin);
                 smtc.initialize(static_cast<quintptr>(quickWin->winId()));
             } else {
-                quickWin->show();
+                quickWin->setVisible(true);
                 setupWindowsFrameless(quickWin);
                 smtc.initialize(static_cast<quintptr>(quickWin->winId()));
                 activateWindow(quickWin);
@@ -526,7 +530,7 @@ int main(int argc, char *argv[]) {
             if (startMinimized) {
                 quickWin->create();
             } else {
-                quickWin->show();
+                quickWin->setVisible(true);
             }
 #endif
             break;

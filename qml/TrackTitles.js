@@ -1,0 +1,31 @@
+.pragma library
+
+// Card and row labels move "(feat. X)" / "[with X]" from the title to the artist line, so titles fit.
+// The stored title stays untouched for search, scrobbling and metadata.
+const featuring = /\s*[(\[]\s*(?:feat\.?|ft\.?|featuring|with)\s+([^)\]]+)[)\]]/i
+
+function title(track) {
+    const full = track.title || ""
+    return full.replace(featuring, "").trim() || full
+}
+
+function artist(track) {
+    const main = track.artist || ""
+    const match = (track.title || "").match(featuring)
+    if (!match)
+        return main
+    const known = main.toLowerCase()
+    const guests = match[1].split(/\s*(?:,|&|\band\b)\s*/i).filter(name => name && known.indexOf(name.toLowerCase()) < 0)
+    if (guests.length === 0)
+        return main
+    return main ? main + ", " + guests.join(", ") : guests.join(", ")
+}
+
+// Leaves out the artist whose page or album is being shown; other credits are kept as written.
+function otherArtists(track, omit) {
+    const credited = artist(track)
+    const names = credited.split(/\s*(?:,|&|\band\b)\s*/i).filter(name => name)
+    const omitted = omit.toLowerCase().split(/\s*(?:,|&|\band\b)\s*/)
+    const others = names.filter(name => omitted.indexOf(name.toLowerCase()) < 0)
+    return others.length === names.length ? credited : others.join(", ")
+}

@@ -64,7 +64,7 @@ Popup {
 
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: borderSubtle }
 
-        Flickable {
+        AppFlickable {
             id: metadataScroll
             readonly property real availableWidth: width
             Layout.fillWidth: true
@@ -76,10 +76,6 @@ Popup {
             contentWidth: availableWidth
             contentHeight: metadataGrid.implicitHeight + 24
             flickableDirection: Flickable.VerticalFlick
-            boundsBehavior: Flickable.StopAtBounds
-            flickDeceleration: UiConstants.flickDeceleration
-            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-            pixelAligned: UiConstants.pixelAligned
             ScrollBar.vertical: AutoHideScrollBar {}
 
             GridLayout {

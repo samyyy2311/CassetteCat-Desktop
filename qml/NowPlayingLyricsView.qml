@@ -22,8 +22,6 @@ Item {
     opacity: root.appWindow.nowPlayingMode === "lyrics" ? 1.0 : 0.0
     scale: root.appWindow.nowPlayingMode === "lyrics" ? 1.0 : 0.98
     enabled: root.appWindow.nowPlayingMode === "lyrics"
-    layer.enabled: opacity < 0.999 && opacity > 0.001
-    layer.smooth: true
 
     Behavior on opacity {
         NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
@@ -32,7 +30,21 @@ Item {
         NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
     }
 
-    ListView {
+    // New lyrics fade in instead of the list swapping and jumping in one frame.
+    property var shownLyrics: []
+    Component.onCompleted: shownLyrics = appWindow.lyricDisplayItems
+    Connections {
+        target: root.appWindow
+        function onLyricDisplayItemsChanged() { lyricsSwap.restart() }
+    }
+    SequentialAnimation {
+        id: lyricsSwap
+        NumberAnimation { target: lyricsListView; property: "opacity"; to: 0; duration: UiConstants.durationFast }
+        ScriptAction { script: root.shownLyrics = root.appWindow.lyricDisplayItems }
+        NumberAnimation { target: lyricsListView; property: "opacity"; to: 1; duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
+    }
+
+    AppListView {
         id: lyricsListView
         Component.onCompleted: root.appWindow.lyricsListView = lyricsListView
         Component.onDestruction: {
@@ -40,21 +52,16 @@ Item {
         }
         anchors.fill: parent
         clip: true
-        model: root.appWindow.lyricDisplayItems
+        model: root.shownLyrics
         currentIndex: root.appWindow.activeLyricDisplayIndex
         spacing: 26
-        interactive: root.appWindow.lyricDisplayItems.length > 0
+        interactive: root.shownLyrics.length > 0
         topMargin: Math.round(height * 0.38)
         bottomMargin: Math.round(height * 0.45)
         highlightRangeMode: ListView.ApplyRange
         preferredHighlightBegin: Math.round(height * 0.36)
         preferredHighlightEnd: Math.round(height * 0.38)
         highlightMoveDuration: UiConstants.highlightDurationFull
-        boundsBehavior: Flickable.StopAtBounds
-        flickDeceleration: UiConstants.flickDeceleration
-        maximumFlickVelocity: UiConstants.maximumFlickVelocity
-        cacheBuffer: UiConstants.cacheBuffer
-        pixelAligned: UiConstants.pixelAligned
         reuseItems: true
         ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -123,6 +130,7 @@ Item {
             MouseArea {
                 id: lyricLineMouse
                 anchors.fill: parent
+                enabled: !lyricsSwap.running
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: player.seek(modelData.startMs)

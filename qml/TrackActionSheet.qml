@@ -26,7 +26,7 @@ BottomSheet {
     component ActionItem: Rectangle {
         id: itemRoot
         property string iconName: ""
-        property color iconColor: root.appWindow ? root.appWindow.textPrimary : "#F5F0EC"
+        property color iconColor: root.appWindow.textPrimary
         property string titleText: ""
         property string subtitleText: ""
         signal clicked()
@@ -34,7 +34,7 @@ BottomSheet {
         Layout.fillWidth: true
         Layout.preferredHeight: 50
         radius: 10
-        color: itemMouse.containsMouse ? (root.appWindow ? root.appWindow.surfaceCardHover : "#22201D") : "transparent"
+        color: itemMouse.containsMouse ? root.appWindow.surfaceCardHover : "transparent"
         Behavior on color { ColorAnimation { duration: 120 } }
 
         RowLayout {
@@ -68,8 +68,8 @@ BottomSheet {
                 Label {
                     Layout.fillWidth: true
                     text: itemRoot.titleText
-                    color: root.appWindow ? root.appWindow.textPrimary : "#F5F0EC"
-                    font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
+                    color: root.appWindow.textPrimary
+                    font.family: root.appWindow.displayFont
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
@@ -79,8 +79,8 @@ BottomSheet {
                     Layout.fillWidth: true
                     visible: itemRoot.subtitleText.length > 0
                     text: itemRoot.subtitleText
-                    color: root.appWindow ? root.appWindow.textSecondary : "#8E8A84"
-                    font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
+                    color: root.appWindow.textSecondary
+                    font.family: root.appWindow.bodyFont
                     font.pixelSize: 11
                     elide: Text.ElideRight
                 }
@@ -109,9 +109,9 @@ BottomSheet {
             Layout.alignment: Qt.AlignVCenter
             radius: 8
             clip: true
-            color: root.appWindow ? root.appWindow.surfaceElevated : "#282623"
+            color: root.appWindow.surfaceElevated
             border.width: 1
-            border.color: root.appWindow ? root.appWindow.borderCard : Qt.rgba(1, 1, 1, 0.09)
+            border.color: root.appWindow.borderCard
 
             Cover {
                 anchors.fill: parent
@@ -129,8 +129,8 @@ BottomSheet {
             Label {
                 Layout.fillWidth: true
                 text: root.track ? (root.track.title || root.track.fileName || "Unknown Track") : "No Track"
-                color: root.appWindow ? root.appWindow.textPrimary : "#F5F0EC"
-                font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
+                color: root.appWindow.textPrimary
+                font.family: root.appWindow.displayFont
                 font.pixelSize: 15
                 font.weight: Font.Bold
                 elide: Text.ElideRight
@@ -139,8 +139,8 @@ BottomSheet {
             Label {
                 Layout.fillWidth: true
                 text: root.track ? (root.track.artist || "Unknown Artist") : ""
-                color: root.appWindow ? root.appWindow.textSecondary : "#8E8A84"
-                font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
+                color: root.appWindow.textSecondary
+                font.family: root.appWindow.bodyFont
                 font.pixelSize: 12
                 elide: Text.ElideRight
             }
@@ -159,7 +159,7 @@ BottomSheet {
                 width: 16
                 height: 16
                 icon: "x"
-                color: closeMouse.containsMouse ? (root.appWindow ? root.appWindow.textPrimary : "#FFFFFF") : (root.appWindow ? root.appWindow.textSecondary : "#8E8A84")
+                color: closeMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.textSecondary
             }
 
             MouseArea {
@@ -178,16 +178,13 @@ BottomSheet {
     }
 
     // Scrollable Actions List
-    Flickable {
+    AppFlickable {
         id: actionsFlick
         Layout.fillWidth: true
         Layout.preferredHeight: Math.min(360, actionsColumn.implicitHeight)
         Layout.maximumHeight: 400
         contentHeight: actionsColumn.implicitHeight
         clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        flickDeceleration: UiConstants.flickDeceleration
-        maximumFlickVelocity: UiConstants.maximumFlickVelocity
         pixelAligned: true
 
         ScrollBar.vertical: AutoHideScrollBar {}
@@ -200,11 +197,13 @@ BottomSheet {
             ActionItem {
                 iconName: "music"
                 titleText: "Go to Artist"
-                subtitleText: root.track ? (root.track.artist || "Unknown Artist") : ""
-                visible: !!(root.track && root.track.artist)
+                readonly property string mainArtist: root.track && root.track.artist
+                    ? (library.artistNames(root.track.artist)[0] || root.track.artist) : ""
+                subtitleText: mainArtist || "Unknown Artist"
+                visible: mainArtist.length > 0
                 onClicked: {
                     root.close()
-                    if (root.appWindow) root.appWindow.openCatalogDetail("artist", root.track.artist, root.track)
+                    if (root.appWindow) root.appWindow.openCatalogDetail("artist", mainArtist, root.track)
                 }
             }
 
@@ -276,7 +275,7 @@ BottomSheet {
 
             ActionItem {
                 iconName: "heart"
-                iconColor: root.isTrackFavorite ? (root.appWindow ? root.appWindow.recordRed : "#C23B30") : (root.appWindow ? root.appWindow.textPrimary : "#F5F0EC")
+                iconColor: root.isTrackFavorite ? root.appWindow.recordRed : root.appWindow.textPrimary
                 titleText: root.isTrackFavorite ? "Remove from Favorites" : "Add to Favorites"
                 subtitleText: root.isTrackFavorite ? "Saved in your Favorites" : "Save track to Favorites"
                 onClicked: {

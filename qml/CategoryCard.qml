@@ -2,26 +2,17 @@ import QtQuick.Controls
 import QtQuick
 import QtQuick.Layouts
 
-Rectangle {
+CardBase {
     id: root
     property string name: ""
     property int count: 0
     property var track: ({})
-    property real cardWidth: 224
+    property string iconName: "disc"
+    property real cardWidth: 190
     property real cardHeight: 110
     property real cardRadius: 14
 
-    signal clicked()
-
-    readonly property bool highlighted: folderMouse.containsMouse || (activeFocus && !mouseFocused)
-    property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
-
-    Accessible.role: Accessible.Button
-    Accessible.name: root.name
-    Accessible.onPressAction: root.clicked()
-    Keys.onReturnPressed: root.clicked()
-    Keys.onEnterPressed: root.clicked()
+    accessibleName: root.name
 
     width: cardWidth
     height: cardHeight
@@ -30,7 +21,7 @@ Rectangle {
     color: root.highlighted ? surfaceElevated : surfaceCard
     border.width: 1
     border.color: root.highlighted ? recordRed : borderSubtle
-    scale: root.highlighted ? 1.02 : 1.0
+    scale: root.highlighted ? 1.03 : 1.0
 
     Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
     Behavior on border.color { ColorAnimation { duration: 120 } }
@@ -74,7 +65,7 @@ Rectangle {
                     anchors.centerIn: parent
                     width: 14
                     height: 14
-                    icon: "folder"
+                    icon: root.iconName
                     color: root.highlighted ? recordRedHover : textPrimary
                 }
             }
@@ -83,14 +74,14 @@ Rectangle {
 
             Rectangle {
                 Layout.preferredHeight: 20
-                Layout.preferredWidth: fCountLbl.implicitWidth + 12
+                Layout.preferredWidth: countLabel.implicitWidth + 12
                 radius: 10
                 color: surfaceTag
                 border.width: 1
                 border.color: borderSubtle
 
                 Label {
-                    id: fCountLbl
+                    id: countLabel
                     anchors.centerIn: parent
                     text: root.count + (root.count === 1 ? " track" : " tracks")
                     color: silverDim
@@ -114,17 +105,5 @@ Rectangle {
             font.weight: Font.Bold
             elide: Text.ElideRight
         }
-    }
-
-    MouseArea {
-        id: folderMouse
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onPressed: {
-            root.mouseFocused = true
-            root.forceActiveFocus()
-        }
-        onClicked: root.clicked()
     }
 }

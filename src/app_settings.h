@@ -16,6 +16,7 @@ class SettingsController final : public QObject {
     static SettingsController *instance();
     static QVariant globalValue(const QString &key, const QVariant &defaultValue = QVariant());
     static void setGlobalValue(const QString &key, const QVariant &value);
+    static bool selfCheck();
 
     Q_INVOKABLE void setValue(const QString &key, const QVariant &value);
     Q_INVOKABLE void setValues(const QVariantMap &values);

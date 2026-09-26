@@ -6,8 +6,10 @@ import QtQuick.Window
 
 Item {
     id: root
+    readonly property string countText: root.totalPlays + " plays • " + root.uniquePlayed + " tracks"
 
     required property var appWindow
+    property alias searchBox: recordSearchBar
     property var tracks: []
     property var playCounts: ({})
     property var playbackHistory: []
@@ -15,6 +17,8 @@ Item {
     property string currentTab: "overview"
 
     property int recapYear: new Date().getFullYear()
+    property int recapMonth: -1
+    readonly property string recapPeriod: recapMonth >= 0 ? monthName(recapMonth) + " " + recapYear : "" + recapYear
     property var recapYears: []
     property var recap: ({})
     property var recapSongs: []
@@ -35,7 +39,7 @@ Item {
         const currentYear = new Date().getFullYear()
         if (!years.includes(currentYear)) years.unshift(currentYear)
         recapYears = years
-        recap = library.listeningRecap(recapYear)
+        recap = library.listeningRecap(recapYear, recapMonth)
         recapSongs = toArray(recap.topSongs)
         recapArtists = toArray(recap.topArtists)
         recapAlbums = toArray(recap.topAlbums)
@@ -47,7 +51,11 @@ Item {
     }
 
     onCurrentTabChanged: if (currentTab === "recap") refreshRecap()
-    onRecapYearChanged: if (currentTab === "recap") refreshRecap()
+    onRecapYearChanged: {
+        recapMonth = -1
+        if (currentTab === "recap") refreshRecap()
+    }
+    onRecapMonthChanged: if (currentTab === "recap") refreshRecap()
     property string searchQuery: ""
 
     readonly property var playedTracks: {
@@ -83,9 +91,11 @@ Item {
         const counts = {}
         const sampleTracks = {}
         playedTracks.forEach(row => {
-            const artist = (row.track && row.track.artist) ? row.track.artist : "Unknown Artist"
-            counts[artist] = (counts[artist] || 0) + row.count
-            if (!sampleTracks[artist] && row.track) sampleTracks[artist] = row.track
+            const names = library.artistNames(row.track ? row.track.artist || "" : "")
+            for (const artist of names.length > 0 ? names : ["Unknown Artist"]) {
+                counts[artist] = (counts[artist] || 0) + row.count
+                if (!sampleTracks[artist] && row.track) sampleTracks[artist] = row.track
+            }
         })
         return Object.keys(counts).map(artist => ({
             artist: artist,
@@ -150,7 +160,6 @@ Item {
 
     readonly property bool hasData: totalPlays > 0 || recentTracks.length > 0
 
-
     readonly property var filteredTracks: {
         if (!searchQuery.trim()) return mostPlayed
         const q = searchQuery.toLowerCase().trim()
@@ -208,65 +217,56 @@ Item {
     }
 
 
-
-    component StatCard : Rectangle {
+    component StatCard : Item {
         property string label: ""
         property string value: ""
         property string subtitle: ""
 
         Layout.fillWidth: true
         Layout.preferredWidth: 1
-        implicitHeight: 74
-        radius: 12
-        color: root.appWindow.surfaceCard
-        border.width: 1
-        border.color: statHover.containsMouse ? root.appWindow.borderVariant : root.appWindow.borderSubtle
+        implicitHeight: statColumn.implicitHeight
 
-        Behavior on border.color { ColorAnimation { duration: 120 } }
+        Rectangle {
+            width: 2
+            height: parent.height
+            radius: 1
+            color: root.appWindow.borderVariant
+        }
 
         ColumnLayout {
-            anchors.fill: parent
+            id: statColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.leftMargin: 16
-            anchors.rightMargin: 16
-            anchors.topMargin: 12
-            anchors.bottomMargin: 12
-            spacing: 2
-            Layout.alignment: Qt.AlignVCenter
-
-            Label {
-                text: label.toUpperCase()
-                color: root.appWindow.silverDim
-                font.family: root.appWindow.monoFont
-                font.pixelSize: 10
-                font.weight: Font.Bold
-                font.letterSpacing: 0.8
-            }
+            spacing: 4
 
             Label {
                 Layout.fillWidth: true
                 text: value
                 color: root.appWindow.textPrimary
                 font.family: root.appWindow.displayFont
-                font.pixelSize: 20
+                font.pixelSize: 22
                 font.weight: Font.Bold
                 elide: Text.ElideRight
+            }
+
+            Label {
+                text: label
+                color: root.appWindow.textSecondary
+                font.family: root.appWindow.bodyFont
+                font.pixelSize: 13
+                font.weight: Font.Medium
             }
 
             Label {
                 visible: subtitle.length > 0
                 Layout.fillWidth: true
                 text: subtitle
-                color: root.appWindow.textSecondary
-                font.family: root.appWindow.monoFont
-                font.pixelSize: 10
+                color: root.appWindow.silverDim
+                font.family: root.appWindow.bodyFont
+                font.pixelSize: 12
                 elide: Text.ElideRight
             }
-        }
-
-        MouseArea {
-            id: statHover
-            anchors.fill: parent
-            hoverEnabled: true
         }
     }
 
@@ -338,7 +338,6 @@ Item {
     }
 
 
-
     EmptyState {
         anchors.centerIn: parent
         visible: !root.hasData
@@ -348,7 +347,6 @@ Item {
         actionLabel: "Explore Library"
         onActionClicked: root.appWindow.page = "library"
     }
-
 
 
     ColumnLayout {
@@ -366,76 +364,23 @@ Item {
             Layout.bottomMargin: 14
             spacing: 16
 
-            Row {
-                spacing: 22
-
-                Repeater {
-                    model: [
-                        { id: "overview", label: "Overview" },
-                        { id: "tracks", label: "Top Tracks" },
-                        { id: "artists", label: "Top Artists" },
-                        { id: "albums", label: "Top Albums" },
-                        { id: "history", label: "History" },
-                        { id: "recap", label: "Recap" }
-                    ]
-
-                    Item {
-                        width: tabLbl.implicitWidth
-                        height: 32
-
-                        Label {
-                            id: tabLbl
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: root.currentTab === modelData.id ? root.appWindow.textPrimary : root.appWindow.textSecondary
-                            font.family: root.appWindow.displayFont
-                            font.pixelSize: 15
-                            font.weight: root.currentTab === modelData.id ? Font.Bold : Font.Medium
-                        }
-
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: parent.width
-                            height: 2.5
-                            radius: 1.25
-                            color: root.appWindow.recordRed
-                            visible: root.currentTab === modelData.id
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                root.currentTab = modelData.id
-                                root.searchQuery = ""
-                            }
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                Layout.preferredHeight: 22
-                Layout.preferredWidth: countTagLbl.implicitWidth + 14
-                radius: 11
-                color: root.appWindow.surfaceTag
-                border.width: 1
-                border.color: root.appWindow.borderSubtle
-
-                Label {
-                    id: countTagLbl
-                    anchors.centerIn: parent
-                    text: root.totalPlays + " plays • " + root.uniquePlayed + " tracks"
-                    color: root.appWindow.silverDim
-                    font.family: root.appWindow.monoFont
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
+            PageTabs {
+                tabs: [
+                    { id: "overview", label: "Overview" },
+                    { id: "tracks", label: "Top Tracks" },
+                    { id: "artists", label: "Top Artists" },
+                    { id: "albums", label: "Top Albums" },
+                    { id: "history", label: "History" },
+                    { id: "recap", label: "Rewind" }
+                ]
+                current: root.currentTab
+                onSelected: id => {
+                    root.currentTab = id
+                    root.searchQuery = ""
                 }
             }
 
             Item { Layout.fillWidth: true }
-
 
 
             Row {
@@ -510,23 +455,29 @@ Item {
             }
         }
 
-
         StackLayout {
             id: recordStack
+            transform: Translate { id: tabShift }
+            onCurrentIndexChanged: tabEnter.restart()
+
+            EnterAnimation {
+                id: tabEnter
+                target: recordStack
+                shift: tabShift
+                distance: 6
+                duration: UiConstants.durationFast
+            }
+
             Layout.fillWidth: true
             Layout.fillHeight: true
             currentIndex: ["overview", "tracks", "artists", "albums", "history", "recap"].indexOf(root.currentTab)
 
             // Overview
-            Flickable {
+            AppFlickable {
                 id: overviewScroll
                 readonly property real availableWidth: width
                 clip: true
                 flickableDirection: Flickable.VerticalFlick
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                pixelAligned: UiConstants.pixelAligned
                 ScrollBar.vertical: AutoHideScrollBar {}
                 contentWidth: availableWidth
                 contentHeight: overviewCol.implicitHeight + 48
@@ -561,7 +512,7 @@ Item {
                             visible: false
                             Rectangle {
                                 anchors.fill: parent
-                                radius: (root.appWindow && root.appWindow.albumArtRadius !== undefined) ? root.appWindow.albumArtRadius : 12
+                                radius: root.appWindow.albumArtRadius
                                 color: "white"
                             }
                         }
@@ -569,12 +520,12 @@ Item {
                         Cover {
                             anchors.fill: parent
                             track: root.spotlightTrack ? root.spotlightTrack.track : ({})
-                            radius: (root.appWindow && root.appWindow.albumArtRadius !== undefined) ? root.appWindow.albumArtRadius : 12
+                            radius: root.appWindow.albumArtRadius
                         }
 
                         Rectangle {
                             anchors.fill: parent
-                            radius: (root.appWindow && root.appWindow.albumArtRadius !== undefined) ? root.appWindow.albumArtRadius : 12
+                            radius: root.appWindow.albumArtRadius
                             gradient: Gradient {
                                 GradientStop { position: 0.0; color: "#500E0D0C" }
                                 GradientStop { position: 0.4; color: "#B80E0D0C" }
@@ -595,9 +546,7 @@ Item {
                                     Layout.preferredWidth: 120
                                     Layout.preferredHeight: 120
                                     track: root.spotlightTrack ? root.spotlightTrack.track : ({})
-                                    radius: (root.appWindow && root.appWindow.albumArtRadius !== undefined)
-                                            ? (root.appWindow.albumArtRadius === 0 ? 0 : (root.appWindow.albumArtRadius <= 8 ? 6 : 10))
-                                            : 10
+                                    radius: root.appWindow.albumArtRadius === 0 ? 0 : (root.appWindow.albumArtRadius <= 8 ? 6 : 10)
                                 }
 
                                 ColumnLayout {
@@ -697,10 +646,9 @@ Item {
                         }
                     }
 
-
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 12
+                        spacing: 24
 
                         StatCard {
                             label: "Listening Time"
@@ -761,61 +709,20 @@ Item {
                                 Layout.fillWidth: true
                             }
 
-                            Rectangle {
+                            SeeAllLink {
                                 visible: root.artistRanks.length > 5
-                                Layout.preferredHeight: 28
-                                Layout.preferredWidth: seeArtistsRow.implicitWidth + 20
                                 Layout.alignment: Qt.AlignVCenter
-                                radius: height / 2
-                                color: seeArtistsMouse.containsMouse ? root.appWindow.surfaceElevated : root.appWindow.surfaceTag
-                                border.width: 1
-                                border.color: seeArtistsMouse.containsMouse ? root.appWindow.borderVariant : root.appWindow.borderSubtle
-
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                                Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                                RowLayout {
-                                    id: seeArtistsRow
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Label {
-                                        text: "See all (" + root.artistRanks.length + ")"
-                                        color: seeArtistsMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.textSecondary
-                                        font.family: root.appWindow.monoFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                    }
-
-                                    LucideIcon {
-                                        icon: "chevron-right"
-                                        Layout.preferredWidth: 12
-                                        Layout.preferredHeight: 12
-                                        color: seeArtistsMouse.containsMouse ? root.appWindow.recordRedHover : root.appWindow.silverDim
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: seeArtistsMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.currentTab = "artists"
-                                }
+                                count: root.artistRanks.length
+                                onClicked: root.currentTab = "artists"
                             }
                         }
 
-                        ListView {
+                        AppListView {
                             Layout.fillWidth: true
                             height: 200
                             orientation: ListView.Horizontal
                             spacing: 16
                             clip: false
-                            boundsBehavior: Flickable.StopAtBounds
-                            flickDeceleration: UiConstants.flickDeceleration
-                            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                            cacheBuffer: UiConstants.cacheBuffer
-                            pixelAligned: UiConstants.pixelAligned
                             reuseItems: true
                             model: root.artistRanks.slice(0, 10)
                             delegate: ArtistCard {
@@ -864,61 +771,20 @@ Item {
                                 Layout.fillWidth: true
                             }
 
-                            Rectangle {
+                            SeeAllLink {
                                 visible: root.albumRanks.length > 5
-                                Layout.preferredHeight: 28
-                                Layout.preferredWidth: seeAlbumsRow.implicitWidth + 20
                                 Layout.alignment: Qt.AlignVCenter
-                                radius: height / 2
-                                color: seeAlbumsMouse.containsMouse ? root.appWindow.surfaceElevated : root.appWindow.surfaceTag
-                                border.width: 1
-                                border.color: seeAlbumsMouse.containsMouse ? root.appWindow.borderVariant : root.appWindow.borderSubtle
-
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                                Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                                RowLayout {
-                                    id: seeAlbumsRow
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Label {
-                                        text: "See all (" + root.albumRanks.length + ")"
-                                        color: seeAlbumsMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.textSecondary
-                                        font.family: root.appWindow.monoFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                    }
-
-                                    LucideIcon {
-                                        icon: "chevron-right"
-                                        Layout.preferredWidth: 12
-                                        Layout.preferredHeight: 12
-                                        color: seeAlbumsMouse.containsMouse ? root.appWindow.recordRedHover : root.appWindow.silverDim
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: seeAlbumsMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.currentTab = "albums"
-                                }
+                                count: root.albumRanks.length
+                                onClicked: root.currentTab = "albums"
                             }
                         }
 
-                        ListView {
+                        AppListView {
                             Layout.fillWidth: true
                             height: 205
                             orientation: ListView.Horizontal
                             spacing: 16
                             clip: false
-                            boundsBehavior: Flickable.StopAtBounds
-                            flickDeceleration: UiConstants.flickDeceleration
-                            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                            cacheBuffer: UiConstants.cacheBuffer
-                            pixelAligned: UiConstants.pixelAligned
                             reuseItems: true
                             model: root.albumRanks.slice(0, 10)
                             delegate: AlbumCard {
@@ -977,7 +843,6 @@ Item {
                                 anchors.margins: 16
                                 spacing: 12
 
-
                                 Rectangle {
                                     Layout.fillWidth: true
                                     height: 6
@@ -999,7 +864,6 @@ Item {
                                         }
                                     }
                                 }
-
 
                                 Flow {
                                     Layout.fillWidth: true
@@ -1083,47 +947,11 @@ Item {
                                 Layout.fillWidth: true
                             }
 
-                            Rectangle {
+                            SeeAllLink {
                                 visible: root.mostPlayed.length > 5
-                                Layout.preferredHeight: 28
-                                Layout.preferredWidth: seeTracksRow.implicitWidth + 20
                                 Layout.alignment: Qt.AlignVCenter
-                                radius: height / 2
-                                color: seeTracksMouse.containsMouse ? root.appWindow.surfaceElevated : root.appWindow.surfaceTag
-                                border.width: 1
-                                border.color: seeTracksMouse.containsMouse ? root.appWindow.borderVariant : root.appWindow.borderSubtle
-
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                                Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                                RowLayout {
-                                    id: seeTracksRow
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Label {
-                                        text: "See all (" + root.mostPlayed.length + ")"
-                                        color: seeTracksMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.textSecondary
-                                        font.family: root.appWindow.monoFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                    }
-
-                                    LucideIcon {
-                                        icon: "chevron-right"
-                                        Layout.preferredWidth: 12
-                                        Layout.preferredHeight: 12
-                                        color: seeTracksMouse.containsMouse ? root.appWindow.recordRedHover : root.appWindow.silverDim
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: seeTracksMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.currentTab = "tracks"
-                                }
+                                count: root.mostPlayed.length
+                                onClicked: root.currentTab = "tracks"
                             }
                         }
 
@@ -1145,7 +973,7 @@ Item {
 
             // Tracks
             Item {
-                ListView {
+                AppListView {
                     id: topTracksListView
                     anchors.fill: parent
                     anchors.leftMargin: 24
@@ -1153,11 +981,6 @@ Item {
                     clip: true
                     model: root.filteredTracks
                     spacing: 4
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -1184,7 +1007,7 @@ Item {
 
             // Artists
             Item {
-                GridView {
+                AppGridView {
                     id: artistGrid
                     anchors.fill: parent
                     anchors.leftMargin: 24
@@ -1195,11 +1018,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 190))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 245
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -1236,7 +1054,7 @@ Item {
 
             // Albums
             Item {
-                GridView {
+                AppGridView {
                     id: albumGrid
                     anchors.fill: parent
                     anchors.leftMargin: 24
@@ -1247,11 +1065,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 195))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 255
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -1289,7 +1102,7 @@ Item {
 
             // History
             Item {
-                ListView {
+                AppListView {
                     id: historyListView
                     anchors.fill: parent
                     anchors.leftMargin: 24
@@ -1297,11 +1110,6 @@ Item {
                     clip: true
                     model: root.filteredHistory
                     spacing: 4
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -1328,15 +1136,11 @@ Item {
                 }
             }
 
-            // Recap
-            Flickable {
+            // Rewind
+            AppFlickable {
                 id: recapScroll
                 clip: true
                 flickableDirection: Flickable.VerticalFlick
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                pixelAligned: UiConstants.pixelAligned
                 ScrollBar.vertical: AutoHideScrollBar {}
                 contentWidth: width
                 contentHeight: recapCol.implicitHeight + 48
@@ -1356,7 +1160,7 @@ Item {
                             spacing: 4
 
                             Label {
-                                text: "Your " + root.recapYear
+                                text: "Your " + root.recapPeriod
                                 color: root.appWindow.textPrimary
                                 font.family: root.appWindow.displayFont
                                 font.pixelSize: 26
@@ -1365,10 +1169,10 @@ Item {
 
                             Label {
                                 visible: root.recapHasPlays
-                                text: "Recorded since " + new Date(root.recap.firstListen || 0).toLocaleDateString(Qt.locale(), "d MMMM yyyy")
+                                text: "Since " + new Date(root.recap.firstListen || 0).toLocaleDateString(Qt.locale(), "d MMMM yyyy")
                                 color: root.appWindow.textSecondary
-                                font.family: root.appWindow.monoFont
-                                font.pixelSize: 11
+                                font.family: root.appWindow.bodyFont
+                                font.pixelSize: 13
                             }
                         }
 
@@ -1376,24 +1180,16 @@ Item {
 
                         Row {
                             visible: root.recapYears.length > 1
-                            spacing: 18
+                            spacing: 8
 
                             Repeater {
                                 model: root.recapYears
 
-                                Label {
+                                FilterChip {
                                     required property var modelData
                                     text: "" + modelData
-                                    color: root.recapYear === modelData ? root.appWindow.textPrimary : root.appWindow.textSecondary
-                                    font.family: root.appWindow.displayFont
-                                    font.pixelSize: 14
-                                    font.weight: root.recapYear === modelData ? Font.Bold : Font.Medium
-
-                                    MouseArea {
-                                        anchors.fill: parent
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: root.recapYear = modelData
-                                    }
+                                    selected: root.recapYear === modelData
+                                    onClicked: root.recapYear = modelData
                                 }
                             }
                         }
@@ -1404,60 +1200,148 @@ Item {
                         Layout.preferredHeight: 320
                         visible: !root.recapHasPlays
                         catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
-                        title: "Nothing recorded for " + root.recapYear + " yet"
+                        title: "Nothing recorded for " + root.recapPeriod + " yet"
                         subtitle: "Songs you play most of the way through are counted here, with the date you played them"
                     }
 
                     RowLayout {
                         visible: root.recapHasPlays
                         Layout.fillWidth: true
-                        spacing: 12
+                        spacing: 40
 
-                        StatCard {
-                            label: "Listening Time"
-                            value: root.formatDurationTotal((root.recap.listenedMs || 0) / 1000)
-                            subtitle: "time spent listening"
+                        ColumnLayout {
+                            Layout.alignment: Qt.AlignBottom
+                            spacing: 2
+
+                            Label {
+                                text: root.formatDurationTotal((root.recap.listenedMs || 0) / 1000)
+                                color: root.appWindow.textPrimary
+                                font.family: root.appWindow.displayFont
+                                font.pixelSize: 40
+                                font.weight: Font.Bold
+                                font.letterSpacing: -0.6
+                            }
+
+                            Label {
+                                text: "of listening"
+                                color: root.appWindow.textSecondary
+                                font.family: root.appWindow.bodyFont
+                                font.pixelSize: 15
+                            }
+
+                            Label {
+                                Layout.topMargin: 10
+                                text: root.formatCount(root.recap.plays || 0) + "  \u2022  "
+                                      + (root.recap.songCount || 0) + (root.recap.songCount === 1 ? " song" : " songs") + "  \u2022  "
+                                      + (root.recap.artistCount || 0) + (root.recap.artistCount === 1 ? " artist" : " artists")
+                                color: root.appWindow.silverDim
+                                font.family: root.appWindow.bodyFont
+                                font.pixelSize: 13
+                            }
                         }
 
-                        StatCard {
-                            label: "Plays"
-                            value: "" + (root.recap.plays || 0)
-                            subtitle: "counted listens"
-                        }
+                        Item {
+                            id: monthChart
+                            readonly property var months: root.toArray(root.recap.months)
+                            readonly property real peak: Math.max(1, ...months)
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 150
+                            Layout.alignment: Qt.AlignBottom
 
-                        StatCard {
-                            label: "Songs"
-                            value: "" + (root.recap.songCount || 0)
-                            subtitle: "different songs"
-                        }
+                            Row {
+                                anchors.fill: parent
+                                spacing: 6
 
-                        StatCard {
-                            label: "Artists"
-                            value: "" + (root.recap.artistCount || 0)
-                            subtitle: "different artists"
+                                Repeater {
+                                    model: 12
+
+                                    Item {
+                                        id: monthBar
+                                        required property int index
+                                        readonly property real value: monthChart.months[index] || 0
+                                        readonly property bool selected: root.recapMonth === index
+                                        width: (monthChart.width - 11 * 6) / 12
+                                        height: monthChart.height
+
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: root.monthName(index)
+                                        Accessible.onPressAction: barMouse.clicked(null)
+
+                                        Rectangle {
+                                            anchors.bottom: monthLabel.top
+                                            anchors.bottomMargin: 8
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            width: Math.min(parent.width, 28)
+                                            height: Math.max(3, (parent.height - 28) * monthBar.value / monthChart.peak)
+                                            radius: 4
+                                            color: monthBar.selected ? root.appWindow.recordRed
+                                                 : (barMouse.containsMouse && monthBar.value > 0 ? root.appWindow.recordRedHover
+                                                 : (monthBar.value > 0 ? root.appWindow.borderVariant : root.appWindow.borderSubtle))
+
+                                            Behavior on height { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
+                                        }
+
+                                        Label {
+                                            id: monthLabel
+                                            anchors.bottom: parent.bottom
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: Qt.locale().standaloneMonthName(monthBar.index, Locale.NarrowFormat)
+                                            color: monthBar.selected ? root.appWindow.textPrimary : root.appWindow.silverDim
+                                            font.family: root.appWindow.bodyFont
+                                            font.pixelSize: 12
+                                            font.weight: monthBar.selected ? Font.Bold : Font.Normal
+                                        }
+
+                                        MouseArea {
+                                            id: barMouse
+                                            anchors.fill: parent
+                                            hoverEnabled: true
+                                            enabled: monthBar.value > 0
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: root.recapMonth = monthBar.selected ? -1 : monthBar.index
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
                     RowLayout {
                         visible: root.recapHasPlays
                         Layout.fillWidth: true
-                        spacing: 12
+                        spacing: 24
 
-                        StatCard {
-                            label: "Top Album"
-                            value: root.recapAlbums.length ? root.recapAlbums[0].name : "—"
-                            subtitle: root.recapAlbums.length ? root.formatCount(root.recapAlbums[0].plays) : ""
+                        RowLayout {
+                            visible: root.recapAlbums.length > 0
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 1
+                            spacing: 14
+
+                            Cover {
+                                Layout.preferredWidth: 64
+                                Layout.preferredHeight: 64
+                                radius: 8
+                                track: root.recapAlbums.length ? root.recapAlbums[0].track : ({})
+                            }
+
+                            StatCard {
+                                label: "Top album"
+                                value: root.recapAlbums.length ? root.recapAlbums[0].name : ""
+                                subtitle: root.recapAlbums.length ? root.formatCount(root.recapAlbums[0].plays) : ""
+                            }
                         }
 
                         StatCard {
-                            label: "Top Genre"
-                            value: root.recapGenres.length ? root.recapGenres[0].name : "—"
+                            visible: root.recapGenres.length > 0
+                            label: "Top genre"
+                            value: root.recapGenres.length ? root.recapGenres[0].name : ""
                             subtitle: root.recapGenres.length ? root.formatCount(root.recapGenres[0].plays) : ""
                         }
 
                         StatCard {
-                            label: "Busiest Month"
-                            value: (root.recap.busiestMonth ?? -1) >= 0 ? root.monthName(root.recap.busiestMonth) : "—"
+                            visible: root.recapMonth < 0 && (root.recap.busiestMonth ?? -1) >= 0
+                            label: "Busiest month"
+                            value: (root.recap.busiestMonth ?? -1) >= 0 ? root.monthName(root.recap.busiestMonth) : ""
                             subtitle: (root.recap.busiestMonth ?? -1) >= 0
                                 ? root.formatDurationTotal(root.recap.months[root.recap.busiestMonth] / 1000) + " listened"
                                 : ""
@@ -1471,18 +1355,15 @@ Item {
 
                         RecapHeading {
                             title: "Top Artists"
-                            subtitle: "Who you played most in " + root.recapYear
+                            subtitle: "Who you played most in " + root.recapPeriod
                         }
 
-                        ListView {
+                        AppListView {
                             Layout.fillWidth: true
                             height: 200
                             orientation: ListView.Horizontal
                             spacing: 16
                             clip: false
-                            boundsBehavior: Flickable.StopAtBounds
-                            flickDeceleration: UiConstants.flickDeceleration
-                            maximumFlickVelocity: UiConstants.maximumFlickVelocity
                             model: root.recapArtists
                             delegate: ArtistCard {
                                 name: modelData.name
@@ -1504,7 +1385,7 @@ Item {
                         RecapHeading {
                             Layout.bottomMargin: 8
                             title: "Top Songs"
-                            subtitle: "Your most played songs of " + root.recapYear
+                            subtitle: "Your most played songs of " + root.recapPeriod
                         }
 
                         Repeater {
@@ -1524,106 +1405,12 @@ Item {
         }
     }
 
-
-
-    Popup {
+    ConfirmPopup {
         id: clearPopup
-        parent: Overlay.overlay
-        modal: true
-        focus: true
-        x: Math.round(((parent ? parent.width : 800) - width) / 2)
-        y: Math.round(((parent ? parent.height : 600) - height) / 2)
-        width: Math.min((parent ? parent.width - 64 : 420), 420)
-        padding: 24
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        Overlay.modal: Rectangle {
-            color: "#B8000000"
-        }
-
-        background: Rectangle {
-            radius: 14
-            color: root.appWindow.surfaceCard
-            border.width: 1
-            border.color: root.appWindow.borderSubtle
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 16
-
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 12
-
-                Rectangle {
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
-                    radius: 18
-                    color: Qt.rgba(1, 0.2, 0.2, 0.12)
-                    border.width: 1
-                    border.color: Qt.rgba(1, 0.2, 0.2, 0.25)
-
-                    LucideIcon {
-                        anchors.centerIn: parent
-                        width: 18
-                        height: 18
-                        icon: "rotate-ccw"
-                        color: root.appWindow.recordRed
-                    }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-
-                    Label {
-                        text: "Clear Listening Record?"
-                        color: root.appWindow.textPrimary
-                        font.family: root.appWindow.displayFont
-                        font.pixelSize: 16
-                        font.weight: Font.Bold
-                    }
-
-                    Label {
-                        text: "This cannot be undone"
-                        color: root.appWindow.silverDim
-                        font.family: root.appWindow.monoFont
-                        font.pixelSize: 11
-                    }
-                }
-            }
-
-            Label {
-                Layout.fillWidth: true
-                text: "This will reset all your play counts, top statistics, and playback history. Your music library files and playlists will not be affected."
-                color: root.appWindow.textSecondary
-                font.family: root.appWindow.bodyFont
-                font.pixelSize: 13
-                wrapMode: Text.WordWrap
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 8
-                spacing: 10
-
-                Item { Layout.fillWidth: true }
-
-                SettingButton {
-                    text: "Cancel"
-                    onClicked: clearPopup.close()
-                }
-
-                SettingButton {
-                    text: "Clear Record"
-                    iconName: "rotate-ccw"
-                    destructive: true
-                    onClicked: {
-                        root.appWindow.clearListeningRecord()
-                        clearPopup.close()
-                    }
-                }
-            }
-        }
+        title: "Clear Listening Record?"
+        message: "This will reset all your play counts, top statistics, and playback history. Your music library files and playlists will not be affected."
+        iconName: "rotate-ccw"
+        confirmText: "Clear Record"
+        onConfirmed: root.appWindow.clearListeningRecord()
     }
 }

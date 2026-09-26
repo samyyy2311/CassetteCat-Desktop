@@ -15,7 +15,7 @@
     <p>It organises your music folder by songs, artists, albums, and folders, and plays it with a queue that survives restarts, ReplayGain, a sleep timer, and a floating mini player.</p>
     <ul>
       <li>Synced lyrics from your files or LRCLIB, with timing adjustment</li>
-      <li>A Listening Record with your history, top songs and artists, and a yearly recap</li>
+      <li>A Listening Record with your history, top songs and artists, and a yearly and monthly Rewind</li>
       <li>Scrobbling to Libre.fm and ListenBrainz, and an optional Discord status</li>
       <li>Internet radio, and optional Jellyfin and Subsonic servers</li>
       <li>Full keyboard control, global shortcuts, and MPRIS media controls</li>

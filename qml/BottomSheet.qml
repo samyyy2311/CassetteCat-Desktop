@@ -9,8 +9,8 @@ Item {
     property int maxWidth: 540
     property int maxHeight: Math.min(parent ? parent.height - 30 : 600, 680)
     property var appWindow: (typeof window !== "undefined") ? window : null
-    property color sheetColor: root.appWindow ? root.appWindow.surfaceCard : "#181715"
-    property color sheetBorderColor: root.appWindow ? root.appWindow.borderVariant : Qt.rgba(1, 1, 1, 0.09)
+    property color sheetColor: root.appWindow.surfaceCard
+    property color sheetBorderColor: root.appWindow.borderVariant
 
     signal closed()
 

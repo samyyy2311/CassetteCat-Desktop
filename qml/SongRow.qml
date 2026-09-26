@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "TrackTitles.js" as TrackTitles
 
 Rectangle {
     id: root
@@ -8,6 +9,8 @@ Rectangle {
     property bool isCurrent: !!(player.currentTrack && track && player.currentTrack.filePath === track.filePath)
     property bool showAlbum: true
     property bool showCover: true
+    property int number: 0
+    property string omitArtist: ""
     property bool showDuration: true
     property bool showHeart: true
     property bool showSourceBadge: true
@@ -62,14 +65,44 @@ Rectangle {
 
     Behavior on color { ColorAnimation { duration: 120 } }
 
+    // Declared first so the content stays above it; at z: -1 it received no presses.
+    MouseArea {
+        id: rowMouse
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+        cursorShape: Qt.PointingHandCursor
+        onPressed: {
+            root.mouseFocused = true
+            root.forceActiveFocus()
+        }
+        onClicked: mouse => {
+            if (mouse.button === Qt.RightButton) {
+                contextMenu.popup()
+            } else {
+                root.clicked(mouse.modifiers)
+            }
+        }
+    }
+
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 14
         anchors.rightMargin: 16
         spacing: 12
 
+        Label {
+            visible: root.number > 0
+            Layout.preferredWidth: 28
+            horizontalAlignment: Text.AlignRight
+            text: root.number
+            color: isCurrent ? activeTextColor : silverDim
+            font.family: monoFont
+            font.pixelSize: 13
+        }
+
         Cover {
-            visible: showCover
+            visible: showCover && root.number === 0
             Layout.preferredWidth: 40
             Layout.preferredHeight: 40
             Layout.alignment: Qt.AlignVCenter
@@ -89,7 +122,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
-                text: root.track ? (root.track.title || root.track.fileName || "Untitled Track") : ""
+                text: root.track ? (TrackTitles.title(root.track) || root.track.fileName || "Untitled Track") : ""
                 color: isCurrent ? activeTextColor : defaultTextColor
                 font.family: displayFont
                 font.pixelSize: 14
@@ -101,11 +134,13 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
+                visible: text.length > 0
                 text: {
                     if (!root.track) return ""
-                    const art = root.track.artist || "Unknown Artist"
-                    const alb = root.track.album || ""
-                    return (showAlbum && alb.length > 0) ? (art + " • " + alb) : art
+                    const art = root.omitArtist ? TrackTitles.otherArtists(root.track, root.omitArtist)
+                                                : (TrackTitles.artist(root.track) || "Unknown Artist")
+                    const alb = showAlbum ? (root.track.album || "") : ""
+                    return [art, alb].filter(part => part.length > 0).join(" • ")
                 }
                 color: textSecondary
                 font.family: bodyFont
@@ -219,26 +254,6 @@ Rectangle {
         function popup(...args) {
             active = true
             item.popup(...args)
-        }
-    }
-
-    MouseArea {
-        id: rowMouse
-        anchors.fill: parent
-        z: -1
-        hoverEnabled: true
-        acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: Qt.PointingHandCursor
-        onPressed: {
-            root.mouseFocused = true
-            root.forceActiveFocus()
-        }
-        onClicked: mouse => {
-            if (mouse.button === Qt.RightButton) {
-                contextMenu.popup()
-            } else {
-                root.clicked(mouse.modifiers)
-            }
         }
     }
 }

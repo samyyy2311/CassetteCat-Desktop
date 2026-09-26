@@ -37,12 +37,33 @@ Item {
         return fillMode === Image.PreserveAspectCrop && (src.startsWith("file:") || src.startsWith("image://cover/"))
     }
 
+    // The rounding is part of the image URL, so a cover that animates its size would reload on every
+    // frame. Those covers (stableSourceSize set) take the new rounding once the size settles.
+    property real roundingSide: 0
+    property real roundingRadius: radius
+    function updateRounding() {
+        roundingSide = Math.min(width, height)
+        roundingRadius = radius
+    }
+    Timer {
+        id: roundingSettle
+        interval: 150
+        onTriggered: root.updateRounding()
+    }
+    function scheduleRounding() {
+        if (stableSourceSize > 0 && roundingSide >= 1) roundingSettle.restart()
+        else updateRounding()
+    }
+    onWidthChanged: scheduleRounding()
+    onHeightChanged: scheduleRounding()
+    onRadiusChanged: scheduleRounding()
+
     readonly property url artworkSource: {
         const src = rawArtworkSource.toString()
         if (!providerRounded) return src
-        const shortSide = Math.min(width, height)
+        const shortSide = roundingSide
         if (shortSide < 1) return ""
-        const fraction = Math.min(0.5, radius / shortSide).toFixed(3)
+        const fraction = Math.min(0.5, roundingRadius / shortSide).toFixed(3)
         return src.startsWith("image://cover/")
             ? "image://cover/" + fraction + src.slice(src.indexOf("/", 14))
             : "image://cover/" + fraction + "/" + src

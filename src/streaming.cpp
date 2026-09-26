@@ -608,6 +608,15 @@ QString StreamingController::remoteArtwork(const QString &filePath) {
         if (reply->error() != QNetworkReply::NoError) {
             // Network errors are often temporary, so they are not cached as "no artwork".
             m_remoteArtFailedAt.insert(filePath, QDateTime::currentMSecsSinceEpoch());
+            if (!m_remoteArtRetryScheduled) {
+                // Covers only ask again when their binding re-evaluates, so prompt that once the pause is over.
+                m_remoteArtRetryScheduled = true;
+                QTimer::singleShot(61000, this, [this] {
+                    m_remoteArtRetryScheduled = false;
+                    ++m_remoteArtRevision;
+                    emit remoteArtChanged();
+                });
+            }
             return;
         }
         QString local;

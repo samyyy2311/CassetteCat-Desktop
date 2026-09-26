@@ -39,7 +39,7 @@ QVariant coerceSettingsValue(const QVariant &val, const QVariant &defaultValue) 
             // QML passes whole-number defaults such as 1.0 as int, so keep a stored fraction.
             bool isNumber = false;
             const double number = val.toDouble(&isNumber);
-            if (isNumber && number != std::floor(number))
+            if (isNumber && std::isfinite(number) && number != std::floor(number))
                 return number;
             return val.toInt();
         }
@@ -253,6 +253,7 @@ bool SettingsController::selfCheck() {
     const bool keepsTextFraction = coerceSettingsValue(QStringLiteral("0.5"), 1).toDouble() == 0.5;
     const bool keepsNumberFraction = coerceSettingsValue(0.5, 1).toDouble() == 0.5;
     const bool keepsInteger = coerceSettingsValue(QStringLiteral("3"), 1).toInt() == 3;
+    const bool rejectsNaN = coerceSettingsValue(std::nan(""), 1).toInt() == 0;
     const bool readsBool = coerceSettingsValue(QStringLiteral("true"), false).toBool();
-    return keepsTextFraction && keepsNumberFraction && keepsInteger && readsBool;
+    return keepsTextFraction && keepsNumberFraction && keepsInteger && rejectsNaN && readsBool;
 }

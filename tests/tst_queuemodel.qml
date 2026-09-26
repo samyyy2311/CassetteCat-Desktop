@@ -53,4 +53,27 @@ TestCase {
         model.entries = big.slice()
         compare(model.get(1999).key, "next:song0#0")
     }
+
+    function test_single_change_in_large_queue_keeps_other_rows() {
+        const songs = []
+        for (let i = 0; i < 200; ++i) songs.push(next("s" + i, i))
+        model.entries = []
+        model.entries = songs.slice()
+
+        let removed = 0
+        let inserted = 0
+        const onRemoved = () => ++removed
+        const onInserted = () => ++inserted
+        model.rowsRemoved.connect(onRemoved)
+        model.rowsInserted.connect(onInserted)
+        model.entries = [next("new", 0)].concat(songs)
+        compare(inserted, 1)
+        compare(removed, 0)
+        model.entries = songs.slice(1)
+        model.rowsRemoved.disconnect(onRemoved)
+        model.rowsInserted.disconnect(onInserted)
+        compare(removed, 2)
+        compare(model.count, 199)
+        compare(model.get(0).key, "next:s1#0")
+    }
 }

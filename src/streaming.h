@@ -159,6 +159,7 @@ class StreamingController final : public QObject {
     QHash<QString, QString> m_remoteArtSource;
     QSet<QString> m_remoteArtPending;
     QHash<QString, qint64> m_remoteArtFailedAt;
+    bool m_remoteArtRetryScheduled = false;
     int m_remoteArtDownloads = 0;
     QList<QPointer<QNetworkReply>> m_pendingReplies;
     int m_subConnectToken = 0;

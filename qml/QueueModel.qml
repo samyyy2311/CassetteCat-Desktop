@@ -29,38 +29,39 @@ ListModel {
             return key
         })
         entryByKey = lookup
-        if (count === 0) {
-            append(keys.map(key => ({ key: key })))
-            rowKeys = keys
-            return
-        }
-        let changed = 0
-        for (let i = 0; i < keys.length && changed <= 64; ++i) {
-            if (rowKeys[i] !== keys[i]) ++changed
-        }
-        if (changed > 64) {
-            clear()
-            append(keys.map(key => ({ key: key })))
-            rowKeys = keys
-            return
-        }
+
+        // Plan the edits on a copy first; a reorder that needs many steps (a shuffle) is cheaper as a reset.
+        const wanted = new Set(keys)
         const rows = rowKeys.slice()
-        for (let i = 0; i < keys.length; ++i) {
+        const steps = []
+        for (let i = 0; i < keys.length && steps.length <= 64; ++i) {
+            while (i < rows.length && !wanted.has(rows[i])) {
+                steps.push({ remove: i })
+                rows.splice(i, 1)
+            }
             if (rows[i] === keys[i]) continue
             const found = rows.indexOf(keys[i], i + 1)
             if (found >= 0) {
-                move(found, i, 1)
+                steps.push({ from: found, to: i })
                 rows.splice(i, 0, rows.splice(found, 1)[0])
             } else {
-                insert(i, { key: keys[i] })
+                steps.push({ insert: i, key: keys[i] })
                 rows.splice(i, 0, keys[i])
             }
         }
-        if (rows.length > keys.length) {
-            remove(keys.length, rows.length - keys.length)
-            rows.length = keys.length
+
+        if (steps.length > 64 || count === 0) {
+            clear()
+            append(keys.map(key => ({ key: key })))
+        } else {
+            for (const step of steps) {
+                if (step.remove !== undefined) remove(step.remove, 1)
+                else if (step.insert !== undefined) insert(step.insert, { key: step.key })
+                else move(step.from, step.to, 1)
+            }
+            if (count > keys.length) remove(keys.length, count - keys.length)
         }
-        rowKeys = rows
+        rowKeys = keys
     }
 
     onEntriesChanged: sync()

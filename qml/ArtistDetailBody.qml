@@ -49,7 +49,7 @@ Column {
                     Label {
                         text: "Popular Tracks"
                         color: "#FFFFFF"
-                        font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
+                        font.family: root.appWindow.displayFont
                         font.pixelSize: 21
                         font.weight: Font.Bold
                         font.letterSpacing: -0.35
@@ -59,8 +59,8 @@ Column {
 
                     Label {
                         text: "TOP " + Math.min(5, root.tracks.length)
-                        color: root.appWindow ? root.appWindow.recordRed : "#C23B30"
-                        font.family: root.appWindow ? root.appWindow.monoFont : "IBM Plex Mono"
+                        color: root.appWindow.recordRed
+                        font.family: root.appWindow.monoFont
                         font.pixelSize: 10
                         font.weight: Font.Bold
                         font.letterSpacing: 1.2
@@ -98,7 +98,7 @@ Column {
                         Label {
                             text: "Discography"
                             color: "#FFFFFF"
-                            font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
+                            font.family: root.appWindow.displayFont
                             font.pixelSize: 21
                             font.weight: Font.Bold
                             font.letterSpacing: -0.35
@@ -106,8 +106,8 @@ Column {
 
                         Label {
                             text: root.albumGroups.length + (root.albumGroups.length === 1 ? " release" : " releases")
-                            color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
-                            font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
+                            color: root.appWindow.textSecondary
+                            font.family: root.appWindow.bodyFont
                             font.pixelSize: 12
                         }
                     }
@@ -126,15 +126,15 @@ Column {
                         Label {
                             visible: root.discographySections.length > 1
                             text: modelData.title
-                            color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
-                            font.family: root.appWindow ? root.appWindow.monoFont : "IBM Plex Mono"
+                            color: root.appWindow.textSecondary
+                            font.family: root.appWindow.monoFont
                             font.pixelSize: 10
                             font.weight: Font.Bold
                             font.letterSpacing: 1.2
                             font.capitalization: Font.AllUppercase
                         }
 
-                        ListView {
+                        AppListView {
                             id: releaseList
                             // Sized so a row shows whole cards only.
                             readonly property int visibleCards: Math.max(2, Math.floor((width + spacing) / (180 + spacing)))
@@ -150,11 +150,6 @@ Column {
                             spacing: 16
                             snapMode: ListView.SnapToItem
                             model: modelData.releases
-                            boundsBehavior: Flickable.StopAtBounds
-                            flickDeceleration: UiConstants.flickDeceleration
-                            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                            cacheBuffer: UiConstants.cacheBuffer
-                            pixelAligned: UiConstants.pixelAligned
                             reuseItems: true
 
                             delegate: AlbumCard {

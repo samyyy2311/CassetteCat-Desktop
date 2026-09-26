@@ -23,17 +23,13 @@ Item {
     property real initialScrollPosition: 0
 
     signal scrollPositionChanged(real position)
-    Flickable {
+    AppFlickable {
         id: homeScrollView
         anchors.fill: parent
         clip: true
         readonly property real availableWidth: width
         contentWidth: width
         contentHeight: homeContentCol.implicitHeight + 48
-        flickDeceleration: UiConstants.flickDeceleration
-        maximumFlickVelocity: UiConstants.maximumFlickVelocity
-        pixelAligned: UiConstants.pixelAligned
-        boundsBehavior: Flickable.StopAtBounds
         ScrollBar.vertical: AutoHideScrollBar {}
 
         Component.onCompleted: Qt.callLater(() => {
@@ -239,7 +235,7 @@ Item {
                                     }
                                 }
 
-                                ListView {
+                                AppListView {
                                     width: parent.width
                                     activeFocusOnTab: true
                                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -247,11 +243,6 @@ Item {
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
-                                    boundsBehavior: Flickable.StopAtBounds
-                                    flickDeceleration: UiConstants.flickDeceleration
-                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                                    cacheBuffer: UiConstants.cacheBuffer
-                                    pixelAligned: UiConstants.pixelAligned
                                     reuseItems: true
                                     model: quickPicks
 
@@ -277,7 +268,7 @@ Item {
                                     onShuffleClicked: root.appWindow.shuffleAll()
                                 }
 
-                                ListView {
+                                AppListView {
                                     width: parent.width
                                     activeFocusOnTab: true
                                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -285,11 +276,6 @@ Item {
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
-                                    boundsBehavior: Flickable.StopAtBounds
-                                    flickDeceleration: UiConstants.flickDeceleration
-                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                                    cacheBuffer: UiConstants.cacheBuffer
-                                    pixelAligned: UiConstants.pixelAligned
                                     reuseItems: true
                                     model: heavyRotation
 
@@ -339,7 +325,7 @@ Item {
                                     onShuffleClicked: root.appWindow.shuffleAll()
                                 }
 
-                                ListView {
+                                AppListView {
                                     width: parent.width
                                     activeFocusOnTab: true
                                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -347,11 +333,6 @@ Item {
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
-                                    boundsBehavior: Flickable.StopAtBounds
-                                    flickDeceleration: UiConstants.flickDeceleration
-                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                                    cacheBuffer: UiConstants.cacheBuffer
-                                    pixelAligned: UiConstants.pixelAligned
                                     reuseItems: true
                                     model: albumsRotation
 
@@ -381,7 +362,7 @@ Item {
                                     onShuffleClicked: root.appWindow.shuffleAll()
                                 }
 
-                                ListView {
+                                AppListView {
                                     width: parent.width
                                     activeFocusOnTab: true
                                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -389,11 +370,6 @@ Item {
                                     orientation: ListView.Horizontal
                                     spacing: 16
                                     clip: false
-                                    boundsBehavior: Flickable.StopAtBounds
-                                    flickDeceleration: UiConstants.flickDeceleration
-                                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                                    cacheBuffer: UiConstants.cacheBuffer
-                                    pixelAligned: UiConstants.pixelAligned
                                     reuseItems: true
                                     model: artistsRotation
 

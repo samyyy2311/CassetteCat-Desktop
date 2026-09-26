@@ -12,9 +12,9 @@ Menu {
 
     background: Rectangle {
         radius: 8
-        color: root.appWindow ? root.appWindow.surfaceElevated : "#22201D"
+        color: root.appWindow.surfaceElevated
         border.width: 1
-        border.color: root.appWindow ? root.appWindow.borderVariant : Qt.rgba(1, 1, 1, 0.09)
+        border.color: root.appWindow.borderVariant
     }
 
     component TrackMenuItem: MenuItem {
@@ -34,24 +34,24 @@ Menu {
                 anchors.verticalCenter: parent.verticalCenter
                 icon: item.icon.name
                 color: item.highlighted
-                    ? (root.appWindow ? root.appWindow.recordRedHover : "#D64337")
-                    : (root.appWindow ? root.appWindow.textPrimary : "#F5F0EC")
+                    ? root.appWindow.recordRedHover
+                    : root.appWindow.textPrimary
             }
 
             Label {
                 anchors.verticalCenter: parent.verticalCenter
                 text: item.text
                 color: item.highlighted
-                    ? (root.appWindow ? root.appWindow.recordRedHover : "#D64337")
-                    : (root.appWindow ? root.appWindow.textPrimary : "#F5F0EC")
-                font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
+                    ? root.appWindow.recordRedHover
+                    : root.appWindow.textPrimary
+                font.family: root.appWindow.displayFont
                 font.pixelSize: 12
                 font.weight: Font.Medium
             }
         }
 
         background: Rectangle {
-            color: item.highlighted ? (root.appWindow ? root.appWindow.surfaceCardHover : "#2C2A26") : "transparent"
+            color: item.highlighted ? root.appWindow.surfaceCardHover : "transparent"
             radius: 5
             anchors.fill: parent
             anchors.margins: 2

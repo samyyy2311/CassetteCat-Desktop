@@ -471,15 +471,11 @@ Item {
             currentIndex: ["overview", "tracks", "artists", "albums", "history", "recap"].indexOf(root.currentTab)
 
             // Overview
-            Flickable {
+            AppFlickable {
                 id: overviewScroll
                 readonly property real availableWidth: width
                 clip: true
                 flickableDirection: Flickable.VerticalFlick
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                pixelAligned: UiConstants.pixelAligned
                 ScrollBar.vertical: AutoHideScrollBar {}
                 contentWidth: availableWidth
                 contentHeight: overviewCol.implicitHeight + 48
@@ -514,7 +510,7 @@ Item {
                             visible: false
                             Rectangle {
                                 anchors.fill: parent
-                                radius: (root.appWindow && root.appWindow.albumArtRadius !== undefined) ? root.appWindow.albumArtRadius : 12
+                                radius: root.appWindow.albumArtRadius
                                 color: "white"
                             }
                         }
@@ -522,12 +518,12 @@ Item {
                         Cover {
                             anchors.fill: parent
                             track: root.spotlightTrack ? root.spotlightTrack.track : ({})
-                            radius: (root.appWindow && root.appWindow.albumArtRadius !== undefined) ? root.appWindow.albumArtRadius : 12
+                            radius: root.appWindow.albumArtRadius
                         }
 
                         Rectangle {
                             anchors.fill: parent
-                            radius: (root.appWindow && root.appWindow.albumArtRadius !== undefined) ? root.appWindow.albumArtRadius : 12
+                            radius: root.appWindow.albumArtRadius
                             gradient: Gradient {
                                 GradientStop { position: 0.0; color: "#500E0D0C" }
                                 GradientStop { position: 0.4; color: "#B80E0D0C" }
@@ -548,9 +544,7 @@ Item {
                                     Layout.preferredWidth: 120
                                     Layout.preferredHeight: 120
                                     track: root.spotlightTrack ? root.spotlightTrack.track : ({})
-                                    radius: (root.appWindow && root.appWindow.albumArtRadius !== undefined)
-                                            ? (root.appWindow.albumArtRadius === 0 ? 0 : (root.appWindow.albumArtRadius <= 8 ? 6 : 10))
-                                            : 10
+                                    radius: root.appWindow.albumArtRadius === 0 ? 0 : (root.appWindow.albumArtRadius <= 8 ? 6 : 10)
                                 }
 
                                 ColumnLayout {
@@ -758,17 +752,12 @@ Item {
                             }
                         }
 
-                        ListView {
+                        AppListView {
                             Layout.fillWidth: true
                             height: 200
                             orientation: ListView.Horizontal
                             spacing: 16
                             clip: false
-                            boundsBehavior: Flickable.StopAtBounds
-                            flickDeceleration: UiConstants.flickDeceleration
-                            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                            cacheBuffer: UiConstants.cacheBuffer
-                            pixelAligned: UiConstants.pixelAligned
                             reuseItems: true
                             model: root.artistRanks.slice(0, 10)
                             delegate: ArtistCard {
@@ -861,17 +850,12 @@ Item {
                             }
                         }
 
-                        ListView {
+                        AppListView {
                             Layout.fillWidth: true
                             height: 205
                             orientation: ListView.Horizontal
                             spacing: 16
                             clip: false
-                            boundsBehavior: Flickable.StopAtBounds
-                            flickDeceleration: UiConstants.flickDeceleration
-                            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                            cacheBuffer: UiConstants.cacheBuffer
-                            pixelAligned: UiConstants.pixelAligned
                             reuseItems: true
                             model: root.albumRanks.slice(0, 10)
                             delegate: AlbumCard {
@@ -1098,7 +1082,7 @@ Item {
 
             // Tracks
             Item {
-                ListView {
+                AppListView {
                     id: topTracksListView
                     anchors.fill: parent
                     anchors.leftMargin: 24
@@ -1106,11 +1090,6 @@ Item {
                     clip: true
                     model: root.filteredTracks
                     spacing: 4
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -1137,7 +1116,7 @@ Item {
 
             // Artists
             Item {
-                GridView {
+                AppGridView {
                     id: artistGrid
                     anchors.fill: parent
                     anchors.leftMargin: 24
@@ -1148,11 +1127,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 190))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 245
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -1189,7 +1163,7 @@ Item {
 
             // Albums
             Item {
-                GridView {
+                AppGridView {
                     id: albumGrid
                     anchors.fill: parent
                     anchors.leftMargin: 24
@@ -1200,11 +1174,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 195))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 255
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -1242,7 +1211,7 @@ Item {
 
             // History
             Item {
-                ListView {
+                AppListView {
                     id: historyListView
                     anchors.fill: parent
                     anchors.leftMargin: 24
@@ -1250,11 +1219,6 @@ Item {
                     clip: true
                     model: root.filteredHistory
                     spacing: 4
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -1282,14 +1246,10 @@ Item {
             }
 
             // Recap
-            Flickable {
+            AppFlickable {
                 id: recapScroll
                 clip: true
                 flickableDirection: Flickable.VerticalFlick
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                pixelAligned: UiConstants.pixelAligned
                 ScrollBar.vertical: AutoHideScrollBar {}
                 contentWidth: width
                 contentHeight: recapCol.implicitHeight + 48
@@ -1427,15 +1387,12 @@ Item {
                             subtitle: "Who you played most in " + root.recapYear
                         }
 
-                        ListView {
+                        AppListView {
                             Layout.fillWidth: true
                             height: 200
                             orientation: ListView.Horizontal
                             spacing: 16
                             clip: false
-                            boundsBehavior: Flickable.StopAtBounds
-                            flickDeceleration: UiConstants.flickDeceleration
-                            maximumFlickVelocity: UiConstants.maximumFlickVelocity
                             model: root.recapArtists
                             delegate: ArtistCard {
                                 name: modelData.name

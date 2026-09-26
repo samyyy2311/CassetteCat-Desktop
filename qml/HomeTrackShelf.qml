@@ -24,7 +24,7 @@ Column {
         onShuffleClicked: root.shuffleSelected()
     }
 
-    ListView {
+    AppListView {
         activeFocusOnTab: true
         onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
         width: parent.width
@@ -32,11 +32,6 @@ Column {
         orientation: ListView.Horizontal
         spacing: 16
         clip: false
-        boundsBehavior: Flickable.StopAtBounds
-        flickDeceleration: UiConstants.flickDeceleration
-        maximumFlickVelocity: UiConstants.maximumFlickVelocity
-        cacheBuffer: UiConstants.cacheBuffer
-        pixelAligned: UiConstants.pixelAligned
         reuseItems: true
         model: root.tracks
 

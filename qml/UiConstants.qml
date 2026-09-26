@@ -12,11 +12,10 @@ QtObject {
     readonly property int easingStd: Easing.OutCubic
     readonly property int easingBounce: Easing.OutBack
 
-    // Scroll & Flick physics for liquid-smooth feel
+    // Scroll physics
     readonly property real flickDeceleration: 900
     readonly property real maximumFlickVelocity: 4500
     readonly property int cacheBuffer: 350
-    readonly property bool pixelAligned: false
 
     // Lyrics highlight scroll durations
     readonly property int highlightDurationFull: 500

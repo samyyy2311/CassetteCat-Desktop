@@ -311,7 +311,7 @@ Item {
         }
 
         // Search Results List (visible during active query or filter)
-        ListView {
+        AppListView {
             id: searchResults
             activeFocusOnTab: true
             onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -324,11 +324,6 @@ Item {
             leftMargin: 28
             rightMargin: 28
             bottomMargin: 24
-            boundsBehavior: Flickable.StopAtBounds
-            flickDeceleration: UiConstants.flickDeceleration
-            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-            cacheBuffer: UiConstants.cacheBuffer
-            pixelAligned: UiConstants.pixelAligned
             reuseItems: true
             ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -387,7 +382,7 @@ Item {
         }
 
         // Idle Discovery View (visible when no search query or filter is active)
-        Flickable {
+        AppFlickable {
             id: idleScrollView
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -395,10 +390,6 @@ Item {
             clip: true
             contentWidth: width
             contentHeight: idleColumn.implicitHeight + 32
-            flickDeceleration: UiConstants.flickDeceleration
-            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-            pixelAligned: UiConstants.pixelAligned
-            boundsBehavior: Flickable.StopAtBounds
             ScrollBar.vertical: AutoHideScrollBar {}
 
             ColumnLayout {
@@ -427,7 +418,7 @@ Item {
                         }
                     }
 
-                    ListView {
+                    AppListView {
                         activeFocusOnTab: true
                         onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                         Layout.fillWidth: true
@@ -435,11 +426,6 @@ Item {
                         orientation: ListView.Horizontal
                         spacing: 14
                         clip: false
-                        boundsBehavior: Flickable.StopAtBounds
-                        flickDeceleration: UiConstants.flickDeceleration
-                        maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                        cacheBuffer: UiConstants.cacheBuffer
-                        pixelAligned: UiConstants.pixelAligned
                         reuseItems: true
                         model: root.recentListens
 
@@ -514,7 +500,7 @@ Item {
                         }
                     }
 
-                    ListView {
+                    AppListView {
                         activeFocusOnTab: true
                         onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                         Layout.fillWidth: true
@@ -522,11 +508,6 @@ Item {
                         orientation: ListView.Horizontal
                         spacing: 14
                         clip: false
-                        boundsBehavior: Flickable.StopAtBounds
-                        flickDeceleration: UiConstants.flickDeceleration
-                        maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                        cacheBuffer: UiConstants.cacheBuffer
-                        pixelAligned: UiConstants.pixelAligned
                         reuseItems: true
                         model: root.topArtists
 

@@ -32,7 +32,7 @@ Item {
         NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd }
     }
 
-    ListView {
+    AppListView {
         id: lyricsListView
         Component.onCompleted: root.appWindow.lyricsListView = lyricsListView
         Component.onDestruction: {
@@ -50,11 +50,6 @@ Item {
         preferredHighlightBegin: Math.round(height * 0.36)
         preferredHighlightEnd: Math.round(height * 0.38)
         highlightMoveDuration: UiConstants.highlightDurationFull
-        boundsBehavior: Flickable.StopAtBounds
-        flickDeceleration: UiConstants.flickDeceleration
-        maximumFlickVelocity: UiConstants.maximumFlickVelocity
-        cacheBuffer: UiConstants.cacheBuffer
-        pixelAligned: UiConstants.pixelAligned
         reuseItems: true
         ScrollBar.vertical: AutoHideScrollBar {}
 

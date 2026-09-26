@@ -38,7 +38,7 @@ Item {
             Layout.fillHeight: true
             clip: true
 
-            ListView {
+            AppListView {
                 id: queueListView
                 activeFocusOnTab: true
                 onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -46,11 +46,6 @@ Item {
                 clip: true
                 model: miniPlayer.queueEntries
                 spacing: 2
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
 

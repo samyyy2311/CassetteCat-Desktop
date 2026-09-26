@@ -111,6 +111,9 @@ qt_add_qml_module(CassetteCat
         qml/CatalogDetail.qml
         qml/ArtistDetailBody.qml
         qml/AlbumDetailBody.qml
+        qml/AppFlickable.qml
+        qml/AppGridView.qml
+        qml/AppListView.qml
         qml/CardBase.qml
         qml/CategoryCard.qml
         qml/HomeSectionHeader.qml

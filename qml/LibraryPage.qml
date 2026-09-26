@@ -250,7 +250,7 @@ Item {
             currentIndex: root.appWindow.libraryTab === "songs" ? 0 : (root.appWindow.libraryTab === "artists" ? 1 : (root.appWindow.libraryTab === "albums" ? 2 : (root.appWindow.libraryTab === "genres" ? 3 : (root.appWindow.libraryTab === "folders" ? 4 : 5))))
 
             Item {
-                GridView {
+                AppGridView {
                     id: songsGridView
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
@@ -264,11 +264,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 180))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 240
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -288,7 +283,7 @@ Item {
                     }
                 }
 
-                ListView {
+                AppListView {
                     id: songsListView
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -299,11 +294,6 @@ Item {
                     clip: true
                     model: library
                     spacing: 4
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -361,7 +351,7 @@ Item {
                     return list;
                 }
 
-                GridView {
+                AppGridView {
                     id: artistGrid
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
@@ -374,11 +364,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 190))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 245
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -437,7 +422,7 @@ Item {
                     return list;
                 }
 
-                GridView {
+                AppGridView {
                     id: albumGrid
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
@@ -450,11 +435,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 195))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 255
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -507,7 +487,7 @@ Item {
                     return list;
                 }
 
-                GridView {
+                AppGridView {
                     id: genreGrid
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
@@ -520,11 +500,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 210))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 125
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -576,7 +551,7 @@ Item {
                     return list;
                 }
 
-                GridView {
+                AppGridView {
                     id: folderGrid
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
@@ -589,11 +564,6 @@ Item {
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 210))
                     cellWidth: Math.floor((width - 8) / cols)
                     cellHeight: 125
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 

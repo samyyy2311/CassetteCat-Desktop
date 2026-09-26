@@ -170,7 +170,7 @@ Item {
             }
         }
 
-        Flickable {
+        AppFlickable {
             Layout.fillWidth: true
             Layout.leftMargin: 28
             Layout.rightMargin: 28
@@ -179,10 +179,6 @@ Item {
             contentWidth: pillsRow.implicitWidth
             contentHeight: height
             clip: true
-            boundsBehavior: Flickable.StopAtBounds
-            flickDeceleration: UiConstants.flickDeceleration
-            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-            pixelAligned: UiConstants.pixelAligned
             flickableDirection: Flickable.HorizontalFlick
 
             Row {
@@ -212,7 +208,7 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            GridView {
+            AppGridView {
                 id: radGrid
                 visible: root.appWindow.radioViewMode === "grid" && root.displayedStations.length > 0
                 anchors.fill: parent
@@ -221,11 +217,6 @@ Item {
                 bottomMargin: 32
                 clip: true
                 model: root.displayedStations
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
                 readonly property int cols: Math.max(2, Math.floor((width - 16) / 185))
@@ -362,7 +353,7 @@ Item {
                 }
             }
 
-            ListView {
+            AppListView {
                 id: radList
                 visible: root.appWindow.radioViewMode === "list" && root.displayedStations.length > 0
                 anchors.fill: parent
@@ -372,11 +363,6 @@ Item {
                 clip: true
                 model: root.displayedStations
                 spacing: 4
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
 

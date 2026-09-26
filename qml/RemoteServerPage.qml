@@ -464,7 +464,7 @@ Item {
                 return list
             }
 
-            GridView {
+            AppGridView {
                 id: trackGrid
                 visible: root.viewMode === "grid" || root.activeTab !== "songs"
                 anchors.fill: parent
@@ -478,11 +478,6 @@ Item {
                 readonly property int cols: Math.max(2, Math.floor((width - 8) / (root.activeTab === "albums" ? 195 : 180)))
                 cellWidth: Math.floor((width - 8) / cols)
                 cellHeight: root.activeTab === "albums" ? 255 : (root.activeTab === "genres" ? 120 : 240)
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
 
@@ -508,17 +503,12 @@ Item {
                 }
             }
 
-            ListView {
+            AppListView {
                 id: trackList
                 visible: root.viewMode === "list" && root.activeTab === "songs"
                 anchors.fill: parent
                 clip: true
                 spacing: 2
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
                 model: trackContent.sortedTracks

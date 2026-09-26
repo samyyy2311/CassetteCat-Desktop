@@ -154,7 +154,7 @@ BottomSheet {
                             radius: 18
                             color: "transparent"
                             border.width: isSelected ? 1.5 : 1
-                            border.color: isSelected ? recordRed : (fMouse.containsMouse ? "#45FFFFFF" : (root.appWindow ? root.appWindow.borderSubtle : Qt.rgba(255, 255, 255, 0.05)))
+                            border.color: isSelected ? recordRed : (fMouse.containsMouse ? "#45FFFFFF" : root.appWindow.borderSubtle)
 
                             Behavior on border.color { ColorAnimation { duration: 120 } }
 
@@ -240,7 +240,7 @@ BottomSheet {
                             radius: 18
                             color: "transparent"
                             border.width: isSelected ? 1.5 : 1
-                            border.color: isSelected ? recordRed : (tagMouse.containsMouse ? "#45FFFFFF" : (root.appWindow ? root.appWindow.borderSubtle : Qt.rgba(255, 255, 255, 0.05)))
+                            border.color: isSelected ? recordRed : (tagMouse.containsMouse ? "#45FFFFFF" : root.appWindow.borderSubtle)
 
                             Label {
                                 id: tagLabel
@@ -332,7 +332,7 @@ BottomSheet {
                             radius: 12
                             color: "transparent"
                             border.width: isSelected ? 1.5 : 1
-                            border.color: isSelected ? recordRed : (sMouse.containsMouse ? "#45FFFFFF" : (root.appWindow ? root.appWindow.borderSubtle : Qt.rgba(255, 255, 255, 0.05)))
+                            border.color: isSelected ? recordRed : (sMouse.containsMouse ? "#45FFFFFF" : root.appWindow.borderSubtle)
 
                             Behavior on border.color { ColorAnimation { duration: 120 } }
 

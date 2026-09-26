@@ -49,7 +49,7 @@ Item {
         anchors.fill: parent
         spacing: 14
 
-        ListView {
+        AppListView {
             id: queueListView
             activeFocusOnTab: true
             onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
@@ -58,11 +58,6 @@ Item {
             clip: true
             model: root.appWindow.queueEntries
             spacing: 4
-            boundsBehavior: Flickable.StopAtBounds
-            flickDeceleration: UiConstants.flickDeceleration
-            maximumFlickVelocity: UiConstants.maximumFlickVelocity
-            cacheBuffer: UiConstants.cacheBuffer
-            pixelAligned: UiConstants.pixelAligned
             reuseItems: true
             ScrollBar.vertical: AutoHideScrollBar { anchors.rightMargin: 8 }
 

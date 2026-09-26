@@ -4580,18 +4580,13 @@ ApplicationWindow {
                 }
             }
 
-            ListView {
+            AppListView {
                 Layout.fillWidth: true
                 Layout.fillHeight: !lyricCustomEditorOpen && (lyricSearchLoading || lyricSearchResults.length > 0)
                 clip: true
                 visible: !lyricCustomEditorOpen
                 model: lyricSearchResults
                 spacing: 4
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                cacheBuffer: UiConstants.cacheBuffer
-                pixelAligned: UiConstants.pixelAligned
                 reuseItems: true
                 ScrollBar.vertical: AutoHideScrollBar {}
 

@@ -34,7 +34,7 @@ Rectangle {
             groups[name].year = Math.max(groups[name].year, track.year || 0)
         })
         const list = Object.keys(groups).map(name => groups[name])
-        list.sort((a, b) => (b.year - a.year) || (root.appWindow ? root.appWindow.compareSortKey(a.name, b.name) : a.name.localeCompare(b.name)))
+        list.sort((a, b) => (b.year - a.year) || root.appWindow.compareSortKey(a.name, b.name))
         return list
     }
     readonly property bool uniformFormat: tracks.every(track => track.format === tracks[0].format)
@@ -239,7 +239,7 @@ Rectangle {
                             boxSize: 32
                             iconSize: 15
                             iconName: "disc"
-                            tint: root.appWindow ? root.appWindow.textPrimary : "#F5F0EC"
+                            tint: root.appWindow.textPrimary
                             tooltipText: "Change cover art"
                             onClicked: root.appWindow.openCoverSearch(root.title, root.heroTrack.artist || "", root.heroTrack.filePath || "")
                         }
@@ -253,8 +253,8 @@ Rectangle {
 
                         Label {
                             text: root.artistDetail ? "ARTIST" : (root.albumDetail ? "ALBUM" : root.mode.toUpperCase())
-                            color: root.appWindow ? root.appWindow.recordRed : "#C23B30"
-                            font.family: root.appWindow ? root.appWindow.monoFont : "IBM Plex Mono"
+                            color: root.appWindow.recordRed
+                            font.family: root.appWindow.monoFont
                             font.pixelSize: 11
                             font.weight: Font.Bold
                             font.letterSpacing: 2
@@ -264,7 +264,7 @@ Rectangle {
                             Layout.fillWidth: true
                             text: root.title
                             color: "#FFFFFF"
-                            font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
+                            font.family: root.appWindow.displayFont
                             font.pixelSize: root.featuredDetail ? 40 : 36
                             font.weight: Font.Bold
                             font.letterSpacing: -0.8
@@ -289,8 +289,8 @@ Rectangle {
                                     .concat([root.tracks.length + (root.tracks.length === 1 ? " track" : " tracks"), root.durationText])
                                     .join(" • ")
                             }
-                            color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
-                            font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
+                            color: root.appWindow.textSecondary
+                            font.family: root.appWindow.bodyFont
                             font.pixelSize: 13
                             font.weight: Font.Medium
                         }
@@ -299,8 +299,8 @@ Rectangle {
                             Layout.maximumWidth: parent.width
                             visible: root.albumDetail && root.heroTrack && root.heroTrack.artist
                             text: root.heroTrack.artist || ""
-                            color: artistLinkMouse.containsMouse ? (root.appWindow ? root.appWindow.recordRedHover : "#E0564A") : "#F5F0EC"
-                            font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
+                            color: artistLinkMouse.containsMouse ? root.appWindow.recordRedHover : "#F5F0EC"
+                            font.family: root.appWindow.displayFont
                             font.pixelSize: 18
                             font.weight: Font.DemiBold
                             font.underline: artistLinkMouse.containsMouse
@@ -322,8 +322,8 @@ Rectangle {
                             Layout.fillWidth: true
                             visible: root.featuredDetail && root.detailBio.length > 0
                             text: root.artistDetail ? "ABOUT THIS ARTIST" : "ABOUT THIS ALBUM"
-                            color: root.appWindow ? root.appWindow.recordRed : "#C23B30"
-                            font.family: root.appWindow ? root.appWindow.monoFont : "IBM Plex Mono"
+                            color: root.appWindow.recordRed
+                            font.family: root.appWindow.monoFont
                             font.pixelSize: 10
                             font.weight: Font.Bold
                             font.letterSpacing: 1.2
@@ -334,8 +334,8 @@ Rectangle {
                             Layout.fillWidth: true
                             visible: root.featuredDetail && root.detailBio.length > 0
                             text: root.detailBio
-                            color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
-                            font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
+                            color: root.appWindow.textSecondary
+                            font.family: root.appWindow.bodyFont
                             font.pixelSize: 13
                             wrapMode: Text.Wrap
                             maximumLineCount: root.bioExpanded ? 12 : 3
@@ -345,8 +345,8 @@ Rectangle {
                         Label {
                             visible: bioText.visible && (bioText.truncated || root.bioExpanded)
                             text: root.bioExpanded ? "Less" : "More"
-                            color: bioToggleMouse.containsMouse ? "#FFFFFF" : (root.appWindow ? root.appWindow.textPrimary : "#F5F0EC")
-                            font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
+                            color: bioToggleMouse.containsMouse ? "#FFFFFF" : root.appWindow.textPrimary
+                            font.family: root.appWindow.bodyFont
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
                             font.underline: bioToggleMouse.containsMouse
@@ -436,7 +436,7 @@ Rectangle {
                 bottomPadding: 12
                 text: root.artistDetail ? "All Songs (" + root.tracks.length + ")" : "Tracklist (" + root.tracks.length + ")"
                 color: "#FFFFFF"
-                font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
+                font.family: root.appWindow.displayFont
                 font.pixelSize: 19
                 font.weight: Font.Bold
                 font.letterSpacing: -0.3

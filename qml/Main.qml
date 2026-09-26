@@ -2774,6 +2774,11 @@ ApplicationWindow {
         function onSeekRequested(positionMs) { player.seek(positionMs) }
         function onQueueTrackRequested(index) { window.playFromQueue(window.activePlaybackQueue()[index]) }
         function onHandoffRequested(tracks, index, positionMs, playing) { window.continueHandoff(tracks, index, positionMs, playing) }
+        function onQueueMoveRequested(from, to) {
+            const queue = window.activePlaybackQueue()
+            window.reorderQueuedTrack(queue[from], queue[to], from, to)
+        }
+        function onQueueRemoveRequested(index) { window.removeQueuedTrack(window.activePlaybackQueue()[index]) }
         function onCodeChanged() { appSettings.setValue("services/phoneRemoteCode", phoneRemote.code) }
     }
 

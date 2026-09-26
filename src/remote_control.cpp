@@ -359,6 +359,14 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                               request.value("playing").toBool());
         return {200, {}};
     }
+    if (path == "/api/queue/move" && request.contains("from") && request.contains("to")) {
+        emit queueMoveRequested(request.value("from").toInt(), request.value("to").toInt());
+        return {200, {}};
+    }
+    if (path == "/api/queue/remove" && request.contains("index")) {
+        emit queueRemoveRequested(request.value("index").toInt());
+        return {200, {}};
+    }
     if (path == "/api/queue" && request.contains("index")) {
         emit queueTrackRequested(request.value("index").toInt());
         return {200, {}};
@@ -429,8 +437,16 @@ bool RemoteControlServer::selfCheck() {
                                   .object()
                                   .value("tracks")
                                   .toArray();
+    QPair<int, int> moved{-1, -1};
+    int removedIndex = -1;
+    connect(&remote, &RemoteControlServer::queueMoveRequested, [&](int from, int to) { moved = {from, to}; });
+    connect(&remote, &RemoteControlServer::queueRemoveRequested, [&](int index) { removedIndex = index; });
+    const bool editsQueue =
+        remote.respond("POST", "/api/queue/move", auth, R"({"from":5,"to":3})", lan).status == 200 &&
+        remote.respond("POST", "/api/queue/remove", auth, R"({"index":6})", lan).status == 200 &&
+        moved == QPair<int, int>{5, 3} && removedIndex == 6;
     const bool servesQueue =
-        upNext.size() == 1 && upNext[0].toObject().value("title") == "Next" &&
+        editsQueue && upNext.size() == 1 && upNext[0].toObject().value("title") == "Next" &&
         !upNext[0].toObject().contains("filePath") && !upNext[0].toObject().value("artworkKey").toString().isEmpty() &&
         remote.respond("POST", "/api/queue", auth, R"({"index":4})", lan).status == 200 && queuedIndex == 4;
     const bool codeInQueryOnlyForArtwork =

@@ -67,6 +67,9 @@ class RemoteControlServer final : public QObject {
     void seekRequested(qint64 positionMs);
     /// Requests playback of the track at \p index in the active queue.
     void queueTrackRequested(int index);
+    /// Moves the queued track at \p from to \p to; both are positions in the active queue.
+    void queueMoveRequested(int from, int to);
+    void queueRemoveRequested(int index);
     /// Asks to continue the phone's queue here: \p tracks as {title, artist}, starting at \p index.
     void handoffRequested(const QVariantList &tracks, int index, qint64 positionMs, bool playing);
 

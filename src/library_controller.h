@@ -65,6 +65,8 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE int updateTracksMetadata(const QStringList &filePaths, const QVariantMap &changes);
     Q_INVOKABLE QVariantMap firstPlayableTrack() const;
     Q_INVOKABLE QVariantList playbackTracks() const;
+    /// Up to \p limit available tracks most like \p seed by genre, artist and era, skipping \p excludePaths.
+    Q_INVOKABLE QVariantList similarTracks(const QVariantMap &seed, const QStringList &excludePaths, int limit) const;
     Q_INVOKABLE QVariantMap catalogGroups() const;
     Q_INVOKABLE void setLibraryFilter(const QString &query, const QString &filter, const QVariantMap &favorites,
                                       const QString &sortMetric, bool ascending, const QVariantList &excludedFolders,

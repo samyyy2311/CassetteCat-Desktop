@@ -18,6 +18,7 @@
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QSet>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QTimer>
@@ -508,7 +509,7 @@ bool LibraryController::selfCheck() {
     wavOut << quint32(16) << quint16(1) << quint16(1) << quint32(8000) << quint32(16000) << quint16(2) << quint16(16);
     wavOut.writeRawData("data", 4);
     wavOut << quint32(8000);
-    wavOut.writeRawData(QByteArray(8000, ' ').constData(), 8000);
+    wavOut.writeRawData(QByteArray(8000, '\0').constData(), 8000);
     wav.close();
     LibraryController tagged;
     tagged.m_tracks = {QVariantMap{{"filePath", wavPath}}};
@@ -517,6 +518,34 @@ bool LibraryController::selfCheck() {
     const TrackInfo saved = readTrackInfo(wavPath);
     if (saved.title != "Keep" || saved.artist != "New")
         return fail("batch tag edit keeps other fields");
+
+    LibraryController mixLibrary;
+    mixLibrary.m_tracks = {
+        QVariantMap{{"filePath", "/m/seed.flac"},
+                    {"artist", "Ann"},
+                    {"genre", "Jazz"},
+                    {"year", 2001},
+                    {"durationSeconds", 180}},
+        QVariantMap{{"filePath", "/m/close.flac"},
+                    {"artist", "Ann & Bo"},
+                    {"genre", "Jazz; Soul"},
+                    {"year", 2003},
+                    {"durationSeconds", 180}},
+        QVariantMap{{"filePath", "/m/far.flac"},
+                    {"artist", "Cy"},
+                    {"genre", "Metal"},
+                    {"year", 1980},
+                    {"durationSeconds", 180}},
+        QVariantMap{{"filePath", "/m/played.flac"},
+                    {"artist", "Ann"},
+                    {"genre", "Jazz"},
+                    {"year", 2001},
+                    {"durationSeconds", 180}},
+    };
+    mixLibrary.m_trackCount = int(mixLibrary.m_tracks.size());
+    const QVariantList mix = mixLibrary.similarTracks(mixLibrary.m_tracks.first().toMap(), {"/m/played.flac"}, 10);
+    if (mix.size() != 2 || mix.first().toMap().value("filePath") != "/m/close.flac")
+        return fail("similar tracks");
 
     library.setSearchFilter({}, "ALL", {"/"}, false);
     return library.trackCount() == 0;
@@ -861,6 +890,52 @@ QVariantList LibraryController::playbackTracks() const {
         if (isAvailable(track))
             result.append(track);
     }
+    return result;
+}
+
+// Scored like the Android app's Instant Mix: shared genres count most, then the same or a shared
+// artist, then a release within five years. Ties are shuffled so each run plays differently.
+QVariantList LibraryController::similarTracks(const QVariantMap &seed, const QStringList &excludePaths,
+                                              int limit) const {
+    static const QRegularExpression genreSeparator(QStringLiteral("\\s*[,;/]\\s*"));
+    const auto genres = [](const QVariantMap &track) {
+        QSet<QString> result;
+        for (const QString &genre : track.value("genre").toString().toLower().split(genreSeparator, Qt::SkipEmptyParts))
+            result.insert(genre.trimmed());
+        return result;
+    };
+    const auto artists = [](const QVariantMap &track) {
+        QSet<QString> result;
+        for (const QString &artist : splitArtists(track.value("artist").toString()))
+            result.insert(artist.toLower());
+        return result;
+    };
+    const QSet<QString> seedGenres = genres(seed);
+    const QSet<QString> seedArtists = artists(seed);
+    const QString seedArtist = seed.value("artist").toString();
+    const int seedYear = seed.value("year").toInt();
+    const QSet<QString> excluded(excludePaths.cbegin(), excludePaths.cend());
+
+    QList<QPair<int, QVariantMap>> scored;
+    for (const QVariant &value : playbackTracks()) {
+        const QVariantMap track = value.toMap();
+        const QString path = track.value("filePath").toString();
+        if (path == seed.value("filePath").toString() || excluded.contains(path))
+            continue;
+        const int sharedGenres = int((genres(track) & seedGenres).size());
+        const int artistScore = track.value("artist").toString().compare(seedArtist, Qt::CaseInsensitive) == 0 ? 2
+                                : artists(track).intersects(seedArtists)                                       ? 1
+                                                                                                               : 0;
+        const int year = track.value("year").toInt();
+        const int eraScore = seedYear > 0 && year > 0 && qAbs(seedYear - year) <= 5 ? 1 : 0;
+        scored.append({sharedGenres * 3 + artistScore + eraScore, track});
+    }
+    std::shuffle(scored.begin(), scored.end(), *QRandomGenerator::global());
+    std::stable_sort(scored.begin(), scored.end(), [](const auto &a, const auto &b) { return a.first > b.first; });
+
+    QVariantList result;
+    for (int i = 0; i < qMin(limit, int(scored.size())); ++i)
+        result.append(scored[i].second);
     return result;
 }
 

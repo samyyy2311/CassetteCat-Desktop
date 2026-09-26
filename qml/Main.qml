@@ -2409,8 +2409,16 @@ ApplicationWindow {
         } else if (repeatMode === 1) {
             playQueuedTrack(queue[0])
         } else if (player.currentTrack && player.currentTrack.format !== "STREAM" && autoplayEnabled && library.trackCount > 0) {
-            shuffleAll()
+            continueWithSimilar()
         }
+    }
+
+    // Autoplay keeps going with songs like the last one, skipping what was just queued or played.
+    function continueWithSimilar() {
+        const recent = activePlaybackQueue().concat(playbackHistory).map(track => track.filePath)
+        const similar = library.similarTracks(player.currentTrack, recent, 25)
+        if (similar.length) startPlayback(similar, 0)
+        else shuffleAll()
     }
 
     function playPrevious() {

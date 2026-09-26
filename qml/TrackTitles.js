@@ -20,3 +20,11 @@ function artist(track) {
         return main
     return main ? main + ", " + guests.join(", ") : guests.join(", ")
 }
+
+// Leaves out the artist whose page or album is being shown; other credits are kept as written.
+function otherArtists(track, omit) {
+    const credited = artist(track)
+    const names = credited.split(/\s*(?:,|&|\band\b)\s*/i).filter(name => name)
+    const others = names.filter(name => name.toLowerCase() !== omit.toLowerCase())
+    return others.length === names.length ? credited : others.join(", ")
+}

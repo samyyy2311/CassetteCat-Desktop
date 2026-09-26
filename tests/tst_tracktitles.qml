@@ -23,6 +23,13 @@ TestCase {
         compare(TrackTitles.artist(track), "SZA, Kendrick Lamar")
     }
 
+    function test_other_artists_leave_out_the_page_artist() {
+        const track = { title: "2000 EXCURSION", artist: "Travis Scott, Sheck Wes & Don Toliver" }
+        compare(TrackTitles.otherArtists(track, "travis scott"), "Sheck Wes, Don Toliver")
+        compare(TrackTitles.otherArtists({ title: "SICKO MODE", artist: "Travis Scott" }, "Travis Scott"), "")
+        compare(TrackTitles.otherArtists({ title: "Mr. Brightside", artist: "The Killers" }, "Travis Scott"), "The Killers")
+    }
+
     function test_plain_titles_are_unchanged() {
         const track = { title: "Runnin (Remix)", artist: "21 Savage" }
         compare(TrackTitles.title(track), "Runnin (Remix)")

@@ -10,6 +10,15 @@ Column {
     property var albumGroups: []
     property real contentWidth: 0
     property var appWindow
+    // A release counts as a single when its name says so, or it holds one song named like the release.
+    readonly property var discographySections: {
+        const isSingle = group => /\b(single|ep)\b/i.test(group.name)
+            || (group.count === 1 && (group.track.title || "").toLowerCase() === group.name.toLowerCase())
+        const singles = albumGroups.filter(isSingle)
+        const albums = albumGroups.filter(group => !isSingle(group))
+        return [{ title: "Albums", releases: albums }, { title: "Singles & EPs", releases: singles }]
+            .filter(section => section.releases.length > 0)
+    }
 
     signal albumRequested(string name, var track)
 
@@ -67,6 +76,7 @@ Column {
                         Layout.fillWidth: true
                         track: modelData
                         showAlbum: true
+                        omitArtist: root.title
                         showFormatBadge: false
                         onClicked: root.appWindow.playTrack(modelData)
                         onFavoriteClicked: if (root.appWindow) root.appWindow.toggleFavorite(modelData.filePath)
@@ -107,33 +117,70 @@ Column {
 
                 }
 
-                ListView {
-                    activeFocusOnTab: true
-                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 270
-                    orientation: ListView.Horizontal
-                    clip: true
-                    spacing: 16
-                    model: root.albumGroups
-                    boundsBehavior: Flickable.StopAtBounds
-                    flickDeceleration: UiConstants.flickDeceleration
-                    maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                    cacheBuffer: UiConstants.cacheBuffer
-                    pixelAligned: UiConstants.pixelAligned
-                    reuseItems: true
+                Repeater {
+                    model: root.discographySections
 
-                    delegate: AlbumCard {
+                    ColumnLayout {
                         required property var modelData
-                        width: 184
-                        height: 255
-                        cardWidth: 184
-                        cardHeight: 255
-                        name: modelData.name
-                        subtitle: modelData.count + (modelData.count === 1 ? " song" : " songs") + (modelData.track && modelData.track.year ? " • " + modelData.track.year : "")
-                        count: modelData.count
-                        track: modelData.track
-                        onClicked: root.albumRequested(modelData.name, modelData.track)
+                        Layout.fillWidth: true
+                        Layout.topMargin: 6
+                        spacing: 10
+
+                        Label {
+                            visible: root.discographySections.length > 1
+                            text: modelData.title
+                            color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
+                            font.family: root.appWindow ? root.appWindow.monoFont : "IBM Plex Mono"
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            font.letterSpacing: 1.2
+                            font.capitalization: Font.AllUppercase
+                        }
+
+                        ListView {
+                            id: releaseList
+                            activeFocusOnTab: true
+                            onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 262
+                            orientation: ListView.Horizontal
+                            clip: true
+                            spacing: 16
+                            model: modelData.releases
+                            boundsBehavior: Flickable.StopAtBounds
+                            flickDeceleration: UiConstants.flickDeceleration
+                            maximumFlickVelocity: UiConstants.maximumFlickVelocity
+                            cacheBuffer: UiConstants.cacheBuffer
+                            pixelAligned: UiConstants.pixelAligned
+                            reuseItems: true
+
+                            delegate: AlbumCard {
+                                required property var modelData
+                                width: 184
+                                height: 255
+                                cardWidth: 184
+                                cardHeight: 255
+                                name: modelData.name
+                                subtitle: (modelData.year ? modelData.year + " • " : "") + modelData.count + (modelData.count === 1 ? " song" : " songs")
+                                count: modelData.count
+                                track: modelData.track
+                                onClicked: root.albumRequested(modelData.name, modelData.track)
+                            }
+
+                            // Fades the cut-off card so the row reads as scrollable.
+                            Rectangle {
+                                anchors.right: parent.right
+                                anchors.top: parent.top
+                                anchors.bottom: parent.bottom
+                                width: 56
+                                visible: releaseList.contentWidth > releaseList.width && !releaseList.atXEnd
+                                gradient: Gradient {
+                                    orientation: Gradient.Horizontal
+                                    GradientStop { position: 0.0; color: "#000B0A09" }
+                                    GradientStop { position: 1.0; color: "#0B0A09" }
+                                }
+                            }
+                        }
                     }
                 }
             }

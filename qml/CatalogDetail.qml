@@ -29,13 +29,18 @@ Rectangle {
         const groups = {}
         tracks.forEach(track => {
             const name = track.album || "Unknown Album"
-            if (!groups[name]) groups[name] = { name: name, track: track, count: 0 }
+            if (!groups[name]) groups[name] = { name: name, track: track, count: 0, year: 0 }
             groups[name].count++
+            groups[name].year = Math.max(groups[name].year, track.year || 0)
         })
         const list = Object.keys(groups).map(name => groups[name])
-        list.sort((a, b) => root.appWindow ? root.appWindow.compareSortKey(a.name, b.name) : a.name.localeCompare(b.name))
+        list.sort((a, b) => (b.year - a.year) || (root.appWindow ? root.appWindow.compareSortKey(a.name, b.name) : a.name.localeCompare(b.name)))
         return list
     }
+    readonly property bool uniformFormat: tracks.every(track => track.format === tracks[0].format)
+    // The window bar shows the title once the large heading has scrolled out of view.
+    readonly property bool headingScrolledAway: scrollView.contentY - scrollView.originY > 200
+    property bool bioExpanded: false
 
     signal backRequested()
     signal albumRequested(string name, var track)
@@ -70,7 +75,10 @@ Rectangle {
     }
     onVisibleChanged: if (visible) loadDetailProfile()
     onModeChanged: loadDetailProfile()
-    onTitleChanged: loadDetailProfile()
+    onTitleChanged: {
+        bioExpanded = false
+        loadDetailProfile()
+    }
     onHeroTrackChanged: if (albumDetail) loadAlbumProfile()
 
     Connections {
@@ -99,6 +107,8 @@ Rectangle {
         anchors.fill: parent
         tracks: (root.artistDetail && root.tracks.length <= 5) ? [] : root.tracks
         appWindow: root.appWindow
+        albumArtist: root.albumDetail ? (root.heroTrack.artist || "") : ""
+        showFormatBadge: !(root.albumDetail && root.uniformFormat)
         footer: Item { width: 1; height: 100 }
 
         header: Column {
@@ -107,7 +117,7 @@ Rectangle {
 
             Item {
                 width: parent.width
-                height: root.albumDetail ? 344 : (root.artistDetail ? 282 : 250)
+                height: Math.max(root.albumDetail ? 300 : (root.artistDetail ? 282 : 250), heroInfo.implicitHeight + 60)
 
                 Rectangle {
                     anchors.fill: parent
@@ -214,8 +224,10 @@ Rectangle {
                             }
                         }
 
+                        HoverHandler { id: heroCoverHover }
+
                         PressDepthIconButton {
-                            visible: root.albumDetail
+                            visible: root.albumDetail && heroCoverHover.hovered
                             anchors.right: parent.right
                             anchors.bottom: parent.bottom
                             anchors.rightMargin: 8
@@ -231,6 +243,7 @@ Rectangle {
                     }
 
                     ColumnLayout {
+                        id: heroInfo
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignVCenter
                         spacing: 6
@@ -268,7 +281,10 @@ Rectangle {
                                 if (root.mode === "playlist") {
                                     return root.tracks.length + (root.tracks.length === 1 ? " track" : " tracks") + " • " + root.durationText
                                 }
-                                return (root.heroTrack.artist || "Unknown Artist") + " • " + (root.heroTrack.format || "Music") + (root.heroTrack.label ? (" • " + root.heroTrack.label) : "") + " • " + root.tracks.length + (root.tracks.length === 1 ? " track" : " tracks") + " • " + root.durationText
+                                return [root.albumGroups.length ? root.albumGroups[0].year : 0, root.heroTrack.format, root.heroTrack.label]
+                                    .filter(part => part)
+                                    .concat([root.tracks.length + (root.tracks.length === 1 ? " track" : " tracks"), root.durationText])
+                                    .join(" • ")
                             }
                             color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
                             font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
@@ -277,14 +293,26 @@ Rectangle {
                         }
 
                         Label {
-                            Layout.fillWidth: true
+                            Layout.maximumWidth: parent.width
                             visible: root.albumDetail && root.heroTrack && root.heroTrack.artist
                             text: root.heroTrack.artist || ""
-                            color: "#F5F0EC"
+                            color: artistLinkMouse.containsMouse ? (root.appWindow ? root.appWindow.recordRedHover : "#E0564A") : "#F5F0EC"
                             font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
                             font.pixelSize: 18
                             font.weight: Font.DemiBold
+                            font.underline: artistLinkMouse.containsMouse
                             elide: Text.ElideRight
+                            Accessible.role: Accessible.Link
+                            Accessible.name: "Open artist " + text
+                            Accessible.onPressAction: root.appWindow.openCatalogDetail("artist", root.heroTrack.artist, root.heroTrack)
+
+                            MouseArea {
+                                id: artistLinkMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.appWindow.openCatalogDetail("artist", root.heroTrack.artist, root.heroTrack)
+                            }
                         }
 
                         Label {
@@ -299,6 +327,7 @@ Rectangle {
                         }
 
                         Text {
+                            id: bioText
                             Layout.fillWidth: true
                             visible: root.featuredDetail && root.detailBio.length > 0
                             text: root.detailBio
@@ -306,13 +335,28 @@ Rectangle {
                             font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
                             font.pixelSize: 13
                             wrapMode: Text.Wrap
-                            maximumLineCount: 3
+                            maximumLineCount: root.bioExpanded ? 12 : 3
                             elide: Text.ElideRight
+                        }
+
+                        Label {
+                            visible: bioText.visible && (bioText.truncated || root.bioExpanded)
+                            text: root.bioExpanded ? "Less" : "More"
+                            color: bioToggleMouse.containsMouse ? "#FFFFFF" : (root.appWindow ? root.appWindow.textPrimary : "#F5F0EC")
+                            font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
+                            font.pixelSize: 13
+                            font.weight: Font.DemiBold
+                            font.underline: bioToggleMouse.containsMouse
+                            Accessible.role: Accessible.Button
+                            Accessible.name: root.bioExpanded ? "Show less" : "Show more"
+                            Accessible.onPressAction: root.bioExpanded = !root.bioExpanded
 
                             MouseArea {
+                                id: bioToggleMouse
                                 anchors.fill: parent
+                                hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: detailAboutPopup.open()
+                                onClicked: root.bioExpanded = !root.bioExpanded
                             }
                         }
 
@@ -382,14 +426,6 @@ Rectangle {
                 onAlbumRequested: (name, track) => root.albumRequested(name, track)
             }
 
-            Rectangle {
-                visible: !root.artistDetail || root.tracks.length > 5
-                width: scrollView.width - 72
-                x: 36
-                height: 1
-                color: root.appWindow ? root.appWindow.borderSubtle : "#1AFFFFFF"
-            }
-
             Label {
                 visible: !root.artistDetail || root.tracks.length > 5
                 topPadding: root.artistDetail ? 20 : 16
@@ -405,103 +441,4 @@ Rectangle {
             }
         }
     }
-
-    Popup {
-        id: detailAboutPopup
-        parent: Overlay.overlay
-        modal: true
-        focus: true
-        x: Math.round((root.width - width) / 2)
-        y: Math.round((root.height - height) / 2)
-        width: Math.min(root.width - 96, 720)
-        height: Math.min(root.height - 96, 680)
-        padding: 0
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-        Overlay.modal: Rectangle { color: "#B8000000" }
-
-        background: Rectangle {
-            radius: 14
-            color: root.appWindow ? root.appWindow.surfaceCard : "#181715"
-            border.width: 1
-            border.color: root.appWindow ? root.appWindow.borderVariant : Qt.rgba(1, 1, 1, 0.09)
-        }
-
-        contentItem: ColumnLayout {
-            spacing: 0
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 24
-                Layout.rightMargin: 18
-                Layout.topMargin: 18
-                Layout.bottomMargin: 14
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-
-                    Label {
-                        text: root.artistDetail ? "About " + root.title : "About this album"
-                        color: root.appWindow ? root.appWindow.textPrimary : "#F5F0EC"
-                        font.family: root.appWindow ? root.appWindow.displayFont : "Space Grotesk"
-                        font.pixelSize: 20
-                        font.weight: Font.Bold
-                    }
-
-                    Label {
-                        text: root.title + (root.heroTrack && root.heroTrack.artist ? " • " + root.heroTrack.artist : "")
-                        color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
-                        font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
-                        font.pixelSize: 12
-                        elide: Text.ElideRight
-                        Layout.fillWidth: true
-                    }
-                }
-
-                PressDepthIconButton {
-                    boxSize: 32
-                    iconSize: 16
-                    iconName: "x"
-                    tooltipText: "Close"
-                    onClicked: detailAboutPopup.close()
-                }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: root.appWindow ? root.appWindow.borderSubtle : "#1AFFFFFF"
-            }
-
-            Flickable {
-                id: aboutScroll
-                readonly property real availableWidth: width
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                Layout.margins: 24
-                clip: true
-                contentWidth: availableWidth
-                contentHeight: aboutBioText.implicitHeight
-                flickableDirection: Flickable.VerticalFlick
-                boundsBehavior: Flickable.StopAtBounds
-                flickDeceleration: UiConstants.flickDeceleration
-                maximumFlickVelocity: UiConstants.maximumFlickVelocity
-                pixelAligned: UiConstants.pixelAligned
-                ScrollBar.vertical: AutoHideScrollBar {}
-
-                Text {
-                    id: aboutBioText
-                    width: aboutScroll.availableWidth
-                    text: root.detailBio
-                    wrapMode: Text.Wrap
-                    color: root.appWindow ? root.appWindow.textSecondary : "#A09B93"
-                    font.family: root.appWindow ? root.appWindow.bodyFont : "IBM Plex Sans"
-                    font.pixelSize: 15
-                    lineHeight: 1.42
-                }
-            }
-        }
-    }
-
 }

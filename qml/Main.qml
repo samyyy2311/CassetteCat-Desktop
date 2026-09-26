@@ -3037,6 +3037,9 @@ ApplicationWindow {
             Label {
                 Layout.fillWidth: true
                 text: catalogDetailTitle
+                // The page's own large heading shows the name until it scrolls away.
+                opacity: catalogDetailLoader.item && catalogDetailLoader.item.headingScrolledAway ? 1 : 0
+                Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }
                 color: textPrimary
                 font.family: displayFont
                 font.pixelSize: 20

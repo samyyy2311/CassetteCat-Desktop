@@ -7,6 +7,9 @@ ListView {
     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
     property var tracks: []
     property var appWindow
+    // Set on album pages: rows show track numbers and leave this artist out of their credits.
+    property string albumArtist: ""
+    property bool showFormatBadge: true
 
     clip: true
     spacing: 4
@@ -31,6 +34,10 @@ ListView {
             anchors.leftMargin: 36
             anchors.rightMargin: 36
             track: modelData
+            number: root.albumArtist ? (modelData.trackNumber > 0 ? modelData.trackNumber : index + 1) : 0
+            omitArtist: root.albumArtist
+            showAlbum: !root.albumArtist
+            showFormatBadge: root.showFormatBadge && (typeof window === "undefined" || window.showFormatBadges !== false)
             onClicked: root.appWindow.playTrack(modelData)
             onFavoriteClicked: if (root.appWindow) root.appWindow.toggleFavorite(modelData.filePath)
         }

@@ -14,7 +14,7 @@ Item {
     readonly property int requestedLongEdge: {
         const rawDim = stableSourceSize > 0 ? stableSourceSize : Math.max(width, height)
         const target = (rawDim > 10 ? rawDim : 256) * (Screen.devicePixelRatio || 1)
-        return Math.max(32, Math.min(512, Math.ceil(target)))
+        return Math.max(32, Math.min(1536, Math.ceil(target)))
     }
     readonly property size requestedSourceSize: providerRounded && width > 0 && height > 0
         ? Qt.size(Math.ceil(requestedLongEdge * width / Math.max(width, height)),

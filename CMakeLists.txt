@@ -148,6 +148,7 @@ qt_add_qml_module(CassetteCat
         qml/CountTag.qml
         qml/FilterChip.qml
         qml/PageTabs.qml
+        qml/SeeAllLink.qml
         qml/SettingColorPicker.qml
         qml/SettingDivider.qml
         qml/SettingsPathList.qml

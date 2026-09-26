@@ -712,47 +712,11 @@ Item {
                                 Layout.fillWidth: true
                             }
 
-                            Rectangle {
+                            SeeAllLink {
                                 visible: root.artistRanks.length > 5
-                                Layout.preferredHeight: 28
-                                Layout.preferredWidth: seeArtistsRow.implicitWidth + 20
                                 Layout.alignment: Qt.AlignVCenter
-                                radius: height / 2
-                                color: seeArtistsMouse.containsMouse ? root.appWindow.surfaceElevated : root.appWindow.surfaceTag
-                                border.width: 1
-                                border.color: seeArtistsMouse.containsMouse ? root.appWindow.borderVariant : root.appWindow.borderSubtle
-
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                                Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                                RowLayout {
-                                    id: seeArtistsRow
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Label {
-                                        text: "See all (" + root.artistRanks.length + ")"
-                                        color: seeArtistsMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.textSecondary
-                                        font.family: root.appWindow.monoFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                    }
-
-                                    LucideIcon {
-                                        icon: "chevron-right"
-                                        Layout.preferredWidth: 12
-                                        Layout.preferredHeight: 12
-                                        color: seeArtistsMouse.containsMouse ? root.appWindow.recordRedHover : root.appWindow.silverDim
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: seeArtistsMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.currentTab = "artists"
-                                }
+                                count: root.artistRanks.length
+                                onClicked: root.currentTab = "artists"
                             }
                         }
 
@@ -810,47 +774,11 @@ Item {
                                 Layout.fillWidth: true
                             }
 
-                            Rectangle {
+                            SeeAllLink {
                                 visible: root.albumRanks.length > 5
-                                Layout.preferredHeight: 28
-                                Layout.preferredWidth: seeAlbumsRow.implicitWidth + 20
                                 Layout.alignment: Qt.AlignVCenter
-                                radius: height / 2
-                                color: seeAlbumsMouse.containsMouse ? root.appWindow.surfaceElevated : root.appWindow.surfaceTag
-                                border.width: 1
-                                border.color: seeAlbumsMouse.containsMouse ? root.appWindow.borderVariant : root.appWindow.borderSubtle
-
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                                Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                                RowLayout {
-                                    id: seeAlbumsRow
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Label {
-                                        text: "See all (" + root.albumRanks.length + ")"
-                                        color: seeAlbumsMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.textSecondary
-                                        font.family: root.appWindow.monoFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                    }
-
-                                    LucideIcon {
-                                        icon: "chevron-right"
-                                        Layout.preferredWidth: 12
-                                        Layout.preferredHeight: 12
-                                        color: seeAlbumsMouse.containsMouse ? root.appWindow.recordRedHover : root.appWindow.silverDim
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: seeAlbumsMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.currentTab = "albums"
-                                }
+                                count: root.albumRanks.length
+                                onClicked: root.currentTab = "albums"
                             }
                         }
 
@@ -1024,47 +952,11 @@ Item {
                                 Layout.fillWidth: true
                             }
 
-                            Rectangle {
+                            SeeAllLink {
                                 visible: root.mostPlayed.length > 5
-                                Layout.preferredHeight: 28
-                                Layout.preferredWidth: seeTracksRow.implicitWidth + 20
                                 Layout.alignment: Qt.AlignVCenter
-                                radius: height / 2
-                                color: seeTracksMouse.containsMouse ? root.appWindow.surfaceElevated : root.appWindow.surfaceTag
-                                border.width: 1
-                                border.color: seeTracksMouse.containsMouse ? root.appWindow.borderVariant : root.appWindow.borderSubtle
-
-                                Behavior on color { ColorAnimation { duration: 120 } }
-                                Behavior on border.color { ColorAnimation { duration: 120 } }
-
-                                RowLayout {
-                                    id: seeTracksRow
-                                    anchors.centerIn: parent
-                                    spacing: 5
-
-                                    Label {
-                                        text: "See all (" + root.mostPlayed.length + ")"
-                                        color: seeTracksMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.textSecondary
-                                        font.family: root.appWindow.monoFont
-                                        font.pixelSize: 11
-                                        font.weight: Font.DemiBold
-                                    }
-
-                                    LucideIcon {
-                                        icon: "chevron-right"
-                                        Layout.preferredWidth: 12
-                                        Layout.preferredHeight: 12
-                                        color: seeTracksMouse.containsMouse ? root.appWindow.recordRedHover : root.appWindow.silverDim
-                                    }
-                                }
-
-                                MouseArea {
-                                    id: seeTracksMouse
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: root.currentTab = "tracks"
-                                }
+                                count: root.mostPlayed.length
+                                onClicked: root.currentTab = "tracks"
                             }
                         }
 

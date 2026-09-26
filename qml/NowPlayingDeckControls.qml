@@ -54,18 +54,10 @@ Item {
             MouseArea {
                 id: artistMouseArea
                 anchors.fill: parent
-                enabled: !!root.playerController.currentTrack.album
+                enabled: !!root.playerController.currentTrack.filePath
                 hoverEnabled: true
-                acceptedButtons: Qt.LeftButton | Qt.RightButton
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                onClicked: mouse => {
-                    if (mouse.button === Qt.RightButton) {
-                        root.appWindow.openCoverSearch(root.playerController.currentTrack.album, root.playerController.currentTrack.artist || "", root.playerController.currentTrack.filePath || "")
-                    } else {
-                        root.appWindow.nowPlayingOpen = false
-                        root.appWindow.openCatalogDetail("album", root.playerController.currentTrack.album, root.playerController.currentTrack)
-                    }
-                }
+                onClicked: root.appWindow.openTrackActionSheet(root.playerController.currentTrack)
             }
         }
 

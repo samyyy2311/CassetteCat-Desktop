@@ -197,11 +197,13 @@ BottomSheet {
             ActionItem {
                 iconName: "music"
                 titleText: "Go to Artist"
-                subtitleText: root.track ? (root.track.artist || "Unknown Artist") : ""
-                visible: !!(root.track && root.track.artist)
+                readonly property string mainArtist: root.track && root.track.artist
+                    ? (library.artistNames(root.track.artist)[0] || root.track.artist) : ""
+                subtitleText: mainArtist || "Unknown Artist"
+                visible: mainArtist.length > 0
                 onClicked: {
                     root.close()
-                    if (root.appWindow) root.appWindow.openCatalogDetail("artist", root.track.artist, root.track)
+                    if (root.appWindow) root.appWindow.openCatalogDetail("artist", mainArtist, root.track)
                 }
             }
 

@@ -2124,6 +2124,7 @@ ApplicationWindow {
     }
 
     function openCatalogDetail(mode, title, heroTrack, key) {
+        nowPlayingOpen = false
         if (catalogDetailOpen) {
             catalogDetailHistory = catalogDetailHistory.concat([{
                 mode: catalogDetailMode,

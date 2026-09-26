@@ -179,30 +179,35 @@ Item {
         return root.displayItems.map(item => item.track).filter(track => !!track)
     }
 
+    function addToGroup(result, name, track, query) {
+        if (query.length > 0 && !name.toLowerCase().includes(query)
+                && !(track.artist || "").toLowerCase().includes(query) && !(track.title || "").toLowerCase().includes(query))
+            return
+        if (!result[name]) result[name] = { name: name, count: 0, track: track, artist: track.artist || "" }
+        result[name].count++
+    }
+
     function groups(field) {
         const result = {}
         const q = searchQuery.toLowerCase()
         collectTracks().forEach(track => {
             if (!matchesFormatFilter(track)) return
-            let name = ""
             if (field === "artist") {
-                name = appWindow.extractPrimaryArtist(track.artist || "Unknown Artist")
-            } else if (field === "album") {
+                const names = library.artistNames(track.artist || "")
+                const credited = names.length > 0 ? names : ["Unknown Artist"]
+                credited.forEach(artist => addToGroup(result, artist, track, q))
+                return
+            }
+            let name = ""
+            if (field === "album") {
                 name = (track.album || "Unknown Album").trim()
             } else if (field === "genre") {
                 name = (track.genre || "Soundtrack").trim()
             } else {
                 name = (track[field] || "Unknown").trim()
             }
-            if (!name) name = (field === "album" ? "Unknown Album" : (field === "genre" ? "Soundtrack" : "Unknown Artist"))
-            if (q.length > 0) {
-                const matchesName = name.toLowerCase().includes(q)
-                const matchesArtist = (track.artist || "").toLowerCase().includes(q)
-                const matchesTitle = (track.title || "").toLowerCase().includes(q)
-                if (!matchesName && !matchesArtist && !matchesTitle) return
-            }
-            if (!result[name]) result[name] = { name: name, count: 0, track: track, artist: track.artist || "" }
-            result[name].count++
+            if (!name) name = (field === "album" ? "Unknown Album" : "Soundtrack")
+            addToGroup(result, name, track, q)
         })
 
         const metric = currentSortMetric
@@ -470,7 +475,7 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: 24
                 anchors.rightMargin: 8
-                anchors.bottomMargin: 32
+                bottomMargin: 32
                 clip: true
                 model: root.activeTab === "songs" && root.formatFilter === "ALL"
                     && root.searchQuery.length === 0 && root.songSortMetric === "title" && root.songSortAscending

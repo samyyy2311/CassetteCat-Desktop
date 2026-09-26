@@ -2022,14 +2022,6 @@ ApplicationWindow {
         restorePlaybackHistory()
     }
 
-    function extractPrimaryArtist(raw) {
-        if (!raw) return "Unknown Artist"
-        const str = raw.trim()
-        if (!str) return "Unknown Artist"
-        const match = str.split(/[,&;/]|\bfeat\.?\b|\bft\.?\b/i).find(part => part.trim().length > 0)
-        return match ? match.trim() : str
-    }
-
     function splitArtists(raw) {
         if (!raw) return ["Unknown Artist"]
         const parts = String(raw).split(/\s*(?:[,&;/]|(?:\b(?:feat|ft)\b\.?)|\bfeaturing\b)\s*/i)

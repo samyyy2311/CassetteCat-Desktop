@@ -94,9 +94,11 @@ Item {
         const counts = {}
         const sampleTracks = {}
         playedTracks.forEach(row => {
-            const artist = (row.track && row.track.artist) ? row.track.artist : "Unknown Artist"
-            counts[artist] = (counts[artist] || 0) + row.count
-            if (!sampleTracks[artist] && row.track) sampleTracks[artist] = row.track
+            const names = library.artistNames(row.track ? row.track.artist || "" : "")
+            for (const artist of names.length > 0 ? names : ["Unknown Artist"]) {
+                counts[artist] = (counts[artist] || 0) + row.count
+                if (!sampleTracks[artist] && row.track) sampleTracks[artist] = row.track
+            }
         })
         return Object.keys(counts).map(artist => ({
             artist: artist,
@@ -220,64 +222,56 @@ Item {
 
 
 
-    component StatCard : Rectangle {
+    component StatCard : Item {
         property string label: ""
         property string value: ""
         property string subtitle: ""
 
         Layout.fillWidth: true
         Layout.preferredWidth: 1
-        implicitHeight: 74
-        radius: 12
-        color: root.appWindow.surfaceCard
-        border.width: 1
-        border.color: statHover.containsMouse ? root.appWindow.borderVariant : root.appWindow.borderSubtle
+        implicitHeight: statColumn.implicitHeight
 
-        Behavior on border.color { ColorAnimation { duration: 120 } }
+        Rectangle {
+            width: 2
+            height: parent.height
+            radius: 1
+            color: root.appWindow.borderVariant
+        }
 
         ColumnLayout {
-            anchors.fill: parent
+            id: statColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.leftMargin: 16
-            anchors.rightMargin: 16
-            anchors.topMargin: 12
-            anchors.bottomMargin: 12
-            spacing: 2
-            Layout.alignment: Qt.AlignVCenter
-
-            Label {
-                text: label.toUpperCase()
-                color: root.appWindow.silverDim
-                font.family: root.appWindow.monoFont
-                font.pixelSize: 10
-                font.weight: Font.Bold
-                font.letterSpacing: 0.8
-            }
+            spacing: 4
 
             Label {
                 Layout.fillWidth: true
                 text: value
                 color: root.appWindow.textPrimary
                 font.family: root.appWindow.displayFont
-                font.pixelSize: 20
+                font.pixelSize: 26
                 font.weight: Font.Bold
                 elide: Text.ElideRight
+            }
+
+            Label {
+                text: label
+                color: root.appWindow.textSecondary
+                font.family: root.appWindow.bodyFont
+                font.pixelSize: 13
+                font.weight: Font.Medium
             }
 
             Label {
                 visible: subtitle.length > 0
                 Layout.fillWidth: true
                 text: subtitle
-                color: root.appWindow.textSecondary
-                font.family: root.appWindow.monoFont
-                font.pixelSize: 10
+                color: root.appWindow.silverDim
+                font.family: root.appWindow.bodyFont
+                font.pixelSize: 12
                 elide: Text.ElideRight
             }
-        }
-
-        MouseArea {
-            id: statHover
-            anchors.fill: parent
-            hoverEnabled: true
         }
     }
 
@@ -657,7 +651,7 @@ Item {
 
                     RowLayout {
                         Layout.fillWidth: true
-                        spacing: 12
+                        spacing: 24
 
                         StatCard {
                             label: "Listening Time"
@@ -1349,7 +1343,7 @@ Item {
                     RowLayout {
                         visible: root.recapHasPlays
                         Layout.fillWidth: true
-                        spacing: 12
+                        spacing: 24
 
                         StatCard {
                             label: "Listening Time"
@@ -1379,7 +1373,7 @@ Item {
                     RowLayout {
                         visible: root.recapHasPlays
                         Layout.fillWidth: true
-                        spacing: 12
+                        spacing: 24
 
                         StatCard {
                             label: "Top Album"

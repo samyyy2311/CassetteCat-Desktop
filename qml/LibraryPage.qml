@@ -54,9 +54,16 @@ Item {
             }
 
             CountTag {
-                text: root.appWindow.libraryTab === "playlists"
-                    ? ((root.appWindow.playlists.length + 4) + " playlists")
-                    : (root.libraryModel.trackCount + " songs")
+                text: {
+                    switch (root.appWindow.libraryTab) {
+                    case "artists": return root.appWindow.artists.length + " artists"
+                    case "albums": return root.appWindow.albums.length + " albums"
+                    case "genres": return root.appWindow.genreGroups.length + " genres"
+                    case "folders": return root.appWindow.folderGroups.length + " folders"
+                    case "playlists": return (root.appWindow.playlists.length + 4) + " playlists"
+                    default: return root.libraryModel.trackCount + " songs"
+                    }
+                }
             }
 
 

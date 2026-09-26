@@ -47,6 +47,8 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE QStringList availablePaths() const;
     /// Orders names for display: symbols and numbers first, then letters in any script, ignoring leading articles.
     Q_INVOKABLE int compareNames(const QString &left, const QString &right) const;
+    /// The individual artists credited in \p artist, as the Library's Artists tab counts them.
+    Q_INVOKABLE QStringList artistNames(const QString &artist) const;
     /// Appends a counted play with the current date and the time listened to the listening log.
     Q_INVOKABLE void recordListen(const QVariantMap &track, qint64 listenedMs);
     /// Returns the years that have logged plays, newest first.

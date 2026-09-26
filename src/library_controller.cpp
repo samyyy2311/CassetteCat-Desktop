@@ -622,6 +622,10 @@ int LibraryController::compareNames(const QString &left, const QString &right) c
     return compareSortKeys(left, right);
 }
 
+QStringList LibraryController::artistNames(const QString &artist) const {
+    return splitArtists(artist);
+}
+
 void LibraryController::recordListen(const QVariantMap &track, qint64 listenedMs) {
     const QString path = track.value("filePath").toString();
     if (path.isEmpty() || listenedMs <= 0)

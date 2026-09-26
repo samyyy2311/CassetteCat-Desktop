@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "TrackTitles.js" as TrackTitles
 
 Item {
     id: root
@@ -44,7 +45,7 @@ Item {
 
         Label {
             Layout.fillWidth: true
-            text: root.track.title || root.track.fileName
+            text: TrackTitles.title(root.track) || root.track.fileName
             color: root.highlighted ? recordRedHover : textPrimary
             font.family: displayFont
             font.pixelSize: 13
@@ -54,7 +55,7 @@ Item {
 
         Label {
             Layout.fillWidth: true
-            text: root.track.artist || "Unknown Artist"
+            text: TrackTitles.artist(root.track) || "Unknown Artist"
             color: textSecondary
             font.family: bodyFont
             font.pixelSize: 11

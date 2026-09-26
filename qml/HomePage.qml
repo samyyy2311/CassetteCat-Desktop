@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Effects
 import QtQuick.Layouts
+import QtQuick.Effects
 
 Item {
     id: root
@@ -84,13 +84,13 @@ Item {
 
                             Rectangle {
                                 id: heroCard
+                                readonly property var heroTrack: spotlightTrack || root.libraryModel.firstPlayableTrack()
+                                readonly property real cornerRadius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
                                 x: 32
                                 width: homeScrollView.availableWidth - 64
-                                height: 175
-                                radius: 12
+                                height: 150
+                                radius: cornerRadius
                                 color: surfaceCard
-                                border.width: 1
-                                border.color: heroCardMouse.containsMouse ? borderVariant : borderSubtle
                                 visible: root.libraryModel.trackCount > 0
                                 layer.enabled: true
                                 layer.effect: MultiEffect {
@@ -105,76 +105,120 @@ Item {
                                     visible: false
                                     Rectangle {
                                         anchors.fill: parent
-                                        radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
+                                        radius: heroCard.cornerRadius
                                         color: "white"
                                     }
                                 }
 
+                                // A small, heavily blurred copy of the artwork reads as colour instead of a stretched image.
                                 Cover {
-                                    anchors.fill: parent
-                                    track: spotlightTrack || root.libraryModel.firstPlayableTrack()
-                                    radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
+                                    anchors.centerIn: parent
+                                    width: parent.width * 1.2
+                                    height: width
+                                    track: heroCard.heroTrack
+                                    stableSourceSize: 160
+                                    layer.enabled: true
+                                    layer.textureSize: Qt.size(200, 200)
+                                    layer.smooth: true
+                                    layer.effect: MultiEffect {
+                                        blurEnabled: true
+                                        blur: 1.0
+                                        blurMax: 48
+                                        saturation: 0.3
+                                        brightness: -0.3
+                                    }
                                 }
 
                                 Rectangle {
                                     anchors.fill: parent
-                                    radius: (typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 12
                                     gradient: Gradient {
-                                        GradientStop { position: 0.0; color: "#40000000" }
-                                        GradientStop { position: 0.45; color: "#A00E0D0C" }
-                                        GradientStop { position: 1.0; color: "#F00E0D0C" }
-                                    }
-                                }
-
-                                Item {
-                                    anchors.fill: parent
-                                    anchors.margins: 22
-                                    z: 2
-
-                                    ColumnLayout {
-                                        anchors.left: parent.left
-                                        anchors.right: heroShuffleBtn.left
-                                        anchors.rightMargin: 16
-                                        anchors.bottom: parent.bottom
-                                        spacing: 3
-
-                                        Label {
-                                            text: "Shuffle your library"
-                                            color: "#FFFFFF"
-                                            font.family: displayFont
-                                            font.pixelSize: 22
-                                            font.weight: Font.Bold
-                                        }
-
-                                        Label {
-                                            text: "Play something different from " + root.libraryModel.trackCount + " songs"
-                                            color: silver
-                                            font.family: bodyFont
-                                            font.pixelSize: 13
-                                        }
-                                    }
-
-                                    TransportButton {
-                                        Accessible.name: "Shuffle library"
-                                        id: heroShuffleBtn
-                                        anchors.right: parent.right
-                                        anchors.bottom: parent.bottom
-                                        buttonSize: 46
-                                        iconName: "shuffle"
-                                        accented: true
-                                        iconColor: recordRed
-                                        onClicked: root.appWindow.shuffleAll()
+                                        orientation: Gradient.Horizontal
+                                        GradientStop { position: 0.0; color: "#700E0D0C" }
+                                        GradientStop { position: 1.0; color: "#D00E0D0C" }
                                     }
                                 }
 
                                 MouseArea {
                                     id: heroCardMouse
                                     anchors.fill: parent
-                                    anchors.rightMargin: 200
                                     hoverEnabled: true
                                     cursorShape: Qt.PointingHandCursor
-                                    z: 1
                                     onClicked: root.appWindow.shuffleAll()
+                                }
+
+                                CoverFrame {
+                                    id: heroArt
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 20
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 110
+                                    height: 110
+                                    radius: 10
+                                    highlighted: heroCardMouse.containsMouse
+
+                                    Cover {
+                                        anchors.fill: parent
+                                        track: heroCard.heroTrack
+                                        radius: heroArt.radius
+                                    }
+                                }
+
+                                ColumnLayout {
+                                    anchors.left: heroArt.right
+                                    anchors.leftMargin: 22
+                                    anchors.right: heroShuffleBtn.left
+                                    anchors.rightMargin: 20
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 4
+
+                                    Label {
+                                        text: "SHUFFLE"
+                                        color: recordRedHover
+                                        font.family: monoFont
+                                        font.pixelSize: 10
+                                        font.weight: Font.Bold
+                                        font.letterSpacing: 1.0
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: "Your whole library, in a new order"
+                                        color: "#FFFFFF"
+                                        font.family: displayFont
+                                        font.pixelSize: 22
+                                        font.weight: Font.Bold
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Label {
+                                        Layout.fillWidth: true
+                                        text: "Play something different from " + root.libraryModel.trackCount + " songs"
+                                        color: silver
+                                        font.family: bodyFont
+                                        font.pixelSize: 13
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                                TransportButton {
+                                    id: heroShuffleBtn
+                                    Accessible.name: "Shuffle library"
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 24
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    buttonSize: 52
+                                    iconName: "shuffle"
+                                    accented: true
+                                    iconColor: recordRed
+                                    onClicked: root.appWindow.shuffleAll()
+                                }
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    radius: heroCard.cornerRadius
+                                    color: "transparent"
+                                    border.width: 1
+                                    border.color: heroCardMouse.containsMouse ? borderVariant : borderSubtle
                                 }
                             }
 

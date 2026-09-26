@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "TrackTitles.js" as TrackTitles
 
 Rectangle {
     id: root
@@ -89,7 +90,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
-                text: root.track ? (root.track.title || root.track.fileName || "Untitled Track") : ""
+                text: root.track ? (TrackTitles.title(root.track) || root.track.fileName || "Untitled Track") : ""
                 color: isCurrent ? activeTextColor : defaultTextColor
                 font.family: displayFont
                 font.pixelSize: 14
@@ -103,7 +104,7 @@ Rectangle {
                 Layout.minimumWidth: 0
                 text: {
                     if (!root.track) return ""
-                    const art = root.track.artist || "Unknown Artist"
+                    const art = TrackTitles.artist(root.track) || "Unknown Artist"
                     const alb = root.track.album || ""
                     return (showAlbum && alb.length > 0) ? (art + " • " + alb) : art
                 }

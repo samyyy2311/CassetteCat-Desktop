@@ -318,24 +318,9 @@ Item {
             }
 
             // Stat tag when idle
-            Rectangle {
+            CountTag {
                 visible: !root.filtering && root.libraryModel.trackCount > 0
-                Layout.preferredHeight: 24
-                Layout.preferredWidth: countTagLbl.implicitWidth + 16
-                radius: 12
-                color: surfaceTag
-                border.width: 1
-                border.color: borderSubtle
-
-                Label {
-                    id: countTagLbl
-                    anchors.centerIn: parent
-                    text: root.libraryModel.trackCount + " songs"
-                    color: silverDim
-                    font.family: monoFont
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
-                }
+                text: root.libraryModel.trackCount + " songs"
             }
 
             // Match count when filtering

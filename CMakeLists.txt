@@ -141,6 +141,8 @@ qt_add_qml_module(CassetteCat
         qml/SettingChoiceGroup.qml
         qml/SettingButton.qml
         qml/ConfirmPopup.qml
+        qml/CountTag.qml
+        qml/PageTabs.qml
         qml/SettingColorPicker.qml
         qml/SettingDivider.qml
         qml/SettingsPathList.qml

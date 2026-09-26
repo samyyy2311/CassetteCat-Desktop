@@ -307,73 +307,29 @@ Item {
             Layout.bottomMargin: 14
             spacing: 16
 
-            Row {
-                spacing: 18
-
-                Repeater {
-                    model: [
-                        { id: "songs", label: "Songs" },
-                        { id: "artists", label: "Artists" },
-                        { id: "albums", label: "Albums" },
-                        { id: "genres", label: "Genres" },
-                        { id: "playlists", label: "Playlists" }
-                    ]
-
-                    Item {
-                        width: tabLabel.implicitWidth
-                        height: 32
-
-                        Label {
-                            id: tabLabel
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: root.activeTab === modelData.id ? textPrimary : textSecondary
-                            font.family: displayFont
-                            font.pixelSize: 15
-                            font.weight: root.activeTab === modelData.id ? Font.Bold : Font.Medium
-                        }
-
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            width: parent.width
-                            height: 2.5
-                            radius: 1.25
-                            color: recordRed
-                            visible: root.activeTab === modelData.id
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: { root.activeTab = modelData.id; if (modelData.id !== "songs") root.viewMode = "grid" }
-                        }
-                    }
+            PageTabs {
+                tabs: [
+                    { id: "songs", label: "Songs" },
+                    { id: "artists", label: "Artists" },
+                    { id: "albums", label: "Albums" },
+                    { id: "genres", label: "Genres" },
+                    { id: "playlists", label: "Playlists" }
+                ]
+                current: root.activeTab
+                onSelected: id => {
+                    root.activeTab = id
+                    if (id !== "songs") root.viewMode = "grid"
                 }
             }
 
-            Rectangle {
-                Layout.preferredHeight: 22
-                Layout.preferredWidth: countLbl.implicitWidth + 14
-                radius: 11
-                color: surfaceTag
-                border.width: 1
-                border.color: borderSubtle
-
-                Label {
-                    id: countLbl
-                    anchors.centerIn: parent
-                    text: {
-                        if (root.activeTab === "songs") {
-                            const n = (root.viewMode === "list" ? trackList.count : trackGrid.count)
-                            return n + (n === 1 ? " song" : " songs")
-                        }
-                        const count = root.displayItems.length
-                        return count + " " + root.activeTab
+            CountTag {
+                text: {
+                    if (root.activeTab === "songs") {
+                        const n = (root.viewMode === "list" ? trackList.count : trackGrid.count)
+                        return n + (n === 1 ? " song" : " songs")
                     }
-                    color: silverDim
-                    font.family: monoFont
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
+                    const count = root.displayItems.length
+                    return count + " " + root.activeTab
                 }
             }
 

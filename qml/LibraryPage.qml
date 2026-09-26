@@ -40,88 +40,23 @@ Item {
             Layout.bottomMargin: 14
             spacing: 16
 
-            Row {
-                spacing: 22
-                Repeater {
-                    model: [
-                        {
-                            id: "songs",
-                            label: "Songs"
-                        },
-                        {
-                            id: "artists",
-                            label: "Artists"
-                        },
-                        {
-                            id: "albums",
-                            label: "Albums"
-                        },
-                        {
-                            id: "genres",
-                            label: "Genres"
-                        },
-                        {
-                            id: "folders",
-                            label: "Folders"
-                        },
-                        {
-                            id: "playlists",
-                            label: "Playlists"
-                        }
-                    ]
-
-                    Item {
-                        width: tabLbl.implicitWidth
-                        height: 32
-
-                        Label {
-                            id: tabLbl
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: root.appWindow.libraryTab === modelData.id ? textPrimary : textSecondary
-                            font.family: displayFont
-                            font.pixelSize: 15
-                            font.weight: root.appWindow.libraryTab === modelData.id ? Font.Bold : Font.Medium
-                        }
-
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: parent.width
-                            height: 2.5
-                            radius: 1.25
-                            color: recordRed
-                            visible: root.appWindow.libraryTab === modelData.id
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.appWindow.libraryTab = modelData.id
-                        }
-                    }
-                }
+            PageTabs {
+                tabs: [
+                    { id: "songs", label: "Songs" },
+                    { id: "artists", label: "Artists" },
+                    { id: "albums", label: "Albums" },
+                    { id: "genres", label: "Genres" },
+                    { id: "folders", label: "Folders" },
+                    { id: "playlists", label: "Playlists" }
+                ]
+                current: root.appWindow.libraryTab
+                onSelected: id => root.appWindow.libraryTab = id
             }
 
-            Rectangle {
-                Layout.preferredHeight: 22
-                Layout.preferredWidth: countTagLbl.implicitWidth + 14
-                radius: 11
-                color: surfaceTag
-                border.width: 1
-                border.color: borderSubtle
-
-                Label {
-                    id: countTagLbl
-                    anchors.centerIn: parent
-                    text: root.appWindow.libraryTab === "playlists"
-                        ? ((root.appWindow.playlists.length + 4) + " playlists")
-                        : (root.libraryModel.trackCount + " songs")
-                    color: silverDim
-                    font.family: monoFont
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
-                }
+            CountTag {
+                text: root.appWindow.libraryTab === "playlists"
+                    ? ((root.appWindow.playlists.length + 4) + " playlists")
+                    : (root.libraryModel.trackCount + " songs")
             }
 
 

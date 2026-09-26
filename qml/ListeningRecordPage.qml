@@ -367,72 +367,24 @@ Item {
             Layout.bottomMargin: 14
             spacing: 16
 
-            Row {
-                spacing: 22
-
-                Repeater {
-                    model: [
-                        { id: "overview", label: "Overview" },
-                        { id: "tracks", label: "Top Tracks" },
-                        { id: "artists", label: "Top Artists" },
-                        { id: "albums", label: "Top Albums" },
-                        { id: "history", label: "History" },
-                        { id: "recap", label: "Recap" }
-                    ]
-
-                    Item {
-                        width: tabLbl.implicitWidth
-                        height: 32
-
-                        Label {
-                            id: tabLbl
-                            anchors.centerIn: parent
-                            text: modelData.label
-                            color: root.currentTab === modelData.id ? root.appWindow.textPrimary : root.appWindow.textSecondary
-                            font.family: root.appWindow.displayFont
-                            font.pixelSize: 15
-                            font.weight: root.currentTab === modelData.id ? Font.Bold : Font.Medium
-                        }
-
-                        Rectangle {
-                            anchors.bottom: parent.bottom
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: parent.width
-                            height: 2.5
-                            radius: 1.25
-                            color: root.appWindow.recordRed
-                            visible: root.currentTab === modelData.id
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                root.currentTab = modelData.id
-                                root.searchQuery = ""
-                            }
-                        }
-                    }
+            PageTabs {
+                tabs: [
+                    { id: "overview", label: "Overview" },
+                    { id: "tracks", label: "Top Tracks" },
+                    { id: "artists", label: "Top Artists" },
+                    { id: "albums", label: "Top Albums" },
+                    { id: "history", label: "History" },
+                    { id: "recap", label: "Recap" }
+                ]
+                current: root.currentTab
+                onSelected: id => {
+                    root.currentTab = id
+                    root.searchQuery = ""
                 }
             }
 
-            Rectangle {
-                Layout.preferredHeight: 22
-                Layout.preferredWidth: countTagLbl.implicitWidth + 14
-                radius: 11
-                color: root.appWindow.surfaceTag
-                border.width: 1
-                border.color: root.appWindow.borderSubtle
-
-                Label {
-                    id: countTagLbl
-                    anchors.centerIn: parent
-                    text: root.totalPlays + " plays • " + root.uniquePlayed + " tracks"
-                    color: root.appWindow.silverDim
-                    font.family: root.appWindow.monoFont
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
-                }
+            CountTag {
+                text: root.totalPlays + " plays • " + root.uniquePlayed + " tracks"
             }
 
             Item { Layout.fillWidth: true }

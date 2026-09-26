@@ -88,48 +88,14 @@ Item {
                 spacing: 12
                 Layout.alignment: Qt.AlignVCenter
 
-                Item {
-                    width: tabLbl.implicitWidth
-                    height: 32
-
-                    Label {
-                        id: tabLbl
-                        anchors.centerIn: parent
-                        text: "Radio Stations"
-                        color: textPrimary
-                        font.family: displayFont
-                        font.pixelSize: 15
-                        font.weight: Font.Bold
-                    }
-
-                    Rectangle {
-                        anchors.bottom: parent.bottom
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        width: parent.width
-                        height: 2.5
-                        radius: 1.25
-                        color: recordRed
-                    }
+                PageTabs {
+                    tabs: [{ id: "stations", label: "Radio Stations" }]
+                    current: "stations"
                 }
 
-                Rectangle {
+                CountTag {
                     anchors.verticalCenter: parent.verticalCenter
-                    height: 22
-                    width: countTagLbl.implicitWidth + 14
-                    radius: 11
-                    color: surfaceTag
-                    border.width: 1
-                    border.color: borderSubtle
-
-                    Label {
-                        id: countTagLbl
-                        anchors.centerIn: parent
-                        text: root.displayedStations.length + " stations"
-                        color: silverDim
-                        font.family: monoFont
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                    }
+                    text: root.displayedStations.length + " stations"
                 }
             }
 

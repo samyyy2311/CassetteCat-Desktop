@@ -537,7 +537,8 @@ void PlayerController::stop() {
 }
 
 void PlayerController::seek(qint64 positionMs) {
-    if (!m_deferredSource.isEmpty()) {
+    // The backend drops a seek made while the file is still opening, so it is applied once loaded.
+    if (!m_deferredSource.isEmpty() || m_player->mediaStatus() == QMediaPlayer::LoadingMedia) {
         m_pendingRestorePositionMs = positionMs;
         m_position = positionMs;
         emit positionChanged();

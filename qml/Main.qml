@@ -2225,6 +2225,26 @@ ApplicationWindow {
         playQueuedTrack(playbackQueue[shuffle ? 0 : index])
     }
 
+    // Continues a queue handed over from the phone with the matching songs in this library, by title and artist.
+    function continueHandoff(tracks, index, positionMs, playing) {
+        const key = track => String(track.title || track.fileName || "").trim().toLowerCase() + "\u001f"
+            + String(track.artist || "").trim().toLowerCase()
+        const library = {}
+        availableTracks().forEach(track => { if (!library[key(track)]) library[key(track)] = track })
+        const queue = []
+        let start = -1
+        tracks.forEach((track, i) => {
+            const match = library[key(track)]
+            if (!match) return
+            if (i === index) start = queue.length
+            queue.push(match)
+        })
+        if (start < 0) return
+        startPlayback(queue, start)
+        if (positionMs > 0) player.seek(positionMs)
+        if (!playing) player.pause()
+    }
+
     function shufflePlayback(source) {
         const queue = uniqueTracks(source)
         if (!queue.length) return
@@ -2268,7 +2288,9 @@ ApplicationWindow {
             index: start + offset,
             title: track.title || track.fileName || "",
             artist: track.artist || "",
-            durationMs: (track.durationSeconds || 0) * 1000
+            durationMs: (track.durationSeconds || 0) * 1000,
+            filePath: track.filePath || "",
+            artworkUrl: track.artworkUrl || ""
         }))
     }
 
@@ -2738,6 +2760,7 @@ ApplicationWindow {
         function onVolumeRequested(volume) { window.setPlayerVolume(volume) }
         function onSeekRequested(positionMs) { player.seek(positionMs) }
         function onQueueTrackRequested(index) { window.playFromQueue(window.activePlaybackQueue()[index]) }
+        function onHandoffRequested(tracks, index, positionMs, playing) { window.continueHandoff(tracks, index, positionMs, playing) }
         function onCodeChanged() { appSettings.setValue("services/phoneRemoteCode", phoneRemote.code) }
     }
 
@@ -3854,6 +3877,65 @@ ApplicationWindow {
                 color: borderSubtle
             }
 
+            // What the paired phone is playing itself, like a Spotify Connect device.
+            Rectangle {
+                visible: phoneRemote.phonePlayback.title !== undefined && player.error.length === 0
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.top
+                height: 38
+                color: Qt.rgba(recordRed.r, recordRed.g, recordRed.b, 0.16)
+                z: 2
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 24
+                    anchors.rightMargin: 16
+                    spacing: 10
+
+                    LucideIcon {
+                        icon: "smartphone"
+                        Layout.preferredWidth: 15
+                        Layout.preferredHeight: 15
+                        color: recordRed
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: "Playing on " + (phoneRemote.phonePlayback.name || "your phone") + "  ·  "
+                              + (phoneRemote.phonePlayback.title || "") + (phoneRemote.phonePlayback.artist ? " — " + phoneRemote.phonePlayback.artist : "")
+                        color: textPrimary
+                        font.family: bodyFont
+                        font.pixelSize: 12
+                        elide: Text.ElideRight
+                    }
+
+                    TransportButton {
+                        buttonSize: 28
+                        paletteSource: window
+                        iconName: phoneRemote.phonePlayback.isPlaying ? "pause" : "play"
+                        iconColor: textPrimary
+                        tooltipText: phoneRemote.phonePlayback.isPlaying ? "Pause on phone" : "Play on phone"
+                        onClicked: phoneRemote.sendToPhone(phoneRemote.phonePlayback.isPlaying ? "pause" : "play")
+                    }
+
+                    TransportButton {
+                        buttonSize: 28
+                        paletteSource: window
+                        iconName: "skip-forward"
+                        iconColor: textPrimary
+                        tooltipText: "Next on phone"
+                        onClicked: phoneRemote.sendToPhone("next")
+                    }
+
+                    SettingButton {
+                        text: "Play Here"
+                        iconName: "play"
+                        onClicked: phoneRemote.sendToPhone("handoff")
+                    }
+                }
+            }
+
             Rectangle {
                 visible: player.error.length > 0
                 anchors.left: parent.left
@@ -4105,6 +4187,18 @@ ApplicationWindow {
                     Layout.maximumWidth: 360
                     Layout.alignment: Qt.AlignRight
                     spacing: 8
+
+                    PressDepthIconButton {
+                        Layout.alignment: Qt.AlignVCenter
+                        visible: phoneRemote.controllerName !== ""
+                        boxSize: 34
+                        iconSize: 17
+                        iconName: "smartphone"
+                        tint: recordRed
+                        highlighted: true
+                        tooltipText: "Controlled from " + phoneRemote.controllerName + ". Click to continue on it."
+                        onClicked: phoneRemote.continueOnPhone()
+                    }
 
                     PressDepthIconButton {
                         Layout.alignment: Qt.AlignVCenter

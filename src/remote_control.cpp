@@ -70,21 +70,26 @@ QString localIpv4() {
 }
 
 // Identifies a track's cover for the phone without sending it the file path; changes when the cover does.
+// The phone shows covers full screen, so a cover pulled from the file is sent at the size it uses for its own songs
+// rather than the desktop's 512 px copy.
+constexpr int kPhoneArtworkSize = 1440;
+
 QString artworkKey(const QVariantMap &track) {
     const QString source = track.value("filePath").toString() + track.value("artworkUrl").toString();
-    return source.isEmpty() ? QString() : QString::number(qHash(source), 16);
+    // The size is part of the key so phones holding an earlier, smaller copy fetch the new one.
+    return source.isEmpty() ? QString() : QString::number(qHash(source + QString::number(kPhoneArtworkSize)), 16);
 }
 
 QString artworkPath(const QVariantMap &track) {
-    const QUrl url(track.value("artworkUrl").toString());
-    if (url.isLocalFile() && QFileInfo::exists(url.toLocalFile()))
-        return url.toLocalFile();
-    // Queued songs may not have had their cover pulled out yet; this is cached after the first time.
     const QString filePath = track.value("filePath").toString();
-    if (!QFileInfo::exists(filePath))
-        return {};
-    const QUrl extracted(extractEmbeddedArtwork(filePath));
-    return extracted.isLocalFile() ? extracted.toLocalFile() : QString();
+    const QString shown = track.value("artworkUrl").toString();
+    // Queued songs may not have had their cover pulled out yet; each size is cached after the first time.
+    if (QFileInfo::exists(filePath) && (shown.isEmpty() || shown == extractEmbeddedArtwork(filePath))) {
+        const QUrl extracted(extractEmbeddedArtwork(filePath, kPhoneArtworkSize));
+        return extracted.isLocalFile() ? extracted.toLocalFile() : QString();
+    }
+    const QUrl url(shown);
+    return url.isLocalFile() && QFileInfo::exists(url.toLocalFile()) ? url.toLocalFile() : QString();
 }
 
 QByteArray reasonPhrase(int status) {

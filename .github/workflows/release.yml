@@ -13,6 +13,8 @@ on:
 env:
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
+permissions: {}
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
@@ -86,6 +88,27 @@ jobs:
             CassetteCat-${{ env.RELEASE_TAG }}-windows-x64-setup.exe
           if-no-files-found: error
           retention-days: 7
+      # Unsigned: the Microsoft Store signs it on submission. Set the MSIX_* repository variables
+      # from Partner Center > Product identity to produce it.
+      - name: Package for the Microsoft Store
+        if: vars.MSIX_IDENTITY_NAME != ''
+        shell: pwsh
+        env:
+          MSIX_IDENTITY_NAME: ${{ vars.MSIX_IDENTITY_NAME }}
+          MSIX_PUBLISHER: ${{ vars.MSIX_PUBLISHER }}
+          MSIX_PUBLISHER_DISPLAY_NAME: ${{ vars.MSIX_PUBLISHER_DISPLAY_NAME }}
+        run: |
+          .\packaging\msix\build-msix.ps1 -InstallDir dist\CassetteCat -Version $env:RELEASE_TAG.TrimStart('v') `
+            -IdentityName $env:MSIX_IDENTITY_NAME -Publisher $env:MSIX_PUBLISHER `
+            -PublisherDisplayName $env:MSIX_PUBLISHER_DISPLAY_NAME -Output "CassetteCat-$env:RELEASE_TAG-store.msix"
+      - name: Upload Store package
+        if: vars.MSIX_IDENTITY_NAME != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: store-msix
+          path: CassetteCat-${{ env.RELEASE_TAG }}-store.msix
+          if-no-files-found: error
+          retention-days: 30
 
   build-linux:
     needs: validate-tag

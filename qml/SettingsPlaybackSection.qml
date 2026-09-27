@@ -8,6 +8,7 @@ ColumnLayout {
     property string audioDeviceId: ""
     property bool resumeQueueOnLaunch: true
     property bool autoplayEnabled: false
+    property int crossfadeSeconds: 0
     property string sleepTimerMode: "off"
     property string sleepTimerStatus: "Off"
     property bool sleepFadeOut: true
@@ -18,6 +19,7 @@ ColumnLayout {
     signal audioDeviceSelected(string value)
     signal resumeQueueOnLaunchSelected(bool value)
     signal autoplaySelected(bool value)
+    signal crossfadeSelected(int value)
     signal sleepTimerSelected(string value)
     signal sleepTimerCancelled()
     signal sleepFadeOutSelected(bool value)
@@ -61,12 +63,28 @@ ColumnLayout {
         SettingRow {
             iconName: "shuffle"
             title: "Autoplay"
-            subtitle: "Shuffle music from library when queue reaches the end"
+            subtitle: "Keep playing similar songs when the queue ends"
 
             SettingSwitch {
                 checked: root.autoplayEnabled
                 onToggled: val => root.autoplaySelected(val)
             }
+        }
+
+        SettingDivider {}
+
+        SettingChoiceGroup {
+            iconName: "audio-lines"
+            title: "Crossfade"
+            subtitle: "Fade each song into the next as it ends"
+            options: [
+                { value: 0, label: "Off" },
+                { value: 3, label: "3s" },
+                { value: 6, label: "6s" },
+                { value: 10, label: "10s" }
+            ]
+            selectedValue: root.crossfadeSeconds
+            onOptionSelected: value => root.crossfadeSelected(Number(value))
         }
     }
 

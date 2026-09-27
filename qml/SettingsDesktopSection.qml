@@ -111,9 +111,13 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Application Updates" }
+    SectionLabel {
+        visible: !installedFromStore
+        text: "Application Updates"
+    }
 
     SettingCard {
+        visible: !installedFromStore
         SettingRow {
             iconName: "arrow-up"
             title: "Check for Updates"

@@ -143,6 +143,7 @@ ApplicationWindow {
     property bool sleepFadeOut: true
     property int sleepTimerRemainingSeconds: 0
     property bool autoplayEnabled: false
+    property int crossfadeSeconds: 0
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 80
     property string replayGainMode: "off"
@@ -157,6 +158,7 @@ ApplicationWindow {
     property bool svcWiki: true
     property bool svcArchive: true
     property bool svcDiscord: false
+    property bool svcPhoneRemote: false
     property bool scrobbleListenBrainzEnabled: false
     property string scrobbleListenBrainzUser: ""
     property bool scrobbleListenBrainzConnected: false
@@ -178,6 +180,24 @@ ApplicationWindow {
         target: discord
         property: "enabled"
         value: settingsInitialized && svcDiscord && !offlineBlackout
+    }
+
+    Binding {
+        target: player
+        property: "crossfadeMs"
+        value: crossfadeSeconds * 1000
+    }
+
+    Binding {
+        target: phoneRemote
+        property: "enabled"
+        value: settingsInitialized && svcPhoneRemote && !offlineBlackout
+    }
+
+    Binding {
+        target: phoneRemote
+        property: "upNext"
+        value: phoneRemote.enabled ? remoteUpNext() : []
     }
 
     Binding {
@@ -402,6 +422,10 @@ ApplicationWindow {
             updateUrl = releaseUrl
             if (updateAvailable) {
                 updateStatusText = "Update available: v" + latestVersion
+                if (!manual && appSettings.value("updates/promptedVersion", "") !== latestVersion) {
+                    updatePrompt.version = latestVersion
+                    updatePrompt.open()
+                }
             } else {
                 updateStatusText = "CassetteCat is up to date (v" + Qt.application.version + ")"
             }
@@ -416,6 +440,14 @@ ApplicationWindow {
     property bool updateChecking: false
     property bool updateAvailableState: false
     property string updateUrl: ""
+
+    // Checked at most once a day on launch; a manual check in Settings is always available.
+    function checkForUpdatesOnLaunch() {
+        if (installedFromStore) return
+        if (Date.now() - Number(appSettings.value("updates/lastCheck", 0)) < 24 * 60 * 60 * 1000) return
+        appSettings.setValue("updates/lastCheck", Date.now())
+        services.checkForUpdates(false)
+    }
 
     function checkForUpdates() {
         updateChecking = true
@@ -526,6 +558,7 @@ ApplicationWindow {
             excludedFolders = []
         }
         autoplayEnabled = appSettings.value("player/autoplayEnabled", false)
+        crossfadeSeconds = Number(appSettings.value("player/crossfadeSeconds", 0))
         sleepFadeOut = appSettings.value("player/sleepFadeOut", true)
         sleepTimerMode = appSettings.value("player/sleepTimerMode", "off")
         volumeLimitEnabled = appSettings.value("player/volumeLimitEnabled", false)
@@ -543,6 +576,8 @@ ApplicationWindow {
         svcWiki = appSettings.value("services/wiki", true)
         svcArchive = appSettings.value("services/archive", true)
         svcDiscord = appSettings.value("services/discord", false)
+        svcPhoneRemote = appSettings.value("services/phoneRemote", false)
+        phoneRemote.code = appSettings.value("services/phoneRemoteCode", "")
         scrobbleListenBrainzEnabled = appSettings.value("scrobble/listenbrainz_enabled", false)
         scrobbleListenBrainzUser = appSettings.value("scrobble/listenbrainz_user", "")
         scrobbleListenBrainzConnected = services.hasListenBrainzSession()
@@ -601,6 +636,7 @@ ApplicationWindow {
         playCounts = numberMapFromSetting("library/playCounts")
         seenAt = numberMapFromSetting("library/seenAt")
         settingsInitialized = true
+        checkForUpdatesOnLaunch()
         reconcileLibraryMaps()
         refreshHomeRecommendations()
         updateVisibleLibrary()
@@ -1265,6 +1301,7 @@ ApplicationWindow {
     onSleepFadeOutChanged: saveSetting("player/sleepFadeOut", sleepFadeOut)
     onSleepTimerModeChanged: saveSetting("player/sleepTimerMode", sleepTimerMode)
     onAutoplayEnabledChanged: saveSetting("player/autoplayEnabled", autoplayEnabled)
+    onCrossfadeSecondsChanged: saveSetting("player/crossfadeSeconds", crossfadeSeconds)
     onVolumeLimitEnabledChanged: saveSetting("player/volumeLimitEnabled", volumeLimitEnabled)
     onMaxVolumePercentChanged: saveSetting("player/maxVolumePercent", maxVolumePercent)
     onReplayGainModeChanged: {
@@ -1287,6 +1324,7 @@ ApplicationWindow {
     onSvcWikiChanged: saveSetting("services/wiki", svcWiki)
     onSvcArchiveChanged: saveSetting("services/archive", svcArchive)
     onSvcDiscordChanged: saveSetting("services/discord", svcDiscord)
+    onSvcPhoneRemoteChanged: saveSetting("services/phoneRemote", svcPhoneRemote)
     onScrobbleListenBrainzEnabledChanged: saveSetting("scrobble/listenbrainz_enabled", scrobbleListenBrainzEnabled)
     onScrobbleLibreFmEnabledChanged: saveSetting("scrobble/librefm_enabled", scrobbleLibreFmEnabled)
     onLyricsSyncOffsetMsChanged: if (settingsInitialized) {
@@ -1364,6 +1402,7 @@ ApplicationWindow {
         if (typeof mpris !== "undefined" && mpris && mpris.repeatMode !== repeatMode) {
             mpris.repeatMode = repeatMode
         }
+        phoneRemote.repeatMode = repeatMode
     }
 
     onVisibilityChanged: {
@@ -1452,6 +1491,7 @@ ApplicationWindow {
             "lyrics/activeStyle": lyricsActiveStyle,
             "lyrics/preferLocal": preferLocalLyrics,
             "player/autoplayEnabled": autoplayEnabled,
+            "player/crossfadeSeconds": crossfadeSeconds,
             "player/sleepFadeOut": sleepFadeOut,
             "player/sleepTimerMode": sleepTimerMode,
             "player/volumeLimitEnabled": volumeLimitEnabled,
@@ -1465,6 +1505,7 @@ ApplicationWindow {
             "services/wiki": svcWiki,
             "services/archive": svcArchive,
             "services/discord": svcDiscord,
+            "services/phoneRemote": svcPhoneRemote,
             "scrobble/listenbrainz_enabled": scrobbleListenBrainzEnabled,
             "scrobble/listenbrainz_user": scrobbleListenBrainzUser,
             "scrobble/librefm_enabled": scrobbleLibreFmEnabled,
@@ -1575,10 +1616,18 @@ ApplicationWindow {
     }
 
     Shortcut {
+        sequence: "Backspace"
+        enabled: lyricsTapSyncing && shortcutAllowed(sequence)
+        onActivated: lyricsTapStamps = lyricsTapStamps.slice(0, -1)
+    }
+
+    Shortcut {
         sequence: inAppShortcut("playPause")
         enabled: shortcutAllowed(sequence)
         onActivated: {
-            if (!player.currentTrack.filePath && library.trackCount > 0) {
+            if (lyricsTapSyncing) {
+                stampLyricLine()
+            } else if (!player.currentTrack.filePath && library.trackCount > 0) {
                 shuffleAll()
             } else {
                 player.togglePlay()
@@ -1782,12 +1831,35 @@ ApplicationWindow {
         return result
     }
 
+    // Tap to Sync: the next line is stamped with the playback position on each tap, and the
+    // finished timings are written into the file's lyrics.
+    property bool lyricsTapSyncing: false
+    property var lyricsTapStamps: []
+
+    function startLyricsTapSync() {
+        lyricsTapStamps = []
+        lyricsTapSyncing = true
+        if (!player.isPlaying) player.play()
+    }
+
+    function stampLyricLine() {
+        const stamps = lyricsTapStamps.concat([player.position])
+        if (stamps.length < parsedLyrics.length) {
+            lyricsTapStamps = stamps
+            return
+        }
+        lyricsTapSyncing = false
+        const updated = library.updateTrackMetadata({ filePath: player.currentTrack.filePath, lyrics: LyricsText.toLrc(parsedLyrics, stamps) })
+        if (updated.filePath) player.updateCurrentTrackMetadata(updated)
+    }
+
     function lyricsSyncKey(track) {
         return "lyrics/sync/" + encodeURIComponent((track && track.filePath) || "")
     }
 
     function buildLyricDisplayItems(lines) {
-        if (!lines || lines.length === 0 || lines[0].timeMs < 0) return []
+        if (!lines || lines.length === 0) return []
+        if (lines[0].timeMs < 0) return lines.map((line, i) => ({ type: "line", lineIndex: i, startMs: -1, text: line.text }))
         const items = []
         if (lines[0].timeMs >= 4500) items.push({ type: "gap", startMs: 0, endMs: lines[0].timeMs - 150 })
         for (let i = 0; i < lines.length; ++i) {
@@ -1912,6 +1984,10 @@ ApplicationWindow {
 
     function openCoverSearch(album, artist, filePath) {
         coverSearchPopup.openFor(album, artist, filePath)
+    }
+
+    function openBatchMetadataEditor() {
+        metadataDialog.openForMany(selectedTracks())
     }
 
     function openTrackMetadataEditor() {
@@ -2203,6 +2279,26 @@ ApplicationWindow {
         playQueuedTrack(playbackQueue[shuffle ? 0 : index])
     }
 
+    // Continues a queue handed over from the phone with the matching songs in this library, by title and artist.
+    function continueHandoff(tracks, index, positionMs, playing) {
+        const key = track => String(track.title || track.fileName || "").trim().toLowerCase() + "\u001f"
+            + String(track.artist || "").trim().toLowerCase()
+        const library = {}
+        availableTracks().forEach(track => { if (!library[key(track)]) library[key(track)] = track })
+        const queue = []
+        let start = -1
+        tracks.forEach((track, i) => {
+            const match = library[key(track)]
+            if (!match) return
+            if (i === index) start = queue.length
+            queue.push(match)
+        })
+        if (start < 0) return
+        startPlayback(queue, start)
+        if (positionMs > 0) player.seek(positionMs)
+        if (!playing) player.pause()
+    }
+
     function shufflePlayback(source) {
         const queue = uniqueTracks(source)
         if (!queue.length) return
@@ -2237,6 +2333,19 @@ ApplicationWindow {
     function activePlaybackQueue() {
         if (player.currentTrack && player.currentTrack.format === "STREAM") return radioPlaybackQueue
         return playbackQueue.length ? playbackQueue : uniqueTracks(availableTracks())
+    }
+
+    function remoteUpNext() {
+        const queue = activePlaybackQueue()
+        const start = currentQueueIndex() + 1
+        return queue.slice(start, start + 30).map((track, offset) => ({
+            index: start + offset,
+            title: track.title || track.fileName || "",
+            artist: track.artist || "",
+            durationMs: (track.durationSeconds || 0) * 1000,
+            filePath: track.filePath || "",
+            artworkUrl: track.artworkUrl || ""
+        }))
     }
 
     function currentQueueIndex() {
@@ -2341,8 +2450,16 @@ ApplicationWindow {
         } else if (repeatMode === 1) {
             playQueuedTrack(queue[0])
         } else if (player.currentTrack && player.currentTrack.format !== "STREAM" && autoplayEnabled && library.trackCount > 0) {
-            shuffleAll()
+            continueWithSimilar()
         }
+    }
+
+    // Autoplay keeps going with songs like the last one, skipping what was just queued or played.
+    function continueWithSimilar() {
+        const recent = activePlaybackQueue().concat(playbackHistory).map(track => track.filePath)
+        const similar = library.similarTracks(player.currentTrack, recent, 25)
+        if (similar.length) startPlayback(similar, 0)
+        else shuffleAll()
     }
 
     function playPrevious() {
@@ -2385,6 +2502,10 @@ ApplicationWindow {
             if (nextIndex < 0) nextIndex = 0
             startPlayback(filtered, nextIndex, false)
         }
+        // Repeat-one and "stop after this track" let the song play to its very end instead.
+        function onCrossfadeReady() {
+            if (sleepTimerMode !== "track" && repeatMode !== 2) playNext()
+        }
         function onTrackEnded() {
             if (sleepTimerMode === "track") {
                 triggerSleepTimerStop()
@@ -2410,6 +2531,7 @@ ApplicationWindow {
             updateActiveLyric()
         }
         function onCurrentTrackChanged() {
+            lyricsTapSyncing = false
             const currentTrack = player.currentTrack || ({})
             const sameTrack = lastHandledTrack && currentTrack.filePath
                 && lastHandledTrack.filePath === currentTrack.filePath
@@ -2520,6 +2642,7 @@ ApplicationWindow {
                 inAppShortcutBindings: window.inAppShortcutBindings,
                 miniPlayerAlwaysOnTop: window.miniPlayerAlwaysOnTop,
                 autoplayEnabled: window.autoplayEnabled,
+                crossfadeSeconds: window.crossfadeSeconds,
                 sleepFadeOut: window.sleepFadeOut,
                 volumeLimitEnabled: window.volumeLimitEnabled,
                 maxVolumePercent: window.maxVolumePercent,
@@ -2592,6 +2715,7 @@ ApplicationWindow {
                     }
                     if (data.miniPlayerAlwaysOnTop !== undefined) { window.miniPlayerAlwaysOnTop = data.miniPlayerAlwaysOnTop; appSettings.setValue("ui/miniPlayerAlwaysOnTop", data.miniPlayerAlwaysOnTop) }
                     if (data.autoplayEnabled !== undefined) { window.autoplayEnabled = data.autoplayEnabled; appSettings.setValue("player/autoplayEnabled", data.autoplayEnabled) }
+                    if (data.crossfadeSeconds !== undefined) window.crossfadeSeconds = data.crossfadeSeconds
                     if (data.sleepFadeOut !== undefined) { window.sleepFadeOut = data.sleepFadeOut; appSettings.setValue("player/sleepFadeOut", data.sleepFadeOut) }
                     if (data.volumeLimitEnabled !== undefined) { window.volumeLimitEnabled = data.volumeLimitEnabled; appSettings.setValue("player/volumeLimitEnabled", data.volumeLimitEnabled) }
                     if (data.maxVolumePercent !== undefined) { window.maxVolumePercent = data.maxVolumePercent; appSettings.setValue("player/maxVolumePercent", data.maxVolumePercent) }
@@ -2692,6 +2816,34 @@ ApplicationWindow {
             persistBeforeExit()
             Qt.quit()
         }
+    }
+
+    Connections {
+        target: phoneRemote
+        function onPlayRequested() { player.play() }
+        function onPauseRequested() { player.pause() }
+        function onNextRequested() { window.playNext() }
+        function onPreviousRequested() { window.playPrevious() }
+        function onShuffleToggleRequested() { window.toggleQueueShuffle() }
+        function onRepeatCycleRequested() { window.toggleRepeat() }
+        function onVolumeRequested(volume) { window.setPlayerVolume(volume) }
+        function onSeekRequested(positionMs) { player.seek(positionMs) }
+        // Indexes come from the phone's last poll, so the queue may have changed since.
+        function onQueueTrackRequested(index) {
+            const queue = window.activePlaybackQueue()
+            if (index >= 0 && index < queue.length) window.playFromQueue(queue[index])
+        }
+        function onHandoffRequested(tracks, index, positionMs, playing) { window.continueHandoff(tracks, index, positionMs, playing) }
+        function onQueueMoveRequested(from, to) {
+            const queue = window.activePlaybackQueue()
+            if (from >= 0 && to >= 0 && from < queue.length && to < queue.length)
+                window.reorderQueuedTrack(queue[from], queue[to], from, to)
+        }
+        function onQueueRemoveRequested(index) {
+            const queue = window.activePlaybackQueue()
+            if (index >= 0 && index < queue.length) window.removeQueuedTrack(queue[index])
+        }
+        function onCodeChanged() { appSettings.setValue("services/phoneRemoteCode", phoneRemote.code) }
     }
 
     Connections {
@@ -3592,6 +3744,7 @@ ApplicationWindow {
                                 sleepTimerStatus: window.sleepTimerStatus
                                 sleepFadeOut: window.sleepFadeOut
                                 autoplayEnabled: window.autoplayEnabled
+                                crossfadeSeconds: window.crossfadeSeconds
                                 volumeLimitEnabled: window.volumeLimitEnabled
                                 maxVolumePercent: window.maxVolumePercent
                                 replayGainMode: window.replayGainMode
@@ -3606,6 +3759,7 @@ ApplicationWindow {
                                 svcWiki: window.svcWiki
                                 svcArchive: window.svcArchive
                                 svcDiscord: window.svcDiscord
+                                svcPhoneRemote: window.svcPhoneRemote
                                 scrobbleListenBrainzEnabled: window.scrobbleListenBrainzEnabled
                                 scrobbleListenBrainzUser: window.scrobbleListenBrainzUser
                                 scrobbleListenBrainzConnected: window.scrobbleListenBrainzConnected
@@ -3651,6 +3805,7 @@ ApplicationWindow {
                                 onSleepTimerCancelled: window.cancelSleepTimer()
                                 onSleepFadeOutSelected: value => window.sleepFadeOut = value
                                 onAutoplaySelected: value => window.autoplayEnabled = value
+                                onCrossfadeSelected: value => window.crossfadeSeconds = value
                                 onVolumeLimitSelected: value => { window.volumeLimitEnabled = value; window.enforceVolumeLimit() }
                                 onMaxVolumeSelected: value => { window.maxVolumePercent = value; window.enforceVolumeLimit() }
                                 onReplayGainModeSelected: value => window.replayGainMode = value
@@ -3668,6 +3823,7 @@ ApplicationWindow {
                                     else if (name === "wiki") window.svcWiki = value
                                     else if (name === "archive") window.svcArchive = value
                                     else if (name === "discord") window.svcDiscord = value
+                                    else if (name === "phoneRemote") window.svcPhoneRemote = value
                                     if (!value) services.cancelNetworkRequests()
                                 }
                                 onOpenJellyfinRequested: page = "jellyfin"
@@ -3803,6 +3959,65 @@ ApplicationWindow {
                 anchors.right: parent.right
                 height: 1
                 color: borderSubtle
+            }
+
+            // What the paired phone is playing itself, like a Spotify Connect device.
+            Rectangle {
+                visible: phoneRemote.phonePlayback.title !== undefined && player.error.length === 0
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.top
+                height: 38
+                color: Qt.rgba(recordRed.r, recordRed.g, recordRed.b, 0.16)
+                z: 2
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.leftMargin: 24
+                    anchors.rightMargin: 16
+                    spacing: 10
+
+                    LucideIcon {
+                        icon: "smartphone"
+                        Layout.preferredWidth: 15
+                        Layout.preferredHeight: 15
+                        color: recordRed
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: "Playing on " + (phoneRemote.phonePlayback.name || "your phone") + "  ·  "
+                              + (phoneRemote.phonePlayback.title || "") + (phoneRemote.phonePlayback.artist ? " — " + phoneRemote.phonePlayback.artist : "")
+                        color: textPrimary
+                        font.family: bodyFont
+                        font.pixelSize: 12
+                        elide: Text.ElideRight
+                    }
+
+                    TransportButton {
+                        buttonSize: 28
+                        paletteSource: window
+                        iconName: phoneRemote.phonePlayback.isPlaying ? "pause" : "play"
+                        iconColor: textPrimary
+                        tooltipText: phoneRemote.phonePlayback.isPlaying ? "Pause on phone" : "Play on phone"
+                        onClicked: phoneRemote.sendToPhone(phoneRemote.phonePlayback.isPlaying ? "pause" : "play")
+                    }
+
+                    TransportButton {
+                        buttonSize: 28
+                        paletteSource: window
+                        iconName: "skip-forward"
+                        iconColor: textPrimary
+                        tooltipText: "Next on phone"
+                        onClicked: phoneRemote.sendToPhone("next")
+                    }
+
+                    SettingButton {
+                        text: "Play Here"
+                        iconName: "play"
+                        onClicked: phoneRemote.sendToPhone("handoff")
+                    }
+                }
             }
 
             Rectangle {
@@ -4056,6 +4271,18 @@ ApplicationWindow {
                     Layout.maximumWidth: 360
                     Layout.alignment: Qt.AlignRight
                     spacing: 8
+
+                    PressDepthIconButton {
+                        Layout.alignment: Qt.AlignVCenter
+                        visible: phoneRemote.controllerName !== ""
+                        boxSize: 34
+                        iconSize: 17
+                        iconName: "smartphone"
+                        tint: recordRed
+                        highlighted: true
+                        tooltipText: "Controlled from " + phoneRemote.controllerName + ". Click to continue on it."
+                        onClicked: phoneRemote.continueOnPhone()
+                    }
 
                     PressDepthIconButton {
                         Layout.alignment: Qt.AlignVCenter
@@ -4852,6 +5079,20 @@ ApplicationWindow {
 
     CoverSearchPopup {
         id: coverSearchPopup
+    }
+
+    // Asks once per version; Settings keeps showing the update after "Later".
+    ConfirmPopup {
+        id: updatePrompt
+        property string version: ""
+        title: "Update available"
+        subtitle: "CassetteCat v" + version
+        message: "A new version is ready to download. Your library, playlists and settings stay as they are."
+        iconName: "arrow-down"
+        confirmText: "Download"
+        cancelText: "Later"
+        onConfirmed: downloadUpdate()
+        onClosed: appSettings.setValue("updates/promptedVersion", version)
     }
 
     TrackMetadataDialog {

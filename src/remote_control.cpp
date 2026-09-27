@@ -42,6 +42,13 @@ bool isLocalPeer(const QHostAddress &peer) {
 }
 
 QString localIpv4() {
+    // The adapter holding the default route is the one on the home network; a hotspot or VM adapter can also have a
+    // 192.168 address. Connecting a UDP socket only picks the route and sends nothing.
+    QUdpSocket route;
+    route.connectToHost(QHostAddress(QStringLiteral("192.0.2.1")), 9);
+    if (route.waitForConnected(100) && route.localAddress().isPrivateUse())
+        return route.localAddress().toString();
+
     QString fallback;
     for (const QNetworkInterface &interface : QNetworkInterface::allInterfaces()) {
         const auto flags = interface.flags();

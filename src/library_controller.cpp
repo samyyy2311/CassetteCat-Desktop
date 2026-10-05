@@ -178,7 +178,8 @@ QList<QJsonObject> readListeningLog(const QByteArray &log) {
     QList<QJsonObject> entries;
     for (const QByteArray &line : log.split('\n')) {
         const QJsonObject entry = QJsonDocument::fromJson(line).object();
-        if (!entry.value("path").toString().isEmpty() && entry.value("at").toDouble() > 0)
+        const bool named = !entry.value("path").toString().isEmpty() || !entry.value("title").toString().isEmpty();
+        if (named && entry.value("at").toDouble() > 0)
             entries.append(entry);
     }
     return entries;
@@ -242,7 +243,12 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
         listenedMs += ms;
         firstListen = firstListen == 0 ? at : qMin(firstListen, at);
 
-        add(songs, songOrder, pathKey(track.value("filePath").toString()), {{"track", track}}, ms);
+        // A phone listen of a song this computer does not have is told apart by title and artist.
+        const QString path = track.value("filePath").toString();
+        const QString songKey = path.isEmpty() ? track.value("title").toString().toLower() + QChar(0x1f) +
+                                                     track.value("artist").toString().toLower()
+                                               : pathKey(path);
+        add(songs, songOrder, songKey, {{"track", track}}, ms);
         for (const QString &artist : splitArtists(track.value("artist").toString()))
             add(artists, artistOrder, artist.toLower(), {{"name", artist}, {"track", track}}, ms);
         const QString album = track.value("album").toString().trimmed();
@@ -494,6 +500,14 @@ bool LibraryController::selfCheck() {
     if (march.value("plays").toInt() != 2 || march.value("listenedMs").toLongLong() != 90000 ||
         march.value("months").toList().value(6).toDouble() != 200000)
         return fail("monthly listening recap");
+    const auto phoneLine = [](const QString &title) {
+        return QJsonDocument(QJsonObject{{"at", QDateTime::fromString("2026-04-01T12:00:00", Qt::ISODate).toMSecsSinceEpoch()},
+                                         {"title", title}, {"artist", "Dee"}, {"ms", 1000}, {"device", "phone"}})
+                   .toJson(QJsonDocument::Compact) + '\n';
+    };
+    const QVariantMap phoneOnly = recapFromLog(phoneLine("Gone") + phoneLine("Gone") + phoneLine("Here"), 2026, -1);
+    if (phoneOnly.value("plays").toInt() != 3 || phoneOnly.value("songCount").toInt() != 2)
+        return fail("phone listens of songs not in the library");
 
     // Half a second of 8 kHz mono silence is enough for TagLib to accept the file.
     QTemporaryDir tagDir;
@@ -698,6 +712,33 @@ void LibraryController::recordListen(const QVariantMap &track, qint64 listenedMs
         return;
     }
     file.write(QJsonDocument(entry).toJson(QJsonDocument::Compact) + '\n');
+}
+
+void LibraryController::appendPhoneListens(const QList<QJsonObject> &listens) {
+    QFile file(listeningLogFilePath());
+    if (!file.open(QIODevice::Append)) {
+        qWarning() << "Could not record listens from the phone:" << file.errorString();
+        return;
+    }
+    for (QJsonObject listen : listens) {
+        listen.insert("device", "phone");
+        file.write(QJsonDocument(listen).toJson(QJsonDocument::Compact) + '\n');
+    }
+}
+
+QJsonArray LibraryController::listensSince(qint64 since) const {
+    QFile file(listeningLogFilePath());
+    QJsonArray listens;
+    if (!file.open(QIODevice::ReadOnly))
+        return listens;
+    for (const QJsonObject &entry : readListeningLog(file.readAll())) {
+        if (entry.contains("device") || static_cast<qint64>(entry.value("at").toDouble()) <= since)
+            continue;
+        QJsonObject listen = entry;
+        listen.remove("path");
+        listens.append(listen);
+    }
+    return listens;
 }
 
 QVariantList LibraryController::listeningYears() const {

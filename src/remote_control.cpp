@@ -297,7 +297,9 @@ void RemoteControlServer::serve(QTcpSocket *socket) {
 
         const QByteArray target = requestLine.value(1);
         const qsizetype maxBodyBytes =
-            target == "/api/backup" || target == "/api/likes" || target == "/api/playlists" ? kMaxBackupBytes : kMaxBodyBytes;
+            target == "/api/backup" || target == "/api/likes" || target == "/api/playlists" || target == "/api/listens"
+                ? kMaxBackupBytes
+                : kMaxBodyBytes;
         Response response{413, {}};
         // Only a paired phone may make the server wait for and hold a large upload.
         if (contentLength > kMaxBodyBytes && authorization != "Bearer " + m_code.toLatin1())
@@ -393,6 +395,10 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                                 {"liked", QJsonArray::fromStringList(likedKeys.values())},
                                 {"revision", m_likesRevision}};
         return {200, QJsonDocument(likes).toJson(QJsonDocument::Compact)};
+    }
+    if (method == "GET" && path == "/api/listens") {
+        const qint64 since = QUrlQuery(url).queryItemValue("since").toLongLong();
+        return {200, QJsonDocument(QJsonObject{{"listens", m_library->listensSince(since)}}).toJson(QJsonDocument::Compact)};
     }
     if (method == "GET" && path == "/api/playlists") {
         QJsonArray playlists;
@@ -497,6 +503,31 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                 unlikePaths.append(track.value("filePath").toString());
         }
         emit likesChangeRequested(likePaths, unlikePaths);
+        return {200, {}};
+    }
+    if (path == "/api/listens") {
+        if (!request.value("listens").isArray())
+            return {400, {}};
+        QHash<QString, QString> pathByKey;
+        for (const QVariant &value : m_library->playbackTracks()) {
+            const QVariantMap track = value.toMap();
+            pathByKey.insert(matchKey(track), track.value("filePath").toString());
+        }
+        QList<QJsonObject> listens;
+        for (const QJsonValue &value : request.value("listens").toArray()) {
+            const QJsonObject listen = value.toObject();
+            if (listen.value("title").toString().isEmpty() || listen.value("at").toInteger() <= 0 ||
+                listen.value("ms").toInteger() <= 0)
+                continue;
+            listens.append({{"at", listen.value("at").toInteger()},
+                            {"path", pathByKey.value(matchKey(listen.toVariantMap()))},
+                            {"title", listen.value("title").toString()},
+                            {"artist", listen.value("artist").toString()},
+                            {"album", listen.value("album").toString()},
+                            {"genre", listen.value("genre").toString()},
+                            {"ms", listen.value("ms").toInteger()}});
+        }
+        m_library->appendPhoneListens(listens);
         return {200, {}};
     }
     if (path == "/api/playlists") {
@@ -689,6 +720,11 @@ bool RemoteControlServer::selfCheck() {
                             remote.respond("POST", "/api/likes", auth, R"({"like":[],"unlike":["a"]})", lan).status == 200 &&
                             unlikedPaths.isEmpty() &&
                             remote.respond("POST", "/api/likes", auth, R"({"like":"a"})", lan).status == 400;
+    const bool rejectsBadListens = remote.respond("POST", "/api/listens", auth, R"({"listens":"x"})", lan).status == 400 &&
+                                   QJsonDocument::fromJson(remote.respond("GET", "/api/listens?since=0", auth, {}, lan).body)
+                                       .object()
+                                       .value("listens")
+                                       .isArray();
     QString receivedPlaylist;
     connect(&remote, &RemoteControlServer::playlistReceived, [&](const QString &name) { receivedPlaylist = name; });
     remote.setProperty("playlists", QVariantList{QVariantMap{{"name", "Road"}, {"trackPaths", QVariantList{"C:/Music/Gone.mp3"}}}});
@@ -763,13 +799,13 @@ bool RemoteControlServer::selfCheck() {
                     rejectsUnknownAction && relaysToPhone && acceptsHandoff && namesController && handsBackOnce &&
                     codeInQueryOnlyForArtwork && servesQueue && servesHttp && answersDiscovery && locksOutGuessing &&
                     rejectsInvalidBackup && keepsPreviousBackup && routesPlayNext && relaysPlayNextOnce &&
-                    refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes && copiesPlaylists;
+                    refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes && copiesPlaylists && rejectsBadListens;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
                    << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << acceptsHandoff
                    << namesController << handsBackOnce << codeInQueryOnlyForArtwork << servesQueue << servesHttp
                    << answersDiscovery << locksOutGuessing << rejectsInvalidBackup << keepsPreviousBackup << routesPlayNext
                    << relaysPlayNextOnce << refusesUnpairedUploadEarly
-                   << keysByTitleAndArtist << syncsLikes << copiesPlaylists;
+                   << keysByTitleAndArtist << syncsLikes << copiesPlaylists << rejectsBadListens;
     return ok;
 }

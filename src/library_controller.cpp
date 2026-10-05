@@ -501,9 +501,14 @@ bool LibraryController::selfCheck() {
         march.value("months").toList().value(6).toDouble() != 200000)
         return fail("monthly listening recap");
     const auto phoneLine = [](const QString &title) {
-        return QJsonDocument(QJsonObject{{"at", QDateTime::fromString("2026-04-01T12:00:00", Qt::ISODate).toMSecsSinceEpoch()},
-                                         {"title", title}, {"artist", "Dee"}, {"ms", 1000}, {"device", "phone"}})
-                   .toJson(QJsonDocument::Compact) + '\n';
+        return QJsonDocument(
+                   QJsonObject{{"at", QDateTime::fromString("2026-04-01T12:00:00", Qt::ISODate).toMSecsSinceEpoch()},
+                               {"title", title},
+                               {"artist", "Dee"},
+                               {"ms", 1000},
+                               {"device", "phone"}})
+                   .toJson(QJsonDocument::Compact) +
+               '\n';
     };
     const QVariantMap phoneOnly = recapFromLog(phoneLine("Gone") + phoneLine("Gone") + phoneLine("Here"), 2026, -1);
     if (phoneOnly.value("plays").toInt() != 3 || phoneOnly.value("songCount").toInt() != 2)
@@ -718,7 +723,8 @@ bool LibraryController::appendPhoneListens(const QList<QJsonObject> &listens) {
     QFile file(listeningLogFilePath());
     // A phone retries an upload whose answer it missed, so a listen it already sent is not counted twice.
     const auto identity = [](const QJsonObject &listen) {
-        return QString::number(static_cast<qint64>(listen.value("at").toDouble())) + QChar(0x1f) + listen.value("title").toString();
+        return QString::number(static_cast<qint64>(listen.value("at").toDouble())) + QChar(0x1f) +
+               listen.value("title").toString();
     };
     QSet<QString> recorded;
     if (file.open(QIODevice::ReadOnly)) {

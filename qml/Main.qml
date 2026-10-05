@@ -158,7 +158,7 @@ ApplicationWindow {
     property bool svcWiki: true
     property bool svcArchive: true
     property bool svcDiscord: false
-    property bool svcPhoneRemote: false
+    property bool svcPhoneRemote: true
     property bool scrobbleListenBrainzEnabled: false
     property string scrobbleListenBrainzUser: ""
     property bool scrobbleListenBrainzConnected: false
@@ -576,7 +576,7 @@ ApplicationWindow {
         svcWiki = appSettings.value("services/wiki", true)
         svcArchive = appSettings.value("services/archive", true)
         svcDiscord = appSettings.value("services/discord", false)
-        svcPhoneRemote = appSettings.value("services/phoneRemote", false)
+        svcPhoneRemote = appSettings.value("services/phoneRemote", true)
         phoneRemote.code = appSettings.value("services/phoneRemoteCode", "")
         scrobbleListenBrainzEnabled = appSettings.value("scrobble/listenbrainz_enabled", false)
         scrobbleListenBrainzUser = appSettings.value("scrobble/listenbrainz_user", "")
@@ -758,6 +758,12 @@ ApplicationWindow {
             return availableTracks().filter(track => !playCounts[track.filePath])
         }
         return []
+    }
+
+    function receivePlaylist(name, trackPaths, sentCount) {
+        const existing = playlists.find(playlist => playlist.name.toLowerCase() === name.toLowerCase())
+        if (existing && (trackPaths.length || sentCount === 0)) playlists = playlists.map(playlist => playlist === existing ? Object.assign({}, playlist, { trackPaths: trackPaths }) : playlist)
+        else if (!existing) playlists = playlists.concat([{ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, trackPaths: trackPaths }])
     }
 
     function createPlaylist(name, tracks) {
@@ -1374,11 +1380,15 @@ ApplicationWindow {
 
     onFavoriteTracksChanged: {
         if (settingsInitialized) appSettings.setValue("library/favorites", JSON.stringify(favoriteTracks))
+        phoneRemote.favoritePaths = Object.keys(favoriteTracks)
         if (songFilterMode === "FAVORITES") updateVisibleLibrary()
         if (quickPicks.length > 0)
             forgottenFavs = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory).forgottenFavs
     }
-    onPlaylistsChanged: if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
+    onPlaylistsChanged: {
+        if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
+        phoneRemote.playlists = playlists
+    }
     onPlayCountsChanged: {
         if (settingsInitialized) appSettings.setValue("library/playCounts", JSON.stringify(playCounts))
         refreshHomeActivity()
@@ -2280,15 +2290,18 @@ ApplicationWindow {
     }
 
     // Continues a queue handed over from the phone with the matching songs in this library, by title and artist.
-    function continueHandoff(tracks, index, positionMs, playing) {
-        const key = track => String(track.title || track.fileName || "").trim().toLowerCase() + "\u001f"
+    function trackMatchKey(track) {
+        return (String(track.title || "").trim() || String(track.fileName || "").trim()).toLowerCase() + "\u001f"
             + String(track.artist || "").trim().toLowerCase()
+    }
+
+    function continueHandoff(tracks, index, positionMs, playing) {
         const library = {}
-        availableTracks().forEach(track => { if (!library[key(track)]) library[key(track)] = track })
+        availableTracks().forEach(track => { if (!library[trackMatchKey(track)]) library[trackMatchKey(track)] = track })
         const queue = []
         let start = -1
         tracks.forEach((track, i) => {
-            const match = library[key(track)]
+            const match = library[trackMatchKey(track)]
             if (!match) return
             if (i === index) start = queue.length
             queue.push(match)
@@ -2834,6 +2847,16 @@ ApplicationWindow {
             if (index >= 0 && index < queue.length) window.playFromQueue(queue[index])
         }
         function onHandoffRequested(tracks, index, positionMs, playing) { window.continueHandoff(tracks, index, positionMs, playing) }
+        function onPlaylistReceived(name, trackPaths, sentCount) { window.receivePlaylist(name, trackPaths, sentCount) }
+        function onLikesChangeRequested(likePaths, unlikePaths) {
+            if (likePaths.length) window.setFavorites(likePaths, true)
+            if (unlikePaths.length) window.setFavorites(unlikePaths, false)
+        }
+        function onPlayNextRequested(title, artist) {
+            const wanted = window.trackMatchKey({ title: title, artist: artist })
+            const match = window.availableTracks().find(track => window.trackMatchKey(track) === wanted)
+            if (match) window.insertTrackNext(match)
+        }
         function onQueueMoveRequested(from, to) {
             const queue = window.activePlaybackQueue()
             if (from >= 0 && to >= 0 && from < queue.length && to < queue.length)
@@ -5100,6 +5123,26 @@ ApplicationWindow {
     }
 
     // Asks once per version; Settings keeps showing the update after "Later".
+    ConfirmPopup {
+        id: pairingPrompt
+        title: "Connect " + phoneRemote.pairingRequest + "?"
+        subtitle: "Only allow phones you own"
+        message: "This phone will be able to control playback here, sync likes and playlists, and back up to this computer."
+        iconName: "smartphone"
+        confirmText: "Allow"
+        cancelText: "Deny"
+        onConfirmed: phoneRemote.answerPairing(true)
+        onClosed: phoneRemote.answerPairing(false)
+    }
+
+    Connections {
+        target: phoneRemote
+        function onPairingRequestChanged() {
+            if (phoneRemote.pairingRequest !== "") pairingPrompt.open()
+            else pairingPrompt.close()
+        }
+    }
+
     ConfirmPopup {
         id: updatePrompt
         property string version: ""

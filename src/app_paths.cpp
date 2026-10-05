@@ -33,3 +33,9 @@ QString listeningLogFilePath() {
     QDir().mkpath(dataDir);
     return QDir(dataDir).filePath("listening_log.jsonl");
 }
+
+QString phoneBackupFilePath() {
+    const QString dataDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    QDir().mkpath(dataDir);
+    return QDir(dataDir).filePath("phone_backup.json");
+}

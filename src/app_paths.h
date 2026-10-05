@@ -11,3 +11,5 @@ QString logFilePath();
 QString libraryCacheFilePath();
 /// Returns the path to the dated log of counted plays used by the yearly recap.
 QString listeningLogFilePath();
+/// Returns the path to the newest backup sent by the paired phone.
+QString phoneBackupFilePath();

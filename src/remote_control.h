@@ -36,6 +36,8 @@ class RemoteControlServer final : public QObject {
     Q_PROPERTY(QStringList favoritePaths MEMBER m_favoritePaths NOTIFY favoritePathsChanged)
     /// The saved playlists as {name, trackPaths}, kept current by QML, so a paired phone can copy them.
     Q_PROPERTY(QVariantList playlists MEMBER m_playlists)
+    /// The settings a paired phone can copy, by saved key, kept current by QML.
+    Q_PROPERTY(QVariantMap sharedSettings MEMBER m_sharedSettings)
 
   public:
     RemoteControlServer(PlayerController *player, LibraryController *library, QObject *parent = nullptr);
@@ -87,6 +89,8 @@ class RemoteControlServer final : public QObject {
     void likesChangeRequested(const QStringList &likePaths, const QStringList &unlikePaths);
     /// Asks to save the playlist \p name with the tracks at \p trackPaths, replacing one with the same name.
     void playlistReceived(const QString &name, const QStringList &trackPaths);
+    /// Asks to apply \p values, a subset of sharedSettings by key, copied from the phone.
+    void settingsReceived(const QVariantMap &values);
 
   private:
     struct Response {
@@ -108,6 +112,7 @@ class RemoteControlServer final : public QObject {
     LibraryController *m_library = nullptr;
     QStringList m_favoritePaths;
     QVariantList m_playlists;
+    QVariantMap m_sharedSettings;
     // Tells a syncing phone that likes or the library changed since it last looked.
     int m_likesRevision = 0;
     QTcpServer m_server;

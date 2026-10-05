@@ -760,6 +760,36 @@ ApplicationWindow {
         return []
     }
 
+    // Settings a paired phone can copy, by the key each is saved under.
+    readonly property var sharedSettingProperties: ({
+        "ui/accentName": "accentName", "ui/customAccentColor": "customAccentColor", "ui/albumArtRadius": "albumArtRadius",
+        "player/showRemainingTime": "showRemainingTime", "ui/trackDensity": "trackDensity", "ui/showFormatBadges": "showFormatBadges",
+        "player/crossfadeSeconds": "crossfadeSeconds", "player/autoplayEnabled": "autoplayEnabled",
+        "player/volumeLimitEnabled": "volumeLimitEnabled", "player/maxVolumePercent": "maxVolumePercent",
+        "player/replayGainMode": "replayGainMode", "player/resumeQueueOnLaunch": "resumeQueueOnLaunch",
+        "library/ignoreShortClips": "ignoreShortClips", "lyrics/alignment": "lyricsAlignment",
+        "lyrics/activeStyle": "lyricsActiveStyle", "lyrics/fontSize": "lyricsFontSize", "lyrics/preferLocal": "preferLocalLyrics",
+        "services/deezer": "svcDeezer", "services/audiodb": "svcAudiodb", "services/lrclib": "svcLrclib",
+        "services/archive": "svcArchive", "services/wiki": "svcWiki", "services/radio": "svcRadio"
+    })
+
+    Binding {
+        target: phoneRemote
+        property: "sharedSettings"
+        value: {
+            const values = {}
+            for (const key in window.sharedSettingProperties) values[key] = window[window.sharedSettingProperties[key]]
+            return values
+        }
+    }
+
+    function applySharedSettings(values) {
+        for (const key in values) {
+            const name = sharedSettingProperties[key]
+            if (name && typeof values[key] === typeof window[name]) window[name] = values[key]
+        }
+    }
+
     function receivePlaylist(name, trackPaths) {
         const existing = playlists.find(playlist => playlist.name.toLowerCase() === name.toLowerCase())
         if (existing) playlists = playlists.map(playlist => playlist === existing ? Object.assign({}, playlist, { trackPaths: trackPaths }) : playlist)
@@ -2848,6 +2878,7 @@ ApplicationWindow {
         }
         function onHandoffRequested(tracks, index, positionMs, playing) { window.continueHandoff(tracks, index, positionMs, playing) }
         function onPlaylistReceived(name, trackPaths) { window.receivePlaylist(name, trackPaths) }
+        function onSettingsReceived(values) { window.applySharedSettings(values) }
         function onLikesChangeRequested(likePaths, unlikePaths) {
             if (likePaths.length) window.setFavorites(likePaths, true)
             if (unlikePaths.length) window.setFavorites(unlikePaths, false)

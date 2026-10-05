@@ -153,7 +153,6 @@ RemoteControlServer::RemoteControlServer(PlayerController *player, LibraryContro
     // The address shown for pairing follows the computer joining, leaving or switching networks.
     // A router can also hand out a new address without the connection dropping, so it is checked now and then too.
     m_pairingTimeout.setSingleShot(true);
-    m_pairingTimeout.setInterval(60 * 1000);
     connect(&m_pairingTimeout, &QTimer::timeout, this, [this] {
         if (m_pairingAnswer == PairingAnswer::Waiting) {
             answerPairing(false);
@@ -256,8 +255,8 @@ void RemoteControlServer::answerPairing(bool allow) {
     if (m_pairingRequestId.isEmpty() || m_pairingAnswer != PairingAnswer::Waiting)
         return;
     m_pairingAnswer = allow ? PairingAnswer::Allowed : PairingAnswer::Denied;
-    // The answer waits for the asking phone to collect it, then is dropped so the next phone can ask.
-    m_pairingTimeout.start();
+    // The asking phone checks every second, so its answer is kept only briefly before the next phone can ask.
+    m_pairingTimeout.start(10 * 1000);
     emit pairingRequestChanged();
 }
 
@@ -379,7 +378,7 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                                  QString::number(QRandomGenerator::system()->generate64(), 16);
             m_pairingRequestName = name.trimmed();
             m_pairingAnswer = PairingAnswer::Waiting;
-            m_pairingTimeout.start();
+            m_pairingTimeout.start(60 * 1000);
             emit pairingRequestChanged();
             return {200, QJsonDocument(QJsonObject{{"id", m_pairingRequestId}}).toJson(QJsonDocument::Compact)};
         }

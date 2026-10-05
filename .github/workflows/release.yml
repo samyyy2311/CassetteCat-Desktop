@@ -221,6 +221,7 @@ jobs:
           path: release-assets
           format: spdx-json
           output-file: release-assets/CassetteCat-${{ env.RELEASE_TAG }}.spdx.json
+          upload-release-assets: false
       - name: Generate and verify checksums
         run: |
           rm -f release-assets/SHA256SUMS.txt

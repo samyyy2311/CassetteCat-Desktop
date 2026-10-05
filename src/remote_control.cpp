@@ -394,8 +394,6 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                                 {"revision", m_likesRevision}};
         return {200, QJsonDocument(likes).toJson(QJsonDocument::Compact)};
     }
-    if (method == "GET" && path == "/api/settings")
-        return {200, QJsonDocument(QJsonObject::fromVariantMap(m_sharedSettings)).toJson(QJsonDocument::Compact)};
     if (method == "GET" && path == "/api/playlists") {
         QJsonArray playlists;
         for (const QVariant &value : m_playlists) {
@@ -499,16 +497,6 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                 unlikePaths.append(track.value("filePath").toString());
         }
         emit likesChangeRequested(likePaths, unlikePaths);
-        return {200, {}};
-    }
-    if (path == "/api/settings") {
-        if (request.isEmpty())
-            return {400, {}};
-        QVariantMap values;
-        for (auto it = request.constBegin(); it != request.constEnd(); ++it)
-            if (m_sharedSettings.contains(it.key()))
-                values.insert(it.key(), it.value().toVariant());
-        emit settingsReceived(values);
         return {200, {}};
     }
     if (path == "/api/playlists") {
@@ -701,15 +689,6 @@ bool RemoteControlServer::selfCheck() {
                             remote.respond("POST", "/api/likes", auth, R"({"like":[],"unlike":["a"]})", lan).status == 200 &&
                             unlikedPaths.isEmpty() &&
                             remote.respond("POST", "/api/likes", auth, R"({"like":"a"})", lan).status == 400;
-    QVariantMap receivedSettings;
-    connect(&remote, &RemoteControlServer::settingsReceived, [&](const QVariantMap &values) { receivedSettings = values; });
-    remote.setProperty("sharedSettings", QVariantMap{{"ui/accentName", "recordRed"}});
-    const bool copiesSettings =
-        QJsonDocument::fromJson(remote.respond("GET", "/api/settings", auth, {}, lan).body).object().value("ui/accentName") ==
-            "recordRed" &&
-        remote.respond("POST", "/api/settings", auth, R"({"ui/accentName":"amber","ui/unknown":1})", lan).status == 200 &&
-        receivedSettings == QVariantMap{{"ui/accentName", "amber"}} &&
-        remote.respond("POST", "/api/settings", auth, "[]", lan).status == 400;
     QString receivedPlaylist;
     connect(&remote, &RemoteControlServer::playlistReceived, [&](const QString &name) { receivedPlaylist = name; });
     remote.setProperty("playlists", QVariantList{QVariantMap{{"name", "Road"}, {"trackPaths", QVariantList{"C:/Music/Gone.mp3"}}}});
@@ -784,13 +763,13 @@ bool RemoteControlServer::selfCheck() {
                     rejectsUnknownAction && relaysToPhone && acceptsHandoff && namesController && handsBackOnce &&
                     codeInQueryOnlyForArtwork && servesQueue && servesHttp && answersDiscovery && locksOutGuessing &&
                     rejectsInvalidBackup && keepsPreviousBackup && routesPlayNext && relaysPlayNextOnce &&
-                    refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes && copiesPlaylists && copiesSettings;
+                    refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes && copiesPlaylists;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
                    << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << acceptsHandoff
                    << namesController << handsBackOnce << codeInQueryOnlyForArtwork << servesQueue << servesHttp
                    << answersDiscovery << locksOutGuessing << rejectsInvalidBackup << keepsPreviousBackup << routesPlayNext
                    << relaysPlayNextOnce << refusesUnpairedUploadEarly
-                   << keysByTitleAndArtist << syncsLikes << copiesPlaylists << copiesSettings;
+                   << keysByTitleAndArtist << syncsLikes << copiesPlaylists;
     return ok;
 }

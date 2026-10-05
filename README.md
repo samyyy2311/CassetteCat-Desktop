@@ -34,7 +34,7 @@
 - **Controls.** Media keys, global shortcuts, the tray, and the Windows and Linux media controls. Every screen works from the keyboard.
 - **Lyrics and artwork.** Synced lyrics from your files or LRCLIB, or synced by tapping along, covers from your files or the Cover Art Archive, and artist pictures and bios.
 - **Listening Record.** Plays, listening time, top songs, artists and albums, full history, and a Rewind of each year and month.
-- **Phone remote.** Control CassetteCat from the [Android app](https://github.com/samyyy2311/CassetteCat) on the same Wi-Fi, and move a song, its queue and position between phone and computer.
+- **Phone remote.** Control CassetteCat from the [Android app](https://github.com/samyyy2311/CassetteCat) on the same Wi-Fi, and move a song, its queue and position between phone and computer. Pair by clicking Allow, keep likes in sync, copy playlists, keep your phone's backups, and see its listening in your Listening Record.
 - **Online extras.** Internet radio, Jellyfin and Subsonic, scrobbling to Libre.fm and ListenBrainz, and a Discord status.
 - **Privacy.** No account needed. Offline Blackout Mode turns every online lookup off.
 

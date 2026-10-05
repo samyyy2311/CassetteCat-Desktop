@@ -29,6 +29,7 @@ Before opening a pull request:
 - Include screenshots for visible changes.
 - Do not commit `build/`, local logs, editor files, or generated converter files.
 - Keep third-party notices up to date when adding code, fonts, icons, or artwork.
+- Read [AI_DISCLOSURE.md](AI_DISCLOSURE.md) for expectations regarding AI-assisted contributions.
 
 ## Reporting issues
 

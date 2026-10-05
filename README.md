@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest"><img src="https://img.shields.io/badge/v0.8.0-E55B3C?style=flat-square&logo=git&logoColor=white" alt="v0.8.0" /></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/v0.8.0-E55B3C?style=flat-square&logo=git&logoColor=white" alt="v0.8.0" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/GPL--3.0-A42E2B?style=flat-square&logo=gnu&logoColor=white" alt="GPL-3.0" /></a>
   <img src="https://img.shields.io/badge/Windows%2010%2F11-0078D6?style=flat-square&logo=windows&logoColor=white" alt="Windows" />
   <img src="https://img.shields.io/badge/Linux%20x86__64-FCC624?style=flat-square&logo=linux&logoColor=black" alt="Linux" />
@@ -25,6 +25,7 @@
   <img src="https://img.shields.io/badge/C++20-00599C?style=flat-square&logo=c%2B%2B&logoColor=white" alt="C++20" />
   <a href="https://alternativeto.net/software/cassettecat/about/"><img src="https://img.shields.io/badge/AlternativeTo-0289D5?style=flat-square&logo=alternativeto&logoColor=white" alt="AlternativeTo" /></a>
   <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases"><img src="https://img.shields.io/github/downloads/samyyy2311/CassetteCat-Desktop/total?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=Downloads&logo=github&logoColor=white" alt="GitHub downloads" /></a>
+  <a href="https://coderabbit.ai"><img src="https://img.shields.io/coderabbit/prs/github/samyyy2311/CassetteCat-Desktop?utm_source=oss&utm_medium=github&utm_campaign=samyyy2311%2FCassetteCat-Desktop&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews" alt="CodeRabbit Pull Request Reviews" /></a>
 </p>
 
 ---
@@ -111,7 +112,7 @@ Download from the [latest release](https://github.com/samyyy2311/CassetteCat-Des
 
 ### Privacy
 
-- **No Accounts or Tracking**: Everything stays on your machine. No telemetry, no analytics, and no accounts required.
+- **No Accounts or Tracking**: Everything stays on your machine. No telemetry, no analytics, and no accounts required. See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for full details.
 - **Offline Blackout Mode**: A single switch turns off every external network call for completely offline listening.
 - **GPL-3.0**: Fully open-source software.
 
@@ -137,7 +138,7 @@ ctest --test-dir build/dev --output-on-failure
 
 ## Contributing
 
-Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request. For security reports, see [SECURITY.md](.github/SECURITY.md).
+Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and [AI_DISCLOSURE.md](AI_DISCLOSURE.md) for how AI assistance is used in this project. For security reports, see [SECURITY.md](.github/SECURITY.md).
 
 ---
 
@@ -164,13 +165,29 @@ Contributions are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before
 - <a href="https://libre.fm"><img src="https://img.shields.io/badge/Libre.fm-990000?style=flat-square&logo=gnu&logoColor=white" alt="Libre.fm" /></a> Free software scrobbling.
 - <a href="https://wikipedia.org"><img src="https://img.shields.io/badge/Wikipedia-000000?style=flat-square&logo=wikipedia&logoColor=white" alt="Wikipedia" /></a> Artist biographies (CC BY-SA 4.0).
 - <a href="https://deezer.com"><img src="https://img.shields.io/badge/Deezer-FEAA2D?style=flat-square&logo=deezer&logoColor=white" alt="Deezer" /></a> and <a href="https://theaudiodb.com"><img src="https://img.shields.io/badge/TheAudioDB-6599CD?style=flat-square&logo=theaudiodb&logoColor=white" alt="TheAudioDB" /></a> Artist imagery and details.
+- <a href="https://github.com"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub" /></a> Release update checks.
 
 ### Libraries & Design
 
 - <a href="https://www.qt.io"><img src="https://img.shields.io/badge/Qt%206-41CD52?style=flat-square&logo=qt&logoColor=white" alt="Qt 6" /></a> Desktop interface and multimedia engine.
 - <a href="https://taglib.org"><img src="https://img.shields.io/badge/TagLib-1C1917?style=flat-square" alt="TagLib" /></a> Audio metadata, artwork extraction, and tag writing.
 - <a href="https://lucide.dev"><img src="https://img.shields.io/badge/Lucide-F56565?style=flat-square&logo=lucide&logoColor=white" alt="Lucide" /></a> Interface icons.
+- <a href="https://simpleicons.org"><img src="https://img.shields.io/badge/Simple%20Icons-111111?style=flat-square&logo=simpleicons&logoColor=white" alt="Simple Icons" /></a> Brand icons.
 - <a href="https://github.com/IBM/plex"><img src="https://img.shields.io/badge/IBM%20Plex-0F62FE?style=flat-square&logo=ibm&logoColor=white" alt="IBM Plex" /></a> and <a href="https://github.com/floriankarsten/space-grotesk"><img src="https://img.shields.io/badge/Space%20Grotesk-242424?style=flat-square" alt="Space Grotesk" /></a> Typefaces.
+
+---
+
+## Acknowledgements
+
+<p align="center">
+  <a href="https://coderabbit.ai">
+    <img src="assets/coderabbit_logo.svg" width="60" height="60" alt="CodeRabbit Logo" />
+  </a>
+</p>
+
+<p align="center">
+  Special thanks to <a href="https://coderabbit.ai">CodeRabbit</a> for supporting open-source development with automated AI code reviews.
+</p>
 
 ---
 

@@ -13,6 +13,7 @@
 #include <QVariantList>
 #include <QVariantMap>
 
+class LibraryController;
 class PlayerController;
 class QHostAddress;
 class QTcpSocket;
@@ -31,9 +32,11 @@ class RemoteControlServer final : public QObject {
     Q_PROPERTY(int repeatMode MEMBER m_repeatMode)
     /// The next few queued tracks as {index, title, artist, durationMs, filePath, artworkUrl}, kept current by QML.
     Q_PROPERTY(QVariantList upNext MEMBER m_upNext)
+    /// The favorite file paths, kept current by QML, so a paired phone can sync likes.
+    Q_PROPERTY(QStringList favoritePaths MEMBER m_favoritePaths NOTIFY favoritePathsChanged)
 
   public:
-    explicit RemoteControlServer(PlayerController *player, QObject *parent = nullptr);
+    RemoteControlServer(PlayerController *player, LibraryController *library, QObject *parent = nullptr);
 
     bool enabled() const;
     void setEnabled(bool enabled);
@@ -77,6 +80,9 @@ class RemoteControlServer final : public QObject {
     void handoffRequested(const QVariantList &tracks, int index, qint64 positionMs, bool playing);
     /// Asks to play the track named \p title by \p artist next, if the library has it.
     void playNextRequested(const QString &title, const QString &artist);
+    void favoritePathsChanged();
+    /// Asks to like the tracks at \p likePaths and unlike those at \p unlikePaths, as synced from the phone.
+    void likesChangeRequested(const QStringList &likePaths, const QStringList &unlikePaths);
 
   private:
     struct Response {
@@ -93,6 +99,10 @@ class RemoteControlServer final : public QObject {
     QJsonObject status();
 
     PlayerController *m_player = nullptr;
+    LibraryController *m_library = nullptr;
+    QStringList m_favoritePaths;
+    // Tells a syncing phone that likes or the library changed since it last looked.
+    int m_likesRevision = 0;
     QTcpServer m_server;
     QUdpSocket m_discovery;
     QString m_code;

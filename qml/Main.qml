@@ -1374,6 +1374,7 @@ ApplicationWindow {
 
     onFavoriteTracksChanged: {
         if (settingsInitialized) appSettings.setValue("library/favorites", JSON.stringify(favoriteTracks))
+        phoneRemote.favoritePaths = Object.keys(favoriteTracks)
         if (songFilterMode === "FAVORITES") updateVisibleLibrary()
         if (quickPicks.length > 0)
             forgottenFavs = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory).forgottenFavs
@@ -2837,6 +2838,10 @@ ApplicationWindow {
             if (index >= 0 && index < queue.length) window.playFromQueue(queue[index])
         }
         function onHandoffRequested(tracks, index, positionMs, playing) { window.continueHandoff(tracks, index, positionMs, playing) }
+        function onLikesChangeRequested(likePaths, unlikePaths) {
+            if (likePaths.length) window.setFavorites(likePaths, true)
+            if (unlikePaths.length) window.setFavorites(unlikePaths, false)
+        }
         function onPlayNextRequested(title, artist) {
             const wanted = window.trackMatchKey({ title: title, artist: artist })
             const match = window.availableTracks().find(track => window.trackMatchKey(track) === wanted)

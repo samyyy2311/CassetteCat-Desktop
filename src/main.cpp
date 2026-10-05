@@ -420,7 +420,7 @@ int main(int argc, char *argv[]) {
     SmtcController smtc(&player, &app);
     MprisController mpris(&player, &app);
     DiscordPresence discord(&player, &app);
-    RemoteControlServer phoneRemote(&player, &app);
+    RemoteControlServer phoneRemote(&player, &library, &app);
     GlobalShortcutController globalShortcuts(&app);
     TrayController tray(appIcon, &app);
 

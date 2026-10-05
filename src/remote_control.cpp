@@ -369,7 +369,8 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
     // Asking to pair needs no code: the person at this computer allows or denies it.
     if (path == "/api/pair-request") {
         if (method == "POST") {
-            const QString name = QString::fromUtf8(QJsonDocument::fromJson(body).object().value("name").toString().toUtf8().left(64));
+            const QString name =
+                QString::fromUtf8(QJsonDocument::fromJson(body).object().value("name").toString().toUtf8().left(64));
             if (name.trimmed().isEmpty() || m_code.isEmpty())
                 return {400, {}};
             if (!m_pairingRequestId.isEmpty())
@@ -442,7 +443,8 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         for (const QVariant &track : m_library->playbackTracks())
             libraryKeys.insert(matchKey(track.toMap()));
         QSet<QString> likedKeys;
-        for (const QVariant &track : m_library->tracksForPaths(QVariantList(m_favoritePaths.cbegin(), m_favoritePaths.cend())))
+        for (const QVariant &track :
+             m_library->tracksForPaths(QVariantList(m_favoritePaths.cbegin(), m_favoritePaths.cend())))
             if (!track.toMap().isEmpty())
                 likedKeys.insert(matchKey(track.toMap()));
         const QJsonObject likes{{"library", QJsonArray::fromStringList(libraryKeys.values())},
@@ -452,7 +454,8 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
     }
     if (method == "GET" && path == "/api/listens") {
         const qint64 since = QUrlQuery(url).queryItemValue("since").toLongLong();
-        return {200, QJsonDocument(QJsonObject{{"listens", m_library->listensSince(since)}}).toJson(QJsonDocument::Compact)};
+        return {200,
+                QJsonDocument(QJsonObject{{"listens", m_library->listensSince(since)}}).toJson(QJsonDocument::Compact)};
     }
     if (method == "GET" && path == "/api/playlists") {
         QJsonArray playlists;
@@ -462,7 +465,8 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
             for (const QVariant &track : m_library->tracksForPaths(playlist.value("trackPaths").toList())) {
                 const QVariantMap found = track.toMap();
                 if (!found.isEmpty())
-                    tracks.append(QJsonObject{{"title", found.value("title").toString()}, {"artist", found.value("artist").toString()}});
+                    tracks.append(QJsonObject{{"title", found.value("title").toString()},
+                                              {"artist", found.value("artist").toString()}});
             }
             playlists.append(QJsonObject{{"name", playlist.value("name").toString()}, {"tracks", tracks}});
         }
@@ -762,22 +766,26 @@ bool RemoteControlServer::selfCheck() {
         matchKey({{"title", " One "}, {"artist", "ANN"}}) == QString("one") + QChar(0x1f) + "ann" &&
         matchKey({{"title", "  "}, {"fileName", "Two.mp3"}}) == QString("two.mp3") + QChar(0x1f);
     const auto likesRevision = [&] {
-        return QJsonDocument::fromJson(remote.respond("GET", "/api/likes", auth, {}, lan).body).object().value("revision").toInt();
+        return QJsonDocument::fromJson(remote.respond("GET", "/api/likes", auth, {}, lan).body)
+            .object()
+            .value("revision")
+            .toInt();
     };
     const int revisionBefore = likesRevision();
     remote.setProperty("favoritePaths", QStringList{"C:/Music/One.mp3"});
     QStringList unlikedPaths{"unchanged"};
     connect(&remote, &RemoteControlServer::likesChangeRequested,
             [&](const QStringList &, const QStringList &unlike) { unlikedPaths = unlike; });
-    const bool syncsLikes = likesRevision() == revisionBefore + 1 &&
-                            remote.respond("POST", "/api/likes", auth, R"({"like":[],"unlike":["a"]})", lan).status == 200 &&
-                            unlikedPaths.isEmpty() &&
-                            remote.respond("POST", "/api/likes", auth, R"({"like":"a"})", lan).status == 400;
-    const bool rejectsBadListens = remote.respond("POST", "/api/listens", auth, R"({"listens":"x"})", lan).status == 400 &&
-                                   QJsonDocument::fromJson(remote.respond("GET", "/api/listens?since=0", auth, {}, lan).body)
-                                       .object()
-                                       .value("listens")
-                                       .isArray();
+    const bool syncsLikes =
+        likesRevision() == revisionBefore + 1 &&
+        remote.respond("POST", "/api/likes", auth, R"({"like":[],"unlike":["a"]})", lan).status == 200 &&
+        unlikedPaths.isEmpty() && remote.respond("POST", "/api/likes", auth, R"({"like":"a"})", lan).status == 400;
+    const bool rejectsBadListens =
+        remote.respond("POST", "/api/listens", auth, R"({"listens":"x"})", lan).status == 400 &&
+        QJsonDocument::fromJson(remote.respond("GET", "/api/listens?since=0", auth, {}, lan).body)
+            .object()
+            .value("listens")
+            .isArray();
     const auto pairingId = [&] {
         return QJsonDocument::fromJson(remote.respond("POST", "/api/pair-request", {}, R"({"name":"Pixel"})", lan).body)
             .object()
@@ -785,31 +793,42 @@ bool RemoteControlServer::selfCheck() {
             .toString();
     };
     const auto pairingStatus = [&](const QString &id) {
-        return QJsonDocument::fromJson(remote.respond("GET", "/api/pair-request?id=" + id.toLatin1(), {}, {}, lan).body).object();
+        return QJsonDocument::fromJson(remote.respond("GET", "/api/pair-request?id=" + id.toLatin1(), {}, {}, lan).body)
+            .object();
     };
     const QString allowedId = pairingId();
-    const bool asksBeforePairing = !allowedId.isEmpty() && remote.pairingRequest() == "Pixel" &&
-                                   remote.respond("POST", "/api/pair-request", {}, R"({"name":"Other"})", lan).status == 409 &&
-                                   pairingStatus(allowedId).value("status") == "waiting" &&
-                                   remote.respond("GET", "/api/pair-request?id=guess", {}, {}, lan).status == 404;
+    const bool asksBeforePairing =
+        !allowedId.isEmpty() && remote.pairingRequest() == "Pixel" &&
+        remote.respond("POST", "/api/pair-request", {}, R"({"name":"Other"})", lan).status == 409 &&
+        pairingStatus(allowedId).value("status") == "waiting" &&
+        remote.respond("GET", "/api/pair-request?id=guess", {}, {}, lan).status == 404;
     remote.answerPairing(true);
     const bool keepsAllowedUntilCollected =
         remote.respond("POST", "/api/pair-request", {}, R"({"name":"Other"})", lan).status == 409;
-    const bool givesCodeOnceAllowed = pairingStatus(allowedId).value("code") == "ABC234" &&
-                                      remote.respond("GET", "/api/pair-request?id=" + allowedId.toLatin1(), {}, {}, lan).status == 404;
+    const bool givesCodeOnceAllowed =
+        pairingStatus(allowedId).value("code") == "ABC234" &&
+        remote.respond("GET", "/api/pair-request?id=" + allowedId.toLatin1(), {}, {}, lan).status == 404;
     const QString deniedId = pairingId();
     remote.answerPairing(false);
     const QJsonObject denied = pairingStatus(deniedId);
-    const bool turnsAwayDenied = denied.value("status") == "denied" && !denied.contains("code") &&
-                                 remote.respond("POST", "/api/pair-request", {}, R"({"name":"Pixel"})", QHostAddress("8.8.8.8")).status == 403;
+    const bool turnsAwayDenied =
+        denied.value("status") == "denied" && !denied.contains("code") &&
+        remote.respond("POST", "/api/pair-request", {}, R"({"name":"Pixel"})", QHostAddress("8.8.8.8")).status == 403;
     QString receivedPlaylist;
     connect(&remote, &RemoteControlServer::playlistReceived, [&](const QString &name) { receivedPlaylist = name; });
-    remote.setProperty("playlists", QVariantList{QVariantMap{{"name", "Road"}, {"trackPaths", QVariantList{"C:/Music/Gone.mp3"}}}});
+    remote.setProperty("playlists",
+                       QVariantList{QVariantMap{{"name", "Road"}, {"trackPaths", QVariantList{"C:/Music/Gone.mp3"}}}});
     const QJsonArray servedPlaylists =
-        QJsonDocument::fromJson(remote.respond("GET", "/api/playlists", auth, {}, lan).body).object().value("playlists").toArray();
-    const QJsonObject sentPlaylist = QJsonDocument::fromJson(
-        remote.respond("POST", "/api/playlists", auth, R"({"name":" Gym ","tracks":[{"title":"One","artist":"Ann"}]})", lan).body)
-        .object();
+        QJsonDocument::fromJson(remote.respond("GET", "/api/playlists", auth, {}, lan).body)
+            .object()
+            .value("playlists")
+            .toArray();
+    const QJsonObject sentPlaylist =
+        QJsonDocument::fromJson(remote
+                                    .respond("POST", "/api/playlists", auth,
+                                             R"({"name":" Gym ","tracks":[{"title":"One","artist":"Ann"}]})", lan)
+                                    .body)
+            .object();
     const bool copiesPlaylists =
         servedPlaylists.size() == 1 && servedPlaylists[0].toObject().value("name") == "Road" &&
         servedPlaylists[0].toObject().value("tracks").toArray().isEmpty() && receivedPlaylist == "Gym" &&
@@ -819,18 +838,20 @@ bool RemoteControlServer::selfCheck() {
     connect(&remote, &RemoteControlServer::playNextRequested, [&](const QString &title) { playNextTitle = title; });
     const bool routesPlayNext =
         remote.respond("POST", "/api/queue/next", auth, R"({"title":"One","artist":"Ann"})", lan).status == 200 &&
-        playNextTitle == "One" && remote.respond("POST", "/api/queue/next", auth, R"({"artist":"Ann"})", lan).status == 400;
+        playNextTitle == "One" &&
+        remote.respond("POST", "/api/queue/next", auth, R"({"artist":"Ann"})", lan).status == 400;
     remote.playNextOnPhone("Two", "Bo");
     const auto playNextOnPhone = [&] {
-        return QJsonDocument::fromJson(remote.respond("POST", "/api/phone-state", auth, R"({"title":"Song","isPlaying":true})",
-                                                      lan, "motorola edge 40")
+        return QJsonDocument::fromJson(remote
+                                           .respond("POST", "/api/phone-state", auth,
+                                                    R"({"title":"Song","isPlaying":true})", lan, "motorola edge 40")
                                            .body)
             .object()
             .value("playNext")
             .toArray();
     };
-    const bool relaysPlayNextOnce = playNextOnPhone() == QJsonArray{QJsonObject{{"title", "Two"}, {"artist", "Bo"}}} &&
-                                    playNextOnPhone().isEmpty();
+    const bool relaysPlayNextOnce =
+        playNextOnPhone() == QJsonArray{QJsonObject{{"title", "Two"}, {"artist", "Bo"}}} && playNextOnPhone().isEmpty();
     const bool rejectsInvalidBackup = remote.respond("POST", "/api/backup", auth, "not a backup", lan).status == 400;
     QTemporaryDir backupDir;
     const QString backupPath = backupDir.filePath("backup.json");
@@ -855,7 +876,8 @@ bool RemoteControlServer::selfCheck() {
         return reply;
     };
     const QByteArray reply = exchange("POST /api/playback HTTP/1.1\r\nAuthorization: Bearer ABC234\r\n"
-                                      "Content-Length: 17\r\n\r\n" R"({"action":"next"})");
+                                      "Content-Length: 17\r\n\r\n"
+                                      R"({"action":"next"})");
     const bool refusesUnpairedUploadEarly =
         exchange("POST /api/backup HTTP/1.1\r\nAuthorization: Bearer WRONG1\r\nContent-Length: 1000000\r\n\r\n")
             .startsWith("HTTP/1.1 401");
@@ -876,15 +898,16 @@ bool RemoteControlServer::selfCheck() {
                     rejectsUnknownAction && relaysToPhone && acceptsHandoff && namesController && handsBackOnce &&
                     codeInQueryOnlyForArtwork && servesQueue && servesHttp && answersDiscovery && locksOutGuessing &&
                     rejectsInvalidBackup && keepsPreviousBackup && routesPlayNext && relaysPlayNextOnce &&
-                    refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes && copiesPlaylists && rejectsBadListens && asksBeforePairing &&
-                    keepsAllowedUntilCollected && givesCodeOnceAllowed && turnsAwayDenied;
+                    refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes && copiesPlaylists &&
+                    rejectsBadListens && asksBeforePairing && keepsAllowedUntilCollected && givesCodeOnceAllowed &&
+                    turnsAwayDenied;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
                    << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << acceptsHandoff
                    << namesController << handsBackOnce << codeInQueryOnlyForArtwork << servesQueue << servesHttp
-                   << answersDiscovery << locksOutGuessing << rejectsInvalidBackup << keepsPreviousBackup << routesPlayNext
-                   << relaysPlayNextOnce << refusesUnpairedUploadEarly
-                   << keysByTitleAndArtist << syncsLikes << copiesPlaylists << rejectsBadListens << asksBeforePairing
+                   << answersDiscovery << locksOutGuessing << rejectsInvalidBackup << keepsPreviousBackup
+                   << routesPlayNext << relaysPlayNextOnce << refusesUnpairedUploadEarly << keysByTitleAndArtist
+                   << syncsLikes << copiesPlaylists << rejectsBadListens << asksBeforePairing
                    << keepsAllowedUntilCollected << givesCodeOnceAllowed << turnsAwayDenied;
     return ok;
 }

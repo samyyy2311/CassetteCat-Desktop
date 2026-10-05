@@ -6,7 +6,7 @@ The latest code on the default branch is the supported version.
 
 Please do not open a public issue for a security problem.
 
-Use GitHub private vulnerability reporting when it is enabled for this repository. If it is not available, contact the maintainer privately through GitHub. Include clear steps to reproduce the issue and avoid sharing private data.
+Report it privately at https://github.com/samyyy2311/CassetteCat-Desktop/security/advisories/new. Include clear steps to reproduce the issue and avoid sharing private data.
 
 ## What happens next
 

@@ -27,3 +27,18 @@ function karaoke(lines, index, activeIndex, positionMs, color, text) {
         return "<span style=\"color:rgba(" + r + "," + g + "," + b + "," + alpha.toFixed(2) + ")\">" + escape(word) + "</span>"
     }).join("")
 }
+
+// "[mm:ss.xx]" as LRC files write it.
+function lrcTimestamp(ms) {
+    const centis = Math.max(0, Math.round(ms / 10))
+    const minutes = Math.floor(centis / 6000)
+    const seconds = Math.floor(centis / 100) % 60
+    const pad = value => String(value).padStart(2, "0")
+    return "[" + pad(minutes) + ":" + pad(seconds) + "." + pad(centis % 100) + "]"
+}
+
+// Synced lyrics from plain [lines] and the time each one was tapped.
+function toLrc(lines, stampsMs) {
+    return lines.map((line, i) => lrcTimestamp(stampsMs[i]) + line.text).join("\n")
+}
+

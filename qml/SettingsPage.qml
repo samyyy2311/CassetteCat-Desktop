@@ -30,6 +30,7 @@ Item {
     property string sleepTimerStatus: "Off"
     property bool sleepFadeOut: true
     property bool autoplayEnabled: false
+    property int crossfadeSeconds: 0
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 80
     property string replayGainMode: "off"
@@ -52,6 +53,7 @@ Item {
     property bool svcWiki: true
     property bool svcArchive: true
     property bool svcDiscord: false
+    property bool svcPhoneRemote: false
     property string backupStatus: ""
     property string currentSection: "library"
     property bool scrobbleListenBrainzEnabled: false
@@ -110,6 +112,7 @@ Item {
     signal showRemainingTimeSelected(bool value)
     signal resumeQueueOnLaunchSelected(bool value)
     signal autoplaySelected(bool value)
+    signal crossfadeSelected(int value)
     signal sleepTimerSelected(string value)
     signal sleepTimerCancelled()
     signal sleepFadeOutSelected(bool value)
@@ -307,6 +310,7 @@ Item {
                                 audioDeviceId: root.audioDeviceId
                                 resumeQueueOnLaunch: root.resumeQueueOnLaunch
                                 autoplayEnabled: root.autoplayEnabled
+                                crossfadeSeconds: root.crossfadeSeconds
                                 sleepTimerMode: root.sleepTimerMode
                                 sleepTimerStatus: root.sleepTimerStatus
                                 sleepFadeOut: root.sleepFadeOut
@@ -316,6 +320,7 @@ Item {
                                 onAudioDeviceSelected: value => root.audioDeviceSelected(value)
                                 onResumeQueueOnLaunchSelected: value => root.resumeQueueOnLaunchSelected(value)
                                 onAutoplaySelected: value => root.autoplaySelected(value)
+                                onCrossfadeSelected: value => root.crossfadeSelected(value)
                                 onSleepTimerSelected: value => root.sleepTimerSelected(value)
                                 onSleepTimerCancelled: root.sleepTimerCancelled()
                                 onSleepFadeOutSelected: value => root.sleepFadeOutSelected(value)
@@ -406,6 +411,7 @@ Item {
                                 svcWiki: root.svcWiki
                                 svcArchive: root.svcArchive
                                 svcDiscord: root.svcDiscord
+                                svcPhoneRemote: root.svcPhoneRemote
                                 onOfflineBlackoutSelected: value => root.offlineBlackoutSelected(value)
                                 onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
                                 onOpenJellyfinRequested: root.openJellyfinRequested()

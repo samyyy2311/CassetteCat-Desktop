@@ -549,14 +549,38 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
         const auto toTagString = [](const QString &value) {
             return TagLib::String(value.toUtf8().constData(), TagLib::String::UTF8);
         };
+        // Only the fields present are written, so a batch edit leaves every other tag as it was.
         auto *tag = fileRef.tag();
-        tag->setTitle(toTagString(metadata.value("title").toString()));
-        tag->setArtist(toTagString(metadata.value("artist").toString()));
-        tag->setAlbum(toTagString(metadata.value("album").toString()));
-        tag->setGenre(toTagString(metadata.value("genre").toString()));
-        tag->setComment(toTagString(metadata.value("comment").toString()));
-        tag->setYear(static_cast<unsigned int>(qMax(0, metadata.value("year").toInt())));
-        tag->setTrack(static_cast<unsigned int>(qMax(0, metadata.value("trackNumber").toInt())));
+        const auto text = [&](const char *key) { return toTagString(metadata.value(key).toString()); };
+        const auto number = [&](const char *key) {
+            return static_cast<unsigned int>(qMax(0, metadata.value(key).toInt()));
+        };
+        // An empty number clears the tag; anything else must be a whole number rather than quietly becoming zero.
+        for (const char *key : {"year", "trackNumber", "discNumber"}) {
+            const QString value = metadata.value(key).toString().trimmed();
+            bool valid = true;
+            if (!value.isEmpty())
+                value.toInt(&valid);
+            if (!valid) {
+                if (error)
+                    *error = "Year, track and disc must be whole numbers.";
+                return false;
+            }
+        }
+        if (metadata.contains("title"))
+            tag->setTitle(text("title"));
+        if (metadata.contains("artist"))
+            tag->setArtist(text("artist"));
+        if (metadata.contains("album"))
+            tag->setAlbum(text("album"));
+        if (metadata.contains("genre"))
+            tag->setGenre(text("genre"));
+        if (metadata.contains("comment"))
+            tag->setComment(text("comment"));
+        if (metadata.contains("year"))
+            tag->setYear(number("year"));
+        if (metadata.contains("trackNumber"))
+            tag->setTrack(number("trackNumber"));
 
         TagLib::PropertyMap properties = fileRef.file()->properties();
         const auto setProperty = [&](const char *key, const QString &value) {
@@ -566,9 +590,21 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
             else
                 properties.replace(propertyKey, TagLib::StringList(toTagString(value.trimmed())));
         };
-        setProperty("LABEL", metadata.value("label").toString());
-        setProperty("DISCNUMBER", QString::number(qMax(0, metadata.value("discNumber").toInt())));
-        setProperty("LYRICS", metadata.value("lyrics").toString());
+        if (metadata.contains("label")) {
+            const QString label = metadata.value("label").toString();
+            setProperty("LABEL", label);
+            // The label is also read from these when LABEL is missing, so clearing it clears them too.
+            if (label.trimmed().isEmpty()) {
+                setProperty("ORGANIZATION", {});
+                setProperty("PUBLISHER", {});
+            }
+        }
+        if (metadata.contains("discNumber")) {
+            const int disc = metadata.value("discNumber").toInt();
+            setProperty("DISCNUMBER", disc > 0 ? QString::number(disc) : QString());
+        }
+        if (metadata.contains("lyrics"))
+            setProperty("LYRICS", metadata.value("lyrics").toString());
         fileRef.file()->setProperties(properties);
 
         if (!fileRef.file()->save()) {

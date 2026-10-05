@@ -1,5 +1,7 @@
 #pragma once
 
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QAbstractListModel>
 #include <QFileSystemWatcher>
 #include <QHash>
@@ -51,6 +53,10 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE QStringList artistNames(const QString &artist) const;
     /// Appends a counted play with the current date and the time listened to the listening log.
     Q_INVOKABLE void recordListen(const QVariantMap &track, qint64 listenedMs);
+    /// Adds listens made on the paired phone to the listening log, marked as coming from it.
+    bool appendPhoneListens(const QList<QJsonObject> &listens);
+    /// Listens made on this computer after \p since, oldest first, as the phone stores them.
+    QJsonArray listensSince(qint64 since) const;
     /// Returns the years that have logged plays, newest first.
     Q_INVOKABLE QVariantList listeningYears() const;
     /// Summarizes the logged plays of \p year, or of one \p month (0-11) of it: totals, top songs, artists,
@@ -61,8 +67,12 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE QVariantMap homeRecommendations(const QVariantMap &playCounts, const QVariantMap &seenAt,
                                                 const QVariantMap &favorites, const QVariantList &history) const;
     Q_INVOKABLE QVariantMap updateTrackMetadata(const QVariantMap &metadata);
+    /// Applies the same tag \p changes to every file in \p filePaths; returns how many were saved.
+    Q_INVOKABLE int updateTracksMetadata(const QStringList &filePaths, const QVariantMap &changes);
     Q_INVOKABLE QVariantMap firstPlayableTrack() const;
     Q_INVOKABLE QVariantList playbackTracks() const;
+    /// Up to \p limit available tracks most like \p seed by genre, artist and era, skipping \p excludePaths.
+    Q_INVOKABLE QVariantList similarTracks(const QVariantMap &seed, const QStringList &excludePaths, int limit) const;
     Q_INVOKABLE QVariantMap catalogGroups() const;
     Q_INVOKABLE void setLibraryFilter(const QString &query, const QString &filter, const QVariantMap &favorites,
                                       const QString &sortMetric, bool ascending, const QVariantList &excludedFolders,
@@ -78,6 +88,8 @@ class LibraryController final : public QAbstractListModel {
     void visibleTracksChanged();
 
   private:
+    QVariantMap refreshTrack(const QString &filePath);
+    void publishTrackChanges();
     void setFolderPaths(QStringList paths);
     void startScan();
     void rescanFolder();

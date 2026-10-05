@@ -232,6 +232,12 @@ Item {
             }
 
             SettingButton {
+                text: "Edit Tags"
+                iconName: "pencil"
+                onClicked: root.appWindow.openBatchMetadataEditor()
+            }
+
+            SettingButton {
                 text: "Save Playlist"
                 iconName: "list"
                 onClicked: {

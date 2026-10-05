@@ -53,7 +53,7 @@ Item {
         anchors.fill: parent
         clip: true
         model: root.shownLyrics
-        currentIndex: root.appWindow.activeLyricDisplayIndex
+        currentIndex: root.appWindow.lyricsTapSyncing ? root.appWindow.lyricsTapStamps.length : root.appWindow.activeLyricDisplayIndex
         spacing: 26
         interactive: root.shownLyrics.length > 0
         topMargin: Math.round(height * 0.38)
@@ -69,8 +69,10 @@ Item {
             id: lyricItem
             width: ListView.view.width
             readonly property bool isGap: modelData.type === "gap"
-            readonly property bool isCurrent: Boolean(!isGap && root.appWindow.activeLyricDisplayIndex >= 0 && modelData.lineIndex === root.appWindow.activeLyricIndex && root.appWindow.lyricDisplayItems[root.appWindow.activeLyricDisplayIndex] && root.appWindow.lyricDisplayItems[root.appWindow.activeLyricDisplayIndex].type === "line")
-            readonly property bool isSynced: !isGap
+            readonly property bool isCurrent: root.appWindow.lyricsTapSyncing
+                ? modelData.lineIndex === root.appWindow.lyricsTapStamps.length
+                : Boolean(!isGap && root.appWindow.activeLyricDisplayIndex >= 0 && modelData.lineIndex === root.appWindow.activeLyricIndex && root.appWindow.lyricDisplayItems[root.appWindow.activeLyricDisplayIndex] && root.appWindow.lyricDisplayItems[root.appWindow.activeLyricDisplayIndex].type === "line")
+            readonly property bool isSynced: !isGap && modelData.startMs >= 0
             readonly property bool gapActive: Boolean(isGap && player.position >= modelData.startMs && player.position <= modelData.endMs)
             height: isGap ? 72 : lyricTextLabel.implicitHeight + 14
 
@@ -133,7 +135,10 @@ Item {
                 enabled: !lyricsSwap.running
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: player.seek(modelData.startMs)
+                onClicked: {
+                    if (root.appWindow.lyricsTapSyncing) root.appWindow.stampLyricLine()
+                    else if (lyricItem.isSynced) player.seek(modelData.startMs)
+                }
             }
         }
 

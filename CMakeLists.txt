@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CassetteCat VERSION 0.7.5 LANGUAGES CXX)
+project(CassetteCat VERSION 0.8.0 LANGUAGES CXX)
 
 set(CASSETTECAT_PACKAGE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version used by installers and Linux packages")
 
@@ -48,6 +48,8 @@ qt_add_executable(CassetteCat
     src/credential_vault.cpp
     src/discord_presence.h
     src/discord_presence.cpp
+    src/remote_control.h
+    src/remote_control.cpp
     src/streaming.h
     src/streaming.cpp
     src/streaming_library.cpp
@@ -182,6 +184,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/info.svg
         qml/icons/shield.svg
         qml/icons/refresh-cw.svg
+        qml/icons/smartphone.svg
         qml/icons/zap.svg
         qml/icons/compass.svg
         qml/icons/sliders-horizontal.svg
@@ -216,6 +219,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/repeat-1.svg
         qml/icons/more-vertical.svg
         qml/icons/list.svg
+        qml/icons/link.svg
         qml/icons/list-music.svg
         qml/icons/quote.svg
         qml/icons/chevron-down.svg
@@ -420,6 +424,7 @@ if(CASSETTECAT_BUILD_TESTING AND BUILD_TESTING)
     add_test(NAME audio-meter COMMAND CassetteCat --player-self-check)
     add_test(NAME catalog-tracklist COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_catalogtracklist.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME track-titles COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_tracktitles.qml")
+    add_test(NAME lyrics-text COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_lyricstext.qml")
     add_test(NAME queue-model COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_queuemodel.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME setting-choice-group COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_settingchoicegroup.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
     set_tests_properties(library-scan streaming-protocol service-cancellation audio-meter catalog-tracklist setting-choice-group PROPERTIES

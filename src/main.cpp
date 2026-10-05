@@ -38,6 +38,7 @@
 #include "audio_metadata.h"
 #include "credential_vault.h"
 #include "discord_presence.h"
+#include "remote_control.h"
 #include "image_cache.h"
 #include "library_controller.h"
 #include "library_scanner.h"
@@ -50,6 +51,7 @@
 #include <shobjidl.h>
 #include <propkey.h>
 #include <propvarutil.h>
+#include <appmodel.h>
 #endif
 
 namespace {
@@ -62,6 +64,16 @@ qint64 gDebugLogBytes = 0;
 #ifdef _WIN32
 constexpr auto kInstanceMutexName = L"CassetteCat.AudioEngine.Desktop.InstanceMutex";
 #endif
+
+// MSIX installs come only from the Microsoft Store, which delivers their updates itself.
+bool installedFromStore() {
+#ifdef Q_OS_WIN
+    UINT32 length = 0;
+    return GetCurrentPackageFullName(&length, nullptr) == ERROR_INSUFFICIENT_BUFFER;
+#else
+    return false;
+#endif
+}
 
 bool notifyRunningInstance(const QString &serverName, const QString &openPath = {}) {
     QLocalSocket socket;
@@ -334,6 +346,7 @@ int main(int argc, char *argv[]) {
         check(PlayerController::selfCheck(), "player");
         check(MprisController::selfCheck(), "mpris");
         check(DiscordPresence::selfCheck(), "discord presence");
+        check(RemoteControlServer::selfCheck(), "remote control");
         QSize labelSize;
         const QString bundledLabel = QStringLiteral("0.5/qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png");
         check(!CoverImageProvider().requestImage(bundledLabel, &labelSize, QSize(0, 0)).isNull(), "bundled cover");
@@ -407,6 +420,7 @@ int main(int argc, char *argv[]) {
     SmtcController smtc(&player, &app);
     MprisController mpris(&player, &app);
     DiscordPresence discord(&player, &app);
+    RemoteControlServer phoneRemote(&player, &library, &app);
     GlobalShortcutController globalShortcuts(&app);
     TrayController tray(appIcon, &app);
 
@@ -477,9 +491,11 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("player", &player);
     engine.rootContext()->setContextProperty("services", &services);
     engine.rootContext()->setContextProperty("appSettings", &appSettings);
+    engine.rootContext()->setContextProperty("installedFromStore", installedFromStore());
     engine.rootContext()->setContextProperty("smtc", &smtc);
     engine.rootContext()->setContextProperty("mpris", &mpris);
     engine.rootContext()->setContextProperty("discord", &discord);
+    engine.rootContext()->setContextProperty("phoneRemote", &phoneRemote);
     engine.rootContext()->setContextProperty("globalShortcuts", &globalShortcuts);
     engine.rootContext()->setContextProperty("tray", &tray);
     engine.addImageProvider("cover", new CoverImageProvider);

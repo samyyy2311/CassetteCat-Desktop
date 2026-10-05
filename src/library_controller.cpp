@@ -7,6 +7,7 @@
 #include "library_scanner.h"
 
 #include <QCoreApplication>
+#include <QDataStream>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
@@ -17,7 +18,9 @@
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QSet>
 #include <QSettings>
+#include <QTemporaryDir>
 #include <QTimer>
 
 #include <algorithm>
@@ -175,7 +178,8 @@ QList<QJsonObject> readListeningLog(const QByteArray &log) {
     QList<QJsonObject> entries;
     for (const QByteArray &line : log.split('\n')) {
         const QJsonObject entry = QJsonDocument::fromJson(line).object();
-        if (!entry.value("path").toString().isEmpty() && entry.value("at").toDouble() > 0)
+        const bool named = !entry.value("path").toString().isEmpty() || !entry.value("title").toString().isEmpty();
+        if (named && entry.value("at").toDouble() > 0)
             entries.append(entry);
     }
     return entries;
@@ -239,7 +243,12 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
         listenedMs += ms;
         firstListen = firstListen == 0 ? at : qMin(firstListen, at);
 
-        add(songs, songOrder, pathKey(track.value("filePath").toString()), {{"track", track}}, ms);
+        // A phone listen of a song this computer does not have is told apart by title and artist.
+        const QString path = track.value("filePath").toString();
+        const QString songKey = path.isEmpty() ? track.value("title").toString().trimmed().toLower() + QChar(0x1f) +
+                                                     track.value("artist").toString().trimmed().toLower()
+                                               : pathKey(path);
+        add(songs, songOrder, songKey, {{"track", track}}, ms);
         for (const QString &artist : splitArtists(track.value("artist").toString()))
             add(artists, artistOrder, artist.toLower(), {{"name", artist}, {"track", track}}, ms);
         const QString album = track.value("album").toString().trimmed();
@@ -491,6 +500,71 @@ bool LibraryController::selfCheck() {
     if (march.value("plays").toInt() != 2 || march.value("listenedMs").toLongLong() != 90000 ||
         march.value("months").toList().value(6).toDouble() != 200000)
         return fail("monthly listening recap");
+    const auto phoneLine = [](const QString &title) {
+        return QJsonDocument(
+                   QJsonObject{{"at", QDateTime::fromString("2026-04-01T12:00:00", Qt::ISODate).toMSecsSinceEpoch()},
+                               {"title", title},
+                               {"artist", "Dee"},
+                               {"ms", 1000},
+                               {"device", "phone"}})
+                   .toJson(QJsonDocument::Compact) +
+               '\n';
+    };
+    const QVariantMap phoneOnly = recapFromLog(phoneLine("Gone") + phoneLine("Gone") + phoneLine("Here"), 2026, -1);
+    if (phoneOnly.value("plays").toInt() != 3 || phoneOnly.value("songCount").toInt() != 2)
+        return fail("phone listens of songs not in the library");
+
+    // Half a second of 8 kHz mono silence is enough for TagLib to accept the file.
+    QTemporaryDir tagDir;
+    const QString wavPath = tagDir.filePath("tags.wav");
+    QFile wav(wavPath);
+    if (!wav.open(QIODevice::WriteOnly))
+        return fail("batch tag file");
+    QDataStream wavOut(&wav);
+    wavOut.setByteOrder(QDataStream::LittleEndian);
+    wavOut.writeRawData("RIFF", 4);
+    wavOut << quint32(36 + 8000);
+    wavOut.writeRawData("WAVEfmt ", 8);
+    wavOut << quint32(16) << quint16(1) << quint16(1) << quint32(8000) << quint32(16000) << quint16(2) << quint16(16);
+    wavOut.writeRawData("data", 4);
+    wavOut << quint32(8000);
+    wavOut.writeRawData(QByteArray(8000, '\0').constData(), 8000);
+    wav.close();
+    LibraryController tagged;
+    tagged.m_tracks = {QVariantMap{{"filePath", wavPath}}};
+    writeTrackInfo({{"filePath", wavPath}, {"title", "Keep"}, {"artist", "Old"}});
+    tagged.updateTracksMetadata({wavPath}, {{"artist", "New"}});
+    const TrackInfo saved = readTrackInfo(wavPath);
+    if (saved.title != "Keep" || saved.artist != "New")
+        return fail("batch tag edit keeps other fields");
+
+    LibraryController mixLibrary;
+    mixLibrary.m_tracks = {
+        QVariantMap{{"filePath", "/m/seed.flac"},
+                    {"artist", "Ann"},
+                    {"genre", "Jazz"},
+                    {"year", 2001},
+                    {"durationSeconds", 180}},
+        QVariantMap{{"filePath", "/m/close.flac"},
+                    {"artist", "Ann & Bo"},
+                    {"genre", "Jazz; Soul"},
+                    {"year", 2003},
+                    {"durationSeconds", 180}},
+        QVariantMap{{"filePath", "/m/far.flac"},
+                    {"artist", "Cy"},
+                    {"genre", "Metal"},
+                    {"year", 1980},
+                    {"durationSeconds", 180}},
+        QVariantMap{{"filePath", "/m/played.flac"},
+                    {"artist", "Ann"},
+                    {"genre", "Jazz"},
+                    {"year", 2001},
+                    {"durationSeconds", 180}},
+    };
+    mixLibrary.m_trackCount = int(mixLibrary.m_tracks.size());
+    const QVariantList mix = mixLibrary.similarTracks(mixLibrary.m_tracks.first().toMap(), {"/m/played.flac"}, 10);
+    if (mix.size() != 2 || mix.first().toMap().value("filePath") != "/m/close.flac")
+        return fail("similar tracks");
 
     library.setSearchFilter({}, "ALL", {"/"}, false);
     return library.trackCount() == 0;
@@ -645,6 +719,53 @@ void LibraryController::recordListen(const QVariantMap &track, qint64 listenedMs
     file.write(QJsonDocument(entry).toJson(QJsonDocument::Compact) + '\n');
 }
 
+bool LibraryController::appendPhoneListens(const QList<QJsonObject> &listens) {
+    QFile file(listeningLogFilePath());
+    // A phone retries an upload whose answer it missed, so a listen it already sent is not counted twice.
+    const auto identity = [](const QJsonObject &listen) {
+        return QString::number(static_cast<qint64>(listen.value("at").toDouble())) + QChar(0x1f) +
+               listen.value("title").toString();
+    };
+    QSet<QString> recorded;
+    if (file.open(QIODevice::ReadOnly)) {
+        for (const QJsonObject &entry : readListeningLog(file.readAll()))
+            if (entry.value("device") == "phone")
+                recorded.insert(identity(entry));
+        file.close();
+    }
+    if (!file.open(QIODevice::Append)) {
+        qWarning() << "Could not record listens from the phone:" << file.errorString();
+        return false;
+    }
+    for (QJsonObject listen : listens) {
+        if (recorded.contains(identity(listen)))
+            continue;
+        listen.insert("device", "phone");
+        const QByteArray line = QJsonDocument(listen).toJson(QJsonDocument::Compact) + '\n';
+        if (file.write(line) != line.size()) {
+            qWarning() << "Could not record listens from the phone:" << file.errorString();
+            return false;
+        }
+        recorded.insert(identity(listen));
+    }
+    return true;
+}
+
+QJsonArray LibraryController::listensSince(qint64 since) const {
+    QFile file(listeningLogFilePath());
+    QJsonArray listens;
+    if (!file.open(QIODevice::ReadOnly))
+        return listens;
+    for (const QJsonObject &entry : readListeningLog(file.readAll())) {
+        if (entry.contains("device") || static_cast<qint64>(entry.value("at").toDouble()) <= since)
+            continue;
+        QJsonObject listen = entry;
+        listen.remove("path");
+        listens.append(listen);
+    }
+    return listens;
+}
+
 QVariantList LibraryController::listeningYears() const {
     QFile file(listeningLogFilePath());
     if (!file.open(QIODevice::ReadOnly))
@@ -771,25 +892,51 @@ QVariantMap LibraryController::updateTrackMetadata(const QVariantMap &metadata) 
         return {};
     }
 
-    const TrackInfo info = readTrackInfo(filePath);
-    for (int i = 0; i < m_tracks.size(); ++i) {
-        QVariantMap track = m_tracks.at(i).toMap();
-        if (track.value("filePath").toString() != filePath)
+    const QVariantMap track = refreshTrack(filePath);
+    publishTrackChanges();
+    return track;
+}
+
+int LibraryController::updateTracksMetadata(const QStringList &filePaths, const QVariantMap &changes) {
+    int updated = 0;
+    for (const QString &filePath : filePaths) {
+        QVariantMap metadata = changes;
+        metadata.insert("filePath", filePath);
+        QString error;
+        if (!writeTrackInfo(metadata, &error)) {
+            qWarning().noquote() << "METADATA_UPDATE_FAILED:" << filePath << error;
             continue;
-        const QString artwork = track.value("artworkUrl").toString();
-        track = info.toMap();
+        }
+        refreshTrack(filePath);
+        ++updated;
+    }
+    if (updated > 0)
+        publishTrackChanges();
+    return updated;
+}
+
+QVariantMap LibraryController::refreshTrack(const QString &filePath) {
+    QVariantMap track = readTrackInfo(filePath).toMap();
+    for (int i = 0; i < m_tracks.size(); ++i) {
+        const QVariantMap existing = m_tracks.at(i).toMap();
+        if (existing.value("filePath").toString() != filePath)
+            continue;
+        const QString artwork = existing.value("artworkUrl").toString();
         if (!artwork.isEmpty())
             track.insert("artworkUrl", artwork);
         m_tracks[i] = track;
-        beginResetModel();
-        rebuildVisibleRows();
-        endResetModel();
-        emit changed();
-        emit tracksChanged();
-        emit visibleTracksChanged();
-        return track;
+        break;
     }
-    return info.toMap();
+    return track;
+}
+
+void LibraryController::publishTrackChanges() {
+    beginResetModel();
+    rebuildVisibleRows();
+    endResetModel();
+    emit changed();
+    emit tracksChanged();
+    emit visibleTracksChanged();
 }
 
 QVariantMap LibraryController::firstPlayableTrack() const {
@@ -809,6 +956,53 @@ QVariantList LibraryController::playbackTracks() const {
         if (isAvailable(track))
             result.append(track);
     }
+    return result;
+}
+
+// Scored like the Android app's Instant Mix: shared genres count most, then the same or a shared
+// artist, then a release within five years. Ties are shuffled so each run plays differently.
+QVariantList LibraryController::similarTracks(const QVariantMap &seed, const QStringList &excludePaths,
+                                              int limit) const {
+    static const QRegularExpression genreSeparator(QStringLiteral("\\s*[,;/]\\s*"));
+    const auto genres = [](const QVariantMap &track) {
+        QSet<QString> result;
+        for (const QString &genre : track.value("genre").toString().toLower().split(genreSeparator, Qt::SkipEmptyParts))
+            result.insert(genre.trimmed());
+        return result;
+    };
+    const auto artists = [](const QVariantMap &track) {
+        QSet<QString> result;
+        for (const QString &artist : splitArtists(track.value("artist").toString()))
+            result.insert(artist.toLower());
+        return result;
+    };
+    const QSet<QString> seedGenres = genres(seed);
+    const QSet<QString> seedArtists = artists(seed);
+    const QString seedArtist = seed.value("artist").toString();
+    const int seedYear = seed.value("year").toInt();
+    QSet<QString> excluded{pathKey(seed.value("filePath").toString())};
+    for (const QString &path : excludePaths)
+        excluded.insert(pathKey(path));
+
+    QList<QPair<int, QVariantMap>> scored;
+    for (const QVariant &value : playbackTracks()) {
+        const QVariantMap track = value.toMap();
+        if (excluded.contains(pathKey(track.value("filePath").toString())))
+            continue;
+        const int sharedGenres = int((genres(track) & seedGenres).size());
+        const int artistScore = track.value("artist").toString().compare(seedArtist, Qt::CaseInsensitive) == 0 ? 2
+                                : artists(track).intersects(seedArtists)                                       ? 1
+                                                                                                               : 0;
+        const int year = track.value("year").toInt();
+        const int eraScore = seedYear > 0 && year > 0 && qAbs(seedYear - year) <= 5 ? 1 : 0;
+        scored.append({sharedGenres * 3 + artistScore + eraScore, track});
+    }
+    std::shuffle(scored.begin(), scored.end(), *QRandomGenerator::global());
+    std::stable_sort(scored.begin(), scored.end(), [](const auto &a, const auto &b) { return a.first > b.first; });
+
+    QVariantList result;
+    for (int i = 0; i < qMin(limit, int(scored.size())); ++i)
+        result.append(scored[i].second);
     return result;
 }
 

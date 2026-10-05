@@ -154,7 +154,15 @@ RemoteControlServer::RemoteControlServer(PlayerController *player, LibraryContro
     // A router can also hand out a new address without the connection dropping, so it is checked now and then too.
     m_pairingTimeout.setSingleShot(true);
     m_pairingTimeout.setInterval(60 * 1000);
-    connect(&m_pairingTimeout, &QTimer::timeout, this, [this] { answerPairing(false); });
+    connect(&m_pairingTimeout, &QTimer::timeout, this, [this] {
+        if (m_pairingAnswer == PairingAnswer::Waiting) {
+            answerPairing(false);
+            return;
+        }
+        m_pairingRequestId.clear();
+        m_pairingRequestName.clear();
+        m_pairingAnswer = PairingAnswer::Waiting;
+    });
     m_addressCheck.setInterval(15 * 1000);
     connect(&m_addressCheck, &QTimer::timeout, this, &RemoteControlServer::checkAddress);
     if (QNetworkInformation::loadDefaultBackend())
@@ -248,7 +256,8 @@ void RemoteControlServer::answerPairing(bool allow) {
     if (m_pairingRequestId.isEmpty() || m_pairingAnswer != PairingAnswer::Waiting)
         return;
     m_pairingAnswer = allow ? PairingAnswer::Allowed : PairingAnswer::Denied;
-    m_pairingTimeout.stop();
+    // The answer waits for the asking phone to collect it, then is dropped so the next phone can ask.
+    m_pairingTimeout.start();
     emit pairingRequestChanged();
 }
 
@@ -364,7 +373,7 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
             const QString name = QString::fromUtf8(QJsonDocument::fromJson(body).object().value("name").toString().toUtf8().left(64));
             if (name.trimmed().isEmpty() || m_code.isEmpty())
                 return {400, {}};
-            if (!pairingRequest().isEmpty())
+            if (!m_pairingRequestId.isEmpty())
                 return {409, {}};
             m_pairingRequestId = QString::number(QRandomGenerator::system()->generate64(), 16) +
                                  QString::number(QRandomGenerator::system()->generate64(), 16);
@@ -379,6 +388,7 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         if (m_pairingAnswer == PairingAnswer::Waiting)
             return {200, R"({"status":"waiting"})"};
         const bool allowed = m_pairingAnswer == PairingAnswer::Allowed;
+        m_pairingTimeout.stop();
         m_pairingRequestId.clear();
         m_pairingRequestName.clear();
         m_pairingAnswer = PairingAnswer::Waiting;
@@ -590,7 +600,7 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
             if (!path.isEmpty() && !trackPaths.contains(path))
                 trackPaths.append(path);
         }
-        emit playlistReceived(name, trackPaths);
+        emit playlistReceived(name, trackPaths, tracks.size());
         return {200, QJsonDocument(QJsonObject{{"ok", true}, {"matched", trackPaths.size()}, {"total", tracks.size()}})
                          .toJson(QJsonDocument::Compact)};
     }
@@ -784,6 +794,8 @@ bool RemoteControlServer::selfCheck() {
                                    pairingStatus(allowedId).value("status") == "waiting" &&
                                    remote.respond("GET", "/api/pair-request?id=guess", {}, {}, lan).status == 404;
     remote.answerPairing(true);
+    const bool keepsAllowedUntilCollected =
+        remote.respond("POST", "/api/pair-request", {}, R"({"name":"Other"})", lan).status == 409;
     const bool givesCodeOnceAllowed = pairingStatus(allowedId).value("code") == "ABC234" &&
                                       remote.respond("GET", "/api/pair-request?id=" + allowedId.toLatin1(), {}, {}, lan).status == 404;
     const QString deniedId = pairingId();
@@ -866,7 +878,7 @@ bool RemoteControlServer::selfCheck() {
                     codeInQueryOnlyForArtwork && servesQueue && servesHttp && answersDiscovery && locksOutGuessing &&
                     rejectsInvalidBackup && keepsPreviousBackup && routesPlayNext && relaysPlayNextOnce &&
                     refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes && copiesPlaylists && rejectsBadListens && asksBeforePairing &&
-                    givesCodeOnceAllowed && turnsAwayDenied;
+                    keepsAllowedUntilCollected && givesCodeOnceAllowed && turnsAwayDenied;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
                    << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << acceptsHandoff
@@ -874,6 +886,6 @@ bool RemoteControlServer::selfCheck() {
                    << answersDiscovery << locksOutGuessing << rejectsInvalidBackup << keepsPreviousBackup << routesPlayNext
                    << relaysPlayNextOnce << refusesUnpairedUploadEarly
                    << keysByTitleAndArtist << syncsLikes << copiesPlaylists << rejectsBadListens << asksBeforePairing
-                   << givesCodeOnceAllowed << turnsAwayDenied;
+                   << keepsAllowedUntilCollected << givesCodeOnceAllowed << turnsAwayDenied;
     return ok;
 }

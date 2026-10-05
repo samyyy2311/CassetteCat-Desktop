@@ -740,6 +740,7 @@ bool LibraryController::appendPhoneListens(const QList<QJsonObject> &listens) {
             qWarning() << "Could not record listens from the phone:" << file.errorString();
             return false;
         }
+        recorded.insert(identity(listen));
     }
     return true;
 }

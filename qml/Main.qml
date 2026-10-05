@@ -760,9 +760,9 @@ ApplicationWindow {
         return []
     }
 
-    function receivePlaylist(name, trackPaths) {
+    function receivePlaylist(name, trackPaths, sentCount) {
         const existing = playlists.find(playlist => playlist.name.toLowerCase() === name.toLowerCase())
-        if (existing && trackPaths.length) playlists = playlists.map(playlist => playlist === existing ? Object.assign({}, playlist, { trackPaths: trackPaths }) : playlist)
+        if (existing && (trackPaths.length || sentCount === 0)) playlists = playlists.map(playlist => playlist === existing ? Object.assign({}, playlist, { trackPaths: trackPaths }) : playlist)
         else if (!existing) playlists = playlists.concat([{ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, trackPaths: trackPaths }])
     }
 
@@ -2847,7 +2847,7 @@ ApplicationWindow {
             if (index >= 0 && index < queue.length) window.playFromQueue(queue[index])
         }
         function onHandoffRequested(tracks, index, positionMs, playing) { window.continueHandoff(tracks, index, positionMs, playing) }
-        function onPlaylistReceived(name, trackPaths) { window.receivePlaylist(name, trackPaths) }
+        function onPlaylistReceived(name, trackPaths, sentCount) { window.receivePlaylist(name, trackPaths, sentCount) }
         function onLikesChangeRequested(likePaths, unlikePaths) {
             if (likePaths.length) window.setFavorites(likePaths, true)
             if (unlikePaths.length) window.setFavorites(unlikePaths, false)

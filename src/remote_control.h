@@ -91,8 +91,9 @@ class RemoteControlServer final : public QObject {
     void pairingRequestChanged();
     /// Asks to like the tracks at \p likePaths and unlike those at \p unlikePaths, as synced from the phone.
     void likesChangeRequested(const QStringList &likePaths, const QStringList &unlikePaths);
-    /// Asks to save the playlist \p name with the tracks at \p trackPaths, replacing one with the same name.
-    void playlistReceived(const QString &name, const QStringList &trackPaths);
+    /// Asks to save the playlist \p name with the tracks at \p trackPaths, matched from \p sentCount sent tracks,
+    /// replacing one with the same name.
+    void playlistReceived(const QString &name, const QStringList &trackPaths, int sentCount);
 
   private:
     struct Response {

@@ -555,6 +555,18 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
         const auto number = [&](const char *key) {
             return static_cast<unsigned int>(qMax(0, metadata.value(key).toInt()));
         };
+        // An empty number clears the tag; anything else must be a whole number rather than quietly becoming zero.
+        for (const char *key : {"year", "trackNumber", "discNumber"}) {
+            const QString value = metadata.value(key).toString().trimmed();
+            bool valid = true;
+            if (!value.isEmpty())
+                value.toInt(&valid);
+            if (!valid) {
+                if (error)
+                    *error = "Year, track and disc must be whole numbers.";
+                return false;
+            }
+        }
         if (metadata.contains("title"))
             tag->setTitle(text("title"));
         if (metadata.contains("artist"))
@@ -578,8 +590,15 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
             else
                 properties.replace(propertyKey, TagLib::StringList(toTagString(value.trimmed())));
         };
-        if (metadata.contains("label"))
-            setProperty("LABEL", metadata.value("label").toString());
+        if (metadata.contains("label")) {
+            const QString label = metadata.value("label").toString();
+            setProperty("LABEL", label);
+            // The label is also read from these when LABEL is missing, so clearing it clears them too.
+            if (label.trimmed().isEmpty()) {
+                setProperty("ORGANIZATION", {});
+                setProperty("PUBLISHER", {});
+            }
+        }
         if (metadata.contains("discNumber")) {
             const int disc = metadata.value("discNumber").toInt();
             setProperty("DISCNUMBER", disc > 0 ? QString::number(disc) : QString());

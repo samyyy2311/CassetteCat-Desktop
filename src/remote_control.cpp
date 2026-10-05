@@ -10,6 +10,7 @@
 #include <QHostAddress>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QNetworkInformation>
 #include <QNetworkInterface>
 #include <QNetworkDatagram>
 #include <QRandomGenerator>
@@ -136,6 +137,12 @@ RemoteControlServer::RemoteControlServer(PlayerController *player, QObject *pare
         while (QTcpSocket *socket = m_server.nextPendingConnection())
             serve(socket);
     });
+    // The address shown for pairing follows the computer joining, leaving or switching networks.
+    if (QNetworkInformation::loadDefaultBackend())
+        connect(QNetworkInformation::instance(), &QNetworkInformation::reachabilityChanged, this,
+                &RemoteControlServer::addressChanged);
+    else
+        qWarning() << "Phone remote cannot follow network changes on this system";
     m_controllerTimeout.setSingleShot(true);
     m_controllerTimeout.setInterval(12 * 1000);
     connect(&m_controllerTimeout, &QTimer::timeout, this, [this] {

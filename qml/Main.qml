@@ -3403,6 +3403,7 @@ ApplicationWindow {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: miniPlayerDock.top
+            anchors.bottomMargin: phonePlaybackStrip.visible ? phonePlaybackStrip.height : 0
 
             Rectangle {
                 id: sidebarPanel
@@ -3874,6 +3875,7 @@ ApplicationWindow {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: miniPlayerDock.top
+            anchors.bottomMargin: phonePlaybackStrip.visible ? phonePlaybackStrip.height : 0
             z: 350
             // Stays loaded while the close animation plays.
             active: catalogDetailOpen || detailExit.running
@@ -3971,13 +3973,22 @@ ApplicationWindow {
 
             // What the paired phone is playing itself, like a Spotify Connect device.
             Rectangle {
+                id: phonePlaybackStrip
                 visible: phoneRemote.phonePlayback.title !== undefined && player.error.length === 0
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.top
                 height: 38
-                color: Qt.rgba(recordRed.r, recordRed.g, recordRed.b, 0.16)
+                color: surfaceCard
                 z: 2
+
+                Rectangle {
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    height: 1
+                    color: borderSubtle
+                }
 
                 RowLayout {
                     anchors.fill: parent
@@ -3993,9 +4004,16 @@ ApplicationWindow {
                     }
 
                     Label {
+                        text: "Playing on " + (phoneRemote.phonePlayback.name || "your phone")
+                        color: textSecondary
+                        font.family: bodyFont
+                        font.pixelSize: 12
+                    }
+
+                    Label {
                         Layout.fillWidth: true
-                        text: "Playing on " + (phoneRemote.phonePlayback.name || "your phone") + "  ·  "
-                              + (phoneRemote.phonePlayback.title || "") + (phoneRemote.phonePlayback.artist ? " — " + phoneRemote.phonePlayback.artist : "")
+                        text: (phoneRemote.phonePlayback.title || "")
+                              + (phoneRemote.phonePlayback.artist ? "  ·  " + phoneRemote.phonePlayback.artist : "")
                         color: textPrimary
                         font.family: bodyFont
                         font.pixelSize: 12

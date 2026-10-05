@@ -1,5 +1,6 @@
 #include "remote_control.h"
 
+#include "app_paths.h"
 #include "audio_metadata.h"
 #include "player_controller.h"
 
@@ -12,7 +13,9 @@
 #include <QNetworkInterface>
 #include <QNetworkDatagram>
 #include <QRandomGenerator>
+#include <QSaveFile>
 #include <QSysInfo>
+#include <QTemporaryDir>
 #include <QTcpSocket>
 #include <QTimer>
 #include <QUrl>
@@ -29,10 +32,23 @@ constexpr char kDiscoveryProbe[] = "CASSETTECAT_DISCOVER";
 constexpr qsizetype kMaxHeaderBytes = 8 * 1024;
 // Large enough for a hand-off carrying the phone's queue.
 constexpr qsizetype kMaxBodyBytes = 64 * 1024;
+// A phone backup carries playlist covers as well as settings and listening stats.
+constexpr qsizetype kMaxBackupBytes = 16 * 1024 * 1024;
 constexpr int kMaxFailedAttempts = 10;
 constexpr qint64 kLockoutMs = 60 * 1000;
 // Same alphabet as the Android listening room codes, without look-alike characters.
 constexpr char kCodeAlphabet[] = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+// Keeps the backup it replaces beside it, so one bad backup cannot wipe out the last good one.
+bool saveBackup(const QString &path, const QByteArray &backup) {
+    const QString previous = path + ".previous";
+    if (QFile::exists(path)) {
+        QFile::remove(previous);
+        QFile::copy(path, previous);
+    }
+    QSaveFile file(path);
+    return file.open(QIODevice::WriteOnly) && file.write(backup) == backup.size() && file.commit();
+}
 
 bool isLocalPeer(const QHostAddress &peer) {
     bool isV4 = false;
@@ -106,6 +122,8 @@ QByteArray reasonPhrase(int status) {
         return "Not Found";
     case 413:
         return "Payload Too Large";
+    case 500:
+        return "Internal Server Error";
     default:
         return "Too Many Requests";
     }
@@ -184,6 +202,11 @@ void RemoteControlServer::sendToPhone(const QString &command) {
         m_phoneCommands.append(command);
 }
 
+void RemoteControlServer::playNextOnPhone(const QString &title, const QString &artist) {
+    if (!m_phonePlayback.isEmpty() && m_phonePlayNext.size() < 8)
+        m_phonePlayNext.append(QJsonObject{{"title", title}, {"artist", artist}});
+}
+
 QString RemoteControlServer::code() const {
     return m_code;
 }
@@ -212,7 +235,10 @@ void RemoteControlServer::regenerateCode() {
 void RemoteControlServer::serve(QTcpSocket *socket) {
     connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
     QTimer::singleShot(5000, socket, &QTcpSocket::abort);
-    connect(socket, &QTcpSocket::readyRead, socket, [this, socket] {
+    connect(socket, &QTcpSocket::readyRead, socket, [this, socket, requestBytes = qsizetype(0)]() mutable {
+        // A backup arrives in many chunks; wait for all of it instead of re-reading what is buffered each time.
+        if (socket->bytesAvailable() < requestBytes)
+            return;
         const QByteArray data = socket->peek(socket->bytesAvailable());
         const qsizetype headerEnd = data.indexOf("\r\n\r\n");
         if (headerEnd < 0) {
@@ -236,9 +262,11 @@ void RemoteControlServer::serve(QTcpSocket *socket) {
                 contentLength = line.mid(colon + 1).trimmed().toLongLong();
         }
 
+        const qsizetype maxBodyBytes = requestLine.value(1) == "/api/backup" ? kMaxBackupBytes : kMaxBodyBytes;
         Response response{413, {}};
-        if (contentLength >= 0 && contentLength <= kMaxBodyBytes) {
-            if (data.size() < headerEnd + 4 + contentLength)
+        if (contentLength >= 0 && contentLength <= maxBodyBytes) {
+            requestBytes = headerEnd + 4 + contentLength;
+            if (data.size() < requestBytes)
                 return;
             if (requestLine.size() < 2)
                 response = {400, {}};
@@ -314,6 +342,12 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         }
         return {200, QJsonDocument(QJsonObject{{"tracks", tracks}}).toJson(QJsonDocument::Compact)};
     }
+    if (method == "GET" && path == "/api/backup") {
+        QFile file(phoneBackupFilePath());
+        if (!file.open(QIODevice::ReadOnly))
+            return {404, {}};
+        return {200, file.readAll()};
+    }
     if (method != "POST")
         return {404, {}};
 
@@ -357,7 +391,8 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
             emit phonePlaybackChanged();
         }
         const QJsonArray commands = QJsonArray::fromStringList(std::exchange(m_phoneCommands, {}));
-        return {200, QJsonDocument(QJsonObject{{"ok", true}, {"commands", commands}}).toJson(QJsonDocument::Compact)};
+        const QJsonObject reply{{"ok", true}, {"commands", commands}, {"playNext", std::exchange(m_phonePlayNext, {})}};
+        return {200, QJsonDocument(reply).toJson(QJsonDocument::Compact)};
     }
     if (path == "/api/handoff" && request.value("tracks").isArray()) {
         // The phone stops playing when it hands over, so its strip goes at once.
@@ -371,6 +406,13 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                               request.value("playing").toBool());
         return {200, {}};
     }
+    if (path == "/api/queue/next") {
+        const QString title = request.value("title").toString();
+        if (title.isEmpty())
+            return {400, {}};
+        emit playNextRequested(title, request.value("artist").toString());
+        return {200, {}};
+    }
     if (path == "/api/queue/move" && request.contains("from") && request.contains("to")) {
         emit queueMoveRequested(request.value("from").toInt(), request.value("to").toInt());
         return {200, {}};
@@ -381,6 +423,15 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
     }
     if (path == "/api/queue" && request.contains("index")) {
         emit queueTrackRequested(request.value("index").toInt());
+        return {200, {}};
+    }
+    if (path == "/api/backup") {
+        if (request.isEmpty())
+            return {400, {}};
+        if (!saveBackup(phoneBackupFilePath(), body)) {
+            qWarning() << "Could not save the phone backup to" << phoneBackupFilePath();
+            return {500, {}};
+        }
         return {200, {}};
     }
     if (path == "/api/seek" && request.contains("positionMs")) {
@@ -509,6 +560,31 @@ bool RemoteControlServer::selfCheck() {
             .isEmpty();
     const bool rejectsUnknownAction =
         remote.respond("POST", "/api/playback", auth, R"({"action":"reset"})", lan).status == 400;
+    QString playNextTitle;
+    connect(&remote, &RemoteControlServer::playNextRequested, [&](const QString &title) { playNextTitle = title; });
+    const bool routesPlayNext =
+        remote.respond("POST", "/api/queue/next", auth, R"({"title":"One","artist":"Ann"})", lan).status == 200 &&
+        playNextTitle == "One" && remote.respond("POST", "/api/queue/next", auth, R"({"artist":"Ann"})", lan).status == 400;
+    remote.playNextOnPhone("Two", "Bo");
+    const auto playNextOnPhone = [&] {
+        return QJsonDocument::fromJson(remote.respond("POST", "/api/phone-state", auth, R"({"title":"Song","isPlaying":true})",
+                                                      lan, "motorola edge 40")
+                                           .body)
+            .object()
+            .value("playNext")
+            .toArray();
+    };
+    const bool relaysPlayNextOnce = playNextOnPhone() == QJsonArray{QJsonObject{{"title", "Two"}, {"artist", "Bo"}}} &&
+                                    playNextOnPhone().isEmpty();
+    const bool rejectsInvalidBackup = remote.respond("POST", "/api/backup", auth, "not a backup", lan).status == 400;
+    QTemporaryDir backupDir;
+    const QString backupPath = backupDir.filePath("backup.json");
+    auto read = [](const QString &path) {
+        QFile file(path);
+        return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
+    };
+    const bool keepsPreviousBackup = saveBackup(backupPath, R"({"n":1})") && saveBackup(backupPath, R"({"n":2})") &&
+                                     read(backupPath) == R"({"n":2})" && read(backupPath + ".previous") == R"({"n":1})";
 
     remote.setEnabled(true);
     QTcpSocket client;
@@ -536,11 +612,13 @@ bool RemoteControlServer::selfCheck() {
 
     const bool ok = rejectsPublicPeer && rejectsWrongCode && reportsStatus && routesNext && clampsVolume &&
                     rejectsUnknownAction && relaysToPhone && acceptsHandoff && namesController && handsBackOnce &&
-                    codeInQueryOnlyForArtwork && servesQueue && servesHttp && answersDiscovery && locksOutGuessing;
+                    codeInQueryOnlyForArtwork && servesQueue && servesHttp && answersDiscovery && locksOutGuessing &&
+                    rejectsInvalidBackup && keepsPreviousBackup && routesPlayNext && relaysPlayNextOnce;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
                    << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << acceptsHandoff
                    << namesController << handsBackOnce << codeInQueryOnlyForArtwork << servesQueue << servesHttp
-                   << answersDiscovery << locksOutGuessing;
+                   << answersDiscovery << locksOutGuessing << rejectsInvalidBackup << keepsPreviousBackup << routesPlayNext
+                   << relaysPlayNextOnce;
     return ok;
 }

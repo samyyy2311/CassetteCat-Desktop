@@ -65,6 +65,13 @@ Menu {
     }
 
     TrackMenuItem {
+        text: "Play Next on Phone"
+        icon.name: "smartphone"
+        visible: phoneRemote.phonePlayback.title !== undefined && !!(root.track && root.track.title) && root.track.format !== "STREAM"
+        onTriggered: phoneRemote.playNextOnPhone(root.track.title, root.track.artist || "")
+    }
+
+    TrackMenuItem {
         text: "Add to Queue"
         icon.name: "list"
         onTriggered: if (root.appWindow) root.appWindow.appendToQueue(root.track)

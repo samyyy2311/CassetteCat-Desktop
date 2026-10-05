@@ -2,6 +2,7 @@
 
 #include <QByteArray>
 #include <QElapsedTimer>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
@@ -47,6 +48,8 @@ class RemoteControlServer final : public QObject {
     QVariantMap phonePlayback() const;
     /// Queues \p command (play, pause, next, previous, handoff) for the phone's next check-in.
     Q_INVOKABLE void sendToPhone(const QString &command);
+    /// Asks the phone to play the track named \p title by \p artist next, if its library has it.
+    Q_INVOKABLE void playNextOnPhone(const QString &title, const QString &artist);
 
     /// Verifies pairing, routing and the status payload without opening sockets.
     static bool selfCheck();
@@ -72,6 +75,8 @@ class RemoteControlServer final : public QObject {
     void queueRemoveRequested(int index);
     /// Asks to continue the phone's queue here: \p tracks as {title, artist}, starting at \p index.
     void handoffRequested(const QVariantList &tracks, int index, qint64 positionMs, bool playing);
+    /// Asks to play the track named \p title by \p artist next, if the library has it.
+    void playNextRequested(const QString &title, const QString &artist);
 
   private:
     struct Response {
@@ -102,6 +107,7 @@ class RemoteControlServer final : public QObject {
     bool m_handoffToPhone = false;
     QVariantMap m_phonePlayback;
     QStringList m_phoneCommands;
+    QJsonArray m_phonePlayNext;
     // A playing phone checks in every couple of seconds; when it stops, its strip goes away.
     QTimer m_phoneTimeout;
 };

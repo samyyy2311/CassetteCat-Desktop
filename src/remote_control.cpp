@@ -271,7 +271,11 @@ void RemoteControlServer::serve(QTcpSocket *socket) {
 
         const qsizetype maxBodyBytes = requestLine.value(1) == "/api/backup" ? kMaxBackupBytes : kMaxBodyBytes;
         Response response{413, {}};
-        if (contentLength >= 0 && contentLength <= maxBodyBytes) {
+        // Only a paired phone may make the server wait for and hold a large upload.
+        if (contentLength > kMaxBodyBytes && authorization != "Bearer " + m_code.toLatin1())
+            response = respond(requestLine.value(0), requestLine.value(1), authorization, {}, socket->peerAddress(),
+                               deviceName);
+        else if (contentLength >= 0 && contentLength <= maxBodyBytes) {
             requestBytes = headerEnd + 4 + contentLength;
             if (data.size() < requestBytes)
                 return;
@@ -594,16 +598,23 @@ bool RemoteControlServer::selfCheck() {
                                      read(backupPath) == R"({"n":2})" && read(backupPath + ".previous") == R"({"n":1})";
 
     remote.setEnabled(true);
-    QTcpSocket client;
-    QByteArray reply;
-    QEventLoop loop;
-    QTimer::singleShot(3000, &loop, &QEventLoop::quit);
-    connect(&client, &QTcpSocket::readyRead, &loop, [&] { reply += client.readAll(); });
-    connect(&client, &QTcpSocket::disconnected, &loop, &QEventLoop::quit);
-    client.connectToHost(QHostAddress::LocalHost, remote.m_server.serverPort());
-    client.write("POST /api/playback HTTP/1.1\r\nAuthorization: Bearer ABC234\r\nContent-Length: 17\r\n\r\n");
-    client.write(R"({"action":"next"})");
-    loop.exec();
+    const auto exchange = [&](const QByteArray &request) {
+        QTcpSocket client;
+        QByteArray reply;
+        QEventLoop loop;
+        QTimer::singleShot(3000, &loop, &QEventLoop::quit);
+        connect(&client, &QTcpSocket::readyRead, &loop, [&] { reply += client.readAll(); });
+        connect(&client, &QTcpSocket::disconnected, &loop, &QEventLoop::quit);
+        client.connectToHost(QHostAddress::LocalHost, remote.m_server.serverPort());
+        client.write(request);
+        loop.exec();
+        return reply;
+    };
+    const QByteArray reply = exchange("POST /api/playback HTTP/1.1\r\nAuthorization: Bearer ABC234\r\n"
+                                      "Content-Length: 17\r\n\r\n" R"({"action":"next"})");
+    const bool refusesUnpairedUploadEarly =
+        exchange("POST /api/backup HTTP/1.1\r\nAuthorization: Bearer WRONG1\r\nContent-Length: 1000000\r\n\r\n")
+            .startsWith("HTTP/1.1 401");
     const QJsonObject found =
         QJsonDocument::fromJson(remote.discoveryReply(kDiscoveryProbe, QHostAddress("192.168.1.30"))).object();
     const bool answersDiscovery = found.value("port").toInt() == remote.m_server.serverPort() &&
@@ -620,12 +631,13 @@ bool RemoteControlServer::selfCheck() {
     const bool ok = rejectsPublicPeer && rejectsWrongCode && reportsStatus && routesNext && clampsVolume &&
                     rejectsUnknownAction && relaysToPhone && acceptsHandoff && namesController && handsBackOnce &&
                     codeInQueryOnlyForArtwork && servesQueue && servesHttp && answersDiscovery && locksOutGuessing &&
-                    rejectsInvalidBackup && keepsPreviousBackup && routesPlayNext && relaysPlayNextOnce;
+                    rejectsInvalidBackup && keepsPreviousBackup && routesPlayNext && relaysPlayNextOnce &&
+                    refusesUnpairedUploadEarly;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
                    << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << acceptsHandoff
                    << namesController << handsBackOnce << codeInQueryOnlyForArtwork << servesQueue << servesHttp
                    << answersDiscovery << locksOutGuessing << rejectsInvalidBackup << keepsPreviousBackup << routesPlayNext
-                   << relaysPlayNextOnce;
+                   << relaysPlayNextOnce << refusesUnpairedUploadEarly;
     return ok;
 }

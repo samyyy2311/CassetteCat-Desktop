@@ -296,7 +296,8 @@ void RemoteControlServer::serve(QTcpSocket *socket) {
         }
 
         const QByteArray target = requestLine.value(1);
-        const qsizetype maxBodyBytes = target == "/api/backup" || target == "/api/likes" ? kMaxBackupBytes : kMaxBodyBytes;
+        const qsizetype maxBodyBytes =
+            target == "/api/backup" || target == "/api/likes" || target == "/api/playlists" ? kMaxBackupBytes : kMaxBodyBytes;
         Response response{413, {}};
         // Only a paired phone may make the server wait for and hold a large upload.
         if (contentLength > kMaxBodyBytes && authorization != "Bearer " + m_code.toLatin1())
@@ -393,6 +394,20 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                                 {"revision", m_likesRevision}};
         return {200, QJsonDocument(likes).toJson(QJsonDocument::Compact)};
     }
+    if (method == "GET" && path == "/api/playlists") {
+        QJsonArray playlists;
+        for (const QVariant &value : m_playlists) {
+            const QVariantMap playlist = value.toMap();
+            QJsonArray tracks;
+            for (const QVariant &track : m_library->tracksForPaths(playlist.value("trackPaths").toList())) {
+                const QVariantMap found = track.toMap();
+                if (!found.isEmpty())
+                    tracks.append(QJsonObject{{"title", found.value("title").toString()}, {"artist", found.value("artist").toString()}});
+            }
+            playlists.append(QJsonObject{{"name", playlist.value("name").toString()}, {"tracks", tracks}});
+        }
+        return {200, QJsonDocument(QJsonObject{{"playlists", playlists}}).toJson(QJsonDocument::Compact)};
+    }
     if (method == "GET" && path == "/api/backup") {
         QFile file(phoneBackupFilePath());
         if (!file.open(QIODevice::ReadOnly))
@@ -483,6 +498,26 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         }
         emit likesChangeRequested(likePaths, unlikePaths);
         return {200, {}};
+    }
+    if (path == "/api/playlists") {
+        const QString name = request.value("name").toString().trimmed();
+        if (name.isEmpty() || !request.value("tracks").isArray())
+            return {400, {}};
+        QHash<QString, QString> pathByKey;
+        for (const QVariant &value : m_library->playbackTracks()) {
+            const QVariantMap track = value.toMap();
+            pathByKey.insert(matchKey(track), track.value("filePath").toString());
+        }
+        const QJsonArray tracks = request.value("tracks").toArray();
+        QStringList trackPaths;
+        for (const QJsonValue &track : tracks) {
+            const QString path = pathByKey.value(matchKey(track.toObject().toVariantMap()));
+            if (!path.isEmpty() && !trackPaths.contains(path))
+                trackPaths.append(path);
+        }
+        emit playlistReceived(name, trackPaths);
+        return {200, QJsonDocument(QJsonObject{{"ok", true}, {"matched", trackPaths.size()}, {"total", tracks.size()}})
+                         .toJson(QJsonDocument::Compact)};
     }
     if (path == "/api/queue/next") {
         const QString title = request.value("title").toString();
@@ -654,6 +689,19 @@ bool RemoteControlServer::selfCheck() {
                             remote.respond("POST", "/api/likes", auth, R"({"like":[],"unlike":["a"]})", lan).status == 200 &&
                             unlikedPaths.isEmpty() &&
                             remote.respond("POST", "/api/likes", auth, R"({"like":"a"})", lan).status == 400;
+    QString receivedPlaylist;
+    connect(&remote, &RemoteControlServer::playlistReceived, [&](const QString &name) { receivedPlaylist = name; });
+    remote.setProperty("playlists", QVariantList{QVariantMap{{"name", "Road"}, {"trackPaths", QVariantList{"C:/Music/Gone.mp3"}}}});
+    const QJsonArray servedPlaylists =
+        QJsonDocument::fromJson(remote.respond("GET", "/api/playlists", auth, {}, lan).body).object().value("playlists").toArray();
+    const QJsonObject sentPlaylist = QJsonDocument::fromJson(
+        remote.respond("POST", "/api/playlists", auth, R"({"name":" Gym ","tracks":[{"title":"One","artist":"Ann"}]})", lan).body)
+        .object();
+    const bool copiesPlaylists =
+        servedPlaylists.size() == 1 && servedPlaylists[0].toObject().value("name") == "Road" &&
+        servedPlaylists[0].toObject().value("tracks").toArray().isEmpty() && receivedPlaylist == "Gym" &&
+        sentPlaylist.value("matched").toInt() == 0 && sentPlaylist.value("total").toInt() == 1 &&
+        remote.respond("POST", "/api/playlists", auth, R"({"name":"","tracks":[]})", lan).status == 400;
     QString playNextTitle;
     connect(&remote, &RemoteControlServer::playNextRequested, [&](const QString &title) { playNextTitle = title; });
     const bool routesPlayNext =
@@ -715,13 +763,13 @@ bool RemoteControlServer::selfCheck() {
                     rejectsUnknownAction && relaysToPhone && acceptsHandoff && namesController && handsBackOnce &&
                     codeInQueryOnlyForArtwork && servesQueue && servesHttp && answersDiscovery && locksOutGuessing &&
                     rejectsInvalidBackup && keepsPreviousBackup && routesPlayNext && relaysPlayNextOnce &&
-                    refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes;
+                    refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes && copiesPlaylists;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
                    << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << acceptsHandoff
                    << namesController << handsBackOnce << codeInQueryOnlyForArtwork << servesQueue << servesHttp
                    << answersDiscovery << locksOutGuessing << rejectsInvalidBackup << keepsPreviousBackup << routesPlayNext
                    << relaysPlayNextOnce << refusesUnpairedUploadEarly
-                   << keysByTitleAndArtist << syncsLikes;
+                   << keysByTitleAndArtist << syncsLikes << copiesPlaylists;
     return ok;
 }

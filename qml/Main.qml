@@ -760,6 +760,12 @@ ApplicationWindow {
         return []
     }
 
+    function receivePlaylist(name, trackPaths) {
+        const existing = playlists.find(playlist => playlist.name.toLowerCase() === name.toLowerCase())
+        if (existing) playlists = playlists.map(playlist => playlist === existing ? Object.assign({}, playlist, { trackPaths: trackPaths }) : playlist)
+        else playlists = playlists.concat([{ id: Date.now().toString(36), name: name, trackPaths: trackPaths }])
+    }
+
     function createPlaylist(name, tracks) {
         const title = String(name || "").trim()
         if (!title) return false
@@ -1379,7 +1385,10 @@ ApplicationWindow {
         if (quickPicks.length > 0)
             forgottenFavs = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory).forgottenFavs
     }
-    onPlaylistsChanged: if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
+    onPlaylistsChanged: {
+        if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
+        phoneRemote.playlists = playlists
+    }
     onPlayCountsChanged: {
         if (settingsInitialized) appSettings.setValue("library/playCounts", JSON.stringify(playCounts))
         refreshHomeActivity()
@@ -2838,6 +2847,7 @@ ApplicationWindow {
             if (index >= 0 && index < queue.length) window.playFromQueue(queue[index])
         }
         function onHandoffRequested(tracks, index, positionMs, playing) { window.continueHandoff(tracks, index, positionMs, playing) }
+        function onPlaylistReceived(name, trackPaths) { window.receivePlaylist(name, trackPaths) }
         function onLikesChangeRequested(likePaths, unlikePaths) {
             if (likePaths.length) window.setFavorites(likePaths, true)
             if (unlikePaths.length) window.setFavorites(unlikePaths, false)

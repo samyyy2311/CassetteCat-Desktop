@@ -97,6 +97,8 @@ class RemoteControlServer final : public QObject {
     /// Answers a phone looking for computers on the network, or returns empty for anything else.
     QByteArray discoveryReply(const QByteArray &datagram, const QHostAddress &peer) const;
     QJsonObject status();
+    /// Emits addressChanged when the address a phone should use differs from the one last shown.
+    void checkAddress();
 
     PlayerController *m_player = nullptr;
     LibraryController *m_library = nullptr;
@@ -120,4 +122,6 @@ class RemoteControlServer final : public QObject {
     QJsonArray m_phonePlayNext;
     // A playing phone checks in every couple of seconds; when it stops, its strip goes away.
     QTimer m_phoneTimeout;
+    QTimer m_addressCheck;
+    QString m_lastAddress;
 };

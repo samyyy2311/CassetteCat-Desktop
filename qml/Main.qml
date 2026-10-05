@@ -158,7 +158,7 @@ ApplicationWindow {
     property bool svcWiki: true
     property bool svcArchive: true
     property bool svcDiscord: false
-    property bool svcPhoneRemote: false
+    property bool svcPhoneRemote: true
     property bool scrobbleListenBrainzEnabled: false
     property string scrobbleListenBrainzUser: ""
     property bool scrobbleListenBrainzConnected: false
@@ -576,7 +576,7 @@ ApplicationWindow {
         svcWiki = appSettings.value("services/wiki", true)
         svcArchive = appSettings.value("services/archive", true)
         svcDiscord = appSettings.value("services/discord", false)
-        svcPhoneRemote = appSettings.value("services/phoneRemote", false)
+        svcPhoneRemote = appSettings.value("services/phoneRemote", true)
         phoneRemote.code = appSettings.value("services/phoneRemoteCode", "")
         scrobbleListenBrainzEnabled = appSettings.value("scrobble/listenbrainz_enabled", false)
         scrobbleListenBrainzUser = appSettings.value("scrobble/listenbrainz_user", "")
@@ -2282,7 +2282,7 @@ ApplicationWindow {
 
     // Continues a queue handed over from the phone with the matching songs in this library, by title and artist.
     function trackMatchKey(track) {
-        return String(track.title || track.fileName || "").trim().toLowerCase() + "\u001f"
+        return (String(track.title || "").trim() || String(track.fileName || "").trim()).toLowerCase() + "\u001f"
             + String(track.artist || "").trim().toLowerCase()
     }
 

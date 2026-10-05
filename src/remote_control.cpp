@@ -55,8 +55,8 @@ bool saveBackup(const QString &path, const QByteArray &backup) {
 
 // Matches a track across this computer and the phone the way the phone does: by title and artist, ignoring case.
 QString matchKey(const QVariantMap &track) {
-    const QString title = track.value("title").toString();
-    return (title.isEmpty() ? track.value("fileName").toString() : title).trimmed().toLower() + QChar(0x1f) +
+    const QString title = track.value("title").toString().trimmed();
+    return (title.isEmpty() ? track.value("fileName").toString().trimmed() : title).toLower() + QChar(0x1f) +
            track.value("artist").toString().trimmed().toLower();
 }
 
@@ -149,9 +149,12 @@ RemoteControlServer::RemoteControlServer(PlayerController *player, LibraryContro
             serve(socket);
     });
     // The address shown for pairing follows the computer joining, leaving or switching networks.
+    // A router can also hand out a new address without the connection dropping, so it is checked now and then too.
+    m_addressCheck.setInterval(15 * 1000);
+    connect(&m_addressCheck, &QTimer::timeout, this, &RemoteControlServer::checkAddress);
     if (QNetworkInformation::loadDefaultBackend())
         connect(QNetworkInformation::instance(), &QNetworkInformation::reachabilityChanged, this,
-                &RemoteControlServer::addressChanged);
+                &RemoteControlServer::checkAddress);
     else
         qWarning() << "Phone remote cannot follow network changes on this system";
     m_controllerTimeout.setSingleShot(true);
@@ -198,7 +201,19 @@ void RemoteControlServer::setEnabled(bool enabled) {
         m_discovery.close();
         m_failedAttempts = 0;
     }
+    if (enabled)
+        m_addressCheck.start();
+    else
+        m_addressCheck.stop();
     emit enabledChanged();
+    checkAddress();
+}
+
+void RemoteControlServer::checkAddress() {
+    const QString current = address();
+    if (current == m_lastAddress)
+        return;
+    m_lastAddress = current;
     emit addressChanged();
 }
 
@@ -626,7 +641,7 @@ bool RemoteControlServer::selfCheck() {
         remote.respond("POST", "/api/playback", auth, R"({"action":"reset"})", lan).status == 400;
     const bool keysByTitleAndArtist =
         matchKey({{"title", " One "}, {"artist", "ANN"}}) == QString("one") + QChar(0x1f) + "ann" &&
-        matchKey({{"fileName", "Two.mp3"}}) == QString("two.mp3") + QChar(0x1f);
+        matchKey({{"title", "  "}, {"fileName", "Two.mp3"}}) == QString("two.mp3") + QChar(0x1f);
     const auto likesRevision = [&] {
         return QJsonDocument::fromJson(remote.respond("GET", "/api/likes", auth, {}, lan).body).object().value("revision").toInt();
     };

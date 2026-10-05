@@ -130,6 +130,8 @@ QByteArray reasonPhrase(int status) {
         return "Forbidden";
     case 404:
         return "Not Found";
+    case 409:
+        return "Conflict";
     case 413:
         return "Payload Too Large";
     case 500:
@@ -150,6 +152,9 @@ RemoteControlServer::RemoteControlServer(PlayerController *player, LibraryContro
     });
     // The address shown for pairing follows the computer joining, leaving or switching networks.
     // A router can also hand out a new address without the connection dropping, so it is checked now and then too.
+    m_pairingTimeout.setSingleShot(true);
+    m_pairingTimeout.setInterval(60 * 1000);
+    connect(&m_pairingTimeout, &QTimer::timeout, this, [this] { answerPairing(false); });
     m_addressCheck.setInterval(15 * 1000);
     connect(&m_addressCheck, &QTimer::timeout, this, &RemoteControlServer::checkAddress);
     if (QNetworkInformation::loadDefaultBackend())
@@ -233,6 +238,18 @@ QVariantMap RemoteControlServer::phonePlayback() const {
 void RemoteControlServer::sendToPhone(const QString &command) {
     if (!m_phonePlayback.isEmpty() && m_phoneCommands.size() < 8)
         m_phoneCommands.append(command);
+}
+
+QString RemoteControlServer::pairingRequest() const {
+    return m_pairingAnswer == PairingAnswer::Waiting ? m_pairingRequestName : QString();
+}
+
+void RemoteControlServer::answerPairing(bool allow) {
+    if (m_pairingRequestId.isEmpty() || m_pairingAnswer != PairingAnswer::Waiting)
+        return;
+    m_pairingAnswer = allow ? PairingAnswer::Allowed : PairingAnswer::Denied;
+    m_pairingTimeout.stop();
+    emit pairingRequestChanged();
 }
 
 void RemoteControlServer::playNextOnPhone(const QString &title, const QString &artist) {
@@ -341,6 +358,34 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         return {403, {}};
     if (m_lockedSince.isValid() && m_lockedSince.elapsed() < kLockoutMs)
         return {429, {}};
+    // Asking to pair needs no code: the person at this computer allows or denies it.
+    if (path == "/api/pair-request") {
+        if (method == "POST") {
+            const QString name = QString::fromUtf8(QJsonDocument::fromJson(body).object().value("name").toString().toUtf8().left(64));
+            if (name.trimmed().isEmpty() || m_code.isEmpty())
+                return {400, {}};
+            if (!pairingRequest().isEmpty())
+                return {409, {}};
+            m_pairingRequestId = QString::number(QRandomGenerator::system()->generate64(), 16) +
+                                 QString::number(QRandomGenerator::system()->generate64(), 16);
+            m_pairingRequestName = name.trimmed();
+            m_pairingAnswer = PairingAnswer::Waiting;
+            m_pairingTimeout.start();
+            emit pairingRequestChanged();
+            return {200, QJsonDocument(QJsonObject{{"id", m_pairingRequestId}}).toJson(QJsonDocument::Compact)};
+        }
+        if (m_pairingRequestId.isEmpty() || QUrlQuery(url).queryItemValue("id") != m_pairingRequestId)
+            return {404, {}};
+        if (m_pairingAnswer == PairingAnswer::Waiting)
+            return {200, R"({"status":"waiting"})"};
+        const bool allowed = m_pairingAnswer == PairingAnswer::Allowed;
+        m_pairingRequestId.clear();
+        m_pairingRequestName.clear();
+        m_pairingAnswer = PairingAnswer::Waiting;
+        return {200, QJsonDocument(allowed ? QJsonObject{{"status", "allowed"}, {"code", m_code}}
+                                           : QJsonObject{{"status", "denied"}})
+                         .toJson(QJsonDocument::Compact)};
+    }
     if (m_code.isEmpty() || code != m_code.toLatin1()) {
         if (++m_failedAttempts >= kMaxFailedAttempts) {
             m_failedAttempts = 0;
@@ -527,8 +572,7 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                             {"genre", listen.value("genre").toString()},
                             {"ms", listen.value("ms").toInteger()}});
         }
-        m_library->appendPhoneListens(listens);
-        return {200, {}};
+        return {m_library->appendPhoneListens(listens) ? 200 : 500, {}};
     }
     if (path == "/api/playlists") {
         const QString name = request.value("name").toString().trimmed();
@@ -725,6 +769,28 @@ bool RemoteControlServer::selfCheck() {
                                        .object()
                                        .value("listens")
                                        .isArray();
+    const auto pairingId = [&] {
+        return QJsonDocument::fromJson(remote.respond("POST", "/api/pair-request", {}, R"({"name":"Pixel"})", lan).body)
+            .object()
+            .value("id")
+            .toString();
+    };
+    const auto pairingStatus = [&](const QString &id) {
+        return QJsonDocument::fromJson(remote.respond("GET", "/api/pair-request?id=" + id.toLatin1(), {}, {}, lan).body).object();
+    };
+    const QString allowedId = pairingId();
+    const bool asksBeforePairing = !allowedId.isEmpty() && remote.pairingRequest() == "Pixel" &&
+                                   remote.respond("POST", "/api/pair-request", {}, R"({"name":"Other"})", lan).status == 409 &&
+                                   pairingStatus(allowedId).value("status") == "waiting" &&
+                                   remote.respond("GET", "/api/pair-request?id=guess", {}, {}, lan).status == 404;
+    remote.answerPairing(true);
+    const bool givesCodeOnceAllowed = pairingStatus(allowedId).value("code") == "ABC234" &&
+                                      remote.respond("GET", "/api/pair-request?id=" + allowedId.toLatin1(), {}, {}, lan).status == 404;
+    const QString deniedId = pairingId();
+    remote.answerPairing(false);
+    const QJsonObject denied = pairingStatus(deniedId);
+    const bool turnsAwayDenied = denied.value("status") == "denied" && !denied.contains("code") &&
+                                 remote.respond("POST", "/api/pair-request", {}, R"({"name":"Pixel"})", QHostAddress("8.8.8.8")).status == 403;
     QString receivedPlaylist;
     connect(&remote, &RemoteControlServer::playlistReceived, [&](const QString &name) { receivedPlaylist = name; });
     remote.setProperty("playlists", QVariantList{QVariantMap{{"name", "Road"}, {"trackPaths", QVariantList{"C:/Music/Gone.mp3"}}}});
@@ -799,13 +865,15 @@ bool RemoteControlServer::selfCheck() {
                     rejectsUnknownAction && relaysToPhone && acceptsHandoff && namesController && handsBackOnce &&
                     codeInQueryOnlyForArtwork && servesQueue && servesHttp && answersDiscovery && locksOutGuessing &&
                     rejectsInvalidBackup && keepsPreviousBackup && routesPlayNext && relaysPlayNextOnce &&
-                    refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes && copiesPlaylists && rejectsBadListens;
+                    refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes && copiesPlaylists && rejectsBadListens && asksBeforePairing &&
+                    givesCodeOnceAllowed && turnsAwayDenied;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
                    << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << acceptsHandoff
                    << namesController << handsBackOnce << codeInQueryOnlyForArtwork << servesQueue << servesHttp
                    << answersDiscovery << locksOutGuessing << rejectsInvalidBackup << keepsPreviousBackup << routesPlayNext
                    << relaysPlayNextOnce << refusesUnpairedUploadEarly
-                   << keysByTitleAndArtist << syncsLikes << copiesPlaylists << rejectsBadListens;
+                   << keysByTitleAndArtist << syncsLikes << copiesPlaylists << rejectsBadListens << asksBeforePairing
+                   << givesCodeOnceAllowed << turnsAwayDenied;
     return ok;
 }

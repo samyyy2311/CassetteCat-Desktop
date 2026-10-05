@@ -54,7 +54,7 @@ class LibraryController final : public QAbstractListModel {
     /// Appends a counted play with the current date and the time listened to the listening log.
     Q_INVOKABLE void recordListen(const QVariantMap &track, qint64 listenedMs);
     /// Adds listens made on the paired phone to the listening log, marked as coming from it.
-    void appendPhoneListens(const QList<QJsonObject> &listens);
+    bool appendPhoneListens(const QList<QJsonObject> &listens);
     /// Listens made on this computer after \p since, oldest first, as the phone stores them.
     QJsonArray listensSince(qint64 since) const;
     /// Returns the years that have logged plays, newest first.

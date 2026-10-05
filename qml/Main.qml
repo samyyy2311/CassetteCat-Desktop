@@ -762,8 +762,8 @@ ApplicationWindow {
 
     function receivePlaylist(name, trackPaths) {
         const existing = playlists.find(playlist => playlist.name.toLowerCase() === name.toLowerCase())
-        if (existing) playlists = playlists.map(playlist => playlist === existing ? Object.assign({}, playlist, { trackPaths: trackPaths }) : playlist)
-        else playlists = playlists.concat([{ id: Date.now().toString(36), name: name, trackPaths: trackPaths }])
+        if (existing && trackPaths.length) playlists = playlists.map(playlist => playlist === existing ? Object.assign({}, playlist, { trackPaths: trackPaths }) : playlist)
+        else if (!existing) playlists = playlists.concat([{ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, trackPaths: trackPaths }])
     }
 
     function createPlaylist(name, tracks) {
@@ -5123,6 +5123,26 @@ ApplicationWindow {
     }
 
     // Asks once per version; Settings keeps showing the update after "Later".
+    ConfirmPopup {
+        id: pairingPrompt
+        title: "Connect " + phoneRemote.pairingRequest + "?"
+        subtitle: "Only allow phones you own"
+        message: "This phone will be able to control playback here, sync likes and playlists, and back up to this computer."
+        iconName: "smartphone"
+        confirmText: "Allow"
+        cancelText: "Deny"
+        onConfirmed: phoneRemote.answerPairing(true)
+        onClosed: phoneRemote.answerPairing(false)
+    }
+
+    Connections {
+        target: phoneRemote
+        function onPairingRequestChanged() {
+            if (phoneRemote.pairingRequest !== "") pairingPrompt.open()
+            else pairingPrompt.close()
+        }
+    }
+
     ConfirmPopup {
         id: updatePrompt
         property string version: ""

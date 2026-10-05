@@ -245,8 +245,8 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
 
         // A phone listen of a song this computer does not have is told apart by title and artist.
         const QString path = track.value("filePath").toString();
-        const QString songKey = path.isEmpty() ? track.value("title").toString().toLower() + QChar(0x1f) +
-                                                     track.value("artist").toString().toLower()
+        const QString songKey = path.isEmpty() ? track.value("title").toString().trimmed().toLower() + QChar(0x1f) +
+                                                     track.value("artist").toString().trimmed().toLower()
                                                : pathKey(path);
         add(songs, songOrder, songKey, {{"track", track}}, ms);
         for (const QString &artist : splitArtists(track.value("artist").toString()))
@@ -714,16 +714,34 @@ void LibraryController::recordListen(const QVariantMap &track, qint64 listenedMs
     file.write(QJsonDocument(entry).toJson(QJsonDocument::Compact) + '\n');
 }
 
-void LibraryController::appendPhoneListens(const QList<QJsonObject> &listens) {
+bool LibraryController::appendPhoneListens(const QList<QJsonObject> &listens) {
     QFile file(listeningLogFilePath());
+    // A phone retries an upload whose answer it missed, so a listen it already sent is not counted twice.
+    const auto identity = [](const QJsonObject &listen) {
+        return QString::number(static_cast<qint64>(listen.value("at").toDouble())) + QChar(0x1f) + listen.value("title").toString();
+    };
+    QSet<QString> recorded;
+    if (file.open(QIODevice::ReadOnly)) {
+        for (const QJsonObject &entry : readListeningLog(file.readAll()))
+            if (entry.value("device") == "phone")
+                recorded.insert(identity(entry));
+        file.close();
+    }
     if (!file.open(QIODevice::Append)) {
         qWarning() << "Could not record listens from the phone:" << file.errorString();
-        return;
+        return false;
     }
     for (QJsonObject listen : listens) {
+        if (recorded.contains(identity(listen)))
+            continue;
         listen.insert("device", "phone");
-        file.write(QJsonDocument(listen).toJson(QJsonDocument::Compact) + '\n');
+        const QByteArray line = QJsonDocument(listen).toJson(QJsonDocument::Compact) + '\n';
+        if (file.write(line) != line.size()) {
+            qWarning() << "Could not record listens from the phone:" << file.errorString();
+            return false;
+        }
     }
+    return true;
 }
 
 QJsonArray LibraryController::listensSince(qint64 since) const {

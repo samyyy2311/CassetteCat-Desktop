@@ -36,6 +36,8 @@ class RemoteControlServer final : public QObject {
     Q_PROPERTY(QStringList favoritePaths MEMBER m_favoritePaths NOTIFY favoritePathsChanged)
     /// The saved playlists as {name, trackPaths}, kept current by QML, so a paired phone can copy them.
     Q_PROPERTY(QVariantList playlists MEMBER m_playlists)
+    /// The phone asking to pair, waiting for this computer to allow or deny it; empty when none is.
+    Q_PROPERTY(QString pairingRequest READ pairingRequest NOTIFY pairingRequestChanged)
 
   public:
     RemoteControlServer(PlayerController *player, LibraryController *library, QObject *parent = nullptr);
@@ -55,6 +57,9 @@ class RemoteControlServer final : public QObject {
     Q_INVOKABLE void sendToPhone(const QString &command);
     /// Asks the phone to play the track named \p title by \p artist next, if its library has it.
     Q_INVOKABLE void playNextOnPhone(const QString &title, const QString &artist);
+    QString pairingRequest() const;
+    /// Allows or denies the phone in pairingRequest; once allowed, it receives the pairing code on its next check.
+    Q_INVOKABLE void answerPairing(bool allow);
 
     /// Verifies pairing, routing and the status payload without opening sockets.
     static bool selfCheck();
@@ -83,6 +88,7 @@ class RemoteControlServer final : public QObject {
     /// Asks to play the track named \p title by \p artist next, if the library has it.
     void playNextRequested(const QString &title, const QString &artist);
     void favoritePathsChanged();
+    void pairingRequestChanged();
     /// Asks to like the tracks at \p likePaths and unlike those at \p unlikePaths, as synced from the phone.
     void likesChangeRequested(const QStringList &likePaths, const QStringList &unlikePaths);
     /// Asks to save the playlist \p name with the tracks at \p trackPaths, replacing one with the same name.
@@ -128,5 +134,11 @@ class RemoteControlServer final : public QObject {
     // A playing phone checks in every couple of seconds; when it stops, its strip goes away.
     QTimer m_phoneTimeout;
     QTimer m_addressCheck;
+    enum class PairingAnswer { Waiting, Allowed, Denied };
+    QString m_pairingRequestId;
+    QString m_pairingRequestName;
+    PairingAnswer m_pairingAnswer = PairingAnswer::Waiting;
+    // A phone that is not answered in time is turned away, so the prompt does not wait forever.
+    QTimer m_pairingTimeout;
     QString m_lastAddress;
 };

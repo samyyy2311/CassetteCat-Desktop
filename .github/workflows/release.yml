@@ -265,3 +265,49 @@ jobs:
             [[ "$TAG" == *-* ]] && args+=(--prerelease)
             gh release create "${args[@]}"
           fi
+
+  publish-winget:
+    needs: publish-release
+    runs-on: windows-latest
+    environment: release
+    permissions: {}
+    steps:
+      - name: Check WinGet eligibility
+        id: check-eligibility
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          if ($env:TAG -match '-') {
+            Write-Host "Tag $env:TAG is a pre-release. Skipping WinGet package update."
+            "eligible=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            exit 0
+          }
+          if ([string]::IsNullOrWhiteSpace($env:WINGET_TOKEN)) {
+            Write-Host "::warning::WINGET_TOKEN secret is not configured. Skipping WinGet package update."
+            "eligible=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            exit 0
+          }
+          "eligible=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Install wingetcreate
+        if: steps.check-eligibility.outputs.eligible == 'true'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://aka.ms/wingetcreate/latest" -OutFile "wingetcreate.exe"
+
+      - name: Submit package to WinGet
+        if: steps.check-eligibility.outputs.eligible == 'true'
+        shell: pwsh
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          TAG: ${{ env.RELEASE_TAG }}
+        run: |
+          $version = $env:TAG.TrimStart('v')
+          $url = "https://github.com/${{ github.repository }}/releases/download/$env:TAG/CassetteCat-$env:TAG-windows-x64-setup.exe"
+          .\wingetcreate.exe update CassetteCat.CassetteCat `
+            --version $version `
+            --urls $url `
+            --token $env:WINGET_TOKEN `
+            --submit

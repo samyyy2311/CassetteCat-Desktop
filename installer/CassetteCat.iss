@@ -6,30 +6,57 @@
 AppId={{A6DD1A4C-0C85-4BBA-B7B0-57D0A1AEAA2C}
 AppName=CassetteCat
 AppVersion={#AppVersion}
-AppVerName=CassetteCat {#AppVersion}
-AppPublisher=CassetteCat
-AppPublisherURL=https://github.com/samyyy2311/CassetteCat-Desktop
+AppPublisher=CaffeineLabs
+AppPublisherURL=https://cassettecat.caffeinelabs.in/
 AppSupportURL=https://github.com/samyyy2311/CassetteCat-Desktop/issues
 AppUpdatesURL=https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest
-AppComments=A local-first desktop music player
+AppCopyright=Copyright (c) CaffeineLabs
+AppComments=A local-first desktop music player for your audio library with synced lyrics, gapless playback, and phone remote control.
+LicenseFile=..\LICENSE
 DefaultDirName={localappdata}\Programs\CassetteCat
 DefaultGroupName=CassetteCat
 SetupIconFile=..\assets\cassettecat_icon.ico
 UninstallDisplayIcon={app}\bin\CassetteCat.exe
+UninstallDisplayName=CassetteCat
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 OutputDir=..\dist
 OutputBaseFilename=CassetteCat-{#AppVersion}-windows-x64-setup
-Compression=lzma2
+Compression=lzma2/ultra64
 SolidCompression=yes
+
+; Modern Wizard UI and High-DPI Scaling
 WizardStyle=modern
+WizardResizable=no
+WizardSizePercent=110
+WizardImageFile=wizard_large.bmp,wizard_large_200.bmp
+WizardSmallImageFile=wizard_small.bmp,wizard_small_200.bmp
 DisableProgramGroupPage=yes
+DisableReadyPage=yes
+DisableDirPage=auto
 ChangesAssociations=yes
 
+; Running App and Mutex Lifecycle
+AppMutex=CassetteCat.AudioEngine.Desktop.InstanceMutex
+CloseApplications=yes
+CloseApplicationsFilter=CassetteCat.exe
+RestartApplications=no
+
+; Executable Metadata and Version Information
+VersionInfoTextVersion={#AppVersion}
+VersionInfoCompany=CaffeineLabs
+VersionInfoDescription=CassetteCat Windows Setup
+VersionInfoCopyright=Copyright (c) CaffeineLabs
+VersionInfoProductName=CassetteCat
+VersionInfoProductVersion={#AppVersion}
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
 [Tasks]
-Name: "associateAudio"; Description: "Add CassetteCat to Open with for supported audio files"; Flags: unchecked
-Name: "desktopicon"; Description: "Create a desktop shortcut"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
+Name: "associateAudio"; Description: "Add CassetteCat to Open with for supported audio files (.mp3, .flac, .m4a, etc.)"; Flags: unchecked
 
 [Files]
 Source: "..\dist\CassetteCat\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -39,7 +66,7 @@ Name: "{autoprograms}\CassetteCat"; Filename: "{app}\bin\CassetteCat.exe"
 Name: "{autodesktop}\CassetteCat"; Filename: "{app}\bin\CassetteCat.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\bin\CassetteCat.exe"; Description: "Launch CassetteCat"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\bin\CassetteCat.exe"; Description: "{cm:LaunchProgram,CassetteCat}"; Flags: nowait postinstall skipifsilent
 
 [Registry]
 Root: HKCU; Subkey: "Software\Classes\CassetteCat.Audio"; ValueType: string; ValueName: ""; ValueData: "CassetteCat Audio File"; Flags: uninsdeletekeyifempty; Tasks: associateAudio

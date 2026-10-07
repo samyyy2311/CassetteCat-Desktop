@@ -4480,7 +4480,7 @@ ApplicationWindow {
                 layer.effect: MultiEffect {
                     blurEnabled: true
                     blur: 0.85
-                    blurMax: 4
+                    blurMax: 32
                     saturation: 0.25
                     brightness: -0.25
                 }

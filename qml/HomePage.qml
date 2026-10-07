@@ -120,7 +120,7 @@ Item {
                                     layer.effect: MultiEffect {
                                         blurEnabled: true
                                         blur: 1.0
-                                        blurMax: 8
+                                        blurMax: 48
                                         saturation: 0.3
                                         brightness: -0.3
                                     }

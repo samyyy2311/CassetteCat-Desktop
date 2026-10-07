@@ -39,7 +39,7 @@ Item {
     Keys.onEnterPressed: root.clicked()
     // A focused button takes Space before a window's play/pause shortcut does.
     Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space
-    Keys.onSpacePressed: root.clicked()
+    Keys.onSpacePressed: event => { if (!event.isAutoRepeat) root.clicked() }
 
     Rectangle {
         id: cap

@@ -87,7 +87,8 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  linux:
+  linux-build:
+    name: linux (${{ matrix.runner }})
     strategy:
       matrix:
         include:
@@ -145,6 +146,14 @@ jobs:
 
       - name: Run tests
         run: ctest --test-dir build/ci-linux --output-on-failure
+
+  # The main branch requires a check named "linux"; it passes only when every Linux build did.
+  linux:
+    needs: linux-build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.linux-build.result }}" = success
 
   macos:
     runs-on: macos-15

@@ -266,9 +266,7 @@ qt_add_qml_module(CassetteCat
         assets/cassettecat_icon.ico
         assets/03-cream-cassette-hug.png
         assets/04-gray-dancing-headphones.png
-        assets/05-tuxedo-cassette-tail.png
         assets/06-calico-player.png
-        assets/cassettecat-pixel-cats-sheet.png
         assets/vinyl_record.svg
         assets/vinyl_tonearm.svg
         fonts/space_grotesk_variable.ttf

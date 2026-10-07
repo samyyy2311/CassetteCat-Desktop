@@ -42,7 +42,9 @@ class PlayerController final : public QObject {
     static bool selfCheck();
 
     QVariantMap currentTrack() const;
-    QVariantMap audioFormat() const { return m_audioFormat; }
+    QVariantMap audioFormat() const {
+        return m_audioFormat;
+    }
     QString currentLyrics() const;
     bool isPlaying() const;
     bool shuffleEnabled() const;

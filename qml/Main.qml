@@ -29,13 +29,13 @@ ApplicationWindow {
     readonly property color recordRed: accentName === "custom"
         ? Qt.color(customAccentColor)
         : (accentColorMap[accentName] || accentColorMap["recordRed"]).base
-    // The accent as small text: lightened only as far as needed to reach 4.5:1 on the darkest surface.
+    // The accent as small text: lightened only as far as needed to reach 4.5:1 on both the page and the cards.
     readonly property color accentText: {
         const luminance = c => {
             const lin = v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
             return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
         }
-        const backdrop = luminance(surfaceBase) + 0.05
+        const backdrop = Math.max(luminance(surfaceBase), luminance(surfaceCard)) + 0.05
         let shade = recordRed
         for (let step = 0; step < 12 && (luminance(shade) + 0.05) / backdrop < 4.5; ++step)
             shade = Qt.tint(shade, Qt.rgba(1, 1, 1, 0.15))

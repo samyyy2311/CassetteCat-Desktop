@@ -91,11 +91,17 @@ bool CredentialVault::saveSecret(const QString &key, const QString &secret) {
     return stored == TRUE;
 #elif defined(__APPLE__)
     CFMutableDictionaryRef query = keychainQuery(key);
-    // Replacing keeps a single item per key whether or not one was already stored.
-    SecItemDelete(query);
     const CFDataRef data = secret.toUtf8().toCFData();
-    CFDictionarySetValue(query, kSecValueData, data);
-    const OSStatus status = SecItemAdd(query, nullptr);
+    // Updating in place keeps the previous secret if the write fails.
+    CFMutableDictionaryRef changes =
+        CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFDictionarySetValue(changes, kSecValueData, data);
+    OSStatus status = SecItemUpdate(query, changes);
+    CFRelease(changes);
+    if (status == errSecItemNotFound) {
+        CFDictionarySetValue(query, kSecValueData, data);
+        status = SecItemAdd(query, nullptr);
+    }
     CFRelease(data);
     CFRelease(query);
     if (status == errSecSuccess) {

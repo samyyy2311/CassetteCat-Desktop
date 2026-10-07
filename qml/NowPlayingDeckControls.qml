@@ -81,6 +81,7 @@ Item {
             Accessible.name: "Audio quality: " + (format.label || "")
             Accessible.onPressAction: root.appWindow.openAudioDetails()
             Keys.onReturnPressed: root.appWindow.openAudioDetails()
+            Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space
             Keys.onSpacePressed: root.appWindow.openAudioDetails()
 
             Label {

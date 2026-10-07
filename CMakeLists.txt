@@ -416,13 +416,15 @@ if(APPLE)
     set(macIcon "${CMAKE_CURRENT_SOURCE_DIR}/assets/cassettecat.icns")
     set_source_files_properties("${macIcon}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     target_sources(CassetteCat PRIVATE "${macIcon}")
+    # macOS only accepts numbers here, so a CI version such as 0.0.0-ci loses its suffix.
+    string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" macBundleVersion "${CASSETTECAT_PACKAGE_VERSION}")
     set_target_properties(CassetteCat PROPERTIES
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/Info.plist.in"
         MACOSX_BUNDLE_GUI_IDENTIFIER io.github.samyyy2311.CassetteCat
         MACOSX_BUNDLE_BUNDLE_NAME CassetteCat
         MACOSX_BUNDLE_ICON_FILE cassettecat.icns
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "${CASSETTECAT_PACKAGE_VERSION}"
-        MACOSX_BUNDLE_BUNDLE_VERSION "${CASSETTECAT_PACKAGE_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${macBundleVersion}"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${macBundleVersion}"
     )
 endif()
 

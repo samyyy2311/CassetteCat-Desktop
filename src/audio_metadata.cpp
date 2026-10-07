@@ -430,6 +430,8 @@ QVariantMap readAudioFormat(const QString &filePath) {
 
         QString codec = QFileInfo(filePath).suffix().toUpper();
         int bitDepth = 0;
+        // WAV and AIFF-C can also carry compressed audio such as ADPCM or MP3.
+        bool uncompressed = true;
         if (dynamic_cast<const TagLib::MPEG::Properties *>(props)) {
             codec = "MP3";
         } else if (auto *flac = dynamic_cast<const TagLib::FLAC::Properties *>(props)) {
@@ -447,16 +449,23 @@ QVariantMap readAudioFormat(const QString &filePath) {
         } else if (auto *wav = dynamic_cast<const TagLib::RIFF::WAV::Properties *>(props)) {
             codec = "WAV";
             bitDepth = wav->bitsPerSample();
+            // PCM, IEEE float, and the extensible header that wraps them.
+            uncompressed = wav->format() == 1 || wav->format() == 3 || wav->format() == 0xFFFE;
         } else if (auto *aiff = dynamic_cast<const TagLib::RIFF::AIFF::Properties *>(props)) {
             codec = "AIFF";
             bitDepth = aiff->bitsPerSample();
+            const QByteArray compression(aiff->compressionType().data(), aiff->compressionType().size());
+            uncompressed =
+                !aiff->isAiffC() ||
+                QList<QByteArray>{"NONE", "sowt", "twos", "in24", "in32", "fl32", "fl64", "FL32", "FL64"}.contains(
+                    compression);
         } else if (auto *ape = dynamic_cast<const TagLib::APE::Properties *>(props)) {
             codec = "APE";
             bitDepth = ape->bitsPerSample();
         }
 
         // Same rules and wording as the Android app's quality badge.
-        const bool lossless = QStringList{"FLAC", "ALAC", "WAV", "AIFF", "APE"}.contains(codec);
+        const bool lossless = uncompressed && QStringList{"FLAC", "ALAC", "WAV", "AIFF", "APE"}.contains(codec);
         const int sampleRate = props->sampleRate();
         const int bitrateKbps = props->bitrate();
         const bool hiRes = lossless && (sampleRate > 48000 || bitDepth > 16);
@@ -473,14 +482,10 @@ QVariantMap readAudioFormat(const QString &filePath) {
             label << QString("%1 kbps").arg(bitrateKbps);
         label << codec;
 
-        return {{"label", label.join(" · ")},
-                {"badgeLabel", hiRes ? "Hi-Res Lossless" : (lossless ? "Lossless" : codec)},
-                {"codecName", codec},
-                {"sampleRateHz", sampleRate},
-                {"bitDepth", bitDepth},
-                {"bitrateKbps", bitrateKbps},
-                {"isLossless", lossless},
-                {"isHiRes", hiRes}};
+        const QString badge = hiRes ? "Hi-Res Lossless" : (lossless ? "Lossless" : codec);
+        return {{"label", label.join(" · ")}, {"badgeLabel", badge},  {"codecName", codec},
+                {"sampleRateHz", sampleRate}, {"bitDepth", bitDepth}, {"bitrateKbps", bitrateKbps},
+                {"isLossless", lossless},     {"isHiRes", hiRes}};
     } catch (...) {
         return {};
     }

@@ -49,7 +49,7 @@ VersionInfoCompany=CaffeineLabs
 VersionInfoDescription=CassetteCat Windows Setup
 VersionInfoCopyright=Copyright (c) CaffeineLabs
 VersionInfoProductName=CassetteCat
-VersionInfoProductVersion={#AppVersion}
+VersionInfoProductTextVersion={#AppVersion}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

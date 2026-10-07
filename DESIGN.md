@@ -27,7 +27,7 @@ Text, brightest to dimmest. Each meets WCAG AA (4.5:1) on every surface above:
 | `silverDim` | `#918E88` | Metadata, idle icons |
 | `accentText` | accent, lightened to 4.5:1 | Small text in the accent color |
 
-Use `accentText`, never the raw accent, for text under 18px. Icons and shapes can use the accent directly (they need 3:1, which it meets). Text over cover art needs a dark overlay strong enough to hold 4.5:1 over pale art.
+Use `accentText`, never the raw accent, for text under 18px. Icons and shapes need 3:1: the raw accent meets it on `surfaceBase` and `surfaceCard` but not on `surfaceElevated` (2.85:1), so use `accentText` there. Text over cover art needs a dark overlay strong enough to hold 4.5:1 over pale art.
 
 ## Type
 

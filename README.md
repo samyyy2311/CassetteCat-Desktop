@@ -12,7 +12,7 @@
 <p align="center">
   <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest"><img src="https://img.shields.io/github/v/release/samyyy2311/CassetteCat-Desktop?style=flat-square&color=C23B30&labelColor=1A1917&label=release" alt="Latest release" /></a>
   <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases"><img src="https://img.shields.io/github/downloads/samyyy2311/CassetteCat-Desktop/total?style=flat-square&color=C23B30&labelColor=1A1917&label=downloads" alt="Total downloads" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0-C23B30?style=flat-square&labelColor=1A1917" alt="GPL-3.0 license" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-C23B30?style=flat-square&labelColor=1A1917" alt="GPL-3.0-or-later license" /></a>
 </p>
 
 <p align="center">

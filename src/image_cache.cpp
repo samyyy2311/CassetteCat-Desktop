@@ -25,16 +25,21 @@ QByteArray fitForCache(const QByteArray &image, bool png) {
     const QSize size = reader.size();
     if (!size.isValid() || (size.width() <= kFullArtworkSize && size.height() <= kFullArtworkSize))
         return image;
-    const QImage fitted =
+    QImage fitted =
         reader.read().scaled(kFullArtworkSize, kFullArtworkSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     if (fitted.isNull())
         return image;
+    // The encoding must match the file's extension; JPEG has no transparency, so it is flattened onto black.
+    if (!png && fitted.hasAlphaChannel()) {
+        QImage flat(fitted.size(), QImage::Format_RGB32);
+        flat.fill(Qt::black);
+        QPainter(&flat).drawImage(0, 0, fitted);
+        fitted = flat;
+    }
     QByteArray output;
     QBuffer buffer(&output);
     buffer.open(QIODevice::WriteOnly);
-    // Transparency would turn black in a JPEG, so such images stay PNG whatever their file name.
-    const bool keepPng = png || fitted.hasAlphaChannel();
-    return fitted.save(&buffer, keepPng ? "PNG" : "JPEG", keepPng ? -1 : 92) ? output : image;
+    return fitted.save(&buffer, png ? "PNG" : "JPEG", png ? -1 : 92) ? output : image;
 }
 
 } // namespace

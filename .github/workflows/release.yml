@@ -150,7 +150,7 @@ jobs:
         run: |
           sudo apt-get update
           # Qt's GStreamer plugin needs libgstplay and libgstphotography; ARM runners don't preinstall them.
-          sudo apt-get install -y flatpak flatpak-builder libgstreamer-plugins-bad1.0-0 libpipewire-0.3-0 libsecret-1-dev rpm
+          sudo apt-get install -y flatpak flatpak-builder libgstreamer-plugins-bad1.0-0 libgstreamer-plugins-good1.0-0 libpipewire-0.3-0 libsecret-1-dev rpm
           curl -fsSL -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-${{ matrix.arch }}.AppImage
           chmod +x linuxdeploy.AppImage
       - name: Configure

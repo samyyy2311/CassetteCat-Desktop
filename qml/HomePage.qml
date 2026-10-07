@@ -106,19 +106,21 @@ Item {
                                     }
                                 }
 
+                                // Blurred small and scaled up, so the blur works on a 200px texture
+                                // instead of one the size of the card.
                                 Cover {
                                     anchors.centerIn: parent
-                                    width: parent.width * 1.2
-                                    height: width
+                                    width: 200
+                                    height: 200
+                                    scale: parent.width * 1.2 / width
                                     track: heroCard.heroTrack
                                     stableSourceSize: 160
                                     layer.enabled: true
-                                    layer.textureSize: Qt.size(200, 200)
                                     layer.smooth: true
                                     layer.effect: MultiEffect {
                                         blurEnabled: true
                                         blur: 1.0
-                                        blurMax: 48
+                                        blurMax: 8
                                         saturation: 0.3
                                         brightness: -0.3
                                     }

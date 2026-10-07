@@ -146,14 +146,15 @@ Item {
         radius: root.radius
         color: (typeof surfaceCard !== "undefined" ? surfaceCard : "#181715")
 
-        VinylFallback {
-            showTonearm: root.showTonearm
+        // Built only for covers without art; held on every cover, it kept three images per card.
+        Loader {
             anchors.fill: parent
-            visible: opacity > 0.001
-            opacity: root.showingFallback ? 1.0 : 0.0
-            Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
-            playing: root.currentTrackPlaying && root.showingFallback
-            progress: root.currentTrackPlaying && player.duration > 0 ? player.position / player.duration : 0
+            active: root.showingFallback
+            sourceComponent: VinylFallback {
+                showTonearm: root.showTonearm
+                playing: root.currentTrackPlaying && root.showingFallback
+                progress: root.currentTrackPlaying && player.duration > 0 ? player.position / player.duration : 0
+            }
         }
     }
 

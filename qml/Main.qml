@@ -2037,14 +2037,6 @@ ApplicationWindow {
         }
     }
 
-    Timer {
-        id: nowPlayingWarmupTimer
-        interval: 800
-        running: true
-        repeat: false
-        onTriggered: window.nowPlayingLoaded = true
-    }
-
     onNowPlayingModeChanged: {
         if (settingsInitialized) appSettings.setValue("player/nowPlayingMode", nowPlayingMode)
         if (nowPlayingMode === "lyrics") {
@@ -4472,21 +4464,23 @@ ApplicationWindow {
                 NumberAnimation { duration: 240 }
             }
 
+            // Blurred at 240px and scaled up to cover the window; blurring at window size keeps
+            // several window-sized textures alive for the life of the page.
             Cover {
                 anchors.centerIn: parent
-                width: parent.width * 1.3
-                height: parent.height * 1.3
+                width: 240
+                height: 240
+                scale: Math.max(parent.width, parent.height) * 1.3 / width
                 track: player.currentTrack
                 keepPreviousArtwork: true
                 cacheArtwork: true
                 stableSourceSize: 280
                 layer.enabled: true
-                layer.textureSize: Qt.size(240, 240)
                 layer.smooth: true
                 layer.effect: MultiEffect {
                     blurEnabled: true
                     blur: 0.85
-                    blurMax: 32
+                    blurMax: 4
                     saturation: 0.25
                     brightness: -0.25
                 }

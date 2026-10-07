@@ -100,6 +100,8 @@ ApplicationWindow {
     property string nowPlayingMode: "controls" // "controls", "lyrics", "queue"
     property var lyricsListView: null
     property bool nowPlayingLoaded: false
+    // Hidden in the tray, no page is on screen, so pages and Now Playing are dropped and rebuilt on return.
+    readonly property bool inTray: !window.visible
     property bool sidebarCollapsed: false
     property var favoriteTracks: ({})
     property var playlists: []
@@ -1425,6 +1427,20 @@ ApplicationWindow {
             mpris.repeatMode = repeatMode
         }
         phoneRemote.repeatMode = repeatMode
+    }
+
+    onInTrayChanged: if (inTray) trayMemoryTimer.restart()
+
+    // Runs once the dropped pages are gone, so their memory can go back to the system.
+    Timer {
+        id: trayMemoryTimer
+        interval: 2000
+        onTriggered: {
+            if (!window.inTray)
+                return
+            gc()
+            tray.releaseMemory()
+        }
     }
 
     onVisibilityChanged: {
@@ -3567,7 +3583,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         // Wait for the saved page, or Home is built and discarded when launching elsewhere.
-                        active: settingsInitialized && page === "home"
+                        active: settingsInitialized && page === "home" && !inTray
 
                         sourceComponent: Component {
                             HomePage {
@@ -3596,7 +3612,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "library"
+                        active: page === "library" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3616,7 +3632,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "search"
+                        active: page === "search" && !inTray
                         property bool focusOnLoad: false
                         onLoaded: if (focusOnLoad) {
                             focusOnLoad = false
@@ -3642,7 +3658,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "radio"
+                        active: page === "radio" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3662,7 +3678,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "jellyfin"
+                        active: page === "jellyfin" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3682,7 +3698,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "subsonic"
+                        active: page === "subsonic" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3702,7 +3718,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "stats"
+                        active: page === "stats" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3727,7 +3743,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "settings"
+                        active: page === "settings" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3896,7 +3912,7 @@ ApplicationWindow {
             anchors.bottomMargin: phonePlaybackStrip.visible ? phonePlaybackStrip.height : 0
             z: 350
             // Stays loaded while the close animation plays.
-            active: catalogDetailOpen || detailExit.running
+            active: (catalogDetailOpen || detailExit.running) && !inTray
             transform: Translate { id: detailShift }
             onLoaded: detailEnter.restart()
 
@@ -4419,7 +4435,7 @@ ApplicationWindow {
         id: nowPlayingLoader
         anchors.fill: parent
         z: 500
-        active: nowPlayingLoaded || nowPlayingOpen
+        active: (nowPlayingLoaded || nowPlayingOpen) && !inTray
         sourceComponent: Component {
             Rectangle {
                 id: nowPlayingOverlay

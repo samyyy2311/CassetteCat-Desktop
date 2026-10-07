@@ -81,7 +81,7 @@ Everything else is on the [latest release](https://github.com/samyyy2311/Cassett
 | Linux | `.rpm` | Fedora, openSUSE, RHEL |
 | Linux | `.tar.gz` | Portable. Run `CassetteCat/bin/CassetteCat` |
 
-Linux packages come in x86_64 and ARM64 versions; pick the one for your machine. The macOS and ARM64 downloads start with the release after v0.8.0.
+Linux packages come in x86_64 and ARM64 versions; pick the one for your machine. The macOS and ARM64 downloads start with v0.8.1.
 
 The macOS app is not notarized by Apple yet. The first time, right-click CassetteCat in Applications and choose Open, or allow it under System Settings, Privacy & Security.
 

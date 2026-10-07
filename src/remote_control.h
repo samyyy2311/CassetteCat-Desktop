@@ -25,6 +25,8 @@ class RemoteControlServer final : public QObject {
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
     Q_PROPERTY(QString code READ code WRITE setCode NOTIFY codeChanged)
     Q_PROPERTY(QString address READ address NOTIFY addressChanged)
+    /// The name phones show for this computer when they find it.
+    Q_PROPERTY(QString computerName READ computerName CONSTANT)
     /// The phone controlling playback right now, or empty.
     Q_PROPERTY(QString controllerName READ controllerName NOTIFY controllerChanged)
     /// What a paired phone is playing itself, as {name, title, artist, isPlaying}; empty when none is.
@@ -48,6 +50,7 @@ class RemoteControlServer final : public QObject {
     void setCode(const QString &code);
     /// Returns "ip:port" for the phone to connect to, or empty while stopped.
     QString address() const;
+    QString computerName() const;
     QString controllerName() const;
     Q_INVOKABLE void regenerateCode();
     /// Asks the controlling phone to take over playback; it picks this up on its next poll.

@@ -4343,15 +4343,15 @@ ApplicationWindow {
                     spacing: 8
 
                     PressDepthIconButton {
+                        readonly property bool phoneConnected: phoneRemote.controllerName !== "" || !!phoneRemote.phonePlayback.name
                         Layout.alignment: Qt.AlignVCenter
-                        visible: phoneRemote.controllerName !== ""
                         boxSize: 34
                         iconSize: 17
                         iconName: "smartphone"
-                        tint: recordRed
-                        highlighted: true
-                        tooltipText: "Controlled from " + phoneRemote.controllerName + ". Click to continue on it."
-                        onClicked: phoneRemote.continueOnPhone()
+                        tint: phoneConnected ? recordRed : silverDim
+                        highlighted: phoneConnected
+                        tooltipText: phoneRemote.controllerName !== "" ? "Controlled from " + phoneRemote.controllerName : "Phone Remote"
+                        onClicked: phoneRemoteSheet.open()
                     }
 
                     PressDepthIconButton {
@@ -5191,6 +5191,14 @@ ApplicationWindow {
     TrackMetadataDialog {
         id: metadataDialog
         appWindow: window
+    }
+
+    PhoneRemoteSheet {
+        id: phoneRemoteSheet
+        remote: phoneRemote
+        enabledSetting: svcPhoneRemote
+        offlineBlackout: window.offlineBlackout
+        onEnableRequested: enabled => svcPhoneRemote = enabled
     }
 
     AudioDetailsSheet {

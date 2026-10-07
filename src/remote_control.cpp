@@ -283,6 +283,10 @@ QString RemoteControlServer::address() const {
     return ip.isEmpty() ? QString() : ip + ':' + QString::number(m_server.serverPort());
 }
 
+QString RemoteControlServer::computerName() const {
+    return QSysInfo::machineHostName();
+}
+
 void RemoteControlServer::regenerateCode() {
     QString code;
     for (int i = 0; i < 6; ++i)
@@ -645,7 +649,7 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
 QByteArray RemoteControlServer::discoveryReply(const QByteArray &datagram, const QHostAddress &peer) const {
     if (datagram != kDiscoveryProbe || !isLocalPeer(peer) || !m_server.isListening())
         return {};
-    return QJsonDocument(QJsonObject{{"name", QSysInfo::machineHostName()}, {"port", m_server.serverPort()}})
+    return QJsonDocument(QJsonObject{{"name", computerName()}, {"port", m_server.serverPort()}})
         .toJson(QJsonDocument::Compact);
 }
 
@@ -662,7 +666,7 @@ QJsonObject RemoteControlServer::status() {
         {"shuffleEnabled", m_player->shuffleEnabled()},
         {"repeatMode", m_repeatMode},
         {"artworkKey", artworkKey(track)},
-        {"deviceName", QSysInfo::machineHostName()},
+        {"deviceName", computerName()},
         // Reported once, so the phone takes over a single time.
         {"handoffRequested", std::exchange(m_handoffToPhone, false)},
     };

@@ -138,6 +138,7 @@ qt_add_qml_module(CassetteCat
         qml/LibraryRefineSheet.qml
         qml/BottomSheet.qml
         qml/AudioDetailsSheet.qml
+        qml/PhoneRemoteSheet.qml
         qml/TrackActionSheet.qml
         qml/RefineTextInput.qml
         qml/EmptyState.qml

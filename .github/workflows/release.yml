@@ -232,7 +232,7 @@ jobs:
           cmake --install build/release --component runtime --prefix dist
           # Unsigned: an ad-hoc signature lets it run on Apple silicon, and people open it once with right-click > Open.
           codesign --force --deep --sign - dist/CassetteCat.app
-          lipo -verify_arch arm64 x86_64 dist/CassetteCat.app/Contents/MacOS/CassetteCat
+          lipo dist/CassetteCat.app/Contents/MacOS/CassetteCat -verify_arch arm64 x86_64
           dist/CassetteCat.app/Contents/MacOS/CassetteCat --self-check
           ln -s /Applications dist/Applications
           hdiutil create -volname CassetteCat -srcfolder dist -ov -format UDZO "CassetteCat-${RELEASE_TAG}-macos-universal.dmg"

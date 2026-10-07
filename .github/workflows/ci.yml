@@ -190,7 +190,7 @@ jobs:
         run: |
           cmake --install build/ci-macos --component runtime --prefix dist
           codesign --force --deep --sign - dist/CassetteCat.app
-          lipo -verify_arch arm64 x86_64 dist/CassetteCat.app/Contents/MacOS/CassetteCat
+          lipo dist/CassetteCat.app/Contents/MacOS/CassetteCat -verify_arch arm64 x86_64
           dist/CassetteCat.app/Contents/MacOS/CassetteCat --self-check
           ln -s /Applications dist/Applications
           hdiutil create -volname CassetteCat -srcfolder dist -ov -format UDZO CassetteCat-macos-ci.dmg

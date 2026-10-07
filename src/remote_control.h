@@ -103,9 +103,13 @@ class RemoteControlServer final : public QObject {
         int status;
         QByteArray body;
         QByteArray contentType = "application/json";
+        // Set for /api/stream: the library file to send, honouring the request's Range header.
+        QString filePath;
     };
 
     void serve(QTcpSocket *socket);
+    /// Sends \p response's library file over \p socket, from the byte range in \p range if one was asked for.
+    void streamFile(QTcpSocket *socket, const Response &response, const QByteArray &range);
     Response respond(const QByteArray &method, const QByteArray &target, const QByteArray &authorization,
                      const QByteArray &body, const QHostAddress &peer, const QByteArray &deviceName = {});
     /// Answers a phone looking for computers on the network, or returns empty for anything else.

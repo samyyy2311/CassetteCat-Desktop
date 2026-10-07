@@ -22,6 +22,11 @@ endif()
 if(UNIX AND NOT APPLE)
     list(APPEND CassetteCat_PLATFORM_SOURCES src/mpris_adaptor.h src/mpris_adaptor.cpp)
 endif()
+if(APPLE)
+    enable_language(OBJCXX)
+    list(APPEND CassetteCat_PLATFORM_SOURCES src/macos_now_playing.h src/macos_now_playing.mm)
+    set_source_files_properties(src/macos_now_playing.mm PROPERTIES COMPILE_OPTIONS -fobjc-arc)
+endif()
 
 qt_add_executable(CassetteCat
     src/main.cpp
@@ -413,7 +418,8 @@ if(UNIX AND NOT APPLE)
 endif()
 
 if(APPLE)
-    target_link_libraries(CassetteCat PRIVATE "-framework Security" "-framework CoreFoundation")
+    target_link_libraries(CassetteCat PRIVATE "-framework Security" "-framework CoreFoundation" "-framework AppKit"
+        "-framework MediaPlayer")
     set(macIcon "${CMAKE_CURRENT_SOURCE_DIR}/assets/cassettecat.icns")
     set_source_files_properties("${macIcon}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     target_sources(CassetteCat PRIVATE "${macIcon}")

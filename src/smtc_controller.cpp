@@ -1,6 +1,10 @@
 #include "smtc_controller.h"
 #include "player_controller.h"
 
+#ifdef Q_OS_MACOS
+#include "macos_now_playing.h"
+#endif
+
 #include <QAbstractNativeEventFilter>
 #include <QCoreApplication>
 #include <QDebug>
@@ -596,6 +600,25 @@ void SmtcController::initialize(quintptr hwnd) {
     } else {
         qWarning() << "[SMTC] Failed to initialize SMTC. hr=" << Qt::hex << hr;
     }
+#elif defined(Q_OS_MACOS)
+    Q_UNUSED(hwnd);
+    MacNowPlaying::initialize({
+        [this] { emit playRequested(); },
+        [this] { emit pauseRequested(); },
+        [this] {
+            if (m_player && m_player->isPlaying())
+                emit pauseRequested();
+            else
+                emit playRequested();
+        },
+        [this] { emit nextRequested(); },
+        [this] { emit previousRequested(); },
+        [this](qint64 positionMs) { emit seekRequested(positionMs); },
+    });
+    if (m_player && !m_player->currentTrack().isEmpty()) {
+        onTrackChanged();
+        onPlayingChanged();
+    }
 #else
     Q_UNUSED(hwnd);
 #endif
@@ -669,10 +692,13 @@ void SmtcController::updateTrack(const QString &title, const QString &artist, co
         updater->Update();
         updater->Release();
     }
+#elif defined(Q_OS_MACOS)
+    MacNowPlaying::setTrack(title, artist, album, artworkPath);
 #else
     Q_UNUSED(title);
     Q_UNUSED(artist);
     Q_UNUSED(album);
+    Q_UNUSED(artworkPath);
 #endif
 }
 
@@ -681,6 +707,8 @@ void SmtcController::updatePlaybackStatus(bool isPlaying) {
     if (!d->controls || !d->initialized)
         return;
     d->controls->put_PlaybackStatus(isPlaying ? MediaPlaybackStatus_Playing : MediaPlaybackStatus_Paused);
+#elif defined(Q_OS_MACOS)
+    MacNowPlaying::setPlaying(isPlaying);
 #else
     Q_UNUSED(isPlaying);
 #endif
@@ -722,6 +750,8 @@ void SmtcController::updateTimeline(qint64 positionMs, qint64 durationMs) {
             props->Release();
         }
     }
+#elif defined(Q_OS_MACOS)
+    MacNowPlaying::setTimeline(positionMs, durationMs);
 #else
     Q_UNUSED(positionMs);
     Q_UNUSED(durationMs);

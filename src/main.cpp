@@ -551,6 +551,9 @@ int main(int argc, char *argv[]) {
             } else {
                 quickWin->setVisible(true);
             }
+#ifdef Q_OS_MACOS
+            smtc.initialize(0);
+#endif
 #endif
             break;
         }

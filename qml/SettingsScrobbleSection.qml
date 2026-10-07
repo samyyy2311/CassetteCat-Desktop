@@ -208,7 +208,7 @@ ColumnLayout {
 
                     Label {
                         text: "Get user token from ListenBrainz website"
-                        color: recordRedHover
+                        color: accentText
                         font.family: displayFont
                         font.pixelSize: 11
                         font.underline: mouseLink.containsMouse
@@ -251,7 +251,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 visible: accountDialog.errorMessage.length > 0
                 text: accountDialog.errorMessage
-                color: recordRedHover
+                color: accentText
                 font.family: displayFont
                 font.pixelSize: 12
                 wrapMode: Text.WordWrap

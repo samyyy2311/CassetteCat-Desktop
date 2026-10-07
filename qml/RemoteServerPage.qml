@@ -713,7 +713,7 @@ Item {
                     Layout.fillWidth: true
                     visible: root.errorText.length > 0
                     text: root.errorText
-                    color: recordRedHover
+                    color: accentText
                     font.family: bodyFont
                     font.pixelSize: 12
                     wrapMode: Text.WordWrap

@@ -29,6 +29,18 @@ ApplicationWindow {
     readonly property color recordRed: accentName === "custom"
         ? Qt.color(customAccentColor)
         : (accentColorMap[accentName] || accentColorMap["recordRed"]).base
+    // The accent as small text: lightened only as far as needed to reach 4.5:1 on the darkest surface.
+    readonly property color accentText: {
+        const luminance = c => {
+            const lin = v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+            return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
+        }
+        const backdrop = luminance(surfaceBase) + 0.05
+        let shade = recordRed
+        for (let step = 0; step < 12 && (luminance(shade) + 0.05) / backdrop < 4.5; ++step)
+            shade = Qt.tint(shade, Qt.rgba(1, 1, 1, 0.15))
+        return shade
+    }
     readonly property color recordRedHover: accentName === "custom"
         ? Qt.lighter(Qt.color(customAccentColor), 1.15)
         : (accentColorMap[accentName] || accentColorMap["recordRed"]).hover
@@ -41,9 +53,9 @@ ApplicationWindow {
     readonly property color surfaceInput: "#1A1917"
     readonly property color surfaceTag: "#22201E"
     readonly property color silver: "#C4C4C0"
-    readonly property color silverDim: "#6E6C68"
+    readonly property color silverDim: "#918E88"
     readonly property color textPrimary: "#F5F0EC"
-    readonly property color textSecondary: "#8E8A84"
+    readonly property color textSecondary: "#A8A49E"
     readonly property color borderSubtle: Qt.rgba(1, 1, 1, 0.05)
     readonly property color borderVariant: Qt.rgba(1, 1, 1, 0.09)
     readonly property color borderCard: borderVariant
@@ -3258,12 +3270,11 @@ ApplicationWindow {
                     height: 60
                     color: minBtnMouse.containsMouse ? surfaceElevated : "transparent"
 
-                    Label {
+                    Rectangle {
                         anchors.centerIn: parent
-                        text: "—"
+                        width: 10
+                        height: 1.2
                         color: minBtnMouse.containsMouse ? textPrimary : silverDim
-                        font.family: displayFont
-                        font.pixelSize: 12
                     }
 
                     MouseArea {
@@ -3970,7 +3981,7 @@ ApplicationWindow {
                     Label {
                         anchors.centerIn: parent
                         text: "Add to queue"
-                        color: recordRed
+                        color: accentText
                         font.family: monoFont
                         font.pixelSize: 11
                         font.weight: Font.Bold
@@ -4819,7 +4830,7 @@ ApplicationWindow {
                 Label {
                     visible: !lyricCustomEditorOpen
                     text: "Add custom"
-                    color: recordRedHover
+                    color: accentText
                     font.family: displayFont
                     font.pixelSize: 12
                     font.weight: Font.DemiBold
@@ -4866,7 +4877,7 @@ ApplicationWindow {
                 Label {
                     Layout.fillWidth: true
                     text: lyricSearchResults.length + (lyricSearchResults.length === 1 ? " version found" : " versions found")
-                    color: recordRedHover
+                    color: accentText
                     font.family: monoFont
                     font.pixelSize: 10
                     font.weight: Font.Bold

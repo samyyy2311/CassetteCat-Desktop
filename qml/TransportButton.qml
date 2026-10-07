@@ -22,7 +22,7 @@ Item {
     readonly property color surfaceContainerHover: "#2C2A26"
     readonly property color surfaceContainerLowest: "#161513"
     readonly property color outlineVariant: "#2C2926"
-    readonly property color silverDim: "#6E6C68"
+    readonly property color silverDim: "#918E88"
     readonly property color textPrimary: "#F5F0EC"
     readonly property color textSecondary: "#A8A29A"
 

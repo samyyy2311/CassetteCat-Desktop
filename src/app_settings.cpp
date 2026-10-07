@@ -171,12 +171,10 @@ void SettingsController::showInFolder(const QString &filePath) {
 #endif
 }
 
-/// @copydoc SettingsController::getLogFilePath
 QString SettingsController::getLogFilePath() const {
     return debugLogFilePath();
 }
 
-/// @copydoc SettingsController::readRecentLogs
 QString SettingsController::readRecentLogs(int maxLines) const {
     if (maxLines <= 0) {
         return QString();
@@ -229,7 +227,6 @@ QString SettingsController::readRecentLogs(int maxLines) const {
     return lines.join('\n');
 }
 
-/// @copydoc SettingsController::clearLogs
 void SettingsController::clearLogs() {
     QFile file(debugLogFilePath());
     if (file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
@@ -241,7 +238,6 @@ void SettingsController::clearLogs() {
     }
 }
 
-/// @copydoc SettingsController::openLogFile
 void SettingsController::openLogFile() {
     const QString path = debugLogFilePath();
     if (QFileInfo::exists(path)) {

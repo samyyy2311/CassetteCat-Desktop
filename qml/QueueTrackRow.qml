@@ -167,7 +167,7 @@ Item {
 
             Label {
                 visible: !root.removeEnabled && !root.playNextEnabled
-                text: root.entry.duration || (root.compact ? "" : "—")
+                text: root.entry.duration || ""
                 color: root.paletteSource.silverDim
                 font.family: root.paletteSource.monoFont
                 font.pixelSize: root.compact ? 9 : 11
@@ -207,7 +207,7 @@ Item {
                     icon: "arrow-up-down"
                     color: gripMouse.containsMouse || gripMouse.drag.active
                         ? (root.paletteSource ? root.paletteSource.textPrimary : "#F5F2ED")
-                        : (root.paletteSource ? root.paletteSource.silverDim : "#6E6C68")
+                        : (root.paletteSource ? root.paletteSource.silverDim : "#918E88")
                     width: root.compact ? 13 : 15
                     height: root.compact ? 13 : 15
                 }

@@ -52,7 +52,7 @@ Item {
 
                                 Label {
                                     text: greeting.toUpperCase()
-                                    color: recordRed
+                                    color: accentText
                                     font.family: monoFont
                                     font.pixelSize: 10
                                     font.weight: Font.Bold
@@ -128,8 +128,9 @@ Item {
                                     anchors.fill: parent
                                     gradient: Gradient {
                                         orientation: Gradient.Horizontal
-                                        GradientStop { position: 0.0; color: "#700E0D0C" }
-                                        GradientStop { position: 1.0; color: "#D00E0D0C" }
+                                        // Dark enough that the text stays readable over the palest cover art.
+                                        GradientStop { position: 0.0; color: "#C70E0D0C" }
+                                        GradientStop { position: 1.0; color: "#E00E0D0C" }
                                     }
                                 }
 
@@ -168,7 +169,7 @@ Item {
 
                                     Label {
                                         text: "SHUFFLE"
-                                        color: recordRedHover
+                                        color: textPrimary
                                         font.family: monoFont
                                         font.pixelSize: 10
                                         font.weight: Font.Bold

@@ -54,8 +54,8 @@ Window {
     readonly property color recordRed: accentColor
     readonly property color recordRedHover: accentHover
     readonly property color textPrimary: "#F7F3EE"
-    readonly property color textSecondary: "#96918A"
-    readonly property color silverDim: "#6B6762"
+    readonly property color textSecondary: "#A8A49E"
+    readonly property color silverDim: "#918E88"
 
     property bool alwaysOnTop: true
     property int albumArtRadius: 16
@@ -429,7 +429,7 @@ Window {
                             text: {
                                 if (player.currentTrack && player.currentTrack.artist) {
                                     return player.currentTrack.album
-                                        ? player.currentTrack.artist + " — " + player.currentTrack.album
+                                        ? player.currentTrack.artist + " · " + player.currentTrack.album
                                         : player.currentTrack.artist
                                 }
                                 return root.tracksCount > 0 ? "Ready to play" : "Select folder"

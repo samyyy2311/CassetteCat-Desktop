@@ -33,13 +33,6 @@ Item {
                 fillMode: Image.PreserveAspectFit
                 smooth: true
                 mipmap: true
-
-                SequentialAnimation on y {
-                    loops: Animation.Infinite
-                    running: root.visible
-                    NumberAnimation { to: -6; duration: 1400; easing.type: Easing.InOutQuad }
-                    NumberAnimation { to: 0; duration: 1400; easing.type: Easing.InOutQuad }
-                }
             }
         }
 
@@ -85,7 +78,7 @@ Item {
                 id: btnLbl
                 anchors.centerIn: parent
                 text: root.actionLabel
-                color: recordRedHover
+                color: accentText
                 font.family: displayFont
                 font.pixelSize: 12
                 font.weight: Font.DemiBold

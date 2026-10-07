@@ -22,7 +22,7 @@ Item {
     readonly property color surfaceTooltip: "#1A1816"
     readonly property color borderSubtle: "#2E2B28"
     readonly property color silver: "#C4C4C0"
-    readonly property color silverDim: "#6E6C68"
+    readonly property color silverDim: "#918E88"
     readonly property string monoFont: (typeof monoFontFamily !== "undefined" && monoFontFamily.length > 0) ? monoFontFamily : "IBM Plex Mono"
 
     property bool isDragging: false

@@ -64,7 +64,7 @@ ColumnLayout {
                 Layout.preferredHeight: 14
                 Layout.alignment: Qt.AlignVCenter
                 icon: "external-link"
-                color: m.containsMouse ? textPrimary : (typeof silverDim !== "undefined" ? silverDim : "#6B6762")
+                color: m.containsMouse ? textPrimary : (typeof silverDim !== "undefined" ? silverDim : "#918E88")
             }
         }
 

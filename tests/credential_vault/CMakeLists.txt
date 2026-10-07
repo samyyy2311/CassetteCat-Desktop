@@ -18,7 +18,7 @@ add_executable(credential_vault_probe
 )
 target_include_directories(credential_vault_probe PRIVATE ../../src)
 if(APPLE)
-    target_link_libraries(credential_vault_probe PRIVATE Qt6::Core "-framework Security")
+    target_link_libraries(credential_vault_probe PRIVATE Qt6::Core "-framework Security" "-framework CoreFoundation")
 else()
     target_compile_definitions(credential_vault_probe PRIVATE CASSETTECAT_HAVE_LIBSECRET=1)
     target_link_libraries(credential_vault_probe PRIVATE Qt6::Core PkgConfig::LIBSECRET)

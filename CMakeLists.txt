@@ -409,7 +409,7 @@ if(UNIX AND NOT APPLE)
 endif()
 
 if(APPLE)
-    target_link_libraries(CassetteCat PRIVATE "-framework Security")
+    target_link_libraries(CassetteCat PRIVATE "-framework Security" "-framework CoreFoundation")
     set(macIcon "${CMAKE_CURRENT_SOURCE_DIR}/assets/cassettecat.icns")
     set_source_files_properties("${macIcon}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     target_sources(CassetteCat PRIVATE "${macIcon}")

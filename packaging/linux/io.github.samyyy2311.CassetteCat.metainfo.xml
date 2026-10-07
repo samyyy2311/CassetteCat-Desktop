@@ -5,10 +5,11 @@
   <summary>Local-first desktop music player</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <url type="homepage">https://github.com/samyyy2311/CassetteCat-Desktop</url>
+  <url type="homepage">https://cassettecat.caffeinelabs.in</url>
+  <url type="vcs-browser">https://github.com/samyyy2311/CassetteCat-Desktop</url>
   <url type="bugtracker">https://github.com/samyyy2311/CassetteCat-Desktop/issues</url>
   <developer id="io.github.samyyy2311">
-    <name>CassetteCat contributors</name>
+    <name>CaffeineLabs</name>
   </developer>
   <description>
     <p>CassetteCat is a local-first desktop music player for music you already own.</p>

@@ -62,7 +62,7 @@ Item {
     property bool scrobbleLibreFmEnabled: false
     property string scrobbleLibreFmUser: ""
     property bool scrobbleLibreFmConnected: false
-    property string updateStatusText: "Current version: v0.6.0"
+    property string updateStatusText: ""
     property bool updateChecking: false
     property bool updateAvailable: false
     property string updateUrl: ""

@@ -16,7 +16,8 @@ qt_standard_project_setup(REQUIRES 6.10)
 
 set(CassetteCat_PLATFORM_SOURCES)
 if(WIN32)
-    list(APPEND CassetteCat_PLATFORM_SOURCES src/app.rc)
+    configure_file(src/app.rc.in "${CMAKE_CURRENT_BINARY_DIR}/app.rc" @ONLY)
+    list(APPEND CassetteCat_PLATFORM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/app.rc")
 endif()
 if(UNIX AND NOT APPLE)
     list(APPEND CassetteCat_PLATFORM_SOURCES src/mpris_adaptor.h src/mpris_adaptor.cpp)
@@ -72,7 +73,7 @@ if(MINGW)
     target_compile_options(CassetteCat PRIVATE -Wa,-mbig-obj)
 endif()
 if(WIN32)
-    set_property(SOURCE src/app.rc APPEND PROPERTY OBJECT_DEPENDS
+    set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/app.rc" APPEND PROPERTY OBJECT_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/cassettecat_icon.ico"
     )
 endif()

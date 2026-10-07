@@ -77,6 +77,29 @@ ColumnLayout {
         }
     }
 
+    SectionLabel { text: "About" }
+
+    SettingCard {
+        Repeater {
+            model: [
+                { title: "CassetteCat " + Qt.application.version, subtitle: "Made by CaffeineLabs (cassettecat.caffeinelabs.in)", icon: "info", url: "https://cassettecat.caffeinelabs.in" },
+                { title: "Privacy Policy", subtitle: "What stays on your computer and what each online service receives", icon: "shield", url: "https://cassettecat.caffeinelabs.in/privacy.html" }
+            ]
+
+            delegate: ColumnLayout {
+                Layout.fillWidth: true
+                spacing: 0
+
+                SettingDivider { visible: index > 0 }
+
+                CreditItemRow {
+                    itemData: modelData
+                    onClicked: Qt.openUrlExternally(modelData.url)
+                }
+            }
+        }
+    }
+
     SectionLabel { text: "Services & Data" }
 
     SettingCard {
@@ -168,9 +191,9 @@ ColumnLayout {
                 subtitle: "View source code and contribute on GitHub",
                 icon: "gpl",
                 preserveColor: true,
-                url: "https://github.com/samyyy2311/CassetteCat"
+                url: "https://github.com/samyyy2311/CassetteCat-Desktop"
             })
-            onClicked: Qt.openUrlExternally("https://github.com/samyyy2311/CassetteCat")
+            onClicked: Qt.openUrlExternally("https://github.com/samyyy2311/CassetteCat-Desktop")
         }
     }
 }

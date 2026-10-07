@@ -19,6 +19,7 @@
 #include <QSize>
 #include <QStandardPaths>
 #include <QStringList>
+#include <QThreadPool>
 #include <QUrl>
 #include <QVariantList>
 #include <QThread>
@@ -514,6 +515,8 @@ int main(int argc, char *argv[]) {
     });
 
     engine.loadFromModule("CassetteCat", "Main");
+    // After the first pass this only reads image headers, so it runs on every launch rather than tracking a flag.
+    QThreadPool::globalInstance()->start(shrinkOversizedCachedImages);
     if (engine.rootObjects().isEmpty()) {
         qCritical() << "FATAL: engine.rootObjects() is empty after loading Main module!";
 #ifdef Q_OS_WIN

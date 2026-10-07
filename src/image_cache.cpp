@@ -2,14 +2,66 @@
 
 #include "audio_metadata.h"
 
+#include <QBuffer>
 #include <QCryptographicHash>
 #include <QDir>
+#include <QDirIterator>
 #include <QFileInfo>
 #include <QImageReader>
 #include <QPainter>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QUrl>
+
+namespace {
+
+// Nothing in the app shows a cached image larger than kFullArtworkSize, so a larger download is stored at that size.
+// Anything that already fits is kept byte for byte.
+QByteArray fitForCache(const QByteArray &image, bool png) {
+    QBuffer input;
+    input.setData(image);
+    QImageReader reader(&input);
+    reader.setAutoTransform(true);
+    const QSize size = reader.size();
+    if (!size.isValid() || (size.width() <= kFullArtworkSize && size.height() <= kFullArtworkSize))
+        return image;
+    const QImage fitted =
+        reader.read().scaled(kFullArtworkSize, kFullArtworkSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    if (fitted.isNull())
+        return image;
+    QByteArray output;
+    QBuffer buffer(&output);
+    buffer.open(QIODevice::WriteOnly);
+    // Transparency would turn black in a JPEG, so such images stay PNG whatever their file name.
+    const bool keepPng = png || fitted.hasAlphaChannel();
+    return fitted.save(&buffer, keepPng ? "PNG" : "JPEG", keepPng ? -1 : 92) ? output : image;
+}
+
+} // namespace
+
+void shrinkOversizedCachedImages() {
+    const QString root = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+    for (const QString &category : {QStringLiteral("covers"), QStringLiteral("artists")}) {
+        QDirIterator it(root + "/" + category, QDir::Files);
+        while (it.hasNext()) {
+            const QString path = it.next();
+            const QSize size = QImageReader(path).size();
+            if (size.width() <= kFullArtworkSize && size.height() <= kFullArtworkSize)
+                continue;
+            QFile file(path);
+            if (!file.open(QIODevice::ReadOnly))
+                continue;
+            const QByteArray original = file.readAll();
+            file.close();
+            const QByteArray fitted = fitForCache(original, path.endsWith(QStringLiteral(".png")));
+            if (fitted.size() >= original.size())
+                continue;
+            QSaveFile output(path);
+            if (output.open(QIODevice::WriteOnly) && output.write(fitted) == fitted.size())
+                output.commit();
+        }
+    }
+}
 
 QString saveCachedImage(const QByteArray &image, const QString &key, bool png, const QString &category) {
     if (image.isEmpty()) {
@@ -22,8 +74,9 @@ QString saveCachedImage(const QByteArray &image, const QString &key, bool png, c
                          QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex()) +
                          (png ? ".png" : ".jpg");
     if (!QFileInfo::exists(path)) {
+        const QByteArray fitted = fitForCache(image, png);
         QSaveFile output(path);
-        if (!output.open(QIODevice::WriteOnly) || output.write(image) != image.size() || !output.commit()) {
+        if (!output.open(QIODevice::WriteOnly) || output.write(fitted) != fitted.size() || !output.commit()) {
             return {};
         }
     }

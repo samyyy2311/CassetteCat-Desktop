@@ -1,11 +1,17 @@
 #include "smtc_controller.h"
 #include "player_controller.h"
 
+#include <QAbstractNativeEventFilter>
+#include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
+#include <QImage>
 #include <QUrl>
 #include <algorithm>
+#include <functional>
+#include <memory>
 
 #ifdef Q_OS_WIN
 #define WIN32_LEAN_AND_MEAN
@@ -16,6 +22,13 @@
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Storage.h>
 #include <winrt/Windows.Storage.Streams.h>
+#include <shobjidl.h>
+
+static const GUID CLSID_TaskbarListLocal = {
+    0x56fdf344, 0xfd6d, 0x11d0, {0x95, 0x8a, 0x00, 0x60, 0x97, 0xc9, 0xa0, 0x90}};
+
+static const GUID IID_ITaskbarList3Local = {
+    0xea1afb91, 0x9e28, 0x4b86, {0x90, 0xe9, 0x9e, 0x9f, 0x8a, 0x5e, 0xef, 0xaf}};
 
 // Authentic Windows 10/11 WinRT GUIDs
 static const GUID IID_ISystemMediaTransportControlsInterop = {
@@ -335,6 +348,91 @@ class SmtcController::Private {
     EventRegistrationToken seekToken = {0};
     bool initialized = false;
 
+    // Previous, play/pause and next in the taskbar thumbnail, added once Windows says the taskbar button exists.
+    enum ThumbButton : UINT { ThumbPrevious = 1, ThumbPlayPause, ThumbNext };
+    HWND window = nullptr;
+    UINT taskbarCreatedMessage = 0;
+    ITaskbarList3 *taskbar = nullptr;
+    HICON previousIcon = nullptr;
+    HICON playIcon = nullptr;
+    HICON pauseIcon = nullptr;
+    HICON nextIcon = nullptr;
+    std::unique_ptr<QAbstractNativeEventFilter> thumbFilter;
+
+    static HICON loadIcon(const char *name, int size) {
+        QFile file(QStringLiteral(":/qt/qml/CassetteCat/qml/icons/%1.svg").arg(QLatin1String(name)));
+        if (!file.open(QIODevice::ReadOnly))
+            return nullptr;
+        QImage image = QImage::fromData(file.readAll(), "SVG");
+        if (image.isNull())
+            return nullptr;
+        image = image.scaled(size, size, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        return image.toHICON();
+    }
+
+    THUMBBUTTON playPauseButton(bool playing) const {
+        THUMBBUTTON button{};
+        button.dwMask = THB_ICON | THB_TOOLTIP | THB_FLAGS;
+        button.iId = ThumbPlayPause;
+        button.hIcon = playing ? pauseIcon : playIcon;
+        wcscpy_s(button.szTip, playing ? L"Pause" : L"Play");
+        button.dwFlags = THBF_ENABLED;
+        return button;
+    }
+
+    void addThumbButtons(bool playing) {
+        if (taskbar)
+            return;
+        if (FAILED(CoCreateInstance(CLSID_TaskbarListLocal, nullptr, CLSCTX_INPROC_SERVER, IID_ITaskbarList3Local,
+                                    reinterpret_cast<void **>(&taskbar))) ||
+            FAILED(taskbar->HrInit())) {
+            if (taskbar)
+                taskbar->Release();
+            taskbar = nullptr;
+            return;
+        }
+        const UINT dpi = GetDpiForWindow(window);
+        const int size = GetSystemMetricsForDpi(SM_CXSMICON, dpi ? dpi : USER_DEFAULT_SCREEN_DPI);
+        previousIcon = loadIcon("skip-back", size);
+        playIcon = loadIcon("play", size);
+        pauseIcon = loadIcon("pause", size);
+        nextIcon = loadIcon("skip-forward", size);
+
+        THUMBBUTTON buttons[3]{};
+        buttons[0].dwMask = THB_ICON | THB_TOOLTIP | THB_FLAGS;
+        buttons[0].iId = ThumbPrevious;
+        buttons[0].hIcon = previousIcon;
+        wcscpy_s(buttons[0].szTip, L"Previous");
+        buttons[0].dwFlags = THBF_ENABLED;
+        buttons[1] = playPauseButton(playing);
+        buttons[2].dwMask = THB_ICON | THB_TOOLTIP | THB_FLAGS;
+        buttons[2].iId = ThumbNext;
+        buttons[2].hIcon = nextIcon;
+        wcscpy_s(buttons[2].szTip, L"Next");
+        buttons[2].dwFlags = THBF_ENABLED;
+        taskbar->ThumbBarAddButtons(window, 3, buttons);
+    }
+
+    void updateThumbPlaying(bool playing) {
+        if (!taskbar)
+            return;
+        THUMBBUTTON button = playPauseButton(playing);
+        taskbar->ThumbBarUpdateButtons(window, 1, &button);
+    }
+
+    void releaseThumbButtons() {
+        if (thumbFilter)
+            QCoreApplication::instance()->removeNativeEventFilter(thumbFilter.get());
+        thumbFilter.reset();
+        if (taskbar)
+            taskbar->Release();
+        taskbar = nullptr;
+        for (HICON icon : {previousIcon, playIcon, pauseIcon, nextIcon})
+            if (icon)
+                DestroyIcon(icon);
+        previousIcon = playIcon = pauseIcon = nextIcon = nullptr;
+    }
+
     bool loadCombase() {
         if (hCombase)
             return true;
@@ -355,6 +453,39 @@ class SmtcController::Private {
 #endif
 };
 
+#ifdef Q_OS_WIN
+namespace {
+class ThumbButtonFilter final : public QAbstractNativeEventFilter {
+  public:
+    ThumbButtonFilter(std::function<void()> created, std::function<void(UINT)> clicked, HWND window,
+                      UINT createdMessage)
+        : m_created(std::move(created)), m_clicked(std::move(clicked)), m_window(window),
+          m_createdMessage(createdMessage) {}
+
+    bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *) override {
+        if (eventType != "windows_generic_MSG")
+            return false;
+        const MSG *msg = static_cast<const MSG *>(message);
+        if (msg->hwnd != m_window)
+            return false;
+        if (msg->message == m_createdMessage) {
+            m_created();
+        } else if (msg->message == WM_COMMAND && HIWORD(msg->wParam) == THBN_CLICKED) {
+            m_clicked(LOWORD(msg->wParam));
+            return true;
+        }
+        return false;
+    }
+
+  private:
+    std::function<void()> m_created;
+    std::function<void(UINT)> m_clicked;
+    HWND m_window;
+    UINT m_createdMessage;
+};
+} // namespace
+#endif
+
 SmtcController::SmtcController(PlayerController *player, QObject *parent)
     : QObject(parent), d(new Private()), m_player(player) {
     if (m_player) {
@@ -367,6 +498,7 @@ SmtcController::SmtcController(PlayerController *player, QObject *parent)
 
 SmtcController::~SmtcController() {
 #ifdef Q_OS_WIN
+    d->releaseThumbButtons();
     if (d->controls2) {
         if (d->seekToken.value != 0) {
             d->controls2->remove_PlaybackPositionChangeRequested(d->seekToken);
@@ -394,6 +526,24 @@ void SmtcController::initialize(quintptr hwnd) {
 #ifdef Q_OS_WIN
     if (!hwnd || d->initialized)
         return;
+    if (!d->thumbFilter) {
+        d->window = reinterpret_cast<HWND>(hwnd);
+        d->taskbarCreatedMessage = RegisterWindowMessageW(L"TaskbarButtonCreated");
+        d->thumbFilter = std::make_unique<ThumbButtonFilter>(
+            [this] { d->addThumbButtons(m_player && m_player->isPlaying()); },
+            [this](UINT id) {
+                if (id == Private::ThumbPrevious)
+                    emit previousRequested();
+                else if (id == Private::ThumbNext)
+                    emit nextRequested();
+                else if (id == Private::ThumbPlayPause && m_player && m_player->isPlaying())
+                    emit pauseRequested();
+                else if (id == Private::ThumbPlayPause)
+                    emit playRequested();
+            },
+            d->window, d->taskbarCreatedMessage);
+        QCoreApplication::instance()->installNativeEventFilter(d->thumbFilter.get());
+    }
     if (!d->loadCombase())
         return;
 
@@ -601,6 +751,9 @@ void SmtcController::onTrackChanged() {
 void SmtcController::onPlayingChanged() {
     if (!m_player)
         return;
+#ifdef Q_OS_WIN
+    d->updateThumbPlaying(m_player->isPlaying());
+#endif
     updatePlaybackStatus(m_player->isPlaying());
     if (m_player->duration() > 0) {
         updateTimeline(m_player->position(), m_player->duration());

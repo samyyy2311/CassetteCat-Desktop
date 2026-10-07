@@ -4559,7 +4559,8 @@ ApplicationWindow {
                         keepPreviousArtwork: true
                         cacheArtwork: true
                         showTonearm: true
-                        stableSourceSize: 1024
+                        // The card's largest size; Cover scales it by the screen's pixel ratio.
+                        stableSourceSize: 360
                     }
 
                     MouseArea {

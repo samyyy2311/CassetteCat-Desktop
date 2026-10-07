@@ -13,7 +13,25 @@
 #include <wincred.h>
 #endif
 
+#ifdef __APPLE__
+#include <Security/Security.h>
+#endif
+
 namespace {
+
+#ifdef __APPLE__
+// One generic password per key, under the app's own service name.
+CFMutableDictionaryRef keychainQuery(const QString &key) {
+    CFMutableDictionaryRef query =
+        CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFDictionarySetValue(query, kSecClass, kSecClassGenericPassword);
+    CFDictionarySetValue(query, kSecAttrService, CFSTR("io.github.samyyy2311.CassetteCat"));
+    const CFStringRef account = key.toCFString();
+    CFDictionarySetValue(query, kSecAttrAccount, account);
+    CFRelease(account);
+    return query;
+}
+#endif
 
 #ifdef CASSETTECAT_HAVE_LIBSECRET
 const SecretSchema *credentialSchema() {
@@ -71,6 +89,26 @@ bool CredentialVault::saveSecret(const QString &key, const QString &secret) {
         return false;
     }
     return stored == TRUE;
+#elif defined(__APPLE__)
+    CFMutableDictionaryRef query = keychainQuery(key);
+    const CFDataRef data = secret.toUtf8().toCFData();
+    // Updating in place keeps the previous secret if the write fails.
+    CFMutableDictionaryRef changes =
+        CFDictionaryCreateMutable(nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    CFDictionarySetValue(changes, kSecValueData, data);
+    OSStatus status = SecItemUpdate(query, changes);
+    CFRelease(changes);
+    if (status == errSecItemNotFound) {
+        CFDictionarySetValue(query, kSecValueData, data);
+        status = SecItemAdd(query, nullptr);
+    }
+    CFRelease(data);
+    CFRelease(query);
+    if (status == errSecSuccess) {
+        return true;
+    }
+    qWarning() << "Keychain write failed:" << status;
+    return false;
 #else
     Q_UNUSED(key);
     Q_UNUSED(secret);
@@ -108,6 +146,19 @@ QString CredentialVault::loadSecret(const QString &key) const {
     const QString secret = QString::fromUtf8(password);
     secret_password_free(password);
     return secret;
+#elif defined(__APPLE__)
+    CFMutableDictionaryRef query = keychainQuery(key);
+    CFDictionarySetValue(query, kSecReturnData, kCFBooleanTrue);
+    CFDictionarySetValue(query, kSecMatchLimit, kSecMatchLimitOne);
+    CFTypeRef result = nullptr;
+    const OSStatus status = SecItemCopyMatching(query, &result);
+    CFRelease(query);
+    if (status != errSecSuccess || !result) {
+        return {};
+    }
+    const QString secret = QString::fromUtf8(QByteArray::fromCFData(static_cast<CFDataRef>(result)));
+    CFRelease(result);
+    return secret;
 #else
     Q_UNUSED(key);
     return {};
@@ -134,6 +185,11 @@ bool CredentialVault::clearSecret(const QString &key) {
         return false;
     }
     return true;
+#elif defined(__APPLE__)
+    CFMutableDictionaryRef query = keychainQuery(key);
+    const OSStatus status = SecItemDelete(query);
+    CFRelease(query);
+    return status == errSecSuccess || status == errSecItemNotFound;
 #else
     Q_UNUSED(key);
     return false;

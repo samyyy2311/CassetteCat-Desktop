@@ -179,7 +179,6 @@ void StreamingController::updateStatusTexts() {
     emit statusChanged();
 }
 
-/// @copydoc StreamingController::trackReply
 QNetworkReply *StreamingController::trackReply(QNetworkReply *reply, bool allowSelfSigned) {
     if (!reply) {
         return nullptr;
@@ -269,7 +268,6 @@ QNetworkReply *StreamingController::trackReply(QNetworkReply *reply, bool allowS
     return reply;
 }
 
-/// @copydoc StreamingController::isServerCertTrusted
 bool StreamingController::isServerCertTrusted(const QUrl &url, const QSslCertificate &cert) const {
     if (url.scheme() != QLatin1String("https") || cert.isNull()) {
         return false;
@@ -299,7 +297,6 @@ bool StreamingController::isServerCertTrusted(const QUrl &url, const QSslCertifi
     return false;
 }
 
-/// @copydoc StreamingController::hasPinnedCertificate
 bool StreamingController::hasPinnedCertificate(const QString &settingsPath, const QUrl &url) {
     QSettings settings(settingsPath, QSettings::IniFormat);
     for (const QString &provider : {QStringLiteral("subsonic"), QStringLiteral("jellyfin")}) {
@@ -667,7 +664,6 @@ QVariantMap StreamingController::serverConfigSnapshot() const {
     return serverConfigSnapshot(m_settingsPath);
 }
 
-/// @copydoc StreamingController::serverConfigSnapshot(const QString &)
 QVariantMap StreamingController::serverConfigSnapshot(const QString &settingsPath) {
     QSettings settings(settingsPath, QSettings::IniFormat);
     QVariantMap snapshot;
@@ -697,7 +693,6 @@ void check(bool condition, const char *name) {
 
 } // namespace
 
-/// @copydoc runSelfChecks
 bool runSelfChecks(bool includeVaultProbe) {
     g_failures = 0;
 

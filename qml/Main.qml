@@ -29,6 +29,18 @@ ApplicationWindow {
     readonly property color recordRed: accentName === "custom"
         ? Qt.color(customAccentColor)
         : (accentColorMap[accentName] || accentColorMap["recordRed"]).base
+    // The accent as small text: lightened only as far as needed to reach 4.5:1 on both the page and the cards.
+    readonly property color accentText: {
+        const luminance = c => {
+            const lin = v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+            return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
+        }
+        const backdrop = Math.max(luminance(surfaceBase), luminance(surfaceCard)) + 0.05
+        let shade = recordRed
+        for (let step = 0; step < 12 && (luminance(shade) + 0.05) / backdrop < 4.5; ++step)
+            shade = Qt.tint(shade, Qt.rgba(1, 1, 1, 0.15))
+        return shade
+    }
     readonly property color recordRedHover: accentName === "custom"
         ? Qt.lighter(Qt.color(customAccentColor), 1.15)
         : (accentColorMap[accentName] || accentColorMap["recordRed"]).hover
@@ -41,9 +53,9 @@ ApplicationWindow {
     readonly property color surfaceInput: "#1A1917"
     readonly property color surfaceTag: "#22201E"
     readonly property color silver: "#C4C4C0"
-    readonly property color silverDim: "#6E6C68"
+    readonly property color silverDim: "#918E88"
     readonly property color textPrimary: "#F5F0EC"
-    readonly property color textSecondary: "#8E8A84"
+    readonly property color textSecondary: "#A8A49E"
     readonly property color borderSubtle: Qt.rgba(1, 1, 1, 0.05)
     readonly property color borderVariant: Qt.rgba(1, 1, 1, 0.09)
     readonly property color borderCard: borderVariant
@@ -88,6 +100,8 @@ ApplicationWindow {
     property string nowPlayingMode: "controls" // "controls", "lyrics", "queue"
     property var lyricsListView: null
     property bool nowPlayingLoaded: false
+    // Hidden in the tray, no page is on screen, so pages and Now Playing are dropped and rebuilt on return.
+    readonly property bool inTray: !window.visible
     property bool sidebarCollapsed: false
     property var favoriteTracks: ({})
     property var playlists: []
@@ -1415,6 +1429,20 @@ ApplicationWindow {
         phoneRemote.repeatMode = repeatMode
     }
 
+    onInTrayChanged: if (inTray) trayMemoryTimer.restart()
+
+    // Runs once the dropped pages are gone, so their memory can go back to the system.
+    Timer {
+        id: trayMemoryTimer
+        interval: 2000
+        onTriggered: {
+            if (!window.inTray)
+                return
+            gc()
+            tray.releaseMemory()
+        }
+    }
+
     onVisibilityChanged: {
         if (window.visibility === Window.Hidden || window.visibility === Window.Minimized)
             window.releaseResources()
@@ -2004,6 +2032,10 @@ ApplicationWindow {
         if (player.currentTrack && player.currentTrack.filePath) metadataDialog.openFor(player.currentTrack)
     }
 
+    function openAudioDetails() {
+        audioDetailsSheet.open()
+    }
+
     function openTrackActionSheet(targetTrack) {
         const t = targetTrack || player.currentTrack
         if (t && trackActionSheet) trackActionSheet.openFor(t)
@@ -2023,14 +2055,6 @@ ApplicationWindow {
             catalogDetailHeroTrack = ({})
             catalogDetailHistory = []
         }
-    }
-
-    Timer {
-        id: nowPlayingWarmupTimer
-        interval: 800
-        running: true
-        repeat: false
-        onTriggered: window.nowPlayingLoaded = true
     }
 
     onNowPlayingModeChanged: {
@@ -3258,12 +3282,11 @@ ApplicationWindow {
                     height: 60
                     color: minBtnMouse.containsMouse ? surfaceElevated : "transparent"
 
-                    Label {
+                    Rectangle {
                         anchors.centerIn: parent
-                        text: "—"
+                        width: 10
+                        height: 1.2
                         color: minBtnMouse.containsMouse ? textPrimary : silverDim
-                        font.family: displayFont
-                        font.pixelSize: 12
                     }
 
                     MouseArea {
@@ -3563,8 +3586,14 @@ ApplicationWindow {
                         id: homePageLoader
                         Layout.fillWidth: true
                         Layout.fillHeight: true
+                        asynchronous: true
                         // Wait for the saved page, or Home is built and discarded when launching elsewhere.
-                        active: settingsInitialized && page === "home"
+                        active: settingsInitialized && page === "home" && !inTray
+
+                        LoadingBar {
+                            anchors.fill: parent
+                            visible: homePageLoader.status === Loader.Loading
+                        }
 
                         sourceComponent: Component {
                             HomePage {
@@ -3593,7 +3622,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "library"
+                        active: page === "library" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3613,7 +3642,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "search"
+                        active: page === "search" && !inTray
                         property bool focusOnLoad: false
                         onLoaded: if (focusOnLoad) {
                             focusOnLoad = false
@@ -3639,7 +3668,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "radio"
+                        active: page === "radio" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3659,7 +3688,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "jellyfin"
+                        active: page === "jellyfin" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3679,7 +3708,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "subsonic"
+                        active: page === "subsonic" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3699,7 +3728,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "stats"
+                        active: page === "stats" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3724,7 +3753,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "settings"
+                        active: page === "settings" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3893,7 +3922,7 @@ ApplicationWindow {
             anchors.bottomMargin: phonePlaybackStrip.visible ? phonePlaybackStrip.height : 0
             z: 350
             // Stays loaded while the close animation plays.
-            active: catalogDetailOpen || detailExit.running
+            active: (catalogDetailOpen || detailExit.running) && !inTray
             transform: Translate { id: detailShift }
             onLoaded: detailEnter.restart()
 
@@ -3970,7 +3999,7 @@ ApplicationWindow {
                     Label {
                         anchors.centerIn: parent
                         text: "Add to queue"
-                        color: recordRed
+                        color: accentText
                         font.family: monoFont
                         font.pixelSize: 11
                         font.weight: Font.Bold
@@ -4416,7 +4445,7 @@ ApplicationWindow {
         id: nowPlayingLoader
         anchors.fill: parent
         z: 500
-        active: nowPlayingLoaded || nowPlayingOpen
+        active: (nowPlayingLoaded || nowPlayingOpen) && !inTray
         sourceComponent: Component {
             Rectangle {
                 id: nowPlayingOverlay
@@ -4461,16 +4490,18 @@ ApplicationWindow {
                 NumberAnimation { duration: 240 }
             }
 
+            // Blurred at 240px and scaled up to cover the window; blurring at window size keeps
+            // several window-sized textures alive for the life of the page.
             Cover {
                 anchors.centerIn: parent
-                width: parent.width * 1.3
-                height: parent.height * 1.3
+                width: 240
+                height: 240
+                scale: Math.max(parent.width, parent.height) * 1.3 / width
                 track: player.currentTrack
                 keepPreviousArtwork: true
                 cacheArtwork: true
                 stableSourceSize: 280
                 layer.enabled: true
-                layer.textureSize: Qt.size(240, 240)
                 layer.smooth: true
                 layer.effect: MultiEffect {
                     blurEnabled: true
@@ -4554,7 +4585,8 @@ ApplicationWindow {
                         keepPreviousArtwork: true
                         cacheArtwork: true
                         showTonearm: true
-                        stableSourceSize: 1024
+                        // The card's largest size; Cover scales it by the screen's pixel ratio.
+                        stableSourceSize: 360
                     }
 
                     MouseArea {
@@ -4819,7 +4851,7 @@ ApplicationWindow {
                 Label {
                     visible: !lyricCustomEditorOpen
                     text: "Add custom"
-                    color: recordRedHover
+                    color: accentText
                     font.family: displayFont
                     font.pixelSize: 12
                     font.weight: Font.DemiBold
@@ -4866,7 +4898,7 @@ ApplicationWindow {
                 Label {
                     Layout.fillWidth: true
                     text: lyricSearchResults.length + (lyricSearchResults.length === 1 ? " version found" : " versions found")
-                    color: recordRedHover
+                    color: accentText
                     font.family: monoFont
                     font.pixelSize: 10
                     font.weight: Font.Bold
@@ -5159,6 +5191,11 @@ ApplicationWindow {
     TrackMetadataDialog {
         id: metadataDialog
         appWindow: window
+    }
+
+    AudioDetailsSheet {
+        id: audioDetailsSheet
+        audioFormat: player.audioFormat
     }
 
     TrackActionSheet {

@@ -52,7 +52,7 @@ Item {
 
                                 Label {
                                     text: greeting.toUpperCase()
-                                    color: recordRed
+                                    color: accentText
                                     font.family: monoFont
                                     font.pixelSize: 10
                                     font.weight: Font.Bold
@@ -106,14 +106,16 @@ Item {
                                     }
                                 }
 
+                                // Blurred small and scaled up, so the blur works on a 200px texture
+                                // instead of one the size of the card.
                                 Cover {
                                     anchors.centerIn: parent
-                                    width: parent.width * 1.2
-                                    height: width
+                                    width: 200
+                                    height: 200
+                                    scale: parent.width * 1.2 / width
                                     track: heroCard.heroTrack
                                     stableSourceSize: 160
                                     layer.enabled: true
-                                    layer.textureSize: Qt.size(200, 200)
                                     layer.smooth: true
                                     layer.effect: MultiEffect {
                                         blurEnabled: true
@@ -128,8 +130,9 @@ Item {
                                     anchors.fill: parent
                                     gradient: Gradient {
                                         orientation: Gradient.Horizontal
-                                        GradientStop { position: 0.0; color: "#700E0D0C" }
-                                        GradientStop { position: 1.0; color: "#D00E0D0C" }
+                                        // Dark enough that the text stays readable over the palest cover art.
+                                        GradientStop { position: 0.0; color: "#C70E0D0C" }
+                                        GradientStop { position: 1.0; color: "#E00E0D0C" }
                                     }
                                 }
 
@@ -168,7 +171,7 @@ Item {
 
                                     Label {
                                         text: "SHUFFLE"
-                                        color: recordRedHover
+                                        color: textPrimary
                                         font.family: monoFont
                                         font.pixelSize: 10
                                         font.weight: Font.Bold

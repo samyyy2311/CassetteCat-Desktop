@@ -20,6 +20,8 @@ class TrayController final : public QObject {
     Q_INVOKABLE void setTrack(const QString &title, const QString &artist);
     Q_INVOKABLE void setPlaying(bool playing);
     Q_INVOKABLE void notifyHidden();
+    /// Returns freed memory to the system; called once the window has been hidden to the tray.
+    Q_INVOKABLE void releaseMemory();
     Q_INVOKABLE void showNotification(const QString &title, const QString &message);
 
   signals:

@@ -1,5 +1,5 @@
 #ifndef AppVersion
-#define AppVersion "0.8.0"
+#define AppVersion "0.8.1"
 #endif
 
 [Setup]
@@ -11,7 +11,7 @@ AppPublisherURL=https://cassettecat.caffeinelabs.in/
 AppSupportURL=https://github.com/samyyy2311/CassetteCat-Desktop/issues
 AppUpdatesURL=https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest
 AppCopyright=Copyright (c) CaffeineLabs
-AppComments=A local-first desktop music player for your audio library with synced lyrics, gapless playback, and phone remote control.
+AppComments=A local-first desktop music player for your audio library with synced lyrics, crossfade, and phone remote control.
 LicenseFile=..\LICENSE
 DefaultDirName={localappdata}\Programs\CassetteCat
 DefaultGroupName=CassetteCat
@@ -49,7 +49,7 @@ VersionInfoCompany=CaffeineLabs
 VersionInfoDescription=CassetteCat Windows Setup
 VersionInfoCopyright=Copyright (c) CaffeineLabs
 VersionInfoProductName=CassetteCat
-VersionInfoProductVersion={#AppVersion}
+VersionInfoProductTextVersion={#AppVersion}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CassetteCat VERSION 0.8.0 LANGUAGES CXX)
+project(CassetteCat VERSION 0.8.1 LANGUAGES CXX)
 
 set(CASSETTECAT_PACKAGE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version used by installers and Linux packages")
 
@@ -16,7 +16,8 @@ qt_standard_project_setup(REQUIRES 6.10)
 
 set(CassetteCat_PLATFORM_SOURCES)
 if(WIN32)
-    list(APPEND CassetteCat_PLATFORM_SOURCES src/app.rc)
+    configure_file(src/app.rc.in "${CMAKE_CURRENT_BINARY_DIR}/app.rc" @ONLY)
+    list(APPEND CassetteCat_PLATFORM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/app.rc")
 endif()
 if(UNIX AND NOT APPLE)
     list(APPEND CassetteCat_PLATFORM_SOURCES src/mpris_adaptor.h src/mpris_adaptor.cpp)
@@ -72,7 +73,7 @@ if(MINGW)
     target_compile_options(CassetteCat PRIVATE -Wa,-mbig-obj)
 endif()
 if(WIN32)
-    set_property(SOURCE src/app.rc APPEND PROPERTY OBJECT_DEPENDS
+    set_property(SOURCE "${CMAKE_CURRENT_BINARY_DIR}/app.rc" APPEND PROPERTY OBJECT_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/cassettecat_icon.ico"
     )
 endif()
@@ -136,6 +137,7 @@ qt_add_qml_module(CassetteCat
         qml/SectionLabel.qml
         qml/LibraryRefineSheet.qml
         qml/BottomSheet.qml
+        qml/AudioDetailsSheet.qml
         qml/TrackActionSheet.qml
         qml/RefineTextInput.qml
         qml/EmptyState.qml
@@ -264,9 +266,7 @@ qt_add_qml_module(CassetteCat
         assets/cassettecat_icon.ico
         assets/03-cream-cassette-hug.png
         assets/04-gray-dancing-headphones.png
-        assets/05-tuxedo-cassette-tail.png
         assets/06-calico-player.png
-        assets/cassettecat-pixel-cats-sheet.png
         assets/vinyl_record.svg
         assets/vinyl_tonearm.svg
         fonts/space_grotesk_variable.ttf
@@ -292,6 +292,7 @@ set(CASSETTECAT_TAGLIB_BUILD_TESTING "${BUILD_TESTING}")
 set(CASSETTECAT_TAGLIB_BUILD_EXAMPLES "${BUILD_EXAMPLES}")
 set(CASSETTECAT_BUILD_SHARED_LIBS "${BUILD_SHARED_LIBS}")
 set(CASSETTECAT_TAGLIB_AUTOMOC "${CMAKE_AUTOMOC}")
+set(CASSETTECAT_TAGLIB_WARN_DEPRECATED "${CMAKE_WARN_DEPRECATED}")
 
 include(FetchContent)
 FetchContent_Declare(
@@ -306,10 +307,12 @@ set(BUILD_TESTING OFF)
 set(BUILD_EXAMPLES OFF)
 set(BUILD_SHARED_LIBS OFF)
 set(CMAKE_AUTOMOC OFF)
+set(CMAKE_WARN_DEPRECATED OFF)
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME taglib-devel)
 FetchContent_MakeAvailable(taglib)
 set(CMAKE_INSTALL_DEFAULT_COMPONENT_NAME runtime)
 set(CMAKE_AUTOMOC "${CASSETTECAT_TAGLIB_AUTOMOC}")
+set(CMAKE_WARN_DEPRECATED "${CASSETTECAT_TAGLIB_WARN_DEPRECATED}")
 set(BUILD_TESTING "${CASSETTECAT_TAGLIB_BUILD_TESTING}")
 set(BUILD_EXAMPLES "${CASSETTECAT_TAGLIB_BUILD_EXAMPLES}")
 set(BUILD_SHARED_LIBS "${CASSETTECAT_BUILD_SHARED_LIBS}")
@@ -406,6 +409,23 @@ endif()
 
 if(UNIX AND NOT APPLE)
     include(cmake/Packaging.cmake)
+endif()
+
+if(APPLE)
+    target_link_libraries(CassetteCat PRIVATE "-framework Security" "-framework CoreFoundation")
+    set(macIcon "${CMAKE_CURRENT_SOURCE_DIR}/assets/cassettecat.icns")
+    set_source_files_properties("${macIcon}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    target_sources(CassetteCat PRIVATE "${macIcon}")
+    # macOS only accepts numbers here, so a CI version such as 0.0.0-ci loses its suffix.
+    string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" macBundleVersion "${CASSETTECAT_PACKAGE_VERSION}")
+    set_target_properties(CassetteCat PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/Info.plist.in"
+        MACOSX_BUNDLE_GUI_IDENTIFIER io.github.samyyy2311.CassetteCat
+        MACOSX_BUNDLE_BUNDLE_NAME CassetteCat
+        MACOSX_BUNDLE_ICON_FILE cassettecat.icns
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${macBundleVersion}"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${macBundleVersion}"
+    )
 endif()
 
 if(WIN32)

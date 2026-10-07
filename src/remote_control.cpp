@@ -96,26 +96,26 @@ QString localIpv4() {
 }
 
 // Identifies a track's cover for the phone without sending it the file path; changes when the cover does.
-// The phone shows covers full screen, so a cover pulled from the file is sent at the size it uses for its own songs
-// rather than the desktop's 512 px copy.
-constexpr int kPhoneArtworkSize = 1440;
-
 QString artworkKey(const QVariantMap &track) {
     const QString source = track.value("filePath").toString() + track.value("artworkUrl").toString();
     // The size is part of the key so phones holding an earlier, smaller copy fetch the new one.
-    return source.isEmpty() ? QString() : QString::number(qHash(source + QString::number(kPhoneArtworkSize)), 16);
+    return source.isEmpty() ? QString() : QString::number(qHash(source + QString::number(kFullArtworkSize)), 16);
 }
 
+// The phone shows covers full screen. A cover the user picked is its own file and goes as it is; any other cover
+// comes out of the music file, at full size.
 QString artworkPath(const QVariantMap &track) {
     const QString filePath = track.value("filePath").toString();
-    const QString shown = track.value("artworkUrl").toString();
-    // Queued songs may not have had their cover pulled out yet; each size is cached after the first time.
-    if (QFileInfo::exists(filePath) && (shown.isEmpty() || shown == extractEmbeddedArtwork(filePath))) {
-        const QUrl extracted(extractEmbeddedArtwork(filePath, kPhoneArtworkSize));
-        return extracted.isLocalFile() ? extracted.toLocalFile() : QString();
-    }
-    const QUrl url(shown);
-    return url.isLocalFile() && QFileInfo::exists(url.toLocalFile()) ? url.toLocalFile() : QString();
+    const QUrl shown(track.value("artworkUrl").toString());
+    const bool extracted = shown.isEmpty() || !shown.isLocalFile() ||
+                           shown.toString() == extractEmbeddedArtwork(filePath) ||
+                           shown.toString() == extractEmbeddedArtwork(filePath, kFullArtworkSize);
+    if (!extracted)
+        return QFileInfo::exists(shown.toLocalFile()) ? shown.toLocalFile() : QString();
+    if (!QFileInfo::exists(filePath))
+        return {};
+    const QUrl full(extractEmbeddedArtwork(filePath, kFullArtworkSize));
+    return full.isLocalFile() ? full.toLocalFile() : QString();
 }
 
 QByteArray reasonPhrase(int status) {

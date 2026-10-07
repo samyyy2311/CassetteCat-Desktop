@@ -2,14 +2,71 @@
 
 #include "audio_metadata.h"
 
+#include <QBuffer>
 #include <QCryptographicHash>
 #include <QDir>
+#include <QDirIterator>
 #include <QFileInfo>
 #include <QImageReader>
 #include <QPainter>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QUrl>
+
+namespace {
+
+// Nothing in the app shows a cached image larger than kFullArtworkSize, so a larger download is stored at that size.
+// Anything that already fits is kept byte for byte.
+QByteArray fitForCache(const QByteArray &image, bool png) {
+    QBuffer input;
+    input.setData(image);
+    QImageReader reader(&input);
+    reader.setAutoTransform(true);
+    const QSize size = reader.size();
+    if (!size.isValid() || (size.width() <= kFullArtworkSize && size.height() <= kFullArtworkSize))
+        return image;
+    QImage fitted =
+        reader.read().scaled(kFullArtworkSize, kFullArtworkSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    if (fitted.isNull())
+        return image;
+    // The encoding must match the file's extension; JPEG has no transparency, so it is flattened onto black.
+    if (!png && fitted.hasAlphaChannel()) {
+        QImage flat(fitted.size(), QImage::Format_RGB32);
+        flat.fill(Qt::black);
+        QPainter(&flat).drawImage(0, 0, fitted);
+        fitted = flat;
+    }
+    QByteArray output;
+    QBuffer buffer(&output);
+    buffer.open(QIODevice::WriteOnly);
+    return fitted.save(&buffer, png ? "PNG" : "JPEG", png ? -1 : 92) ? output : image;
+}
+
+} // namespace
+
+void shrinkOversizedCachedImages() {
+    const QString root = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+    for (const QString &category : {QStringLiteral("covers"), QStringLiteral("artists")}) {
+        QDirIterator it(root + "/" + category, QDir::Files);
+        while (it.hasNext()) {
+            const QString path = it.next();
+            const QSize size = QImageReader(path).size();
+            if (size.width() <= kFullArtworkSize && size.height() <= kFullArtworkSize)
+                continue;
+            QFile file(path);
+            if (!file.open(QIODevice::ReadOnly))
+                continue;
+            const QByteArray original = file.readAll();
+            file.close();
+            const QByteArray fitted = fitForCache(original, path.endsWith(QStringLiteral(".png")));
+            if (fitted.size() >= original.size())
+                continue;
+            QSaveFile output(path);
+            if (output.open(QIODevice::WriteOnly) && output.write(fitted) == fitted.size())
+                output.commit();
+        }
+    }
+}
 
 QString saveCachedImage(const QByteArray &image, const QString &key, bool png, const QString &category) {
     if (image.isEmpty()) {
@@ -22,8 +79,9 @@ QString saveCachedImage(const QByteArray &image, const QString &key, bool png, c
                          QString::fromLatin1(QCryptographicHash::hash(key.toUtf8(), QCryptographicHash::Sha1).toHex()) +
                          (png ? ".png" : ".jpg");
     if (!QFileInfo::exists(path)) {
+        const QByteArray fitted = fitForCache(image, png);
         QSaveFile output(path);
-        if (!output.open(QIODevice::WriteOnly) || output.write(image) != image.size() || !output.commit()) {
+        if (!output.open(QIODevice::WriteOnly) || output.write(fitted) != fitted.size() || !output.commit()) {
             return {};
         }
     }
@@ -48,7 +106,7 @@ QImage CoverImageProvider::requestImage(const QString &id, QSize *size, const QS
             QString::fromUtf8(QByteArray::fromBase64(source.mid(6).toLatin1(), QByteArray::Base64UrlEncoding));
         // Most covers are small; only large views pay for a full-size extraction.
         const int longEdge = qMax(requestedSize.width(), requestedSize.height());
-        imagePath = QUrl(extractEmbeddedArtwork(trackPath, longEdge > 512 ? 1536 : 512)).toLocalFile();
+        imagePath = QUrl(extractEmbeddedArtwork(trackPath, longEdge > 512 ? kFullArtworkSize : 512)).toLocalFile();
     } else if (source.startsWith(QStringLiteral("qrc:"))) {
         imagePath = ':' + QUrl(source).path();
     } else {

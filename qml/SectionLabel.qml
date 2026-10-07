@@ -6,7 +6,7 @@ Item {
     id: root
     property alias text: labelText.text
 
-    readonly property color labelColor: (typeof textSecondary !== "undefined" ? textSecondary : "#8E8A84")
+    readonly property color labelColor: (typeof textSecondary !== "undefined" ? textSecondary : "#A8A49E")
 
     Layout.fillWidth: true
     Layout.leftMargin: 8

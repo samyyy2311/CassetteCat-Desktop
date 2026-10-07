@@ -1,5 +1,12 @@
 #include "tray_controller.h"
 
+#ifdef Q_OS_WIN
+#include <malloc.h>
+#include <windows.h>
+#elif defined(__GLIBC__)
+#include <malloc.h>
+#endif
+
 #include <QAction>
 #include <QCursor>
 #include <QMenu>
@@ -74,6 +81,15 @@ void TrayController::notifyHidden() {
     if (m_tray && QSystemTrayIcon::supportsMessages()) {
         m_tray->showMessage("CassetteCat", "CassetteCat is still available in the system tray.");
     }
+}
+
+void TrayController::releaseMemory() {
+#ifdef Q_OS_WIN
+    _heapmin();
+    SetProcessWorkingSetSize(GetCurrentProcess(), static_cast<SIZE_T>(-1), static_cast<SIZE_T>(-1));
+#elif defined(__GLIBC__)
+    malloc_trim(0);
+#endif
 }
 
 void TrayController::showNotification(const QString &title, const QString &message) {

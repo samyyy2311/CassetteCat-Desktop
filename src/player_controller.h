@@ -17,6 +17,8 @@ class StreamingController;
 class PlayerController final : public QObject {
     Q_OBJECT
     Q_PROPERTY(QVariantMap currentTrack READ currentTrack NOTIFY currentTrackChanged)
+    /// The current local file's format (see readAudioFormat); empty for streams.
+    Q_PROPERTY(QVariantMap audioFormat READ audioFormat NOTIFY currentTrackChanged)
     Q_PROPERTY(bool isPlaying READ isPlaying NOTIFY isPlayingChanged)
     Q_PROPERTY(qint64 position READ position NOTIFY positionChanged)
     Q_PROPERTY(qint64 duration READ duration NOTIFY durationChanged)
@@ -40,6 +42,9 @@ class PlayerController final : public QObject {
     static bool selfCheck();
 
     QVariantMap currentTrack() const;
+    QVariantMap audioFormat() const {
+        return m_audioFormat;
+    }
     QString currentLyrics() const;
     bool isPlaying() const;
     bool shuffleEnabled() const;
@@ -126,6 +131,7 @@ class PlayerController final : public QObject {
     QMediaPlayer *m_player = nullptr;
     StreamingController *m_streaming = nullptr;
     QVariantMap m_currentTrack;
+    QVariantMap m_audioFormat;
     QString m_currentLyrics;
     bool m_isPlaying = false;
     bool m_shuffleEnabled = false;

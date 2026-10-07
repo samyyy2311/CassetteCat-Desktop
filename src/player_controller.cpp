@@ -15,9 +15,11 @@
 #include <QDataStream>
 #include <QElapsedTimer>
 #include <QEventLoop>
+#include <QFile>
 #include <QMediaPlayer>
 #include <QQuickWindow>
 #include <QSettings>
+#include <QTemporaryDir>
 #include <QTimer>
 
 #ifdef _WIN32
@@ -36,7 +38,6 @@ bool isNetworkStream(const QUrl &url) {
 
 } // namespace
 
-/// @copydoc PlayerController::PlayerController
 PlayerController::PlayerController(QObject *parent, StreamingController *streaming)
     : QObject(parent), m_streaming(streaming), m_audioOutput(new QAudioOutput(this)),
       m_mediaDevices(new QMediaDevices(this)), m_bufferOutput(new QAudioBufferOutput(this)),
@@ -222,11 +223,9 @@ QString PlayerController::formattedPosition() const {
 QString PlayerController::formattedDuration() const {
     return formatDuration(static_cast<int>(m_duration / 1000));
 }
-/// @copydoc PlayerController::volume
 float PlayerController::volume() const {
     return m_baseVolume;
 }
-/// @copydoc PlayerController::replayGainMode
 QString PlayerController::replayGainMode() const {
     return m_replayGainMode;
 }
@@ -293,7 +292,6 @@ void PlayerController::setAudioMeterEnabled(bool enabled) {
     emit audioMeterEnabledChanged();
 }
 
-/// @copydoc PlayerController::selfCheck
 bool PlayerController::selfCheck() {
     QBuffer source;
     PlayerController player;
@@ -362,6 +360,17 @@ bool PlayerController::selfCheck() {
     stream << quint32(pcm.size());
     stream.writeRawData(pcm.constData(), pcm.size());
 
+    // TagLib cannot open a QTemporaryFile path on Windows, so the file goes in a temporary folder.
+    const QTemporaryDir waveDir;
+    QFile waveFile(waveDir.filePath("format-check.wav"));
+    if (!waveFile.open(QIODevice::WriteOnly) || waveFile.write(wave) != wave.size())
+        return false;
+    waveFile.close();
+    const QVariantMap waveFormat = readAudioFormat(waveFile.fileName());
+    if (waveFormat.value("label") != "16-bit · 8 kHz · WAV" || waveFormat.value("badgeLabel") != "Lossless" ||
+        waveFormat.value("isHiRes").toBool())
+        return false;
+
     source.setData(wave);
     source.open(QIODevice::ReadOnly);
 
@@ -426,7 +435,6 @@ void PlayerController::toggleShuffle() {
     setShuffleEnabled(!m_shuffleEnabled);
 }
 
-/// @copydoc PlayerController::setVolume
 void PlayerController::setVolume(float vol) {
     float clamped = std::clamp(vol, 0.0f, 1.0f);
     if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
@@ -442,7 +450,6 @@ void PlayerController::setVolume(float vol) {
     }
 }
 
-/// @copydoc PlayerController::applyEffectiveVolume
 void PlayerController::applyEffectiveVolume() {
     if (!m_audioOutput)
         return;
@@ -472,7 +479,6 @@ void PlayerController::finishCrossfade() {
     applyEffectiveVolume();
 }
 
-/// @copydoc PlayerController::setReplayGainMode
 void PlayerController::setReplayGainMode(const QString &mode) {
     if (m_replayGainMode == mode)
         return;
@@ -539,7 +545,6 @@ bool PlayerController::playTrack(const QVariantMap &track) {
     return true;
 }
 
-/// @copydoc PlayerController::loadTrack
 bool PlayerController::loadTrack(const QVariantMap &track) {
     const QString filePath = track.value("filePath").toString();
     if (filePath.isEmpty())
@@ -557,12 +562,13 @@ bool PlayerController::loadTrack(const QVariantMap &track) {
     if (m_currentTrack.value("artworkUrl").toString().isEmpty() && !StreamingController::isRemotePath(filePath)) {
         // ponytail: load embedded artwork only for the current track; add async thumbnailing if browsing embedded art
         // needs it.
-        m_currentTrack.insert("artworkUrl", extractEmbeddedArtwork(filePath));
+        m_currentTrack.insert("artworkUrl", extractEmbeddedArtwork(filePath, kFullArtworkSize));
     }
     m_currentLyrics = track.value("lyrics").toString();
     if (m_currentLyrics.isEmpty() && !StreamingController::isRemotePath(filePath)) {
         m_currentLyrics = extractEmbeddedLyrics(filePath);
     }
+    m_audioFormat = mediaSource.isLocalFile() ? readAudioFormat(filePath) : QVariantMap();
     emit currentTrackChanged();
     emit currentLyricsChanged();
 
@@ -686,7 +692,6 @@ void PlayerController::updateCurrentTrackArtwork(const QString &artworkPath) {
     emit currentTrackChanged();
 }
 
-/// @copydoc PlayerController::updateCurrentTrackMetadata
 void PlayerController::updateCurrentTrackMetadata(const QVariantMap &track) {
     if (m_currentTrack.isEmpty() || track.value("filePath") != m_currentTrack.value("filePath"))
         return;
@@ -695,7 +700,6 @@ void PlayerController::updateCurrentTrackMetadata(const QVariantMap &track) {
     emit currentTrackChanged();
 }
 
-/// @copydoc PlayerController::requestPlayback
 void PlayerController::requestPlayback(const QVariantList &tracks, int startIndex) {
     emit playbackRequested(tracks, startIndex);
 }

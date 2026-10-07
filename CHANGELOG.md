@@ -4,6 +4,29 @@ All notable changes to CassetteCat Desktop are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.8.1] - 2026-10-08
+
+### Added
+* **macOS**: A universal app for Apple silicon and Intel Macs, shipped as a disk image. Passwords are kept in the Keychain. The app is not notarized yet.
+* **Linux ARM64**: `.AppImage`, `.deb`, `.rpm` and `.tar.gz` packages for ARM64 alongside x86_64.
+* **Audio quality badge**: Now Playing shows Hi-Res Lossless, Lossless or the codec under the artist. Click it for the format, sample rate, bit depth, bitrate and encoding, matching the Android app.
+* **Publisher details**: The Windows executable, macOS bundle and Linux listing name CaffeineLabs as the publisher. Settings, Credits & Legal shows the version, website and privacy policy.
+* The Microsoft Store package is attached to each GitHub release.
+
+### Changed
+* Uses less memory: about 500 MB instead of 720 MB on Home, and about 10-20 MB while hidden in the tray instead of about 500 MB (as shown in Task Manager).
+* Downloaded covers are stored at up to 1536 px instead of full size, and covers already cached are shrunk in the background. The covers folder takes well under half the space, with no visible change.
+* The mini player's controls match the main player bar, with tooltips and keyboard focus.
+* Home shows a loading bar while it builds, like the other pages.
+* Grey and accent-colored text meets WCAG AA contrast on every surface.
+
+### Fixed
+* Clicking the mini player's taskbar button minimizes it.
+* The playing song's cover is shown at full resolution instead of a stretched 512 px copy, and the phone remote shows covers for queued songs again.
+* The README and installer no longer mention gapless playback, which the app does not have.
+
+---
+
 ## [0.8.0] - 2026-10-05
 
 ### Added

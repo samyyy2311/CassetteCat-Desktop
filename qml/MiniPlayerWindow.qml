@@ -9,7 +9,7 @@ Window {
     title: "CassetteCat MiniPlayer"
     color: "transparent"
     transientParent: null
-    flags: Qt.Window | Qt.FramelessWindowHint | (alwaysOnTop ? Qt.WindowStaysOnTopHint : 0)
+    flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint | (alwaysOnTop ? Qt.WindowStaysOnTopHint : 0)
     visible: false
 
     onVisibleChanged: {
@@ -54,8 +54,8 @@ Window {
     readonly property color recordRed: accentColor
     readonly property color recordRedHover: accentHover
     readonly property color textPrimary: "#F7F3EE"
-    readonly property color textSecondary: "#96918A"
-    readonly property color silverDim: "#6B6762"
+    readonly property color textSecondary: "#A8A49E"
+    readonly property color silverDim: "#918E88"
 
     property bool alwaysOnTop: true
     property int albumArtRadius: 16
@@ -429,7 +429,7 @@ Window {
                             text: {
                                 if (player.currentTrack && player.currentTrack.artist) {
                                     return player.currentTrack.album
-                                        ? player.currentTrack.artist + " — " + player.currentTrack.album
+                                        ? player.currentTrack.artist + " · " + player.currentTrack.album
                                         : player.currentTrack.artist
                                 }
                                 return root.tracksCount > 0 ? "Ready to play" : "Select folder"
@@ -553,27 +553,27 @@ Window {
                         spacing: 4
                         visible: !root.volumePillVisible
 
-                        Item {
-                            width: 28; height: 28
-                            LucideIcon {
-                                anchors.centerIn: parent; width: 16; height: 16
-                                icon: player.volume <= 0.001 ? "volume-x" : (player.volume < 0.5 ? "volume-1" : "volume-2")
-                                color: volBtnM.containsMouse ? root.textPrimary : root.textSecondary
-                            }
-                            MouseArea { id: volBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.volumePillVisible = true }
+                        TransportButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            buttonSize: 28
+                            paletteSource: root
+                            filled: false
+                            iconName: player.volume <= 0.001 ? "volume-x" : (player.volume < 0.5 ? "volume-1" : "volume-2")
+                            iconColor: root.textSecondary
+                            tooltipText: "Volume"
+                            onClicked: root.volumePillVisible = true
                         }
 
-                        Item {
-                            width: 28; height: 28
-                            readonly property bool isFav: player.currentTrack && root.isFavorite(player.currentTrack.filePath)
-                            LucideIcon {
-                                anchors.centerIn: parent; width: 16; height: 16; icon: "heart"
-                                color: parent.isFav ? root.recordRed : (favBtnM.containsMouse ? root.textPrimary : root.silverDim)
-                            }
-                            MouseArea {
-                                id: favBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                onClicked: if (player.currentTrack && player.currentTrack.filePath) root.toggleFavorite(player.currentTrack.filePath)
-                            }
+                        TransportButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            buttonSize: 28
+                            paletteSource: root
+                            filled: false
+                            iconName: "heart"
+                            readonly property bool isFav: !!(player.currentTrack && root.isFavorite(player.currentTrack.filePath))
+                            iconColor: isFav ? root.recordRed : root.textSecondary
+                            tooltipText: isFav ? "Remove from favorites" : "Add to favorites"
+                            onClicked: if (player.currentTrack && player.currentTrack.filePath) root.toggleFavorite(player.currentTrack.filePath)
                         }
                     }
 
@@ -599,63 +599,52 @@ Window {
                         anchors.centerIn: parent
                         spacing: 8
 
-                        Item {
-                            width: 28; height: 28
+                        TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
-                            readonly property bool active: player.shuffleEnabled
-                            LucideIcon {
-                                anchors.centerIn: parent; width: 15; height: 15; icon: "shuffle"
-                                color: parent.active ? root.recordRed : (shufBtnM.containsMouse ? root.textPrimary : root.textSecondary)
-                            }
-                            MouseArea { id: shufBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleShuffle() }
+                            buttonSize: 28
+                            paletteSource: root
+                            iconName: "shuffle"
+                            accented: player.shuffleEnabled
+                            tooltipText: player.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
+                            onClicked: root.toggleShuffle()
                         }
 
-                        Item {
-                            width: 28; height: 28
+                        TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
-                            LucideIcon {
-                                anchors.centerIn: parent; width: 18; height: 18; icon: "skip-back"
-                                color: prevBtnM.containsMouse ? root.textPrimary : root.textSecondary
-                            }
-                            MouseArea { id: prevBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.playPrevious() }
+                            buttonSize: 30
+                            paletteSource: root
+                            iconName: "skip-back"
+                            tooltipText: "Previous"
+                            onClicked: root.playPrevious()
                         }
 
-                        Item {
-                            width: 36; height: 36
+                        TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
-                            scale: playBtnM.pressed ? 0.92 : (playBtnM.containsMouse ? 1.08 : 1.0)
-                            Behavior on scale { NumberAnimation { duration: 90 } }
-
-                            LucideIcon {
-                                anchors.centerIn: parent
-                                anchors.horizontalCenterOffset: (player.isPlaying || root.playerVisuallyPlaying) ? 0 : 1
-                                width: 22; height: 22
-                                icon: (player.isPlaying || root.playerVisuallyPlaying) ? "pause" : "play"
-                                color: playBtnM.containsMouse ? root.recordRedHover : root.textPrimary
-                            }
-                            MouseArea { id: playBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: player.togglePlay() }
+                            buttonSize: 36
+                            paletteSource: root
+                            iconName: (player.isPlaying || root.playerVisuallyPlaying) ? "pause" : "play"
+                            accented: true
+                            tooltipText: (player.isPlaying || root.playerVisuallyPlaying) ? "Pause" : "Play"
+                            onClicked: player.togglePlay()
                         }
 
-                        Item {
-                            width: 28; height: 28
+                        TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
-                            LucideIcon {
-                                anchors.centerIn: parent; width: 18; height: 18; icon: "skip-forward"
-                                color: nextBtnM.containsMouse ? root.textPrimary : root.textSecondary
-                            }
-                            MouseArea { id: nextBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.playNext() }
+                            buttonSize: 30
+                            paletteSource: root
+                            iconName: "skip-forward"
+                            tooltipText: "Next"
+                            onClicked: root.playNext()
                         }
 
-                        Item {
-                            width: 28; height: 28
+                        TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
-                            readonly property bool active: root.repeatMode > 0
-                            LucideIcon {
-                                anchors.centerIn: parent; width: 15; height: 15
-                                icon: root.repeatMode === 2 ? "repeat-1" : "repeat"
-                                color: parent.active ? root.recordRed : (repBtnM.containsMouse ? root.textPrimary : root.textSecondary)
-                            }
-                            MouseArea { id: repBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.toggleRepeat() }
+                            buttonSize: 28
+                            paletteSource: root
+                            iconName: root.repeatMode === 2 ? "repeat-1" : "repeat"
+                            accented: root.repeatMode > 0
+                            tooltipText: root.repeatMode === 2 ? "Repeat Track" : (root.repeatMode === 1 ? "Repeat All" : "Repeat Off")
+                            onClicked: root.toggleRepeat()
                         }
                     }
 
@@ -665,22 +654,26 @@ Window {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 6
 
-                        Item {
-                            width: 28; height: 28
-                            LucideIcon {
-                                anchors.centerIn: parent; width: 15; height: 15; icon: "quote"
-                                color: root.mode === "lyrics" ? root.recordRed : (lyrBtnM.containsMouse ? root.textPrimary : root.textSecondary)
-                            }
-                            MouseArea { id: lyrBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.mode = (root.mode === "lyrics" ? "compact" : "lyrics") }
+                        TransportButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            buttonSize: 28
+                            paletteSource: root
+                            filled: false
+                            iconName: "quote"
+                            iconColor: root.mode === "lyrics" ? root.recordRed : root.textSecondary
+                            tooltipText: "Lyrics"
+                            onClicked: root.mode = (root.mode === "lyrics" ? "compact" : "lyrics")
                         }
 
-                        Item {
-                            width: 28; height: 28
-                            LucideIcon {
-                                anchors.centerIn: parent; width: 15; height: 15; icon: "list"
-                                color: root.mode === "queue" ? root.recordRed : (qBtnM.containsMouse ? root.textPrimary : root.textSecondary)
-                            }
-                            MouseArea { id: qBtnM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.mode = (root.mode === "queue" ? "compact" : "queue") }
+                        TransportButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            buttonSize: 28
+                            paletteSource: root
+                            filled: false
+                            iconName: "list"
+                            iconColor: root.mode === "queue" ? root.recordRed : root.textSecondary
+                            tooltipText: "Queue"
+                            onClicked: root.mode = (root.mode === "queue" ? "compact" : "queue")
                         }
                     }
                 }

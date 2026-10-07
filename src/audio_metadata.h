@@ -70,6 +70,9 @@ struct TrackInfo {
     }
 };
 
+// Covers shown large (Now Playing, the phone remote) are extracted at this size; lists use the 512 px default.
+constexpr int kFullArtworkSize = 1536;
+
 QString formatDuration(int totalSeconds);
 QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension = 512);
 QString saveFolderArtwork(const QString &filePath, int maxDimension = 512);
@@ -77,6 +80,9 @@ QString extractEmbeddedArtwork(const QString &filePath, int maxDimension = 512);
 QString extractEmbeddedLyrics(const QString &filePath);
 /// Returns the track or album ReplayGain value stored in \p filePath.
 float extractReplayGain(const QString &filePath, bool albumMode = false);
+/// Codec, sample rate, bit depth and bitrate of \p filePath, with the badge and summary labels the app shows.
+/// Empty when the file cannot be read.
+QVariantMap readAudioFormat(const QString &filePath);
 TrackInfo readTrackInfo(const QString &filePath);
 bool writeTrackInfo(const QVariantMap &metadata, QString *error = nullptr);
 /// Parses local tracks and HTTP streams from an M3U playlist.

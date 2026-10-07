@@ -352,40 +352,27 @@ Item {
                         spacing: 4
                         visible: !root.miniPlayer.volumePillVisible
 
-                        Item {
-                            width: 28
-                            height: 28
-                            LucideIcon {
-                                anchors.centerIn: parent
-                                width: 15
-                                height: 15
-                                icon: root.miniPlayer.playerController.volume <= 0.001 ? "volume-x" : (root.miniPlayer.playerController.volume < 0.5 ? "volume-1" : "volume-2")
-                                color: artVolM.containsMouse ? "#FFFFFF" : "#C0FFFFFF"
-                            }
-                            MouseArea {
-                                id: artVolM
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.miniPlayer.volumePillVisible = true
-                            }
+                        TransportButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            buttonSize: 28
+                            paletteSource: root.miniPlayer
+                            filled: false
+                            iconName: root.miniPlayer.playerController.volume <= 0.001 ? "volume-x" : (root.miniPlayer.playerController.volume < 0.5 ? "volume-1" : "volume-2")
+                            iconColor: root.miniPlayer.textSecondary
+                            tooltipText: "Volume"
+                            onClicked: root.miniPlayer.volumePillVisible = true
                         }
 
-                        Item {
-                            width: 28
-                            height: 28
-                            readonly property bool isFav: root.miniPlayer.playerController.currentTrack && root.miniPlayer.isFavorite(root.miniPlayer.playerController.currentTrack.filePath)
-                            LucideIcon { anchors.centerIn: parent; width: 15; height: 15; icon: "heart"; color: parent.isFav ? root.miniPlayer.recordRed : (artFavM.containsMouse ? "#FFFFFF" : "#C0FFFFFF") }
-                            MouseArea {
-                                id: artFavM
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    const track = root.miniPlayer.playerController.currentTrack
-                                    if (track && track.filePath) root.miniPlayer.toggleFavorite(track.filePath)
-                                }
-                            }
+                        TransportButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            buttonSize: 28
+                            paletteSource: root.miniPlayer
+                            filled: false
+                            iconName: "heart"
+                            readonly property bool isFav: !!(root.miniPlayer.playerController.currentTrack && root.miniPlayer.isFavorite(root.miniPlayer.playerController.currentTrack.filePath))
+                            iconColor: isFav ? root.miniPlayer.recordRed : root.miniPlayer.textSecondary
+                            tooltipText: isFav ? "Remove from favorites" : "Add to favorites"
+                            onClicked: if (root.miniPlayer.playerController.currentTrack && root.miniPlayer.playerController.currentTrack.filePath) root.miniPlayer.toggleFavorite(root.miniPlayer.playerController.currentTrack.filePath)
                         }
                     }
 
@@ -410,114 +397,52 @@ Item {
                         anchors.centerIn: parent
                         spacing: 8
 
-                        Item {
-                            width: 26
-                            height: 26
+                        TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
-                            readonly property bool active: root.miniPlayer.playerController.shuffleEnabled
-                            LucideIcon {
-                                anchors.centerIn: parent
-                                width: 15
-                                height: 15
-                                icon: "shuffle"
-                                color: parent.active ? root.miniPlayer.recordRed : (artShufM.containsMouse ? "#FFFFFF" : "#C0FFFFFF")
-                            }
-                            MouseArea {
-                                id: artShufM
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.miniPlayer.toggleShuffle()
-                            }
+                            buttonSize: 28
+                            paletteSource: root.miniPlayer
+                            iconName: "shuffle"
+                            accented: root.miniPlayer.playerController.shuffleEnabled
+                            tooltipText: root.miniPlayer.playerController.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
+                            onClicked: root.miniPlayer.toggleShuffle()
                         }
 
-                        Item {
-                            width: 28
-                            height: 28
+                        TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
-                            LucideIcon {
-                                anchors.centerIn: parent
-                                width: 17
-                                height: 17
-                                icon: "skip-back"
-                                color: artPrevM.containsMouse ? "#FFFFFF" : "#D0FFFFFF"
-                            }
-                            MouseArea {
-                                id: artPrevM
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.miniPlayer.playPrevious()
-                            }
+                            buttonSize: 30
+                            paletteSource: root.miniPlayer
+                            iconName: "skip-back"
+                            tooltipText: "Previous"
+                            onClicked: root.miniPlayer.playPrevious()
                         }
 
-                        Item {
-                            width: 30
-                            height: 30
+                        TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
-                            scale: artPlayM.pressed ? 0.92 : (artPlayM.containsMouse ? 1.08 : 1.0)
-                            Behavior on scale {
-                                NumberAnimation {
-                                    duration: 90
-                                }
-                            }
-
-                            LucideIcon {
-                                anchors.centerIn: parent
-                                anchors.horizontalCenterOffset: (root.miniPlayer.playerController.isPlaying || root.miniPlayer.playerVisuallyPlaying) ? 0 : 1
-                                width: 21
-                                height: 21
-                                icon: (root.miniPlayer.playerController.isPlaying || root.miniPlayer.playerVisuallyPlaying) ? "pause" : "play"
-                                color: artPlayM.containsMouse ? root.miniPlayer.recordRedHover : "#FFFFFF"
-                            }
-                            MouseArea {
-                                id: artPlayM
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.miniPlayer.playerController.togglePlay()
-                            }
+                            buttonSize: 36
+                            paletteSource: root.miniPlayer
+                            iconName: (root.miniPlayer.playerController.isPlaying || root.miniPlayer.playerVisuallyPlaying) ? "pause" : "play"
+                            accented: true
+                            tooltipText: (root.miniPlayer.playerController.isPlaying || root.miniPlayer.playerVisuallyPlaying) ? "Pause" : "Play"
+                            onClicked: root.miniPlayer.playerController.togglePlay()
                         }
 
-                        Item {
-                            width: 28
-                            height: 28
+                        TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
-                            LucideIcon {
-                                anchors.centerIn: parent
-                                width: 17
-                                height: 17
-                                icon: "skip-forward"
-                                color: artNextM.containsMouse ? "#FFFFFF" : "#D0FFFFFF"
-                            }
-                            MouseArea {
-                                id: artNextM
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.miniPlayer.playNext()
-                            }
+                            buttonSize: 30
+                            paletteSource: root.miniPlayer
+                            iconName: "skip-forward"
+                            tooltipText: "Next"
+                            onClicked: root.miniPlayer.playNext()
                         }
 
-                        Item {
-                            width: 26
-                            height: 26
+                        TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
-                            readonly property bool active: root.miniPlayer.repeatMode > 0
-                            LucideIcon {
-                                anchors.centerIn: parent
-                                width: 15
-                                height: 15
-                                icon: root.miniPlayer.repeatMode === 2 ? "repeat-1" : "repeat"
-                                color: parent.active ? root.miniPlayer.recordRed : (artRepM.containsMouse ? "#FFFFFF" : "#C0FFFFFF")
-                            }
-                            MouseArea {
-                                id: artRepM
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.miniPlayer.toggleRepeat()
-                            }
+                            buttonSize: 28
+                            paletteSource: root.miniPlayer
+                            iconName: root.miniPlayer.repeatMode === 2 ? "repeat-1" : "repeat"
+                            accented: root.miniPlayer.repeatMode > 0
+                            tooltipText: root.miniPlayer.repeatMode === 2 ? "Repeat Track" : (root.miniPlayer.repeatMode === 1 ? "Repeat All" : "Repeat Off")
+                            onClicked: root.miniPlayer.toggleRepeat()
                         }
                     }
 
@@ -526,18 +451,26 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 6
 
-                        Item {
-                            width: 28
-                            height: 28
-                            LucideIcon { anchors.centerIn: parent; width: 15; height: 15; icon: "quote"; color: root.miniPlayer.mode === "lyrics" ? root.miniPlayer.recordRed : (artLyricsM.containsMouse ? "#FFFFFF" : "#C0FFFFFF") }
-                            MouseArea { id: artLyricsM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.miniPlayer.mode = "lyrics" }
+                        TransportButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            buttonSize: 28
+                            paletteSource: root.miniPlayer
+                            filled: false
+                            iconName: "quote"
+                            iconColor: root.miniPlayer.mode === "lyrics" ? root.miniPlayer.recordRed : root.miniPlayer.textSecondary
+                            tooltipText: "Lyrics"
+                            onClicked: root.miniPlayer.mode = "lyrics"
                         }
 
-                        Item {
-                            width: 28
-                            height: 28
-                            LucideIcon { anchors.centerIn: parent; width: 15; height: 15; icon: "list"; color: root.miniPlayer.mode === "queue" ? root.miniPlayer.recordRed : (artQueueM.containsMouse ? "#FFFFFF" : "#C0FFFFFF") }
-                            MouseArea { id: artQueueM; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.miniPlayer.mode = "queue" }
+                        TransportButton {
+                            anchors.verticalCenter: parent.verticalCenter
+                            buttonSize: 28
+                            paletteSource: root.miniPlayer
+                            filled: false
+                            iconName: "list"
+                            iconColor: root.miniPlayer.mode === "queue" ? root.miniPlayer.recordRed : root.miniPlayer.textSecondary
+                            tooltipText: "Queue"
+                            onClicked: root.miniPlayer.mode = "queue"
                         }
                     }
                 }

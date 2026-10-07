@@ -77,7 +77,7 @@ BottomSheet {
 
                 Label {
                     text: "Reset"
-                    color: recordRedHover
+                    color: accentText
                     font.family: displayFont
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
@@ -376,7 +376,7 @@ BottomSheet {
                                             }
                                             return root.currentSortAscending ? "A → Z  ▲" : "Z → A  ▼"
                                         }
-                                        color: recordRedHover
+                                        color: accentText
                                         font.family: monoFont
                                         font.pixelSize: 11
                                         font.weight: Font.Bold

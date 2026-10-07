@@ -10,7 +10,7 @@ ColumnLayout {
     property string nowPlayingNotifications: "minimized"
     property bool miniPlayerAlwaysOnTop: true
     property bool trayAvailable: true
-    property string updateStatusText: "Current version: v0.6.0"
+    property string updateStatusText: ""
     property bool updateChecking: false
     property bool updateAvailable: false
     property string updateUrl: ""

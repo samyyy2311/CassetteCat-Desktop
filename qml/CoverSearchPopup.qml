@@ -147,7 +147,7 @@ Popup {
             Label {
                 Layout.fillWidth: true
                 text: root.searchResults.length + (root.searchResults.length === 1 ? " artwork found" : " artworks found")
-                color: recordRedHover
+                color: accentText
                 font.family: monoFont
                 font.pixelSize: 10
                 font.weight: Font.Bold
@@ -289,7 +289,7 @@ Popup {
                                         id: srcLabel
                                         anchors.centerIn: parent
                                         text: modelData.source || ""
-                                        color: recordRedHover
+                                        color: accentText
                                         font.family: monoFont
                                         font.pixelSize: 8
                                         font.weight: Font.Bold

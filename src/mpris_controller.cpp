@@ -11,7 +11,6 @@
 #include <QDBusObjectPath>
 #endif
 
-/// @copydoc MprisController::MprisController
 MprisController::MprisController(PlayerController *player, QObject *parent) : QObject(parent), m_player(player) {
     if (m_player) {
         connect(m_player, &PlayerController::currentTrackChanged, this, &MprisController::onTrackChanged);
@@ -24,25 +23,21 @@ MprisController::MprisController(PlayerController *player, QObject *parent) : QO
     }
 }
 
-/// @copydoc MprisController::~MprisController
 MprisController::~MprisController() {
     destroyLinuxMprisBackend(m_backend);
     m_backend = nullptr;
 }
 
-/// @copydoc MprisController::initialize
 void MprisController::initialize() {
     if (!m_backend) {
         m_backend = createLinuxMprisBackend(this, m_player);
     }
 }
 
-/// @copydoc MprisController::repeatMode
 int MprisController::repeatMode() const {
     return m_repeatMode;
 }
 
-/// @copydoc MprisController::setRepeatMode
 void MprisController::setRepeatMode(int mode) {
     if (m_repeatMode == mode)
         return;
@@ -51,30 +46,24 @@ void MprisController::setRepeatMode(int mode) {
     notifyLinuxMprisLoopStatusChanged(m_backend);
 }
 
-/// @copydoc MprisController::onTrackChanged
 void MprisController::onTrackChanged() {
     notifyLinuxMprisTrackChanged(m_backend);
 }
 
-/// @copydoc MprisController::onPlayingChanged
 void MprisController::onPlayingChanged() {
     notifyLinuxMprisPlayingChanged(m_backend);
 }
 
-/// @copydoc MprisController::onVolumeChanged
 void MprisController::onVolumeChanged() {
     notifyLinuxMprisVolumeChanged(m_backend);
 }
 
-/// @copydoc MprisController::onShuffleChanged
 void MprisController::onShuffleChanged() {
     notifyLinuxMprisShuffleChanged(m_backend);
 }
 
-/// @copydoc MprisController::onPositionChanged
 void MprisController::onPositionChanged() {}
 
-/// @copydoc MprisController::playbackStatusString
 QString MprisController::playbackStatusString(bool isPlaying, bool hasTrack) {
     if (isPlaying)
         return QStringLiteral("Playing");
@@ -83,7 +72,6 @@ QString MprisController::playbackStatusString(bool isPlaying, bool hasTrack) {
     return QStringLiteral("Stopped");
 }
 
-/// @copydoc MprisController::loopStatusString
 QString MprisController::loopStatusString(int repeatMode) {
     switch (repeatMode) {
     case 2:
@@ -95,7 +83,6 @@ QString MprisController::loopStatusString(int repeatMode) {
     }
 }
 
-/// @copydoc MprisController::loopStatusToRepeatMode
 int MprisController::loopStatusToRepeatMode(const QString &loopStatus) {
     if (loopStatus.compare(QLatin1String("Track"), Qt::CaseInsensitive) == 0)
         return 2;
@@ -104,7 +91,6 @@ int MprisController::loopStatusToRepeatMode(const QString &loopStatus) {
     return 0;
 }
 
-/// @copydoc MprisController::buildMetadata
 QVariantMap MprisController::buildMetadata(const QVariantMap &track, qint64 durationMs) {
     QVariantMap meta;
     if (track.isEmpty()) {
@@ -171,7 +157,6 @@ QVariantMap MprisController::buildMetadata(const QVariantMap &track, qint64 dura
     return meta;
 }
 
-/// @copydoc MprisController::selfCheck
 bool MprisController::selfCheck() {
     if (playbackStatusString(true, true) != QLatin1String("Playing"))
         return false;

@@ -913,7 +913,7 @@ Item {
                         }
                     }
 
-                    // Heavy rotation — top 5
+                    // Heavy rotation: top 5
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 12

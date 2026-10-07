@@ -87,8 +87,18 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  linux:
-    runs-on: ubuntu-latest
+  linux-build:
+    name: linux (${{ matrix.runner }})
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            qt-host: linux
+            qt-arch: linux_gcc_64
+          - runner: ubuntu-24.04-arm
+            qt-host: linux_arm64
+            qt-arch: linux_gcc_arm64
+    runs-on: ${{ matrix.runner }}
     env:
       QT_QPA_PLATFORM: offscreen
       QT_QPA_OFFSCREEN_NO_GLX: "1"
@@ -102,8 +112,9 @@ jobs:
         uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
         with:
           version: "6.10.3"
+          host: ${{ matrix.qt-host }}
           target: desktop
-          arch: linux_gcc_64
+          arch: ${{ matrix.qt-arch }}
           modules: qtmultimedia qtquickeffectmaker
           cache: true
 
@@ -135,3 +146,68 @@ jobs:
 
       - name: Run tests
         run: ctest --test-dir build/ci-linux --output-on-failure
+
+  # The main branch requires a check named "linux"; it passes only when every Linux build did.
+  linux:
+    needs: linux-build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.linux-build.result }}" = success
+
+  macos:
+    runs-on: macos-15
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Ninja
+        run: command -v ninja || brew install ninja
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
+        with:
+          version: "6.10.3"
+          target: desktop
+          arch: clang_64
+          modules: qtmultimedia qtquickeffectmaker
+          cache: true
+
+      - name: Build credential vault probe
+        run: |
+          cmake -S tests/credential_vault -B build/vault-probe -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+          cmake --build build/vault-probe --parallel 3
+
+      - name: Verify Keychain credential lifecycle
+        run: ./build/vault-probe/credential_vault_probe
+
+      - name: Configure
+        # Release and universal, so the disk image below runs on any Mac a tester has.
+        run: cmake -S . -B build/ci-macos -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      - name: Build
+        run: cmake --build build/ci-macos --parallel 3
+
+      - name: Run self-check
+        run: ./build/ci-macos/CassetteCat.app/Contents/MacOS/CassetteCat --self-check
+
+      - name: Run tests
+        run: ctest --test-dir build/ci-macos --output-on-failure
+
+      - name: Package disk image
+        run: |
+          cmake --install build/ci-macos --component runtime --prefix dist
+          codesign --force --deep --sign - dist/CassetteCat.app
+          lipo dist/CassetteCat.app/Contents/MacOS/CassetteCat -verify_arch arm64 x86_64
+          dist/CassetteCat.app/Contents/MacOS/CassetteCat --self-check
+          ln -s /Applications dist/Applications
+          hdiutil create -volname CassetteCat -srcfolder dist -ov -format UDZO CassetteCat-macos-ci.dmg
+
+      - name: Upload disk image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: CassetteCat-macos-ci-${{ github.sha }}
+          path: CassetteCat-macos-ci.dmg
+          if-no-files-found: error
+          retention-days: 7

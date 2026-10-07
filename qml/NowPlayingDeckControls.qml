@@ -61,6 +61,45 @@ Item {
             }
         }
 
+        Rectangle {
+            id: qualityBadge
+            readonly property var format: root.playerController.audioFormat
+            readonly property bool lossless: !!format.isLossless
+            visible: !!format.badgeLabel
+            implicitWidth: badgeText.implicitWidth + 10
+            implicitHeight: badgeText.implicitHeight + 3
+            radius: 3
+            // Solid, so the text keeps 4.5:1 over any artwork; a stronger tint drops the default red below it.
+            color: lossless ? Qt.tint(root.appWindow.surfaceBase, Qt.alpha(root.appWindow.accentText, 0.04))
+                            : root.appWindow.surfaceElevated
+            border.width: 1
+            border.color: activeFocus ? root.appWindow.textPrimary
+                : (lossless ? Qt.alpha(root.appWindow.accentText, 0.45) : root.appWindow.borderSubtle)
+
+            activeFocusOnTab: visible
+            Accessible.role: Accessible.Button
+            Accessible.name: "Audio quality: " + (format.label || "")
+            Accessible.onPressAction: root.appWindow.openAudioDetails()
+            Keys.onReturnPressed: root.appWindow.openAudioDetails()
+            Keys.onSpacePressed: root.appWindow.openAudioDetails()
+
+            Label {
+                id: badgeText
+                anchors.centerIn: parent
+                text: qualityBadge.format.badgeLabel || ""
+                color: qualityBadge.lossless ? root.appWindow.accentText : root.appWindow.textSecondary
+                font.family: root.appWindow.bodyFont
+                font.pixelSize: 11
+                font.weight: qualityBadge.lossless ? Font.DemiBold : Font.Medium
+                font.letterSpacing: 0.3
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.appWindow.openAudioDetails()
+            }
+        }
     }
 
     AudioSeeker {

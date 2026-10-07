@@ -2032,6 +2032,10 @@ ApplicationWindow {
         if (player.currentTrack && player.currentTrack.filePath) metadataDialog.openFor(player.currentTrack)
     }
 
+    function openAudioDetails() {
+        audioDetailsSheet.open()
+    }
+
     function openTrackActionSheet(targetTrack) {
         const t = targetTrack || player.currentTrack
         if (t && trackActionSheet) trackActionSheet.openFor(t)
@@ -5181,6 +5185,11 @@ ApplicationWindow {
     TrackMetadataDialog {
         id: metadataDialog
         appWindow: window
+    }
+
+    AudioDetailsSheet {
+        id: audioDetailsSheet
+        audioFormat: player.audioFormat
     }
 
     TrackActionSheet {

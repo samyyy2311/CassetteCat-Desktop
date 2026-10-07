@@ -27,6 +27,12 @@
 #include <mp4/mp4tag.h>
 #include <flac/flacfile.h>
 #include <flac/flacpicture.h>
+#include <ape/apeproperties.h>
+#include <mpeg/mpegproperties.h>
+#include <ogg/opus/opusproperties.h>
+#include <ogg/vorbis/vorbisproperties.h>
+#include <riff/aiff/aiffproperties.h>
+#include <riff/wav/wavproperties.h>
 
 QString formatDuration(int totalSeconds) {
     if (totalSeconds <= 0) {
@@ -409,6 +415,75 @@ float extractReplayGain(const QString &filePath, bool albumMode) {
     } catch (...) {
     }
     return 0.0f;
+}
+
+QVariantMap readAudioFormat(const QString &filePath) {
+    try {
+#ifdef _WIN32
+        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
+#else
+        TagLib::FileRef fileRef(filePath.toUtf8().constData());
+#endif
+        const TagLib::AudioProperties *props = fileRef.isNull() ? nullptr : fileRef.audioProperties();
+        if (!props)
+            return {};
+
+        QString codec = QFileInfo(filePath).suffix().toUpper();
+        int bitDepth = 0;
+        if (dynamic_cast<const TagLib::MPEG::Properties *>(props)) {
+            codec = "MP3";
+        } else if (auto *flac = dynamic_cast<const TagLib::FLAC::Properties *>(props)) {
+            codec = "FLAC";
+            bitDepth = flac->bitsPerSample();
+        } else if (auto *mp4 = dynamic_cast<const TagLib::MP4::Properties *>(props)) {
+            const bool alac = mp4->codec() == TagLib::MP4::Properties::ALAC;
+            codec = alac ? "ALAC" : "AAC";
+            if (alac)
+                bitDepth = mp4->bitsPerSample();
+        } else if (dynamic_cast<const TagLib::Ogg::Vorbis::Properties *>(props)) {
+            codec = "Vorbis";
+        } else if (dynamic_cast<const TagLib::Ogg::Opus::Properties *>(props)) {
+            codec = "Opus";
+        } else if (auto *wav = dynamic_cast<const TagLib::RIFF::WAV::Properties *>(props)) {
+            codec = "WAV";
+            bitDepth = wav->bitsPerSample();
+        } else if (auto *aiff = dynamic_cast<const TagLib::RIFF::AIFF::Properties *>(props)) {
+            codec = "AIFF";
+            bitDepth = aiff->bitsPerSample();
+        } else if (auto *ape = dynamic_cast<const TagLib::APE::Properties *>(props)) {
+            codec = "APE";
+            bitDepth = ape->bitsPerSample();
+        }
+
+        // Same rules and wording as the Android app's quality badge.
+        const bool lossless = QStringList{"FLAC", "ALAC", "WAV", "AIFF", "APE"}.contains(codec);
+        const int sampleRate = props->sampleRate();
+        const int bitrateKbps = props->bitrate();
+        const bool hiRes = lossless && (sampleRate > 48000 || bitDepth > 16);
+
+        QStringList label;
+        if (bitDepth > 0)
+            label << QString("%1-bit").arg(bitDepth);
+        if (sampleRate >= 1000)
+            label << (sampleRate % 1000 == 0 ? QString("%1 kHz").arg(sampleRate / 1000)
+                                             : QString("%1 kHz").arg(sampleRate / 1000.0, 0, 'f', 1));
+        else if (sampleRate > 0)
+            label << QString("%1 Hz").arg(sampleRate);
+        if (bitrateKbps > 0 && !lossless)
+            label << QString("%1 kbps").arg(bitrateKbps);
+        label << codec;
+
+        return {{"label", label.join(" · ")},
+                {"badgeLabel", hiRes ? "Hi-Res Lossless" : (lossless ? "Lossless" : codec)},
+                {"codecName", codec},
+                {"sampleRateHz", sampleRate},
+                {"bitDepth", bitDepth},
+                {"bitrateKbps", bitrateKbps},
+                {"isLossless", lossless},
+                {"isHiRes", hiRes}};
+    } catch (...) {
+        return {};
+    }
 }
 
 TrackInfo readTrackInfo(const QString &filePath) {

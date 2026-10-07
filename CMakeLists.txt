@@ -137,6 +137,7 @@ qt_add_qml_module(CassetteCat
         qml/SectionLabel.qml
         qml/LibraryRefineSheet.qml
         qml/BottomSheet.qml
+        qml/AudioDetailsSheet.qml
         qml/TrackActionSheet.qml
         qml/RefineTextInput.qml
         qml/EmptyState.qml

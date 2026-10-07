@@ -15,9 +15,11 @@
 #include <QDataStream>
 #include <QElapsedTimer>
 #include <QEventLoop>
+#include <QFile>
 #include <QMediaPlayer>
 #include <QQuickWindow>
 #include <QSettings>
+#include <QTemporaryDir>
 #include <QTimer>
 
 #ifdef _WIN32
@@ -358,6 +360,17 @@ bool PlayerController::selfCheck() {
     stream << quint32(pcm.size());
     stream.writeRawData(pcm.constData(), pcm.size());
 
+    // TagLib cannot open a QTemporaryFile path on Windows, so the file goes in a temporary folder.
+    const QTemporaryDir waveDir;
+    QFile waveFile(waveDir.filePath("format-check.wav"));
+    if (!waveFile.open(QIODevice::WriteOnly) || waveFile.write(wave) != wave.size())
+        return false;
+    waveFile.close();
+    const QVariantMap waveFormat = readAudioFormat(waveFile.fileName());
+    if (waveFormat.value("label") != "16-bit · 8 kHz · WAV" || waveFormat.value("badgeLabel") != "Lossless" ||
+        waveFormat.value("isHiRes").toBool())
+        return false;
+
     source.setData(wave);
     source.open(QIODevice::ReadOnly);
 
@@ -555,6 +568,7 @@ bool PlayerController::loadTrack(const QVariantMap &track) {
     if (m_currentLyrics.isEmpty() && !StreamingController::isRemotePath(filePath)) {
         m_currentLyrics = extractEmbeddedLyrics(filePath);
     }
+    m_audioFormat = mediaSource.isLocalFile() ? readAudioFormat(filePath) : QVariantMap();
     emit currentTrackChanged();
     emit currentLyricsChanged();
 

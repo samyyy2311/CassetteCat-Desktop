@@ -48,7 +48,7 @@ QImage CoverImageProvider::requestImage(const QString &id, QSize *size, const QS
             QString::fromUtf8(QByteArray::fromBase64(source.mid(6).toLatin1(), QByteArray::Base64UrlEncoding));
         // Most covers are small; only large views pay for a full-size extraction.
         const int longEdge = qMax(requestedSize.width(), requestedSize.height());
-        imagePath = QUrl(extractEmbeddedArtwork(trackPath, longEdge > 512 ? 1536 : 512)).toLocalFile();
+        imagePath = QUrl(extractEmbeddedArtwork(trackPath, longEdge > 512 ? kFullArtworkSize : 512)).toLocalFile();
     } else if (source.startsWith(QStringLiteral("qrc:"))) {
         imagePath = ':' + QUrl(source).path();
     } else {

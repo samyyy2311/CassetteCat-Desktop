@@ -549,7 +549,7 @@ bool PlayerController::loadTrack(const QVariantMap &track) {
     if (m_currentTrack.value("artworkUrl").toString().isEmpty() && !StreamingController::isRemotePath(filePath)) {
         // ponytail: load embedded artwork only for the current track; add async thumbnailing if browsing embedded art
         // needs it.
-        m_currentTrack.insert("artworkUrl", extractEmbeddedArtwork(filePath));
+        m_currentTrack.insert("artworkUrl", extractEmbeddedArtwork(filePath, kFullArtworkSize));
     }
     m_currentLyrics = track.value("lyrics").toString();
     if (m_currentLyrics.isEmpty() && !StreamingController::isRemotePath(filePath)) {

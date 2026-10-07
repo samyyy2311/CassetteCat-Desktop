@@ -70,6 +70,9 @@ struct TrackInfo {
     }
 };
 
+// Covers shown large (Now Playing, the phone remote) are extracted at this size; lists use the 512 px default.
+constexpr int kFullArtworkSize = 1536;
+
 QString formatDuration(int totalSeconds);
 QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension = 512);
 QString saveFolderArtwork(const QString &filePath, int maxDimension = 512);

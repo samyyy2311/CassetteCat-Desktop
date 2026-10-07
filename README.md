@@ -39,7 +39,7 @@
 </p>
 
 <p align="center">
-  <strong>Windows 10/11 & Linux (x86_64)</strong><br />
+  <strong>Windows 10/11, macOS 13+ & Linux (x86_64 and ARM64)</strong><br />
   Install through the Microsoft Store for background updates, via <code>winget</code>, or download standalone binaries below.
 </p>
 
@@ -57,11 +57,16 @@ Download from the [latest release](https://github.com/samyyy2311/CassetteCat-Des
 | :--- | :--- | :--- | :--- |
 | **Windows** | Installer | `setup.exe` | Recommended installer with optional file associations |
 | **Windows** | Portable | `.zip` | Standalone archive. Run `CassetteCat\bin\CassetteCat.exe` |
+| **macOS** | Disk image | `.dmg` | One app for Apple silicon and Intel. Drag it to Applications |
 | **Linux** | Universal | `.AppImage` | Runs on most Linux distributions. Make executable and run |
 | **Linux** | Flatpak | `.flatpak` | Install with `flatpak install --user <file>` |
 | **Linux** | Debian | `.deb` | Debian, Ubuntu, Linux Mint, and Pop!_OS |
 | **Linux** | RPM | `.rpm` | Fedora, openSUSE, and RHEL |
 | **Linux** | Tarball | `.tar.gz` | Portable archive. Run `CassetteCat/bin/CassetteCat` |
+
+Linux packages are built for both x86_64 and ARM64; pick the one matching your machine.
+
+The macOS app is not notarized by Apple yet, so the first time, right-click CassetteCat in Applications and choose **Open**, or allow it under **System Settings > Privacy & Security**.
 
 > Each release includes `SHA256SUMS.txt` for integrity verification.
 

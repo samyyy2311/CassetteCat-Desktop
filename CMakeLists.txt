@@ -408,6 +408,21 @@ if(UNIX AND NOT APPLE)
     include(cmake/Packaging.cmake)
 endif()
 
+if(APPLE)
+    target_link_libraries(CassetteCat PRIVATE "-framework Security")
+    set(macIcon "${CMAKE_CURRENT_SOURCE_DIR}/assets/cassettecat.icns")
+    set_source_files_properties("${macIcon}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    target_sources(CassetteCat PRIVATE "${macIcon}")
+    set_target_properties(CassetteCat PROPERTIES
+        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/Info.plist.in"
+        MACOSX_BUNDLE_GUI_IDENTIFIER io.github.samyyy2311.CassetteCat
+        MACOSX_BUNDLE_BUNDLE_NAME CassetteCat
+        MACOSX_BUNDLE_ICON_FILE cassettecat.icns
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${CASSETTECAT_PACKAGE_VERSION}"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${CASSETTECAT_PACKAGE_VERSION}"
+    )
+endif()
+
 if(WIN32)
     add_custom_target(deploy
         COMMAND "$<TARGET_FILE_DIR:Qt6::Core>/windeployqt.exe" --release --no-translations --skip-plugin-types qmltooling --qmldir "${CMAKE_CURRENT_SOURCE_DIR}/qml" "$<TARGET_FILE:CassetteCat>"

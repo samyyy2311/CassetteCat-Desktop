@@ -319,7 +319,7 @@ include(FetchContent)
 FetchContent_Declare(
     taglib
     GIT_REPOSITORY https://github.com/taglib/taglib.git
-    GIT_TAG e3de03501ff66221d1f1f971022b248d5b38ba06 # v2.0.2
+    GIT_TAG deadc2990767dfbda0701e0ab35fdeea653db08f # v2.3.2
 )
 if(CASSETTECAT_TAGLIB_SOURCE_DIR)
     set(FETCHCONTENT_SOURCE_DIR_TAGLIB "${CASSETTECAT_TAGLIB_SOURCE_DIR}")
@@ -392,6 +392,14 @@ set_target_properties(CassetteCat PROPERTIES
     WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE TRUE
 )
+# Hardening the toolchains leave off by default: Control Flow Guard on Windows and immediate binding with a
+# read-only relocation table on Linux. PIE, stack protection and fortified calls are already on by default there.
+if(MSVC)
+    target_compile_options(CassetteCat PRIVATE /guard:cf)
+    target_link_options(CassetteCat PRIVATE /guard:cf)
+elseif(UNIX AND NOT APPLE)
+    target_link_options(CassetteCat PRIVATE -Wl,-z,relro,-z,now)
+endif()
 if(UNIX AND NOT APPLE)
     set_target_properties(CassetteCat PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"

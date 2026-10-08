@@ -2,8 +2,9 @@
 
 #include <QAudioDevice>
 #include <QAudioFormat>
-#include <QIODevice>
 #include <QMutex>
+#include <QObject>
+#include <QThread>
 
 #include <array>
 #include <deque>
@@ -15,8 +16,9 @@ class QAudioSink;
 
 /// Mixes the media players' decoded audio, applies the equalizer and volume, and plays it on one audio device.
 /// Each player decodes in real time into its own short queue here, so the next song can start while the previous
-/// one's last samples are still playing, which removes the gap between tracks.
-class AudioPipeline final : public QIODevice {
+/// one's last samples are still playing, which removes the gap between tracks. The device is fed from its own
+/// thread, so a busy interface can't leave it without audio.
+class AudioPipeline final : public QObject {
     Q_OBJECT
   public:
     static constexpr int kBandCount = 10;
@@ -51,14 +53,8 @@ class AudioPipeline final : public QIODevice {
   signals:
     void levelReceived(double rms);
 
-  protected:
-    qint64 readData(char *data, qint64 maxSize) override;
-    qint64 writeData(const char *, qint64) override {
-        return -1;
-    }
-    qint64 bytesAvailable() const override;
-
   private:
+    class Feed;
     struct Biquad {
         float b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0;
         std::array<float, 2> z1{}, z2{};
@@ -82,8 +78,13 @@ class AudioPipeline final : public QIODevice {
     std::array<Biquad, kBandCount> m_bands;
     float m_preamp = 1.0f;
     bool m_equalizerOn = false;
-    QAudioSink *m_sink = nullptr;
+    QAudioBufferOutput *m_metered = nullptr;
     QAudioDevice m_device;
     bool m_paused = true;
-    QAudioBufferOutput *m_metered = nullptr;
+    QThread m_audioThread;
+    // Lives on the audio thread; the device and incoming audio are handled in its context.
+    QObject m_audioContext;
+    // Created, used and destroyed on the audio thread only.
+    QAudioSink *m_sink = nullptr;
+    Feed *m_feed = nullptr;
 };

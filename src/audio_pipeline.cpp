@@ -21,6 +21,32 @@ constexpr qint64 kMaxQueuedFrames = kRate / 2;
 constexpr qint64 kMaxBufferedFrames = kRate * 2;
 } // namespace
 
+// The device reads its source on the thread the source lives on, so the mix is read through this device, which
+// lives on the audio thread.
+class AudioPipeline::Feed final : public QIODevice {
+  public:
+    explicit Feed(AudioPipeline *pipeline) : m_pipeline(pipeline) {
+        open(QIODevice::ReadOnly);
+    }
+
+  protected:
+    qint64 readData(char *data, qint64 maxSize) override {
+        const qint64 frames = maxSize / qint64(sizeof(float) * kChannels);
+        QMutexLocker lock(&m_pipeline->m_mutex);
+        m_pipeline->mix(reinterpret_cast<float *>(data), frames);
+        return frames * qint64(sizeof(float) * kChannels);
+    }
+    qint64 writeData(const char *, qint64) override {
+        return -1;
+    }
+    qint64 bytesAvailable() const override {
+        return format().bytesForDuration(80'000) + QIODevice::bytesAvailable();
+    }
+
+  private:
+    AudioPipeline *m_pipeline;
+};
+
 float AudioPipeline::Biquad::process(float x, int channel) {
     const float y = b0 * x + z1[channel];
     z1[channel] = b1 * x - a1 * y + z2[channel];
@@ -28,14 +54,25 @@ float AudioPipeline::Biquad::process(float x, int channel) {
     return y;
 }
 
-AudioPipeline::AudioPipeline(QObject *parent) : QIODevice(parent), m_device(QMediaDevices::defaultAudioOutput()) {
-    open(QIODevice::ReadOnly);
+AudioPipeline::AudioPipeline(QObject *parent) : QObject(parent), m_device(QMediaDevices::defaultAudioOutput()) {
+    m_audioThread.setObjectName("Audio output");
+    m_audioContext.moveToThread(&m_audioThread);
+    m_audioThread.start(QThread::TimeCriticalPriority);
     restartSink();
 }
 
 AudioPipeline::~AudioPipeline() {
-    if (m_sink)
-        m_sink->stop();
+    QMetaObject::invokeMethod(
+        &m_audioContext,
+        [this] {
+            delete m_sink;
+            delete m_feed;
+            m_sink = nullptr;
+            m_feed = nullptr;
+        },
+        Qt::BlockingQueuedConnection);
+    m_audioThread.quit();
+    m_audioThread.wait();
 }
 
 QAudioFormat AudioPipeline::format() {
@@ -52,7 +89,7 @@ QAudioBufferOutput *AudioPipeline::addSource() {
         QMutexLocker lock(&m_mutex);
         m_sources.push_back({output});
     }
-    connect(output, &QAudioBufferOutput::audioBufferReceived, this,
+    connect(output, &QAudioBufferOutput::audioBufferReceived, &m_audioContext,
             [this, output](const QAudioBuffer &buffer) { append(output, buffer); });
     return output;
 }
@@ -79,13 +116,13 @@ void AudioPipeline::append(QAudioBufferOutput *output, const QAudioBuffer &buffe
         return;
     const float *data = buffer.constData<float>();
     const qint64 count = qint64(buffer.frameCount()) * kChannels;
+    QMutexLocker lock(&m_mutex);
     if (output == m_metered && count > 0) {
         double sum = 0;
         for (qint64 i = 0; i < count; ++i)
             sum += double(data[i]) * data[i];
         emit levelReceived(std::sqrt(sum / double(count)));
     }
-    QMutexLocker lock(&m_mutex);
     for (Source &s : m_sources) {
         if (s.output != output)
             continue;
@@ -99,6 +136,7 @@ void AudioPipeline::append(QAudioBufferOutput *output, const QAudioBuffer &buffe
 }
 
 void AudioPipeline::setMeteredSource(QAudioBufferOutput *source) {
+    QMutexLocker lock(&m_mutex);
     m_metered = source;
 }
 
@@ -114,25 +152,26 @@ QAudioDevice AudioPipeline::device() const {
 }
 
 void AudioPipeline::restartSink() {
-    if (m_sink) {
-        m_sink->stop();
-        m_sink->deleteLater();
-    }
-    m_sink = new QAudioSink(m_device, format(), this);
-    m_sink->setBufferSize(format().bytesForDuration(80'000));
-    m_sink->start(this);
-    if (m_paused)
-        m_sink->suspend();
+    QMetaObject::invokeMethod(
+        &m_audioContext,
+        [this, device = m_device, paused = m_paused] {
+            delete m_sink;
+            if (!m_feed)
+                m_feed = new Feed(this);
+            m_sink = new QAudioSink(device, format());
+            m_sink->setBufferSize(format().bytesForDuration(80'000));
+            m_sink->start(m_feed);
+            if (paused)
+                m_sink->suspend();
+        },
+        Qt::BlockingQueuedConnection);
 }
 
 void AudioPipeline::setPaused(bool paused) {
     if (paused == m_paused)
         return;
     m_paused = paused;
-    if (paused)
-        m_sink->suspend();
-    else
-        m_sink->resume();
+    QMetaObject::invokeMethod(&m_audioContext, [this, paused] { paused ? m_sink->suspend() : m_sink->resume(); });
 }
 
 void AudioPipeline::setEqualizer(bool enabled, const std::array<float, kBandCount> &bandsDb, float preampDb) {
@@ -160,10 +199,6 @@ void AudioPipeline::setEqualizer(bool enabled, const std::array<float, kBandCoun
     m_equalizerOn = enabled;
 }
 
-qint64 AudioPipeline::bytesAvailable() const {
-    return format().bytesForDuration(80'000) + QIODevice::bytesAvailable();
-}
-
 void AudioPipeline::mix(float *out, qint64 frames) {
     std::fill(out, out + frames * kChannels, 0.0f);
     for (Source &s : m_sources) {
@@ -187,13 +222,6 @@ void AudioPipeline::mix(float *out, qint64 frames) {
             sample = std::clamp(sample, -1.0f, 1.0f);
         }
     }
-}
-
-qint64 AudioPipeline::readData(char *data, qint64 maxSize) {
-    const qint64 frames = maxSize / qint64(sizeof(float) * kChannels);
-    QMutexLocker lock(&m_mutex);
-    mix(reinterpret_cast<float *>(data), frames);
-    return frames * qint64(sizeof(float) * kChannels);
 }
 
 bool AudioPipeline::selfCheck() {

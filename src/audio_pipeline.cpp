@@ -118,12 +118,8 @@ void AudioPipeline::append(QAudioBufferOutput *output, const QAudioBuffer &buffe
     const float *data = buffer.constData<float>();
     const qint64 count = qint64(buffer.frameCount()) * kChannels;
     QMutexLocker lock(&m_mutex);
-    if (output == m_metered && count > 0) {
-        double sum = 0;
-        for (qint64 i = 0; i < count; ++i)
-            sum += double(data[i]) * data[i];
-        emit levelReceived(std::sqrt(sum / double(count)));
-    }
+    // The level goes out after unlocking, so the meter's interface updates never hold up the audio thread.
+    const bool metered = output == m_metered;
     for (Source &s : m_sources) {
         if (s.output != output)
             continue;
@@ -133,6 +129,13 @@ void AudioPipeline::append(QAudioBufferOutput *output, const QAudioBuffer &buffe
             s.samples.erase(s.samples.begin(), s.samples.begin() + excess);
         if (qint64(s.samples.size()) >= kPrimeFrames * kChannels)
             s.primed = true;
+    }
+    lock.unlock();
+    if (metered && count > 0) {
+        double sum = 0;
+        for (qint64 i = 0; i < count; ++i)
+            sum += double(data[i]) * data[i];
+        emit levelReceived(std::sqrt(sum / double(count)));
     }
 }
 

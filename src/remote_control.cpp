@@ -520,9 +520,12 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
             return {200, R"({"status":"waiting"})"};
         const bool allowed = m_pairingAnswer == PairingAnswer::Allowed;
         const QString phoneCode = allowed ? randomCode() : QString();
-        if (allowed)
-            setPairedPhones(m_pairedPhones +
-                            QVariantList{QVariantMap{{"name", m_pairingRequestName}, {"code", phoneCode}}});
+        if (allowed) {
+            // A phone allowed again replaces its old entry, so it is listed once.
+            QVariantList phones = m_pairedPhones;
+            phones.removeIf([&](const QVariant &phone) { return phone.toMap().value("name") == m_pairingRequestName; });
+            setPairedPhones(phones + QVariantList{QVariantMap{{"name", m_pairingRequestName}, {"code", phoneCode}}});
+        }
         m_pairingTimeout.stop();
         m_pairingRequestId.clear();
         m_pairingRequestName.clear();

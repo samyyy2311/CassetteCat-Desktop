@@ -11,8 +11,7 @@ AppPublisherURL=https://cassettecat.caffeinelabs.in/
 AppSupportURL=https://github.com/samyyy2311/CassetteCat-Desktop/issues
 AppUpdatesURL=https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest
 AppCopyright=Copyright (c) CaffeineLabs
-AppComments=A local-first desktop music player for your audio library with synced lyrics, crossfade, and phone remote control.
-LicenseFile=..\LICENSE
+AppComments=A music player for the files you own, with synced lyrics, a Listening Record, scrobbling and a remote in the CassetteCat Android app.
 DefaultDirName={localappdata}\Programs\CassetteCat
 DefaultGroupName=CassetteCat
 SetupIconFile=..\assets\cassettecat_icon.ico
@@ -57,6 +56,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; Flags: unchecked
 Name: "associateAudio"; Description: "Add CassetteCat to Open with for supported audio files (.mp3, .flac, .m4a, etc.)"; Flags: unchecked
+Name: "startAtSignIn"; Description: "Start CassetteCat when you sign in to Windows"; Flags: unchecked
 
 [Files]
 Source: "..\dist\CassetteCat\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -69,6 +69,7 @@ Name: "{autodesktop}\CassetteCat"; Filename: "{app}\bin\CassetteCat.exe"; Tasks:
 Filename: "{app}\bin\CassetteCat.exe"; Description: "{cm:LaunchProgram,CassetteCat}"; Flags: nowait postinstall skipifsilent
 
 [Registry]
+Root: HKCU; Subkey: "Software\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "CassetteCat"; ValueData: """{app}\bin\CassetteCat.exe"""; Flags: uninsdeletevalue; Tasks: startAtSignIn
 Root: HKCU; Subkey: "Software\Classes\CassetteCat.Audio"; ValueType: string; ValueName: ""; ValueData: "CassetteCat Audio File"; Flags: uninsdeletekeyifempty; Tasks: associateAudio
 Root: HKCU; Subkey: "Software\Classes\CassetteCat.Audio\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\bin\CassetteCat.exe,0"; Tasks: associateAudio
 Root: HKCU; Subkey: "Software\Classes\CassetteCat.Audio\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\bin\CassetteCat.exe"" ""%1"""; Tasks: associateAudio
@@ -82,3 +83,13 @@ Root: HKCU; Subkey: "Software\Classes\.ogg\OpenWithProgids"; ValueType: none; Va
 Root: HKCU; Subkey: "Software\Classes\.opus\OpenWithProgids"; ValueType: none; ValueName: "CassetteCat.Audio"; Flags: uninsdeletevalue; Tasks: associateAudio
 Root: HKCU; Subkey: "Software\Classes\.wav\OpenWithProgids"; ValueType: none; ValueName: "CassetteCat.Audio"; Flags: uninsdeletevalue; Tasks: associateAudio
 Root: HKCU; Subkey: "Software\Classes\.wma\OpenWithProgids"; ValueType: none; ValueName: "CassetteCat.Audio"; Flags: uninsdeletevalue; Tasks: associateAudio
+
+[Code]
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  // Settings, the library cache and the Listening Record are kept unless the user asks, so a reinstall keeps them.
+  if (CurUninstallStep = usPostUninstall) and not UninstallSilent then
+    if MsgBox('Also delete your CassetteCat settings, library cache and Listening Record?' + #13#10#13#10 +
+              'Your music files are not affected.', mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+      DelTree(ExpandConstant('{localappdata}\CassetteCat'), True, True, True);
+end;

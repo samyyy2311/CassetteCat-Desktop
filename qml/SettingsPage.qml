@@ -149,6 +149,7 @@ Item {
     signal scrobbleLastFmToggled(bool value)
     signal disconnectLastFmRequested()
     signal checkUpdatesRequested()
+    signal whatsNewRequested()
     signal downloadUpdateRequested()
     signal sectionSelected(string section)
 
@@ -452,6 +453,7 @@ Item {
                                 visible: root.currentSection === "credits"
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: visible ? implicitHeight : 0
+                                onWhatsNewRequested: root.whatsNewRequested()
                             }
                         }
                     }

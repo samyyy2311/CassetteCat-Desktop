@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(CassetteCat VERSION 0.8.1 LANGUAGES CXX)
+project(CassetteCat VERSION 0.9.0 LANGUAGES CXX)
 
 set(CASSETTECAT_PACKAGE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version used by installers and Linux packages")
 
@@ -150,6 +150,7 @@ qt_add_qml_module(CassetteCat
         qml/AudioDetailsSheet.qml
         qml/PhoneRemoteSheet.qml
         qml/SetupSheet.qml
+        qml/WhatsNewSheet.qml
         qml/TrackActionSheet.qml
         qml/RefineTextInput.qml
         qml/EmptyState.qml
@@ -193,6 +194,7 @@ qt_add_qml_module(CassetteCat
         qml/MiniPlayerLyricsView.qml
         qml/MiniPlayerVolumePill.qml
     RESOURCES
+        CHANGELOG.md
         qml/icons/external-link.svg
         qml/icons/check.svg
         qml/icons/pencil.svg

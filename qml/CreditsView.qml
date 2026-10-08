@@ -5,6 +5,8 @@ import QtQuick.Layouts
 ColumnLayout {
     id: root
 
+    signal whatsNewRequested()
+
     Layout.fillWidth: true
     spacing: 16
 
@@ -83,6 +85,7 @@ ColumnLayout {
         Repeater {
             model: [
                 { title: "CassetteCat " + Qt.application.version, subtitle: "Made by CaffeineLabs (cassettecat.caffeinelabs.in)", icon: "info", url: "https://cassettecat.caffeinelabs.in" },
+                { title: "What's New", subtitle: "Changes in this version", icon: "list" },
                 { title: "Privacy Policy", subtitle: "What stays on your computer and what each online service receives", icon: "shield", url: "https://cassettecat.caffeinelabs.in/privacy.html" }
             ]
 
@@ -94,7 +97,7 @@ ColumnLayout {
 
                 CreditItemRow {
                     itemData: modelData
-                    onClicked: Qt.openUrlExternally(modelData.url)
+                    onClicked: modelData.url ? Qt.openUrlExternally(modelData.url) : root.whatsNewRequested()
                 }
             }
         }

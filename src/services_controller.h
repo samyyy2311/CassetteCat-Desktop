@@ -61,6 +61,8 @@ class ServicesController : public QObject {
                                      const QString &filePath = "");
     /// Queries the latest release and emits the resulting update status.
     Q_INVOKABLE void checkForUpdates(bool manual = false);
+    /// The changelog's points for \p version, empty when it has none.
+    Q_INVOKABLE QStringList releaseNotes(const QString &version) const;
     /// Compares dotted release versions, returning their relative order.
     static int compareVersions(const QString &v1, const QString &v2);
 
@@ -84,6 +86,7 @@ class ServicesController : public QObject {
     void updateCheckFailed(const QString &error, bool manual);
 
   private:
+    static QStringList releaseNotesFrom(const QString &changelog, const QString &version);
     static QString lyricsCacheKey(const QString &title, const QString &artist, const QString &album);
     static QString canonicalArtistName(const QString &artist);
     static bool serviceEnabled(const QSettings &settings, const QString &service);

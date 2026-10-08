@@ -684,6 +684,12 @@ ApplicationWindow {
         }
         if (!appSettings.value("ui/setupDone", false) && library.folders.length === 0)
             Qt.callLater(setupSheet.open)
+        // After an update, what changed is shown once; a first run starts with setup instead.
+        if (appSettings.value("ui/lastSeenVersion", "") !== Qt.application.version) {
+            if (library.folders.length > 0 && whatsNewSheet.notes.length > 0)
+                Qt.callLater(whatsNewSheet.open)
+            appSettings.setValue("ui/lastSeenVersion", Qt.application.version)
+        }
 
         songSortMetric = appSettings.value("sort/songMetric", "title")
         songSortAscending = appSettings.value("sort/songAscending", true)
@@ -4020,6 +4026,7 @@ ApplicationWindow {
                                     window.scrobbleLastFmEnabled = false
                                 }
                                 onCheckUpdatesRequested: window.checkForUpdates()
+                                onWhatsNewRequested: whatsNewSheet.open()
                                 onDownloadUpdateRequested: window.downloadUpdate()
                                 onSectionSelected: section => {
                                     window.settingsSection = section
@@ -5320,6 +5327,10 @@ ApplicationWindow {
     TrackMetadataDialog {
         id: metadataDialog
         appWindow: window
+    }
+
+    WhatsNewSheet {
+        id: whatsNewSheet
     }
 
     SetupSheet {

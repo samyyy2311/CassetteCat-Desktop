@@ -163,6 +163,7 @@ qt_add_qml_module(CassetteCat
         qml/SettingSegmentedControl.qml
         qml/SettingChoiceGroup.qml
         qml/SettingButton.qml
+        qml/AppDialog.qml
         qml/ConfirmPopup.qml
         qml/FilterChip.qml
         qml/PageTabs.qml

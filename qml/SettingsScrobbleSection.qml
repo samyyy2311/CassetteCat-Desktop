@@ -155,16 +155,9 @@ ColumnLayout {
         }
     }
 
-    Popup {
+    AppDialog {
         id: accountDialog
-        parent: Overlay.overlay
-        modal: true
-        focus: true
-        x: Math.round(((parent ? parent.width : 800) - width) / 2)
-        y: Math.round(((parent ? parent.height : 600) - height) / 2)
-        width: Math.min((parent ? parent.width - 64 : 460), 460)
-        padding: 24
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        maxWidth: 460
 
         property string service: "listenbrainz"
         readonly property bool isListenBrainz: service === "listenbrainz"
@@ -185,17 +178,6 @@ ColumnLayout {
             } else {
                 libreUserInput.forceActiveFocus()
             }
-        }
-
-        Overlay.modal: Rectangle {
-            color: "#B8000000"
-        }
-
-        background: Rectangle {
-            radius: 14
-            color: surfaceCard
-            border.width: 1
-            border.color: borderSubtle
         }
 
         contentItem: ColumnLayout {

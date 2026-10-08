@@ -558,31 +558,13 @@ Item {
         }
     }
 
-    Popup {
+    AppDialog {
         id: customStationPopup
-        parent: Overlay.overlay
-        modal: true
-        focus: true
-        x: Math.round((parent.width - width) / 2)
-        y: Math.round((parent.height - height) / 2)
-        width: Math.min(parent.width - 48, 440)
-        padding: 24
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        maxWidth: 440
         readonly property bool isUrlValid: {
             const u = customUrlInput.text.trim()
             const match = u.match(/^https?:\/\/([^/\s:]+)/i)
             return match !== null && match[1].length > 0
-        }
-
-        Overlay.modal: Rectangle {
-            color: "#B8000000"
-        }
-
-        background: Rectangle {
-            radius: 14
-            color: surfaceCard
-            border.width: 1
-            border.color: borderSubtle
         }
 
         contentItem: ColumnLayout {

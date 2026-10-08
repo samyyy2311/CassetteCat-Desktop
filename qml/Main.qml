@@ -4908,34 +4908,17 @@ ApplicationWindow {
         }
     }
 
-    Popup {
+    AppDialog {
         id: lyricSearchPopup
-        parent: Overlay.overlay
-        modal: true
-        focus: true
         visible: lyricSearchOpen
-        x: Math.round((parent.width - width) / 2)
-        y: Math.round((parent.height - height) / 2)
-        width: Math.min(parent.width - 80, 620)
+        maxWidth: 620
         height: lyricCustomEditorOpen
             ? Math.min(parent.height - 100, 560)
             : Math.min(parent.height - 100, lyricSearchLoading || lyricSearchResults.length ? 560 : 300)
         padding: 0
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         onClosed: {
             lyricSearchOpen = false
             lyricsSelectionCallback = null
-        }
-
-        Overlay.modal: Rectangle {
-            color: "#B8000000"
-        }
-
-        background: Rectangle {
-            radius: 14
-            color: surfaceCard
-            border.width: 1
-            border.color: borderSubtle
         }
 
         contentItem: ColumnLayout {

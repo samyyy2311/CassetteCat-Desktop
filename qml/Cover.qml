@@ -25,7 +25,7 @@ Item {
         if (!val) return ""
         const str = String(val).trim()
         if (!str || str === "null" || str === "undefined") return ""
-        if (str.startsWith("file://") || str.startsWith("http://") || str.startsWith("https://") || str.startsWith("qrc:/") || str.startsWith("image://")) {
+        if (str.startsWith("file://") || str.startsWith("http://") || str.startsWith("https://") || str.startsWith("qrc:/") || str.startsWith("image://") || str.startsWith("data:")) {
             return str
         }
         return "file:///" + str.replace(/\\/g, "/")

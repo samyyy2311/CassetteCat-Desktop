@@ -16,10 +16,59 @@
 #include <QUrlQuery>
 
 namespace {
-constexpr auto kLibreFmApiUrl = "https://libre.fm/2.0/";
-constexpr auto kLibreFmApiKey = "cassettecat";
-constexpr auto kLibreFmSecret = "cassettecat_secret";
 constexpr auto kListenBrainzBaseUrl = "https://api.listenbrainz.org/1";
+
+// Libre.fm and Last.fm speak the same Audioscrobbler 2.0 API.
+struct ScrobbleNetwork {
+    QLatin1StringView id;
+    QLatin1StringView apiUrl;
+    QLatin1StringView apiKey;
+    QLatin1StringView secret;
+};
+
+constexpr ScrobbleNetwork kLibreFm{QLatin1StringView("librefm"), QLatin1StringView("https://libre.fm/2.0/"),
+                                   QLatin1StringView("cassettecat"), QLatin1StringView("cassettecat_secret")};
+#ifdef CASSETTECAT_LASTFM_API_KEY
+constexpr ScrobbleNetwork kLastFm{QLatin1StringView("lastfm"), QLatin1StringView("https://ws.audioscrobbler.com/2.0/"),
+                                  QLatin1StringView(CASSETTECAT_LASTFM_API_KEY),
+                                  QLatin1StringView(CASSETTECAT_LASTFM_API_SECRET)};
+#endif
+
+const ScrobbleNetwork *scrobbleNetwork(const QString &id) {
+    if (id == kLibreFm.id)
+        return &kLibreFm;
+#ifdef CASSETTECAT_LASTFM_API_KEY
+    if (id == kLastFm.id)
+        return &kLastFm;
+#endif
+    return nullptr;
+}
+
+QString sessionVaultKey(const QString &service) {
+    return QStringLiteral("scrobble/%1_session_key").arg(service);
+}
+
+QByteArray signedRequestBody(const ScrobbleNetwork &network, QMap<QString, QString> params) {
+    params.insert("api_key", network.apiKey);
+    QString signature;
+    for (auto it = params.cbegin(); it != params.cend(); ++it)
+        signature += it.key() + it.value();
+    signature += network.secret;
+    params.insert("api_sig",
+                  QString::fromLatin1(QCryptographicHash::hash(signature.toUtf8(), QCryptographicHash::Md5).toHex()));
+    params.insert("format", "json");
+
+    QUrlQuery query;
+    for (auto it = params.cbegin(); it != params.cend(); ++it)
+        query.addQueryItem(it.key(), it.value());
+    return query.toString(QUrl::FullyEncoded).toUtf8();
+}
+
+QNetworkRequest scrobbleRequest(const ScrobbleNetwork &network) {
+    QNetworkRequest request(QUrl(QString(network.apiUrl)));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    return request;
+}
 
 QString loadScrobbleSecret(CredentialVault &vault, const QString &key, const QString &legacySetting) {
     QString secret = vault.loadSecret(key);
@@ -44,8 +93,12 @@ void ServicesController::initScrobbleCredentials() {
     CredentialVault vault;
     m_listenBrainzToken = loadScrobbleSecret(vault, QStringLiteral("scrobble/listenbrainz_token"),
                                              QStringLiteral("scrobble_secure/listenbrainz_token"));
-    m_libreFmSessionKey = loadScrobbleSecret(vault, QStringLiteral("scrobble/librefm_session_key"),
-                                             QStringLiteral("scrobble_secure/librefm_session_key"));
+    m_scrobbleSessionKeys.insert(
+        kLibreFm.id,
+        loadScrobbleSecret(vault, sessionVaultKey(kLibreFm.id), QStringLiteral("scrobble_secure/librefm_session_key")));
+#ifdef CASSETTECAT_LASTFM_API_KEY
+    m_scrobbleSessionKeys.insert(kLastFm.id, vault.loadSecret(sessionVaultKey(kLastFm.id)));
+#endif
     m_scrobbleCredentialsLoaded = true;
 }
 
@@ -54,9 +107,13 @@ bool ServicesController::hasListenBrainzSession() {
     return !m_listenBrainzToken.trimmed().isEmpty();
 }
 
-bool ServicesController::hasLibreFmSession() {
+bool ServicesController::hasScrobbleSession(const QString &service) {
     initScrobbleCredentials();
-    return !m_libreFmSessionKey.trimmed().isEmpty();
+    return !m_scrobbleSessionKeys.value(service).trimmed().isEmpty();
+}
+
+bool ServicesController::lastFmAvailable() const {
+    return scrobbleNetwork(QStringLiteral("lastfm")) != nullptr;
 }
 
 void ServicesController::saveListenBrainzSession(const QString &token, const QString &userName) {
@@ -83,40 +140,45 @@ void ServicesController::disconnectListenBrainz() {
     SettingsController::setGlobalValue("scrobble/listenbrainz_enabled", false);
 }
 
-void ServicesController::saveLibreFmSession(const QString &username, const QString &sessionKey) {
+void ServicesController::saveScrobbleSession(const QString &service, const QString &username,
+                                             const QString &sessionKey) {
     initScrobbleCredentials();
     const QString value = sessionKey.trimmed();
     CredentialVault vault;
-    SettingsController::setGlobalValue("scrobble_secure/librefm_session_key", QVariant());
-    if (value.isEmpty() || !vault.saveSecret("scrobble/librefm_session_key", value)) {
-        qWarning() << "Libre.fm credential could not be saved securely.";
+    if (service == kLibreFm.id)
+        SettingsController::setGlobalValue("scrobble_secure/librefm_session_key", QVariant());
+    if (value.isEmpty() || !vault.saveSecret(sessionVaultKey(service), value)) {
+        qWarning() << "Scrobbling credential could not be saved securely.";
         return;
     }
-    m_libreFmSessionKey = value;
-    SettingsController::setGlobalValue("scrobble/librefm_user", username.trimmed());
-    SettingsController::setGlobalValue("scrobble/librefm_enabled", true);
+    m_scrobbleSessionKeys.insert(service, value);
+    SettingsController::setGlobalValue("scrobble/" + service + "_user", username.trimmed());
+    SettingsController::setGlobalValue("scrobble/" + service + "_enabled", true);
 }
 
-void ServicesController::disconnectLibreFm() {
+void ServicesController::disconnectScrobbleAccount(const QString &service) {
+    if (!scrobbleNetwork(service))
+        return;
     initScrobbleCredentials();
-    m_libreFmSessionKey.clear();
+    m_scrobbleSessionKeys.remove(service);
     CredentialVault vault;
-    vault.clearSecret("scrobble/librefm_session_key");
-    SettingsController::setGlobalValue("scrobble_secure/librefm_session_key", QVariant());
-    SettingsController::setGlobalValue("scrobble/librefm_user", QString());
-    SettingsController::setGlobalValue("scrobble/librefm_enabled", false);
+    vault.clearSecret(sessionVaultKey(service));
+    if (service == kLibreFm.id)
+        SettingsController::setGlobalValue("scrobble_secure/librefm_session_key", QVariant());
+    SettingsController::setGlobalValue("scrobble/" + service + "_user", QString());
+    SettingsController::setGlobalValue("scrobble/" + service + "_enabled", false);
 }
 
-QString ServicesController::generateLibreFmApiSig(const QMap<QString, QString> &params) {
-    QString concatenated;
-    for (auto it = params.cbegin(); it != params.cend(); ++it) {
-        if (it.key() == "format" || it.key() == "callback" || it.key() == "api_sig")
+void ServicesController::postToScrobbleAccounts(const QMap<QString, QString> &params) {
+    for (auto it = m_scrobbleSessionKeys.cbegin(); it != m_scrobbleSessionKeys.cend(); ++it) {
+        const ScrobbleNetwork *network = scrobbleNetwork(it.key());
+        if (!network || it.value().isEmpty() ||
+            !SettingsController::globalValue("scrobble/" + it.key() + "_enabled", false).toBool())
             continue;
-        concatenated += it.key();
-        concatenated += it.value();
+        QMap<QString, QString> withSession = params;
+        withSession.insert("sk", it.value());
+        trackReply(m_net->post(scrobbleRequest(*network), signedRequestBody(*network, withSession)));
     }
-    concatenated += QString::fromLatin1(kLibreFmSecret);
-    return QString::fromUtf8(QCryptographicHash::hash(concatenated.toUtf8(), QCryptographicHash::Md5).toHex());
 }
 
 void ServicesController::validateListenBrainzToken(const QString &token) {
@@ -168,39 +230,35 @@ void ServicesController::validateListenBrainzToken(const QString &token) {
     });
 }
 
-void ServicesController::authenticateLibreFm(const QString &username, const QString &password) {
+void ServicesController::authenticateScrobbleAccount(const QString &service, const QString &username,
+                                                     const QString &password) {
     const QString user = username.trimmed();
+    const ScrobbleNetwork *network = scrobbleNetwork(service);
+    if (!network)
+        return;
     if (user.isEmpty() || password.isEmpty()) {
-        emit libreFmAuthFinished(false, {}, {}, QStringLiteral("Username and password are required"));
+        emit scrobbleAccountAuthFinished(service, false, {}, QStringLiteral("Username and password are required"));
         return;
     }
     if (!onlineEnabled()) {
-        emit libreFmAuthFinished(false, {}, {}, QStringLiteral("Offline Blackout Mode is active"));
+        emit scrobbleAccountAuthFinished(service, false, {}, QStringLiteral("Offline Blackout Mode is active"));
         return;
     }
-
-    const QString passMd5 =
-        QString::fromUtf8(QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Md5).toHex());
-    const QString authPayload = user.toLower() + passMd5;
-    const QString authToken =
-        QString::fromUtf8(QCryptographicHash::hash(authPayload.toUtf8(), QCryptographicHash::Md5).toHex());
 
     QMap<QString, QString> params;
     params.insert("method", "auth.getMobileSession");
     params.insert("username", user);
-    params.insert("authToken", authToken);
-    params.insert("api_key", kLibreFmApiKey);
-    params.insert("api_sig", generateLibreFmApiSig(params));
-    params.insert("format", "json");
-
-    QUrlQuery query;
-    for (auto it = params.cbegin(); it != params.cend(); ++it) {
-        query.addQueryItem(it.key(), it.value());
+    if (service == kLibreFm.id) {
+        // Libre.fm takes a token made from the password, Last.fm the password itself over HTTPS.
+        const QByteArray passMd5 = QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Md5).toHex();
+        const QByteArray token = user.toLower().toUtf8() + passMd5;
+        params.insert("authToken",
+                      QString::fromLatin1(QCryptographicHash::hash(token, QCryptographicHash::Md5).toHex()));
+    } else {
+        params.insert("password", password);
     }
 
-    QNetworkRequest request(QUrl(QString::fromLatin1(kLibreFmApiUrl)));
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-    QNetworkReply *reply = trackReply(m_net->post(request, query.toString(QUrl::FullyEncoded).toUtf8()));
+    QNetworkReply *reply = trackReply(m_net->post(scrobbleRequest(*network), signedRequestBody(*network, params)));
 
     auto *timer = new QTimer(reply);
     timer->setSingleShot(true);
@@ -211,27 +269,12 @@ void ServicesController::authenticateLibreFm(const QString &username, const QStr
     });
     timer->start();
 
-    connect(reply, &QNetworkReply::finished, this, [this, reply, user] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, user, service] {
         reply->deleteLater();
-        if (reply->error() != QNetworkReply::NoError) {
-            emit libreFmAuthFinished(false, {}, {},
-                                     QStringLiteral("Authentication failed. Check your network or credentials."));
-            return;
-        }
         const QByteArray responseData = reply->readAll();
-        QString sessionKey;
-        QString sessionName = user;
-
-        const QJsonDocument doc = QJsonDocument::fromJson(responseData);
-        if (doc.isObject()) {
-            const QJsonObject root = doc.object();
-            if (root.contains("session")) {
-                const QJsonObject sessionObj = root.value("session").toObject();
-                sessionKey = sessionObj.value("key").toString();
-                if (sessionObj.contains("name"))
-                    sessionName = sessionObj.value("name").toString();
-            }
-        }
+        const QJsonObject session = QJsonDocument::fromJson(responseData).object().value("session").toObject();
+        QString sessionKey = session.value("key").toString();
+        const QString sessionName = session.value("name").toString(user);
         if (sessionKey.isEmpty()) {
             const QString rawText = QString::fromUtf8(responseData);
             const int keyStart = rawText.indexOf("<key>");
@@ -242,17 +285,21 @@ void ServicesController::authenticateLibreFm(const QString &username, const QStr
             }
         }
 
-        if (!sessionKey.isEmpty()) {
-            saveLibreFmSession(sessionName, sessionKey);
-            CredentialVault vault;
-            if (vault.loadSecret("scrobble/librefm_session_key") == sessionKey) {
-                emit libreFmAuthFinished(true, sessionName, sessionKey, {});
-            } else {
-                emit libreFmAuthFinished(
-                    false, {}, {}, QStringLiteral("Login succeeded, but secure credential storage is unavailable"));
-            }
+        if (sessionKey.isEmpty()) {
+            // Both networks answer a wrong password with an error body, which Qt reports as an HTTP error.
+            const bool answered = !responseData.isEmpty();
+            emit scrobbleAccountAuthFinished(service, false, {},
+                                             answered ? QStringLiteral("Invalid username or password")
+                                                      : QStringLiteral("Authentication failed. Check your network."));
+            return;
+        }
+        saveScrobbleSession(service, sessionName, sessionKey);
+        CredentialVault vault;
+        if (vault.loadSecret(sessionVaultKey(service)) == sessionKey) {
+            emit scrobbleAccountAuthFinished(service, true, sessionName, {});
         } else {
-            emit libreFmAuthFinished(false, {}, {}, QStringLiteral("Invalid username or password"));
+            emit scrobbleAccountAuthFinished(
+                service, false, {}, QStringLiteral("Login succeeded, but secure credential storage is unavailable"));
         }
     });
 }
@@ -297,27 +344,13 @@ void ServicesController::scrobbleNowPlaying(const QVariantMap &track) {
         trackReply(m_net->post(request, QJsonDocument(root).toJson(QJsonDocument::Compact)));
     }
 
-    if (SettingsController::globalValue("scrobble/librefm_enabled", false).toBool() && !m_libreFmSessionKey.isEmpty()) {
-        QMap<QString, QString> params;
-        params.insert("method", "track.updateNowPlaying");
-        params.insert("artist", artist);
-        params.insert("track", title);
-        if (!album.isEmpty())
-            params.insert("album", album);
-        params.insert("sk", m_libreFmSessionKey);
-        params.insert("api_key", kLibreFmApiKey);
-        params.insert("api_sig", generateLibreFmApiSig(params));
-        params.insert("format", "json");
-
-        QUrlQuery query;
-        for (auto it = params.cbegin(); it != params.cend(); ++it) {
-            query.addQueryItem(it.key(), it.value());
-        }
-
-        QNetworkRequest request(QUrl(QString::fromLatin1(kLibreFmApiUrl)));
-        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-        trackReply(m_net->post(request, query.toString(QUrl::FullyEncoded).toUtf8()));
-    }
+    QMap<QString, QString> params;
+    params.insert("method", "track.updateNowPlaying");
+    params.insert("artist", artist);
+    params.insert("track", title);
+    if (!album.isEmpty())
+        params.insert("album", album);
+    postToScrobbleAccounts(params);
 }
 
 void ServicesController::scrobbleTrack(const QVariantMap &track, qint64 timestampSec) {
@@ -365,26 +398,12 @@ void ServicesController::scrobbleTrack(const QVariantMap &track, qint64 timestam
         trackReply(m_net->post(request, QJsonDocument(root).toJson(QJsonDocument::Compact)));
     }
 
-    if (SettingsController::globalValue("scrobble/librefm_enabled", false).toBool() && !m_libreFmSessionKey.isEmpty()) {
-        QMap<QString, QString> params;
-        params.insert("method", "track.scrobble");
-        params.insert("artist", artist);
-        params.insert("track", title);
-        if (!album.isEmpty())
-            params.insert("album", album);
-        params.insert("timestamp", QString::number(timestampSec));
-        params.insert("sk", m_libreFmSessionKey);
-        params.insert("api_key", kLibreFmApiKey);
-        params.insert("api_sig", generateLibreFmApiSig(params));
-        params.insert("format", "json");
-
-        QUrlQuery query;
-        for (auto it = params.cbegin(); it != params.cend(); ++it) {
-            query.addQueryItem(it.key(), it.value());
-        }
-
-        QNetworkRequest request(QUrl(QString::fromLatin1(kLibreFmApiUrl)));
-        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-        trackReply(m_net->post(request, query.toString(QUrl::FullyEncoded).toUtf8()));
-    }
+    QMap<QString, QString> params;
+    params.insert("method", "track.scrobble");
+    params.insert("artist", artist);
+    params.insert("track", title);
+    if (!album.isEmpty())
+        params.insert("album", album);
+    params.insert("timestamp", QString::number(timestampSec));
+    postToScrobbleAccounts(params);
 }

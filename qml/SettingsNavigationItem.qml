@@ -11,8 +11,8 @@ Rectangle {
     property bool compact: false
     signal clicked()
 
-    readonly property color accentColor: (typeof recordRed !== "undefined" ? recordRed : "#C23B30")
-    readonly property color accentHoverColor: (typeof recordRedHover !== "undefined" ? recordRedHover : "#D64337")
+    readonly property color accentColor: recordRed
+    readonly property color accentHoverColor: recordRedHover
 
     implicitWidth: compact ? content.implicitWidth + 22 : 184
     implicitHeight: compact ? 34 : 40

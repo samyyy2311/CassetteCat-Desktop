@@ -14,15 +14,21 @@ ColumnLayout {
     property string libreFmUser: ""
     property bool libreFmConnected: false
 
+    property bool lastFmEnabled: false
+    property string lastFmUser: ""
+    property bool lastFmConnected: false
+
     signal listenBrainzEnabledToggled(bool value)
     signal disconnectListenBrainzRequested()
     signal libreFmEnabledToggled(bool value)
     signal disconnectLibreFmRequested()
+    signal lastFmEnabledToggled(bool value)
+    signal disconnectLastFmRequested()
 
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Open Scrobbler Services" }
+    SectionLabel { text: "Scrobbler Services" }
 
     SettingCard {
         SettingRow {
@@ -104,21 +110,58 @@ ColumnLayout {
                 }
             }
         }
+
+        SettingDivider { visible: lastFmRow.visible }
+
+        SettingRow {
+            id: lastFmRow
+            visible: services.lastFmAvailable()
+            iconName: "lastfm"
+            preserveIconColor: true
+            iconSize: 22
+            title: root.lastFmConnected
+                   ? ("Last.fm (@" + root.lastFmUser + ")")
+                   : "Last.fm"
+            subtitle: root.lastFmConnected
+                      ? "Scrobbles what you play to your Last.fm profile"
+                      : "Log in with your Last.fm username and password"
+
+            RowLayout {
+                spacing: 10
+
+                SettingSwitch {
+                    visible: root.lastFmConnected
+                    enabled: !root.offlineBlackout
+                    checked: root.lastFmEnabled
+                    onToggled: val => root.lastFmEnabledToggled(val)
+                }
+
+                SettingButton {
+                    visible: root.lastFmConnected
+                    text: "Disconnect"
+                    destructive: true
+                    onClicked: root.disconnectLastFmRequested()
+                }
+
+                SettingButton {
+                    visible: !root.lastFmConnected
+                    text: "Connect"
+                    primary: true
+                    iconName: "plug"
+                    enabled: !root.offlineBlackout
+                    onClicked: accountDialog.openFor("lastfm")
+                }
+            }
+        }
     }
 
-    Popup {
+    AppDialog {
         id: accountDialog
-        parent: Overlay.overlay
-        modal: true
-        focus: true
-        x: Math.round(((parent ? parent.width : 800) - width) / 2)
-        y: Math.round(((parent ? parent.height : 600) - height) / 2)
-        width: Math.min((parent ? parent.width - 64 : 460), 460)
-        padding: 24
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        maxWidth: 460
 
         property string service: "listenbrainz"
         readonly property bool isListenBrainz: service === "listenbrainz"
+        readonly property string serviceName: service === "lastfm" ? "Last.fm" : "Libre.fm"
         property bool isBusy: false
         property string errorMessage: ""
 
@@ -137,17 +180,6 @@ ColumnLayout {
             }
         }
 
-        Overlay.modal: Rectangle {
-            color: "#B8000000"
-        }
-
-        background: Rectangle {
-            radius: 14
-            color: surfaceCard
-            border.width: 1
-            border.color: borderSubtle
-        }
-
         contentItem: ColumnLayout {
             spacing: 16
 
@@ -156,14 +188,14 @@ ColumnLayout {
                 spacing: 10
 
                 LucideIcon {
-                    icon: accountDialog.isListenBrainz ? "listenbrainz" : "librefm"
+                    icon: accountDialog.service
                     Layout.preferredWidth: 22
                     Layout.preferredHeight: 22
                     preserveColor: true
                 }
 
                 Label {
-                    text: accountDialog.isListenBrainz ? "Connect ListenBrainz" : "Connect Libre.fm"
+                    text: "Connect " + (accountDialog.isListenBrainz ? "ListenBrainz" : accountDialog.serviceName)
                     color: textPrimary
                     font.family: displayFont
                     font.pixelSize: 17
@@ -175,7 +207,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 text: accountDialog.isListenBrainz
                       ? "Paste your ListenBrainz User Token to enable scrobbling."
-                      : "Log in with your Libre.fm account credentials."
+                      : "Log in with your " + accountDialog.serviceName + " account credentials."
                 color: textSecondary
                 font.family: displayFont
                 font.pixelSize: 12
@@ -292,7 +324,8 @@ ColumnLayout {
                         if (accountDialog.isListenBrainz) {
                             services.validateListenBrainzToken(lbTokenInput.text.trim())
                         } else {
-                            services.authenticateLibreFm(libreUserInput.text.trim(), librePassInput.text.trim())
+                            services.authenticateScrobbleAccount(accountDialog.service, libreUserInput.text.trim(),
+                                                                 librePassInput.text)
                         }
                     }
                 }
@@ -314,8 +347,8 @@ ColumnLayout {
             }
         }
 
-        function onLibreFmAuthFinished(success, userName, sessionKey, error) {
-            if (accountDialog.service === "librefm") {
+        function onScrobbleAccountAuthFinished(service, success, userName, error) {
+            if (accountDialog.service === service) {
                 accountDialog.isBusy = false
                 if (success) {
                     accountDialog.close()

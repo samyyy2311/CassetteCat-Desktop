@@ -5,12 +5,11 @@ Item {
     property string iconName: "play"
     property int buttonSize: 36
     property bool accented: false
-    property var paletteSource: null
-    property color accentColor: paletteSource ? paletteSource.recordRed : "#C23B30"
-    property color accentHover: paletteSource ? paletteSource.recordRedHover : "#D64337"
+    property color accentColor: window.recordRed
+    property color accentHover: window.recordRedHover
     readonly property color recordRed: accentColor
     readonly property color recordRedHover: accentHover
-    property color iconColor: accented ? root.accentColor : root.textPrimary
+    property color iconColor: accented ? root.accentColor : textPrimary
     property bool filled: true
     property string tooltipText: ""
     signal clicked()
@@ -21,10 +20,6 @@ Item {
     readonly property color surfaceContainerHigh: "#22201D"
     readonly property color surfaceContainerHover: "#2C2A26"
     readonly property color surfaceContainerLowest: "#161513"
-    readonly property color outlineVariant: "#2C2926"
-    readonly property color silverDim: "#918E88"
-    readonly property color textPrimary: "#F5F0EC"
-    readonly property color textSecondary: "#A8A29A"
 
     readonly property bool isPressed: mouseArea.pressed
     readonly property bool isHovered: mouseArea.containsMouse || (root.activeFocus && !root.mouseFocused)
@@ -74,7 +69,7 @@ Item {
             icon: root.iconName
             color: root.accented
                 ? root.recordRedHover
-                : (root.isHovered ? root.textPrimary : root.iconColor)
+                : (root.isHovered ? textPrimary : root.iconColor)
         }
     }
 

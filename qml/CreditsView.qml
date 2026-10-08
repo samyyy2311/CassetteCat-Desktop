@@ -5,6 +5,8 @@ import QtQuick.Layouts
 ColumnLayout {
     id: root
 
+    signal whatsNewRequested()
+
     Layout.fillWidth: true
     spacing: 16
 
@@ -83,6 +85,7 @@ ColumnLayout {
         Repeater {
             model: [
                 { title: "CassetteCat " + Qt.application.version, subtitle: "Made by CaffeineLabs (cassettecat.caffeinelabs.in)", icon: "info", url: "https://cassettecat.caffeinelabs.in" },
+                { title: "What's New", subtitle: "Changes in this version", icon: "list" },
                 { title: "Privacy Policy", subtitle: "What stays on your computer and what each online service receives", icon: "shield", url: "https://cassettecat.caffeinelabs.in/privacy.html" }
             ]
 
@@ -94,7 +97,7 @@ ColumnLayout {
 
                 CreditItemRow {
                     itemData: modelData
-                    onClicked: Qt.openUrlExternally(modelData.url)
+                    onClicked: modelData.url ? Qt.openUrlExternally(modelData.url) : root.whatsNewRequested()
                 }
             }
         }
@@ -114,8 +117,9 @@ ColumnLayout {
                 { title: "Cover Art Archive", subtitle: "Archival CD and vinyl cover scans (Internet Archive & MusicBrainz)", icon: "archive", preserveColor: true, url: "https://coverartarchive.org" },
                 { title: "ListenBrainz", subtitle: "Open scrobbling platform and CC0 listening data", icon: "listenbrainz", preserveColor: true, url: "https://listenbrainz.org" },
                 { title: "Libre.fm", subtitle: "Free software music scrobbling network (GNU FM)", icon: "librefm", preserveColor: true, url: "https://libre.fm" },
+                { title: "Last.fm", subtitle: "Scrobbling through the Last.fm API (last.fm)", icon: "lastfm", preserveColor: true, url: "https://www.last.fm" },
                 { title: "GitHub", subtitle: "Release update checks (github.com)", icon: "github", preserveColor: true, url: "https://github.com" }
-            ]
+            ].filter(service => service.icon !== "lastfm" || services.lastFmAvailable())
 
             delegate: ColumnLayout {
                 Layout.fillWidth: true
@@ -136,7 +140,7 @@ ColumnLayout {
     SettingCard {
         Repeater {
             model: [
-                { title: "AutoEq", subtitle: "Calibrated headphone equalizer response curves by Jaakko Pasanen (Planned)", icon: "autoeq", preserveColor: true, url: "https://github.com/jaakkopasanen/AutoEq" },
+                { title: "AutoEq", subtitle: "Headphone correction curves for the equalizer, by Jaakko Pasanen", icon: "autoeq", preserveColor: true, url: "https://github.com/jaakkopasanen/AutoEq" },
                 { title: "Qt Multimedia", subtitle: "Hardware audio playback, streaming, and audio sinks", icon: "music", preserveColor: false, url: "https://doc.qt.io/qt-6/qtmultimedia-index.html" },
                 { title: "Qt Network", subtitle: "High-performance HTTP/REST client for lyrics and data sync", icon: "globe", preserveColor: false, url: "https://doc.qt.io/qt-6/qtnetwork-index.html" },
                 { title: "TagLib", subtitle: "Audio metadata and embedded ID3/MP4/FLAC tag parser", icon: "disc", preserveColor: false, url: "https://taglib.org" },

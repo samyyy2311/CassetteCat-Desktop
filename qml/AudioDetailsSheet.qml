@@ -80,7 +80,7 @@ BottomSheet {
 
         DetailRow {
             label: "Encoding"
-            value: root.audioFormat.isLossless ? "Lossless Uncompressed" : "Lossy Compressed"
+            value: root.audioFormat.isLossless ? "Lossless" : "Lossy Compressed"
         }
     }
 }

@@ -39,6 +39,8 @@ class LibraryController final : public QAbstractListModel {
     QHash<int, QByteArray> roleNames() const override;
 
     Q_INVOKABLE void loadFolder(const QUrl &url);
+    /// The key that makes two tracks the same song, here and on the phone: title and artist, ignoring case.
+    Q_INVOKABLE static QString matchKey(const QVariantMap &track);
     Q_INVOKABLE void removeFolder(const QString &path);
     Q_INVOKABLE QString localPath(const QUrl &url) const;
     Q_INVOKABLE QString artworkFor(const QString &filePath);
@@ -52,7 +54,8 @@ class LibraryController final : public QAbstractListModel {
     /// The individual artists credited in \p artist, as the Library's Artists tab counts them.
     Q_INVOKABLE QStringList artistNames(const QString &artist) const;
     /// Appends a counted play with the current date and the time listened to the listening log.
-    Q_INVOKABLE void recordListen(const QVariantMap &track, qint64 listenedMs);
+    /// Logs \p listenedMs of listening; \p counted says whether it was a play, as opposed to a skip.
+    Q_INVOKABLE void recordListen(const QVariantMap &track, qint64 listenedMs, bool counted = true);
     /// Adds listens made on the paired phone to the listening log, marked as coming from it.
     bool appendPhoneListens(const QList<QJsonObject> &listens);
     /// Listens made on this computer after \p since, oldest first, as the phone stores them.
@@ -74,6 +77,8 @@ class LibraryController final : public QAbstractListModel {
     /// Up to \p limit available tracks most like \p seed by genre, artist and era, skipping \p excludePaths.
     Q_INVOKABLE QVariantList similarTracks(const QVariantMap &seed, const QStringList &excludePaths, int limit) const;
     Q_INVOKABLE QVariantMap catalogGroups() const;
+    /// The tracks the current filter shows, in the order shown.
+    Q_INVOKABLE QVariantList visibleTracks() const;
     Q_INVOKABLE void setLibraryFilter(const QString &query, const QString &filter, const QVariantMap &favorites,
                                       const QString &sortMetric, bool ascending, const QVariantList &excludedFolders,
                                       bool ignoreShortClips);
@@ -86,6 +91,8 @@ class LibraryController final : public QAbstractListModel {
     void changed();
     void tracksChanged();
     void visibleTracksChanged();
+    /// Listens from the phone were added to the listening log.
+    void listensChanged();
 
   private:
     QVariantMap refreshTrack(const QString &filePath);

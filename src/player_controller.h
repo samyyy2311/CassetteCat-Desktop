@@ -6,9 +6,8 @@
 #include <QUrl>
 #include <QVariantMap>
 
-class QAudioBufferOutput;
+class AudioPipeline;
 class QMediaDevices;
-class QAudioOutput;
 class QMediaPlayer;
 class QQuickWindow;
 class QTimer;
@@ -33,6 +32,8 @@ class PlayerController final : public QObject {
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
     Q_PROPERTY(QString currentLyrics READ currentLyrics NOTIFY currentLyricsChanged)
     Q_PROPERTY(QString replayGainMode READ replayGainMode WRITE setReplayGainMode NOTIFY replayGainModeChanged)
+    /// {enabled, preset, preamp, bands}: bands are ten gains in dB from 31 Hz to 16 kHz, each from -12 to 12.
+    Q_PROPERTY(QVariantMap equalizer READ equalizer NOTIFY equalizerChanged)
     /// How long the next track fades in over the end of the current one; 0 turns crossfade off.
     Q_PROPERTY(int crossfadeMs MEMBER m_crossfadeMs)
   public:
@@ -62,6 +63,9 @@ class PlayerController final : public QObject {
     QString error() const;
     /// Returns the active ReplayGain mode.
     QString replayGainMode() const;
+    QVariantMap equalizer() const {
+        return m_equalizer;
+    }
 
     Q_INVOKABLE QString getLyrics(const QString &filePath) const;
     Q_INVOKABLE void setCurrentLyrics(const QString &lyrics);
@@ -71,6 +75,8 @@ class PlayerController final : public QObject {
     Q_INVOKABLE void setVolume(float vol);
     /// Selects track, album, or disabled ReplayGain processing.
     Q_INVOKABLE void setReplayGainMode(const QString &mode);
+    /// Applies and saves equalizer \p settings; missing or out-of-range values fall back to flat.
+    Q_INVOKABLE void setEqualizer(const QVariantMap &settings);
     Q_INVOKABLE bool setAudioDevice(const QString &id);
     Q_INVOKABLE void restoreTrack(const QVariantMap &track, qint64 positionMs = 0);
     Q_INVOKABLE bool playTrack(const QVariantMap &track);
@@ -103,6 +109,7 @@ class PlayerController final : public QObject {
     void errorChanged();
     /// Announces that the ReplayGain mode changed.
     void replayGainModeChanged();
+    void equalizerChanged();
     void trackEnded();
     /// The playing track is close enough to its end for the next one to fade in over it.
     void crossfadeReady();
@@ -116,6 +123,7 @@ class PlayerController final : public QObject {
     bool loadTrack(const QVariantMap &track);
     void openDeferredSource();
     void setAudioLevel(qreal level);
+    void setPlaying(bool playing);
     /// Applies ReplayGain and the configured ceiling to the audio output.
     void applyEffectiveVolume();
     /// The base volume with ReplayGain and the configured ceiling applied.
@@ -125,9 +133,11 @@ class PlayerController final : public QObject {
     /// Ends a crossfade now: the outgoing track stops and the incoming one plays at full volume.
     void finishCrossfade();
 
-    QAudioOutput *m_audioOutput = nullptr;
+    // Both players decode into this; it mixes, equalizes and plays them on the chosen device.
+    AudioPipeline *m_pipeline = nullptr;
     QMediaDevices *m_mediaDevices = nullptr;
-    QAudioBufferOutput *m_bufferOutput = nullptr;
+    bool m_meterEnabled = false;
+    QVariantMap m_equalizer;
     QMediaPlayer *m_player = nullptr;
     StreamingController *m_streaming = nullptr;
     QVariantMap m_currentTrack;
@@ -143,15 +153,17 @@ class PlayerController final : public QObject {
     QUrl m_deferredSource;
     QString m_error;
     bool m_pauseExpected = false;
+    // Set while a playing player stops to open the next song, so the switch never shows as a pause.
+    bool m_switchingTrack = false;
     QString m_replayGainMode = QStringLiteral("off");
     float m_currentReplayGainDb = 0.0f;
     float m_baseVolume = 1.0f;
     // Crossfade plays the outgoing track on a second player while the next one fades in on the first.
     QMediaPlayer *m_fadingPlayer = nullptr;
-    QAudioOutput *m_fadingOutput = nullptr;
     QTimer *m_fadeTimer = nullptr;
     QElapsedTimer m_fadeClock;
     int m_crossfadeMs = 0;
+    int m_activeFadeMs = 0;
     bool m_crossfadeReady = false;
     float m_fadingGain = 1.0f;
     float m_fadeIn = 1.0f;

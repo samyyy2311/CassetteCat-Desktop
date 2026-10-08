@@ -593,7 +593,6 @@ Item {
                         height: 115
 
                         CategoryCard {
-                            iconName: "folder"
                             focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 16

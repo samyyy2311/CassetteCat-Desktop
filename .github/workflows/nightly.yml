@@ -20,6 +20,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         with:
@@ -31,10 +33,14 @@ jobs:
           target: desktop
           arch: win64_msvc2022_64
           modules: qtmultimedia qtquickeffectmaker
+          tools: 'tools_opensslv3_x64,qt.tools.opensslv3.win_x64'
           cache: true
       - name: Configure
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
         shell: pwsh
-        run: cmake -S . -B build/nightly -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
+        run: cmake -S . -B build/nightly -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DOPENSSL_ROOT_DIR="$env:IQTA_TOOLS/OpenSSLv3/Win_x64"
       - name: Build
         run: cmake --build build/nightly --parallel 2
       - name: Run self-check
@@ -66,6 +72,8 @@ jobs:
       QT_QPA_OFFSCREEN_NO_GLX: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install Qt
         uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
         with:
@@ -77,10 +85,14 @@ jobs:
       - name: Install AppImage tooling
         run: |
           sudo apt-get update
-          sudo apt-get install -y libpipewire-0.3-0 libsecret-1-dev rpm
+          sudo apt-get install -y libpipewire-0.3-0 libsecret-1-dev libssl-dev rpm
           curl -fsSL -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-x86_64.AppImage
+          echo "c86d6540f1df31061f02f539a2d3445f8d7f85cc3994eee1e74cd1ac97b76df0  linuxdeploy.AppImage" | sha256sum -c -
           chmod +x linuxdeploy.AppImage
       - name: Configure
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
         run: cmake -S . -B build/nightly -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCASSETTECAT_PACKAGE_VERSION=0.0.0
       - name: Build
         run: cmake --build build/nightly --parallel 2

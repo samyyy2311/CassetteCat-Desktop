@@ -49,13 +49,13 @@ Window {
     readonly property color surfaceElevated: "#252320"
     readonly property color surfacePill: "#23211F"
     readonly property color borderCard: "#2B2825"
-    property color accentColor: "#C23B30"
-    property color accentHover: "#D64337"
+    readonly property color accentColor: window.recordRed
+    readonly property color accentHover: window.recordRedHover
     readonly property color recordRed: accentColor
     readonly property color recordRedHover: accentHover
-    readonly property color textPrimary: "#F7F3EE"
-    readonly property color textSecondary: "#A8A49E"
-    readonly property color silverDim: "#918E88"
+    readonly property color textPrimary: window.textPrimary
+    readonly property color textSecondary: window.textSecondary
+    readonly property color silverDim: window.silverDim
 
     property bool alwaysOnTop: true
     property int albumArtRadius: 16
@@ -556,7 +556,6 @@ Window {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root
                             filled: false
                             iconName: player.volume <= 0.001 ? "volume-x" : (player.volume < 0.5 ? "volume-1" : "volume-2")
                             iconColor: root.textSecondary
@@ -567,7 +566,6 @@ Window {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root
                             filled: false
                             iconName: "heart"
                             readonly property bool isFav: !!(player.currentTrack && root.isFavorite(player.currentTrack.filePath))
@@ -602,7 +600,6 @@ Window {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root
                             iconName: "shuffle"
                             accented: player.shuffleEnabled
                             tooltipText: player.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
@@ -612,7 +609,6 @@ Window {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 30
-                            paletteSource: root
                             iconName: "skip-back"
                             tooltipText: "Previous"
                             onClicked: root.playPrevious()
@@ -621,7 +617,6 @@ Window {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 36
-                            paletteSource: root
                             iconName: (player.isPlaying || root.playerVisuallyPlaying) ? "pause" : "play"
                             accented: true
                             tooltipText: (player.isPlaying || root.playerVisuallyPlaying) ? "Pause" : "Play"
@@ -631,7 +626,6 @@ Window {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 30
-                            paletteSource: root
                             iconName: "skip-forward"
                             tooltipText: "Next"
                             onClicked: root.playNext()
@@ -640,7 +634,6 @@ Window {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root
                             iconName: root.repeatMode === 2 ? "repeat-1" : "repeat"
                             accented: root.repeatMode > 0
                             tooltipText: root.repeatMode === 2 ? "Repeat Track" : (root.repeatMode === 1 ? "Repeat All" : "Repeat Off")
@@ -657,7 +650,6 @@ Window {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root
                             filled: false
                             iconName: "quote"
                             iconColor: root.mode === "lyrics" ? root.recordRed : root.textSecondary
@@ -668,7 +660,6 @@ Window {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root
                             filled: false
                             iconName: "list"
                             iconColor: root.mode === "queue" ? root.recordRed : root.textSecondary

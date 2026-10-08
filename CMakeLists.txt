@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 3.24)
-project(CassetteCat VERSION 0.8.1 LANGUAGES CXX)
+project(CassetteCat VERSION 0.9.0 LANGUAGES CXX)
 
 set(CASSETTECAT_PACKAGE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version used by installers and Linux packages")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 6.10 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Concurrent QuickEffects Network Widgets)
+# Makes the phone remote's TLS certificate.
+find_package(OpenSSL 3 REQUIRED COMPONENTS Crypto)
 if(UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(LIBSECRET REQUIRED IMPORTED_TARGET libsecret-1)
@@ -22,6 +24,11 @@ endif()
 if(UNIX AND NOT APPLE)
     list(APPEND CassetteCat_PLATFORM_SOURCES src/mpris_adaptor.h src/mpris_adaptor.cpp)
 endif()
+if(APPLE)
+    enable_language(OBJCXX)
+    list(APPEND CassetteCat_PLATFORM_SOURCES src/macos_now_playing.h src/macos_now_playing.mm)
+    set_source_files_properties(src/macos_now_playing.mm PROPERTIES COMPILE_OPTIONS -fobjc-arc)
+endif()
 
 qt_add_executable(CassetteCat
     src/main.cpp
@@ -37,6 +44,8 @@ qt_add_executable(CassetteCat
     src/library_scanner.cpp
     src/library_controller.h
     src/library_controller.cpp
+    src/audio_pipeline.h
+    src/audio_pipeline.cpp
     src/player_controller.h
     src/player_controller.cpp
     src/services_controller.h
@@ -51,6 +60,7 @@ qt_add_executable(CassetteCat
     src/discord_presence.cpp
     src/remote_control.h
     src/remote_control.cpp
+    src/remote_tls.cpp
     src/streaming.h
     src/streaming.cpp
     src/streaming_library.cpp
@@ -64,6 +74,8 @@ qt_add_executable(CassetteCat
     src/mpris_controller.cpp
     src/tray_controller.h
     src/tray_controller.cpp
+    src/window_frame.h
+    src/window_frame.cpp
     src/global_shortcut_controller.h
     src/global_shortcut_controller.cpp
     src/network_requests.h
@@ -109,6 +121,7 @@ qt_add_qml_module(CassetteCat
         qml/SongRow.qml
         qml/TrackTitles.js
         qml/LyricsText.js
+        qml/AutoEqProfiles.js
         qml/SongCard.qml
         qml/ArtistCard.qml
         qml/AlbumCard.qml
@@ -134,10 +147,14 @@ qt_add_qml_module(CassetteCat
         qml/JellyfinPage.qml
         qml/SubsonicPage.qml
         qml/NavItem.qml
+        qml/OverlineLabel.qml
         qml/SectionLabel.qml
         qml/LibraryRefineSheet.qml
         qml/BottomSheet.qml
         qml/AudioDetailsSheet.qml
+        qml/PhoneRemoteSheet.qml
+        qml/SetupSheet.qml
+        qml/WhatsNewSheet.qml
         qml/TrackActionSheet.qml
         qml/RefineTextInput.qml
         qml/EmptyState.qml
@@ -150,6 +167,7 @@ qt_add_qml_module(CassetteCat
         qml/SettingSegmentedControl.qml
         qml/SettingChoiceGroup.qml
         qml/SettingButton.qml
+        qml/AppDialog.qml
         qml/ConfirmPopup.qml
         qml/FilterChip.qml
         qml/PageTabs.qml
@@ -160,12 +178,14 @@ qt_add_qml_module(CassetteCat
         qml/SettingsLibrarySection.qml
         qml/SettingsAppearanceSection.qml
         qml/SettingsPlaybackSection.qml
+        qml/SettingsEqualizerCard.qml
         qml/SettingsShortcutsSection.qml
         qml/SettingsDesktopSection.qml
         qml/SettingsLyricsSection.qml
         qml/SettingsScrobbleSection.qml
         qml/CoverSearchPopup.qml
         qml/SettingsNetworkSection.qml
+        qml/SettingsPhoneRemoteSection.qml
         qml/SettingsBackupSection.qml
         qml/ShortcutCaptureField.qml
         qml/ShortcutDefinitions.qml
@@ -179,6 +199,7 @@ qt_add_qml_module(CassetteCat
         qml/MiniPlayerLyricsView.qml
         qml/MiniPlayerVolumePill.qml
     RESOURCES
+        CHANGELOG.md
         qml/icons/external-link.svg
         qml/icons/check.svg
         qml/icons/pencil.svg
@@ -187,6 +208,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/shield.svg
         qml/icons/refresh-cw.svg
         qml/icons/smartphone.svg
+        qml/icons/laptop.svg
         qml/icons/zap.svg
         qml/icons/compass.svg
         qml/icons/sliders-horizontal.svg
@@ -215,6 +237,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/volume-x.svg
         qml/icons/heart.svg
         qml/icons/disc.svg
+        qml/icons/headphones.svg
         qml/icons/mic.svg
         qml/icons/audio-lines.svg
         qml/icons/repeat.svg
@@ -254,6 +277,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/archive.svg
         qml/icons/listenbrainz.svg
         qml/icons/librefm.svg
+        qml/icons/lastfm.svg
         qml/icons/github.svg
         qml/icons/autoeq.svg
         qml/icons/ibm.svg
@@ -298,7 +322,7 @@ include(FetchContent)
 FetchContent_Declare(
     taglib
     GIT_REPOSITORY https://github.com/taglib/taglib.git
-    GIT_TAG e3de03501ff66221d1f1f971022b248d5b38ba06 # v2.0.2
+    GIT_TAG deadc2990767dfbda0701e0ab35fdeea653db08f # v2.3.2
 )
 if(CASSETTECAT_TAGLIB_SOURCE_DIR)
     set(FETCHCONTENT_SOURCE_DIR_TAGLIB "${CASSETTECAT_TAGLIB_SOURCE_DIR}")
@@ -320,7 +344,7 @@ if(TARGET tag)
     set_target_properties(tag PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 endif()
 
-target_link_libraries(CassetteCat PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent Qt6::QuickEffects Qt6::Network Qt6::Widgets tag)
+target_link_libraries(CassetteCat PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent Qt6::QuickEffects Qt6::Network Qt6::Widgets tag OpenSSL::Crypto)
 if(UNIX AND NOT APPLE)
     target_link_libraries(CassetteCat PRIVATE PkgConfig::LIBSECRET Qt6::DBus)
     target_compile_definitions(CassetteCat PRIVATE CASSETTECAT_HAVE_LIBSECRET=1 CASSETTECAT_HAVE_DBUS=1)
@@ -361,11 +385,24 @@ target_include_directories(CassetteCat PRIVATE
     ${taglib_SOURCE_DIR}/taglib/mp4
 )
 target_compile_definitions(CassetteCat PRIVATE TAGLIB_STATIC CASSETTECAT_VERSION="${PROJECT_VERSION}")
+# Last.fm needs the project's own API account, so builds without LASTFM_API_KEY and LASTFM_API_SECRET leave it out.
+if(NOT "$ENV{LASTFM_API_KEY}" STREQUAL "" AND NOT "$ENV{LASTFM_API_SECRET}" STREQUAL "")
+    target_compile_definitions(CassetteCat PRIVATE CASSETTECAT_LASTFM_API_KEY="$ENV{LASTFM_API_KEY}"
+                                                   CASSETTECAT_LASTFM_API_SECRET="$ENV{LASTFM_API_SECRET}")
+endif()
 
 set_target_properties(CassetteCat PROPERTIES
     WIN32_EXECUTABLE TRUE
     MACOSX_BUNDLE TRUE
 )
+# Hardening the toolchains leave off by default: Control Flow Guard on Windows and immediate binding with a
+# read-only relocation table on Linux. PIE, stack protection and fortified calls are already on by default there.
+if(MSVC)
+    target_compile_options(CassetteCat PRIVATE /guard:cf)
+    target_link_options(CassetteCat PRIVATE /guard:cf)
+elseif(UNIX AND NOT APPLE)
+    target_link_options(CassetteCat PRIVATE -Wl,-z,relro,-z,now)
+endif()
 if(UNIX AND NOT APPLE)
     set_target_properties(CassetteCat PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
@@ -387,6 +424,19 @@ qt_generate_deploy_qml_app_script(
 )
 
 install(SCRIPT ${deploy_script} COMPONENT runtime)
+
+# OpenSSL comes as a DLL on Windows, so it ships next to the app.
+if(WIN32)
+    get_filename_component(opensslRoot "${OPENSSL_INCLUDE_DIR}" DIRECTORY)
+    file(GLOB opensslCryptoDll "${opensslRoot}/bin/libcrypto-3*.dll")
+    if(NOT opensslCryptoDll)
+        message(FATAL_ERROR "No libcrypto DLL in ${opensslRoot}/bin")
+    endif()
+    add_custom_command(TARGET CassetteCat POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${opensslCryptoDll}" "$<TARGET_FILE_DIR:CassetteCat>"
+    )
+    install(FILES ${opensslCryptoDll} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT runtime)
+endif()
 
 if(UNIX AND NOT APPLE)
     install(FILES
@@ -412,7 +462,8 @@ if(UNIX AND NOT APPLE)
 endif()
 
 if(APPLE)
-    target_link_libraries(CassetteCat PRIVATE "-framework Security" "-framework CoreFoundation")
+    target_link_libraries(CassetteCat PRIVATE "-framework Security" "-framework CoreFoundation" "-framework AppKit"
+        "-framework MediaPlayer")
     set(macIcon "${CMAKE_CURRENT_SOURCE_DIR}/assets/cassettecat.icns")
     set_source_files_properties("${macIcon}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     target_sources(CassetteCat PRIVATE "${macIcon}")

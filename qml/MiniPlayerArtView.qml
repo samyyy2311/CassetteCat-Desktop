@@ -355,7 +355,6 @@ Item {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root.miniPlayer
                             filled: false
                             iconName: root.miniPlayer.playerController.volume <= 0.001 ? "volume-x" : (root.miniPlayer.playerController.volume < 0.5 ? "volume-1" : "volume-2")
                             iconColor: root.miniPlayer.textSecondary
@@ -366,7 +365,6 @@ Item {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root.miniPlayer
                             filled: false
                             iconName: "heart"
                             readonly property bool isFav: !!(root.miniPlayer.playerController.currentTrack && root.miniPlayer.isFavorite(root.miniPlayer.playerController.currentTrack.filePath))
@@ -400,7 +398,6 @@ Item {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root.miniPlayer
                             iconName: "shuffle"
                             accented: root.miniPlayer.playerController.shuffleEnabled
                             tooltipText: root.miniPlayer.playerController.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
@@ -410,7 +407,6 @@ Item {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 30
-                            paletteSource: root.miniPlayer
                             iconName: "skip-back"
                             tooltipText: "Previous"
                             onClicked: root.miniPlayer.playPrevious()
@@ -419,7 +415,6 @@ Item {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 36
-                            paletteSource: root.miniPlayer
                             iconName: (root.miniPlayer.playerController.isPlaying || root.miniPlayer.playerVisuallyPlaying) ? "pause" : "play"
                             accented: true
                             tooltipText: (root.miniPlayer.playerController.isPlaying || root.miniPlayer.playerVisuallyPlaying) ? "Pause" : "Play"
@@ -429,7 +424,6 @@ Item {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 30
-                            paletteSource: root.miniPlayer
                             iconName: "skip-forward"
                             tooltipText: "Next"
                             onClicked: root.miniPlayer.playNext()
@@ -438,7 +432,6 @@ Item {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root.miniPlayer
                             iconName: root.miniPlayer.repeatMode === 2 ? "repeat-1" : "repeat"
                             accented: root.miniPlayer.repeatMode > 0
                             tooltipText: root.miniPlayer.repeatMode === 2 ? "Repeat Track" : (root.miniPlayer.repeatMode === 1 ? "Repeat All" : "Repeat Off")
@@ -454,7 +447,6 @@ Item {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root.miniPlayer
                             filled: false
                             iconName: "quote"
                             iconColor: root.miniPlayer.mode === "lyrics" ? root.miniPlayer.recordRed : root.miniPlayer.textSecondary
@@ -465,7 +457,6 @@ Item {
                         TransportButton {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 28
-                            paletteSource: root.miniPlayer
                             filled: false
                             iconName: "list"
                             iconColor: root.miniPlayer.mode === "queue" ? root.miniPlayer.recordRed : root.miniPlayer.textSecondary

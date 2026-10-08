@@ -4,6 +4,32 @@ All notable changes to CassetteCat Desktop are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.9.0]
+
+### Added
+* Your phone can browse this computer's music and play it, on the computer or streamed to the phone.
+* The player bar shows what your phone is playing and controls it. Play Here moves the song to the computer, and music plays on one device at a time.
+* Phone Remote has its own page in Settings, with the pairing code and a list of paired phones you can remove.
+* One Listening Record with your phone: plays count the same way on both, songs you skip still add listening time, and a Sync button brings them together.
+* A ten-band equalizer with AutoEq correction for your headphones.
+* Last.fm scrobbling, alongside ListenBrainz and Libre.fm.
+* Search shows matching artists and albums, remembers your recent searches, and can play or shuffle every result.
+* A short setup when you first open the app, to choose your music folder and colours.
+* Windows: Snap Layouts on the maximize button, rounded window corners, and play controls in the taskbar preview.
+* macOS: media keys and Now Playing in Control Center.
+* The Windows installer can start CassetteCat when you sign in, and asks before deleting your settings and Listening Record on uninstall.
+
+### Changed
+* Songs play back to back with no gap, and changing songs fades briefly instead of cutting.
+* Buttons and choices look the same throughout the app, and the player bar is calmer.
+* The Listening Record names months Jan, Feb, Mar instead of single letters.
+* Lossless audio is called Lossless rather than Lossless Uncompressed.
+
+### Fixed
+* The app no longer uses CPU while idle because of hidden loading bars.
+
+---
+
 ## [0.8.1] - 2026-10-08
 
 ### Added

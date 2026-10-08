@@ -11,18 +11,11 @@ Item {
     implicitWidth: 160
     implicitHeight: 30
 
-    property var paletteSource: null
-    property color accentColor: paletteSource ? paletteSource.recordRed : "#C23B30"
-    property color accentHover: paletteSource ? paletteSource.recordRedHover : "#D14337"
+    property color accentColor: window.recordRed
+    property color accentHover: window.recordRedHover
     readonly property color recordRed: accentColor
     readonly property color recordRedHover: accentHover
-    readonly property color surfaceElevated: "#2A2825"
     readonly property color surfaceTooltip: "#1A1816"
-    readonly property color borderVariant: "#2E2B28"
-    readonly property color silver: "#C4C4C0"
-    readonly property color silverDim: "#918E88"
-    readonly property color textPrimary: "#F5F0EC"
-    readonly property color textSecondary: "#A8A29A"
     readonly property string monoFont: (typeof monoFontFamily !== "undefined" && monoFontFamily.length > 0) ? monoFontFamily : "IBM Plex Mono"
 
     property real lastNonZeroVolume: 0.8
@@ -58,7 +51,7 @@ Item {
                 icon: root.iconForVolume(root.volume)
                 color: iconMouse.containsMouse
                     ? root.recordRedHover
-                    : (root.volume <= 0.001 ? root.recordRed : (volTrackMouse.containsMouse ? root.textPrimary : root.silverDim))
+                    : (root.volume <= 0.001 ? root.recordRed : (volTrackMouse.containsMouse ? textPrimary : silverDim))
             }
 
             MouseArea {
@@ -88,9 +81,9 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 height: (volTrackMouse.containsMouse || root.isDragging) ? 5 : 3
                 radius: height / 2
-                color: root.surfaceElevated
+                color: surfaceElevated
                 border.width: 1
-                border.color: root.borderVariant
+                border.color: borderVariant
 
                 Behavior on height {
                     NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
@@ -140,7 +133,7 @@ Item {
                     id: volTooltipText
                     anchors.centerIn: parent
                     text: Math.round(Math.max(0.0, Math.min(1.0, volTrackMouse.mouseX / Math.max(1, sliderContainer.width))) * 100) + "%"
-                    color: root.textPrimary
+                    color: textPrimary
                     font.family: root.monoFont
                     font.pixelSize: 9
                     font.weight: Font.Bold
@@ -190,7 +183,7 @@ Item {
             Layout.preferredWidth: root.showPercentage ? 34 : 0
             visible: root.showPercentage
             text: Math.round(root.volume * 100) + "%"
-            color: (volTrackMouse.containsMouse || root.isDragging || pctMouse.containsMouse) ? root.textPrimary : root.silverDim
+            color: (volTrackMouse.containsMouse || root.isDragging || pctMouse.containsMouse) ? textPrimary : silverDim
             font.family: root.monoFont
             font.pixelSize: 11
             font.weight: Font.Medium

@@ -34,6 +34,12 @@ Item {
         return result
     }
 
+    // Listens synced from the phone show up at once.
+    Connections {
+        target: library
+        function onListensChanged() { root.refreshRecap() }
+    }
+
     function refreshRecap() {
         const years = toArray(library.listeningYears())
         const currentYear = new Date().getFullYear()
@@ -441,6 +447,19 @@ Item {
                         if (tracksToSave.length === 0) return
                         root.appWindow.createPlaylist("Listening Record", tracksToSave)
                         root.appWindow.playlistStatus = "Listening Record playlist saved"
+                    }
+                }
+
+                PressDepthIconButton {
+                    visible: phoneRemote.enabled
+                    boxSize: 34
+                    iconSize: 16
+                    iconName: "refresh-cw"
+                    tint: root.appWindow.textPrimary
+                    tooltipText: "Sync with your phone"
+                    onClicked: {
+                        phoneRemote.requestSync()
+                        root.appWindow.playlistStatus = "Your phone will sync the next time it connects"
                     }
                 }
 
@@ -1285,7 +1304,7 @@ Item {
                                             id: monthLabel
                                             anchors.bottom: parent.bottom
                                             anchors.horizontalCenter: parent.horizontalCenter
-                                            text: Qt.locale().standaloneMonthName(monthBar.index, Locale.NarrowFormat)
+                                            text: Qt.locale().standaloneMonthName(monthBar.index, Locale.ShortFormat)
                                             color: monthBar.selected ? root.appWindow.textPrimary : root.appWindow.silverDim
                                             font.family: root.appWindow.bodyFont
                                             font.pixelSize: 12
@@ -1411,6 +1430,7 @@ Item {
         message: "This will reset all your play counts, top statistics, and playback history. Your music library files and playlists will not be affected."
         iconName: "rotate-ccw"
         confirmText: "Clear Record"
+        destructive: true
         onConfirmed: root.appWindow.clearListeningRecord()
     }
 }

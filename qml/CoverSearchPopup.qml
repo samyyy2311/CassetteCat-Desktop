@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Popup {
+AppDialog {
     id: root
 
     property string targetAlbum: ""
@@ -12,26 +12,9 @@ Popup {
     property bool applyingCover: false
     property var searchResults: []
 
-    parent: Overlay.overlay
-    modal: true
-    focus: true
-    x: Math.round((parent.width - width) / 2)
-    y: Math.round((parent.height - height) / 2)
-    width: Math.min(parent.width - 64, 680)
+    maxWidth: 680
     height: Math.min(parent.height - 60, 600)
     padding: 0
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-    Overlay.modal: Rectangle {
-        color: "#B8000000"
-    }
-
-    background: Rectangle {
-        radius: 14
-        color: surfaceCard
-        border.width: 1
-        border.color: borderSubtle
-    }
 
     function openFor(album, artist, filePath) {
         targetAlbum = album || ""

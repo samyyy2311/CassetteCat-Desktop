@@ -47,6 +47,13 @@ bool ServicesController::serviceEnabled(const QSettings &settings, const QString
 }
 
 bool ServicesController::selfCheck() {
+    const QStringList notes = releaseNotesFrom(
+        QStringLiteral("## [1.1.0]\n### Added\n* **Lyrics**: synced.\n* Faster.\n\n---\n\n## [1.0.0]\n* Old.\n"),
+        QStringLiteral("1.1.0"));
+    if (notes != QStringList{QStringLiteral("Lyrics: synced."), QStringLiteral("Faster.")}) {
+        qWarning() << "Services self-check failed: release notes";
+        return false;
+    }
     class PendingReply final : public QNetworkReply {
       public:
         void abort() override {
@@ -225,6 +232,28 @@ int ServicesController::compareVersions(const QString &v1, const QString &v2) {
             return -1;
     }
     return 0;
+}
+
+QStringList ServicesController::releaseNotes(const QString &version) const {
+    QFile changelog(QStringLiteral(":/qt/qml/CassetteCat/CHANGELOG.md"));
+    if (!changelog.open(QIODevice::ReadOnly | QIODevice::Text))
+        return {};
+    return releaseNotesFrom(QString::fromUtf8(changelog.readAll()), version);
+}
+
+QStringList ServicesController::releaseNotesFrom(const QString &changelog, const QString &version) {
+    QStringList notes;
+    bool inSection = false;
+    for (const QString &line : changelog.split('\n')) {
+        if (line.startsWith(QStringLiteral("## ["))) {
+            if (inSection)
+                break;
+            inSection = line.startsWith(QStringLiteral("## [") + version + ']');
+        } else if (inSection && line.startsWith(QStringLiteral("* "))) {
+            notes.append(line.mid(2).remove(QStringLiteral("**")).trimmed());
+        }
+    }
+    return notes;
 }
 
 void ServicesController::checkForUpdates(bool manual) {

@@ -24,6 +24,8 @@ jobs:
       QT_QPA_OFFSCREEN_NO_GLX: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@1c5b675653bb5c22dbe9b12b556ec555138e09fd # v4.38.1
@@ -32,7 +34,7 @@ jobs:
           build-mode: manual
 
       - name: Install Linux dependencies
-        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev libssl-dev
 
       - name: Install Qt
         uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0

@@ -54,7 +54,7 @@ Item {
             MouseArea {
                 id: artistMouseArea
                 anchors.fill: parent
-                enabled: !!root.playerController.currentTrack.filePath
+                enabled: !!root.playerController.currentTrack.filePath && !root.appWindow.phoneInDock
                 hoverEnabled: true
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: root.appWindow.openTrackActionSheet(root.playerController.currentTrack)
@@ -113,7 +113,6 @@ Item {
         position: root.playerController.position
         duration: root.playerController.duration
         showRemainingTime: root.appWindow.showRemainingTime
-        paletteSource: root.appWindow
         onSeekRequested: positionMs => root.playerController.seek(positionMs)
         onRemainingToggled: value => root.remainingTimeToggled(value)
     }
@@ -133,8 +132,8 @@ Item {
 
             TransportButton {
                 buttonSize: 42
-                paletteSource: root.appWindow
                 iconName: "shuffle"
+                visible: !root.appWindow.phoneInDock
                 accented: root.playerController.shuffleEnabled
                 tooltipText: root.playerController.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
                 onClicked: root.appWindow.toggleQueueShuffle()
@@ -142,36 +141,33 @@ Item {
 
             TransportButton {
                 buttonSize: 52
-                paletteSource: root.appWindow
                 iconName: "skip-back"
                 iconColor: root.appWindow.textPrimary
                 tooltipText: "Previous"
-                onClicked: root.appWindow.playPrevious()
+                onClicked: root.appWindow.shownPrevious()
             }
 
             TransportButton {
                 buttonSize: 72
-                paletteSource: root.appWindow
-                iconName: root.appWindow.playerVisuallyPlaying ? "pause" : "play"
+                iconName: root.appWindow.shownPlaying ? "pause" : "play"
                 accented: true
                 iconColor: root.appWindow.recordRed
-                tooltipText: root.appWindow.playerVisuallyPlaying ? "Pause" : "Play"
+                tooltipText: root.appWindow.shownPlaying ? "Pause" : "Play"
                 onClicked: root.playerController.togglePlay()
             }
 
             TransportButton {
                 buttonSize: 52
-                paletteSource: root.appWindow
                 iconName: "skip-forward"
                 iconColor: root.appWindow.textPrimary
                 tooltipText: "Next"
-                onClicked: root.appWindow.playNext()
+                onClicked: root.appWindow.shownNext()
             }
 
             TransportButton {
                 buttonSize: 42
-                paletteSource: root.appWindow
                 iconName: root.appWindow.repeatMode === 2 ? "repeat-1" : "repeat"
+                visible: !root.appWindow.phoneInDock
                 accented: root.appWindow.repeatMode > 0
                 iconColor: root.appWindow.repeatMode > 0 ? root.appWindow.recordRed : root.appWindow.textPrimary
                 tooltipText: root.appWindow.repeatMode === 2 ? "Repeat Track" : (root.appWindow.repeatMode === 1 ? "Repeat All" : "Repeat Off")
@@ -193,10 +189,9 @@ Item {
 
         VolumeControl {
             Layout.preferredWidth: 200
-            paletteSource: root.appWindow
             volume: root.playerController.volume
             onVolumeAdjusted: value => {
-                if (root.appWindow && root.appWindow.setPlayerVolume) root.appWindow.setPlayerVolume(value)
+                if (root.appWindow && root.appWindow.setShownVolume) root.appWindow.setShownVolume(value)
                 else root.playerController.setVolume(value)
             }
         }

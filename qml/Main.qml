@@ -52,6 +52,8 @@ ApplicationWindow {
     readonly property color surfaceElevated: "#282623"
     readonly property color surfaceInput: "#1A1917"
     readonly property color surfaceTag: "#22201E"
+    // Behind a selected chip or a main action button, which also get an accent border and accent text.
+    readonly property color surfaceSelected: "#262320"
     readonly property color silver: "#C4C4C0"
     readonly property color silverDim: "#918E88"
     readonly property color textPrimary: "#F5F0EC"
@@ -127,6 +129,71 @@ ApplicationWindow {
     property int queueRevision: 0
     property bool playbackPending: false
     readonly property bool playerVisuallyPlaying: player.isPlaying || playbackPending
+    // While the paired phone plays and this computer doesn't, the dock shows and controls the phone, like a
+    // Spotify Connect device.
+    readonly property var phonePlayback: phoneRemote.phonePlayback
+    // Set when the phone starts playing while this computer is idle, and cleared once this computer plays again, so
+    // a paused phone or the moment between two songs here never takes over the dock.
+    property bool phoneOwnsDock: false
+    readonly property bool phoneInDock: phoneOwnsDock && phonePlayback.title !== undefined && !playerVisuallyPlaying
+
+    function updatePhoneOwnership() {
+        if (playerVisuallyPlaying || phonePlayback.title === undefined)
+            phoneOwnsDock = false
+        else if (phonePlayback.isPlaying)
+            phoneOwnsDock = true
+    }
+    onPlayerVisuallyPlayingChanged: updatePhoneOwnership()
+    onPhonePlaybackChanged: updatePhoneOwnership()
+
+    // The dock and Now Playing buttons act on whichever player they show; shortcuts, media keys and
+    // automatic advance always act on this computer.
+    function shownPrevious() {
+        if (phoneInDock) phoneRemote.sendToPhone("previous")
+        else playPrevious()
+    }
+    function shownNext() {
+        if (phoneInDock) phoneRemote.sendToPhone("next")
+        else playNext()
+    }
+    function setShownVolume(value) {
+        if (phoneInDock) phonePlayer.setVolume(value)
+        else setPlayerVolume(value)
+    }
+    property double phoneClock: Date.now()
+    readonly property int phonePositionMs: phoneInDock
+        ? Math.min(phonePlayback.durationMs, phonePlayback.positionMs + (phonePlayback.isPlaying ? Math.max(0, phoneClock - phonePlayback.updatedAt) : 0))
+        : 0
+
+    // The phone as a player, so the dock and Now Playing show it the way they show this computer's player.
+    QtObject {
+        id: phonePlayer
+        readonly property var currentTrack: ({
+            title: phonePlayback.title,
+            artist: phonePlayback.artist,
+            artworkUrl: phonePlayback.artwork,
+            filePath: phonePlayback.filePath
+        })
+        readonly property int position: phonePositionMs
+        readonly property int duration: phonePlayback.durationMs || 0
+        readonly property real volume: Math.max(0, phonePlayback.volumePercent) / 100
+        readonly property bool shuffleEnabled: false
+        readonly property var audioFormat: ({})
+        function seek(positionMs) { phoneRemote.sendToPhone("seek:" + Math.round(positionMs)) }
+        function togglePlay() { phoneRemote.sendToPhone(phonePlayback.isPlaying ? "pause" : "play") }
+        function setVolume(value) { phoneRemote.sendToPhone("volume:" + Math.round(value * 100)) }
+    }
+    readonly property var shownPlayer: phoneInDock ? phonePlayer : player
+    readonly property bool shownPlaying: phoneInDock ? !!phonePlayback.isPlaying : playerVisuallyPlaying
+    onPhoneInDockChanged: if (phoneInDock && nowPlayingMode !== "controls") nowPlayingMode = "controls"
+
+    Timer {
+        interval: 500
+        repeat: true
+        running: phoneInDock && phonePlayback.isPlaying
+        triggeredOnStart: true
+        onTriggered: phoneClock = Date.now()
+    }
 
     property var miniPlayerWindow: miniPlayerLoader.item
     readonly property bool miniPlayerMode: miniPlayerWindow ? miniPlayerWindow.visible : false
@@ -179,6 +246,9 @@ ApplicationWindow {
     property bool scrobbleLibreFmEnabled: false
     property string scrobbleLibreFmUser: ""
     property bool scrobbleLibreFmConnected: false
+    property bool scrobbleLastFmEnabled: false
+    property string scrobbleLastFmUser: ""
+    property bool scrobbleLastFmConnected: false
     property bool lastTrackRestored: false
     property bool playerStateDirty: false
     property bool jellyfinConnecting: false
@@ -406,14 +476,20 @@ ApplicationWindow {
                 appSettings.setValue("scrobble/listenbrainz_enabled", true)
             }
         }
-        function onLibreFmAuthFinished(success, userName, sessionKey, error) {
-            if (success) {
+        function onScrobbleAccountAuthFinished(service, success, userName, error) {
+            if (!success)
+                return
+            if (service === "lastfm") {
+                window.scrobbleLastFmUser = userName
+                window.scrobbleLastFmConnected = true
+                window.scrobbleLastFmEnabled = true
+            } else {
                 window.scrobbleLibreFmUser = userName
                 window.scrobbleLibreFmConnected = true
                 window.scrobbleLibreFmEnabled = true
-                appSettings.setValue("scrobble/librefm_user", userName)
-                appSettings.setValue("scrobble/librefm_enabled", true)
             }
+            appSettings.setValue("scrobble/" + service + "_user", userName)
+            appSettings.setValue("scrobble/" + service + "_enabled", true)
         }
         function onCoverApplied(album, artist, artworkPath, filePath) {
             library.setAlbumArtwork(album, artist, artworkPath)
@@ -497,10 +573,8 @@ ApplicationWindow {
         if (savedW > 400) window.width = savedW
         if (savedH > 300) window.height = savedH
 
-        const isMaximized = appSettings.value("window/maximized", false)
-        if (isMaximized) {
+        if (wasMaximized)
             window.showMaximized()
-        }
 
         page = appSettings.value("ui/page", "home")
         homeScrollPosition = appSettings.value("ui/homeScrollPosition", 0)
@@ -592,17 +666,33 @@ ApplicationWindow {
         svcDiscord = appSettings.value("services/discord", false)
         svcPhoneRemote = appSettings.value("services/phoneRemote", true)
         phoneRemote.code = appSettings.value("services/phoneRemoteCode", "")
+        try {
+            phoneRemote.pairedPhones = JSON.parse(appSettings.value("services/phoneRemotePhones", "[]"))
+        } catch (e) {
+            phoneRemote.pairedPhones = []
+        }
         scrobbleListenBrainzEnabled = appSettings.value("scrobble/listenbrainz_enabled", false)
         scrobbleListenBrainzUser = appSettings.value("scrobble/listenbrainz_user", "")
         scrobbleListenBrainzConnected = services.hasListenBrainzSession()
         scrobbleLibreFmEnabled = appSettings.value("scrobble/librefm_enabled", false)
         scrobbleLibreFmUser = appSettings.value("scrobble/librefm_user", "")
-        scrobbleLibreFmConnected = services.hasLibreFmSession()
+        scrobbleLibreFmConnected = services.hasScrobbleSession("librefm")
+        scrobbleLastFmEnabled = appSettings.value("scrobble/lastfm_enabled", false)
+        scrobbleLastFmUser = appSettings.value("scrobble/lastfm_user", "")
+        scrobbleLastFmConnected = services.hasScrobbleSession("lastfm")
 
         if (defaultLaunchPage && defaultLaunchPage !== "last") {
             page = defaultLaunchPage
         } else {
             page = appSettings.value("ui/page", "home")
+        }
+        if (!appSettings.value("ui/setupDone", false) && library.folders.length === 0)
+            Qt.callLater(setupSheet.open)
+        // After an update, what changed is shown once; a first run starts with setup instead.
+        if (appSettings.value("ui/lastSeenVersion", "") !== Qt.application.version) {
+            if (library.folders.length > 0 && whatsNewSheet.notes.length > 0)
+                Qt.callLater(whatsNewSheet.open)
+            appSettings.setValue("ui/lastSeenVersion", Qt.application.version)
         }
 
         songSortMetric = appSettings.value("sort/songMetric", "title")
@@ -664,7 +754,9 @@ ApplicationWindow {
         if (page === "radio") Qt.callLater(refreshRadio)
         if (!startMinimizedToTray) {
             Qt.callLater(function() {
-                if (!isMaximized) {
+                if (wasMaximized) {
+                    window.showMaximized()
+                } else {
                     window.showNormal()
                     const savedX = appSettings.value("window/x", -1)
                     const savedY = appSettings.value("window/y", -1)
@@ -1113,9 +1205,9 @@ ApplicationWindow {
 
     function finishHistoryTracking() {
         pauseHistoryTracking()
-        // Counted song plays are logged with their date and listening time for the yearly recap.
-        if (historyRecordedForTrack && historyTrackedTrack && historyTrackedTrack.format !== "STREAM")
-            library.recordListen(historyTrackedTrack, historyAccumulatedMs)
+        // Every listen is logged for the Listening Record's time, marked as a play once it counted as one.
+        if (historyTrackedTrack && historyTrackedTrack.format !== "STREAM")
+            library.recordListen(historyTrackedTrack, historyAccumulatedMs, historyRecordedForTrack)
         historyTrackedTrack = null
     }
 
@@ -1347,6 +1439,7 @@ ApplicationWindow {
     onSvcPhoneRemoteChanged: saveSetting("services/phoneRemote", svcPhoneRemote)
     onScrobbleListenBrainzEnabledChanged: saveSetting("scrobble/listenbrainz_enabled", scrobbleListenBrainzEnabled)
     onScrobbleLibreFmEnabledChanged: saveSetting("scrobble/librefm_enabled", scrobbleLibreFmEnabled)
+    onScrobbleLastFmEnabledChanged: saveSetting("scrobble/lastfm_enabled", scrobbleLastFmEnabled)
     onLyricsSyncOffsetMsChanged: if (settingsInitialized) {
         if (player.currentTrack && player.currentTrack.filePath) appSettings.setValue(lyricsSyncKey(player.currentTrack), lyricsSyncOffsetMs)
         parsedLyrics = parseLrc(player.currentLyrics)
@@ -1443,11 +1536,27 @@ ApplicationWindow {
         }
     }
 
+    // Hidden or minimized says nothing about the size to come back to, so only these two states are remembered.
+    property bool wasMaximized: appSettings.value("window/maximized", false) === true
+        || appSettings.value("window/maximized", false) === "true"
+
+    /// Shows the window as it was before it was minimized or hidden in the tray.
+    function restoreWindow() {
+        if (wasMaximized)
+            window.showMaximized()
+        else
+            window.showNormal()
+        window.raise()
+        window.requestActivate()
+    }
+
     onVisibilityChanged: {
         if (window.visibility === Window.Hidden || window.visibility === Window.Minimized)
             window.releaseResources()
-        if (settingsInitialized) {
+        // The window shows as Windowed while loading, before startup applies the saved state.
+        if (settingsInitialized && (window.visibility === Window.Windowed || window.visibility === Window.Maximized)) {
             const isMax = (window.visibility === Window.Maximized)
+            wasMaximized = isMax
             appSettings.setValue("window/maximized", isMax)
             if (!isMax && window.width > 400 && window.height > 300) {
                 appSettings.setValue("window/width", window.width)
@@ -1491,7 +1600,7 @@ ApplicationWindow {
             if (window.x >= 0) appSettings.setValue("window/x", window.x)
             if (window.y >= 0) appSettings.setValue("window/y", window.y)
         }
-        appSettings.setValue("window/maximized", window.visibility === Window.Maximized)
+        appSettings.setValue("window/maximized", wasMaximized)
         appSettings.setValues({
             "ui/page": page,
             "ui/homeScrollPosition": homeScrollPosition,
@@ -1548,6 +1657,8 @@ ApplicationWindow {
             "scrobble/listenbrainz_user": scrobbleListenBrainzUser,
             "scrobble/librefm_enabled": scrobbleLibreFmEnabled,
             "scrobble/librefm_user": scrobbleLibreFmUser,
+            "scrobble/lastfm_enabled": scrobbleLastFmEnabled,
+            "scrobble/lastfm_user": scrobbleLastFmUser,
             "sort/songMetric": songSortMetric,
             "sort/songAscending": songSortAscending,
             "sort/artistMetric": artistSortMetric,
@@ -1582,9 +1693,7 @@ ApplicationWindow {
             showMiniPlayer()
         } else {
             miniPlayerWindow.visible = false
-            window.showNormal()
-            window.raise()
-            window.requestActivate()
+            window.restoreWindow()
         }
     }
 
@@ -2314,18 +2423,16 @@ ApplicationWindow {
     }
 
     // Continues a queue handed over from the phone with the matching songs in this library, by title and artist.
-    function trackMatchKey(track) {
-        return (String(track.title || "").trim() || String(track.fileName || "").trim()).toLowerCase() + "\u001f"
-            + String(track.artist || "").trim().toLowerCase()
-    }
-
     function continueHandoff(tracks, index, positionMs, playing) {
-        const library = {}
-        availableTracks().forEach(track => { if (!library[trackMatchKey(track)]) library[trackMatchKey(track)] = track })
+        const byKey = {}
+        availableTracks().forEach(track => {
+            const key = library.matchKey(track)
+            if (!byKey[key]) byKey[key] = track
+        })
         const queue = []
         let start = -1
         tracks.forEach((track, i) => {
-            const match = library[trackMatchKey(track)]
+            const match = byKey[library.matchKey(track)]
             if (!match) return
             if (i === index) start = queue.length
             queue.push(match)
@@ -2600,6 +2707,8 @@ ApplicationWindow {
         function onIsPlayingChanged() {
             tray.setPlaying(player.isPlaying)
             if (player.isPlaying) {
+                // Music plays on one device at a time, so starting here stops the phone.
+                if (phonePlayback.isPlaying) phoneRemote.sendToPhone("pause")
                 playbackPending = false
                 resumeHistoryTracking()
             } else {
@@ -2684,6 +2793,7 @@ ApplicationWindow {
                 volumeLimitEnabled: window.volumeLimitEnabled,
                 maxVolumePercent: window.maxVolumePercent,
                 replayGainMode: window.replayGainMode,
+                equalizer: player.equalizer,
                 closeToTray: window.closeToTray,
                 startMinimizedToTray: window.startMinimizedToTray,
                 nowPlayingNotifications: window.nowPlayingNotifications,
@@ -2756,6 +2866,7 @@ ApplicationWindow {
                     if (data.sleepFadeOut !== undefined) { window.sleepFadeOut = data.sleepFadeOut; appSettings.setValue("player/sleepFadeOut", data.sleepFadeOut) }
                     if (data.volumeLimitEnabled !== undefined) { window.volumeLimitEnabled = data.volumeLimitEnabled; appSettings.setValue("player/volumeLimitEnabled", data.volumeLimitEnabled) }
                     if (data.maxVolumePercent !== undefined) { window.maxVolumePercent = data.maxVolumePercent; appSettings.setValue("player/maxVolumePercent", data.maxVolumePercent) }
+                    if (data.equalizer) player.setEqualizer(data.equalizer)
                     if (data.replayGainMode !== undefined) { window.replayGainMode = data.replayGainMode; appSettings.setValue("player/replayGainMode", data.replayGainMode) }
                     if (data.closeToTray !== undefined) { window.closeToTray = data.closeToTray; appSettings.setValue("ui/closeToTray", data.closeToTray) }
                     if (data.startMinimizedToTray !== undefined) { window.startMinimizedToTray = data.startMinimizedToTray; appSettings.setValue("ui/startMinimizedToTray", data.startMinimizedToTray) }
@@ -2877,8 +2988,8 @@ ApplicationWindow {
             if (unlikePaths.length) window.setFavorites(unlikePaths, false)
         }
         function onPlayNextRequested(title, artist) {
-            const wanted = window.trackMatchKey({ title: title, artist: artist })
-            const match = window.availableTracks().find(track => window.trackMatchKey(track) === wanted)
+            const wanted = library.matchKey({ title: title, artist: artist })
+            const match = window.availableTracks().find(track => library.matchKey(track) === wanted)
             if (match) window.insertTrackNext(match)
         }
         function onQueueMoveRequested(from, to) {
@@ -2891,6 +3002,7 @@ ApplicationWindow {
             if (index >= 0 && index < queue.length) window.removeQueuedTrack(queue[index])
         }
         function onCodeChanged() { appSettings.setValue("services/phoneRemoteCode", phoneRemote.code) }
+        function onPairedPhonesChanged() { appSettings.setValue("services/phoneRemotePhones", JSON.stringify(phoneRemote.pairedPhones)) }
     }
 
     Connections {
@@ -2907,9 +3019,7 @@ ApplicationWindow {
             if (window.miniPlayerMode) window.toggleMiniPlayer()
             window.nowPlayingOpen = false
             window.page = "search"
-            window.showNormal()
-            window.raise()
-            window.requestActivate()
+            window.restoreWindow()
         }
         function onMiniPlayerRequested() {
             window.toggleMiniPlayer()
@@ -2926,12 +3036,14 @@ ApplicationWindow {
     }
 
     Connections {
+        target: windowFrame
+        function onMaximizeClicked() { toggleMaximize() }
+    }
+
+    Connections {
         target: tray
         function onShowRequested() {
-            window.show()
-            window.showNormal()
-            window.raise()
-            window.requestActivate()
+            window.restoreWindow()
         }
         function onPlayPauseRequested() { player.togglePlay() }
         function onNextRequested() { window.playNext() }
@@ -3043,8 +3155,6 @@ ApplicationWindow {
             bodyFont: window.bodyFont
             monoFont: window.monoFont
             tracksCount: library.trackCount
-            accentColor: window.recordRed
-            accentHover: window.recordRedHover
             lyricsActiveStyle: window.lyricsActiveStyle
             lyricsAlignment: window.lyricsAlignment
             lyricsFontSize: window.lyricsFontSize
@@ -3063,11 +3173,7 @@ ApplicationWindow {
             }
             onRestoreRequested: {
                 miniPlayerWindow.visible = false
-                if (window.visibility === Window.Minimized) {
-                    window.showNormal()
-                }
-                window.raise()
-                window.requestActivate()
+                window.restoreWindow()
             }
             onCloseRequested: {
                 miniPlayerWindow.visible = false
@@ -3097,6 +3203,9 @@ ApplicationWindow {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
+        anchors.topMargin: windowFrame.maximizedMargin
+        anchors.leftMargin: windowFrame.maximizedMargin
+        anchors.rightMargin: windowFrame.maximizedMargin
         height: 60
         color: surfaceSidebar
         z: 200
@@ -3300,9 +3409,13 @@ ApplicationWindow {
 
                 Rectangle {
                     id: maxBtn
+                    readonly property bool hovered: maxBtnMouse.containsMouse || windowFrame.maximizeHovered
                     width: 48
                     height: 60
-                    color: maxBtnMouse.containsMouse ? surfaceElevated : "transparent"
+                    // Now Playing covers the title bar, and its own buttons sit where this one is.
+                    enabled: !window.nowPlayingOpen
+                    color: hovered ? surfaceElevated : "transparent"
+                    Component.onCompleted: windowFrame.setMaximizeButton(maxBtn)
 
                     Item {
                         anchors.centerIn: parent
@@ -3314,7 +3427,7 @@ ApplicationWindow {
                             visible: window.visibility !== Window.Maximized
                             color: "transparent"
                             border.width: 1.2
-                            border.color: maxBtnMouse.containsMouse ? textPrimary : silverDim
+                            border.color: maxBtn.hovered ? textPrimary : silverDim
                             radius: 1
                         }
 
@@ -3329,7 +3442,7 @@ ApplicationWindow {
                                 height: 8
                                 color: "transparent"
                                 border.width: 1.2
-                                border.color: maxBtnMouse.containsMouse ? textPrimary : silverDim
+                                border.color: maxBtn.hovered ? textPrimary : silverDim
                                 radius: 1
                             }
 
@@ -3338,9 +3451,9 @@ ApplicationWindow {
                                 y: 2
                                 width: 8
                                 height: 8
-                                color: maxBtnMouse.containsMouse ? surfaceElevated : surfaceSidebar
+                                color: maxBtn.hovered ? surfaceElevated : surfaceSidebar
                                 border.width: 1.2
-                                border.color: maxBtnMouse.containsMouse ? textPrimary : silverDim
+                                border.color: maxBtn.hovered ? textPrimary : silverDim
                                 radius: 1
                             }
                         }
@@ -3434,6 +3547,9 @@ ApplicationWindow {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
+        anchors.leftMargin: windowFrame.maximizedMargin
+        anchors.rightMargin: windowFrame.maximizedMargin
+        anchors.bottomMargin: windowFrame.maximizedMargin
 
         Item {
             id: mainBodyArea
@@ -3441,7 +3557,6 @@ ApplicationWindow {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: miniPlayerDock.top
-            anchors.bottomMargin: phonePlaybackStrip.visible ? phonePlaybackStrip.height : 0
 
             Rectangle {
                 id: sidebarPanel
@@ -3819,6 +3934,9 @@ ApplicationWindow {
                                 scrobbleLibreFmEnabled: window.scrobbleLibreFmEnabled
                                 scrobbleLibreFmUser: window.scrobbleLibreFmUser
                                 scrobbleLibreFmConnected: window.scrobbleLibreFmConnected
+                                scrobbleLastFmEnabled: window.scrobbleLastFmEnabled
+                                scrobbleLastFmUser: window.scrobbleLastFmUser
+                                scrobbleLastFmConnected: window.scrobbleLastFmConnected
                                 updateStatusText: window.updateStatusText
                                 updateChecking: window.updateChecking
                                 updateAvailable: window.updateAvailableState
@@ -3895,12 +4013,20 @@ ApplicationWindow {
                                 }
                                 onScrobbleLibreFmToggled: value => window.scrobbleLibreFmEnabled = value
                                 onDisconnectLibreFmRequested: {
-                                    services.disconnectLibreFm()
+                                    services.disconnectScrobbleAccount("librefm")
                                     window.scrobbleLibreFmConnected = false
                                     window.scrobbleLibreFmUser = ""
                                     window.scrobbleLibreFmEnabled = false
                                 }
+                                onScrobbleLastFmToggled: value => window.scrobbleLastFmEnabled = value
+                                onDisconnectLastFmRequested: {
+                                    services.disconnectScrobbleAccount("lastfm")
+                                    window.scrobbleLastFmConnected = false
+                                    window.scrobbleLastFmUser = ""
+                                    window.scrobbleLastFmEnabled = false
+                                }
                                 onCheckUpdatesRequested: window.checkForUpdates()
+                                onWhatsNewRequested: whatsNewSheet.open()
                                 onDownloadUpdateRequested: window.downloadUpdate()
                                 onSectionSelected: section => {
                                     window.settingsSection = section
@@ -3919,7 +4045,6 @@ ApplicationWindow {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: miniPlayerDock.top
-            anchors.bottomMargin: phonePlaybackStrip.visible ? phonePlaybackStrip.height : 0
             z: 350
             // Stays loaded while the close animation plays.
             active: (catalogDetailOpen || detailExit.running) && !inTray
@@ -4015,81 +4140,6 @@ ApplicationWindow {
                 color: borderSubtle
             }
 
-            // What the paired phone is playing itself, like a Spotify Connect device.
-            Rectangle {
-                id: phonePlaybackStrip
-                visible: phoneRemote.phonePlayback.title !== undefined && player.error.length === 0
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.top
-                height: 38
-                color: surfaceCard
-                z: 2
-
-                Rectangle {
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    height: 1
-                    color: borderSubtle
-                }
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 24
-                    anchors.rightMargin: 16
-                    spacing: 10
-
-                    LucideIcon {
-                        icon: "smartphone"
-                        Layout.preferredWidth: 15
-                        Layout.preferredHeight: 15
-                        color: recordRed
-                    }
-
-                    Label {
-                        text: "Playing on " + (phoneRemote.phonePlayback.name || "your phone")
-                        color: textSecondary
-                        font.family: bodyFont
-                        font.pixelSize: 12
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: (phoneRemote.phonePlayback.title || "")
-                              + (phoneRemote.phonePlayback.artist ? "  ·  " + phoneRemote.phonePlayback.artist : "")
-                        color: textPrimary
-                        font.family: bodyFont
-                        font.pixelSize: 12
-                        elide: Text.ElideRight
-                    }
-
-                    TransportButton {
-                        buttonSize: 28
-                        paletteSource: window
-                        iconName: phoneRemote.phonePlayback.isPlaying ? "pause" : "play"
-                        iconColor: textPrimary
-                        tooltipText: phoneRemote.phonePlayback.isPlaying ? "Pause on phone" : "Play on phone"
-                        onClicked: phoneRemote.sendToPhone(phoneRemote.phonePlayback.isPlaying ? "pause" : "play")
-                    }
-
-                    TransportButton {
-                        buttonSize: 28
-                        paletteSource: window
-                        iconName: "skip-forward"
-                        iconColor: textPrimary
-                        tooltipText: "Next on phone"
-                        onClicked: phoneRemote.sendToPhone("next")
-                    }
-
-                    SettingButton {
-                        text: "Play Here"
-                        iconName: "play"
-                        onClicked: phoneRemote.sendToPhone("handoff")
-                    }
-                }
-            }
-
             Rectangle {
                 visible: player.error.length > 0
                 anchors.left: parent.left
@@ -4140,11 +4190,11 @@ ApplicationWindow {
 
                         Cover {
                             anchors.fill: parent
-                            track: player.currentTrack
+                            track: shownPlayer.currentTrack
                             radius: parent.radius
                             keepPreviousArtwork: true
-                            cacheArtwork: true
-                            visible: !!player.currentTrack.filePath
+                            cacheArtwork: !phoneInDock
+                            visible: !!shownPlayer.currentTrack.filePath || !!shownPlayer.currentTrack.artworkUrl
                         }
 
                         Image {
@@ -4153,7 +4203,7 @@ ApplicationWindow {
                             height: 34
                             source: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
                             fillMode: Image.PreserveAspectFit
-                            visible: !player.currentTrack.filePath
+                            visible: !shownPlayer.currentTrack.filePath && !shownPlayer.currentTrack.artworkUrl
                         }
 
                         MouseArea {
@@ -4162,7 +4212,9 @@ ApplicationWindow {
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
                             onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton) {
+                                if (phoneInDock) {
+                                    nowPlayingOpen = !nowPlayingOpen
+                                } else if (mouse.button === Qt.RightButton) {
                                     if (player.currentTrack.filePath) {
                                         dockTrackMenu.popup()
                                     }
@@ -4185,7 +4237,7 @@ ApplicationWindow {
                         Label {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
-                            text: player.currentTrack.title || (library.trackCount > 0 ? "CassetteCat Audio" : "Library Empty")
+                            text: phoneInDock ? phonePlayback.title : (player.currentTrack.title || (library.trackCount > 0 ? "CassetteCat Audio" : "Library Empty"))
                             color: textPrimary
                             font.family: displayFont
                             font.pixelSize: 14
@@ -4198,7 +4250,9 @@ ApplicationWindow {
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: mouse => {
-                                    if (mouse.button === Qt.RightButton) {
+                                    if (phoneInDock) {
+                                        nowPlayingOpen = !nowPlayingOpen
+                                    } else if (mouse.button === Qt.RightButton) {
                                         if (player.currentTrack.filePath) {
                                             dockTrackMenu.popup()
                                         }
@@ -4217,16 +4271,30 @@ ApplicationWindow {
                             id: dockArtistLabel
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
-                            text: player.currentTrack.artist || (library.trackCount > 0 ? "Pick a track to start playback" : "Choose a music folder to begin")
-                            color: dockArtistMouse.containsMouse && player.currentTrack.artist ? textPrimary : textSecondary
+                            leftPadding: phoneInDock ? 18 : 0
+                            text: phoneInDock
+                                  ? phonePlayback.artist || phonePlayback.name
+                                  : player.currentTrack.artist || (library.trackCount > 0 ? "Pick a track to start playback" : "Choose a music folder to begin")
+                            color: !phoneInDock && dockArtistMouse.containsMouse && player.currentTrack.artist ? textPrimary : textSecondary
+
+                            LucideIcon {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 13
+                                height: 13
+                                visible: phoneInDock
+                                icon: "smartphone"
+                                color: recordRed
+                            }
                             font.family: bodyFont
                             font.pixelSize: 12
-                            font.underline: dockArtistMouse.containsMouse && !!player.currentTrack.artist
+                            font.underline: dockArtistMouse.containsMouse && !!player.currentTrack.artist && !phoneInDock
                             elide: Text.ElideRight
 
                             MouseArea {
                                 id: dockArtistMouse
                                 anchors.fill: parent
+                                enabled: !phoneInDock
                                 hoverEnabled: true
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                                 cursorShape: player.currentTrack.artist ? Qt.PointingHandCursor : Qt.ArrowCursor
@@ -4244,14 +4312,16 @@ ApplicationWindow {
                     }
 
                     PressDepthIconButton {
+                        // The phone's song can be liked when the same song is in this library; likes sync to the phone.
+                        readonly property string likePath: shownPlayer.currentTrack.filePath || ""
                         Layout.alignment: Qt.AlignVCenter
                         boxSize: 32
                         iconSize: 16
                         iconName: "heart"
-                        visible: !!player.currentTrack.filePath
-                        tint: isFavorite(player.currentTrack.filePath) ? recordRed : silverDim
-                        tooltipText: isFavorite(player.currentTrack.filePath) ? "Remove from Favorites" : "Add to Favorites"
-                        onClicked: toggleFavorite(player.currentTrack.filePath)
+                        visible: !!likePath
+                        tint: isFavorite(likePath) ? recordRed : silverDim
+                        tooltipText: isFavorite(likePath) ? "Remove from Favorites" : "Add to Favorites"
+                        onClicked: toggleFavorite(likePath)
                     }
                 }
 
@@ -4267,8 +4337,18 @@ ApplicationWindow {
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 34
-                            paletteSource: window
+                            visible: phoneInDock
+                            iconName: "laptop"
+                            iconColor: textPrimary
+                            tooltipText: "Play Here"
+                            onClicked: phoneRemote.sendToPhone("handoff")
+                        }
+
+                        TransportButton {
+                            Layout.alignment: Qt.AlignVCenter
+                            buttonSize: 34
                             iconName: "shuffle"
+                            visible: !phoneInDock
                             accented: player.shuffleEnabled
                             tooltipText: player.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
                             onClicked: toggleQueueShuffle()
@@ -4277,23 +4357,23 @@ ApplicationWindow {
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 38
-                            paletteSource: window
                             iconName: "skip-back"
                             iconColor: textPrimary
-                            tooltipText: "Previous"
-                            onClicked: playPrevious()
+                            tooltipText: phoneInDock ? "Previous on " + phonePlayback.name : "Previous"
+                            onClicked: shownPrevious()
                         }
 
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 46
-                            paletteSource: window
-                            iconName: playerVisuallyPlaying ? "pause" : "play"
+                            iconName: shownPlaying ? "pause" : "play"
                             accented: true
                             iconColor: recordRed
-                            tooltipText: playerVisuallyPlaying ? "Pause" : "Play"
+                            tooltipText: (shownPlaying ? "Pause" : "Play") + (phoneInDock ? " on " + phonePlayback.name : "")
                             onClicked: {
-                                if (!player.currentTrack.filePath && library.trackCount > 0) {
+                                if (phoneInDock) {
+                                    phonePlayer.togglePlay()
+                                } else if (!player.currentTrack.filePath && library.trackCount > 0) {
                                     shuffleAll()
                                 } else {
                                     player.togglePlay()
@@ -4304,22 +4384,27 @@ ApplicationWindow {
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 38
-                            paletteSource: window
                             iconName: "skip-forward"
                             iconColor: textPrimary
-                            tooltipText: "Next"
-                            onClicked: playNext()
+                            tooltipText: phoneInDock ? "Next on " + phonePlayback.name : "Next"
+                            onClicked: shownNext()
                         }
 
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 34
-                            paletteSource: window
                             iconName: repeatMode === 2 ? "repeat-1" : "repeat"
+                            visible: !phoneInDock
                             accented: repeatMode > 0
                             iconColor: repeatMode > 0 ? recordRed : textPrimary
                             tooltipText: repeatMode === 2 ? "Repeat Track" : (repeatMode === 1 ? "Repeat All" : "Repeat Off")
                             onClicked: toggleRepeat()
+                        }
+
+                        // Balances Play Here, so play stays centred.
+                        Item {
+                            Layout.preferredWidth: 34
+                            visible: phoneInDock
                         }
                     }
 
@@ -4327,11 +4412,10 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.maximumWidth: 580
                         Layout.alignment: Qt.AlignHCenter
-                        position: player.position
-                        duration: player.duration
+                        position: shownPlayer.position
+                        duration: shownPlayer.duration
                         showRemainingTime: window.showRemainingTime
-                        paletteSource: window
-                        onSeekRequested: posMs => player.seek(posMs)
+                        onSeekRequested: posMs => shownPlayer.seek(posMs)
                         onRemainingToggled: val => { window.showRemainingTime = val; appSettings.setValue("player/showRemainingTime", val) }
                     }
                 }
@@ -4342,73 +4426,112 @@ ApplicationWindow {
                     Layout.alignment: Qt.AlignRight
                     spacing: 8
 
-                    PressDepthIconButton {
+                    // The tools share one background, so they read as a group rather than five separate buttons.
+                    Rectangle {
                         Layout.alignment: Qt.AlignVCenter
-                        visible: phoneRemote.controllerName !== ""
-                        boxSize: 34
-                        iconSize: 17
-                        iconName: "smartphone"
-                        tint: recordRed
-                        highlighted: true
-                        tooltipText: "Controlled from " + phoneRemote.controllerName + ". Click to continue on it."
-                        onClicked: phoneRemote.continueOnPhone()
-                    }
+                        implicitWidth: dockTools.implicitWidth + 8
+                        implicitHeight: 42
+                        radius: height / 2
+                        color: surfaceCard
+                        border.width: 1
+                        border.color: borderSubtle
 
-                    PressDepthIconButton {
-                        Layout.alignment: Qt.AlignVCenter
-                        boxSize: 34
-                        iconSize: 17
-                        iconName: "quote"
-                        tint: (nowPlayingOpen && nowPlayingMode === "lyrics") ? recordRed : silverDim
-                        highlighted: nowPlayingOpen && nowPlayingMode === "lyrics"
-                        tooltipText: (nowPlayingOpen && nowPlayingMode === "lyrics") ? "Hide Lyrics" : "Lyrics"
-                        onClicked: {
-                            if (nowPlayingOpen && nowPlayingMode === "lyrics") {
-                                nowPlayingOpen = false
-                            } else {
-                                nowPlayingMode = "lyrics"
-                                nowPlayingOpen = true
+                        RowLayout {
+                            id: dockTools
+                            anchors.centerIn: parent
+                            spacing: 2
+
+                            PressDepthIconButton {
+                                readonly property bool phoneConnected: phoneRemote.controllerName !== "" || !!phoneRemote.phonePlayback.name
+                                Layout.alignment: Qt.AlignVCenter
+                                boxSize: 34
+                                backgroundColor: "transparent"
+                                borderColor: "transparent"
+                                iconSize: 17
+                                iconName: "smartphone"
+                                tint: silverDim
+                                tooltipText: phoneInDock ? "Playing on " + phonePlayback.name : phoneRemote.controllerName !== "" ? "Controlled from " + phoneRemote.controllerName : "Phone Remote"
+                                onClicked: phoneRemoteSheet.open()
+
+                                // Marks a connected phone without making the button look switched on.
+                                Rectangle {
+                                    visible: parent.phoneConnected
+                                    x: parent.width / 2 + 3
+                                    y: parent.height / 2 - 10
+                                    width: 7
+                                    height: 7
+                                    radius: 3.5
+                                    color: recordRed
+                                    border.width: 1.5
+                                    border.color: surfaceCard
+                                }
+                            }
+
+                            PressDepthIconButton {
+                                Layout.alignment: Qt.AlignVCenter
+                                boxSize: 34
+                                backgroundColor: "transparent"
+                                borderColor: "transparent"
+                                iconSize: 17
+                                iconName: "quote"
+                                tint: (nowPlayingOpen && nowPlayingMode === "lyrics") ? recordRed : silverDim
+                                highlighted: nowPlayingOpen && nowPlayingMode === "lyrics"
+                                tooltipText: (nowPlayingOpen && nowPlayingMode === "lyrics") ? "Hide Lyrics" : "Lyrics"
+                                onClicked: {
+                                    if (nowPlayingOpen && nowPlayingMode === "lyrics") {
+                                        nowPlayingOpen = false
+                                    } else {
+                                        nowPlayingMode = "lyrics"
+                                        nowPlayingOpen = true
+                                    }
+                                }
+                            }
+
+                            PressDepthIconButton {
+                                Layout.alignment: Qt.AlignVCenter
+                                boxSize: 34
+                                backgroundColor: "transparent"
+                                borderColor: "transparent"
+                                iconSize: 17
+                                iconName: "list"
+                                tint: (nowPlayingOpen && nowPlayingMode === "queue") ? recordRed : silverDim
+                                highlighted: nowPlayingOpen && nowPlayingMode === "queue"
+                                tooltipText: (nowPlayingOpen && nowPlayingMode === "queue") ? "Hide Queue" : "Queue"
+                                onClicked: {
+                                    if (nowPlayingOpen && nowPlayingMode === "queue") {
+                                        nowPlayingOpen = false
+                                    } else {
+                                        nowPlayingMode = "queue"
+                                        nowPlayingOpen = true
+                                    }
+                                }
+                            }
+
+                            PressDepthIconButton {
+                                Layout.alignment: Qt.AlignVCenter
+                                boxSize: 34
+                                backgroundColor: "transparent"
+                                borderColor: "transparent"
+                                iconSize: 17
+                                iconName: "pip"
+                                tint: silverDim
+                                tooltipText: "Mini Player (Ctrl+M)"
+                                onClicked: toggleMiniPlayer()
+                            }
+
+                            PressDepthIconButton {
+                                Layout.alignment: Qt.AlignVCenter
+                                boxSize: 34
+                                backgroundColor: "transparent"
+                                borderColor: "transparent"
+                                iconSize: 17
+                                iconName: nowPlayingOpen ? "chevron-down" : "audio-lines"
+                                tint: nowPlayingOpen ? recordRed : silverDim
+                                highlighted: nowPlayingOpen
+                                tooltipText: nowPlayingOpen ? "Collapse Now Playing" : "Now Playing Deck"
+                                onClicked: nowPlayingOpen = !nowPlayingOpen
                             }
                         }
-                    }
-
-                    PressDepthIconButton {
-                        Layout.alignment: Qt.AlignVCenter
-                        boxSize: 34
-                        iconSize: 17
-                        iconName: "list"
-                        tint: (nowPlayingOpen && nowPlayingMode === "queue") ? recordRed : silverDim
-                        highlighted: nowPlayingOpen && nowPlayingMode === "queue"
-                        tooltipText: (nowPlayingOpen && nowPlayingMode === "queue") ? "Hide Queue" : "Queue"
-                        onClicked: {
-                            if (nowPlayingOpen && nowPlayingMode === "queue") {
-                                nowPlayingOpen = false
-                            } else {
-                                nowPlayingMode = "queue"
-                                nowPlayingOpen = true
-                            }
-                        }
-                    }
-
-                    PressDepthIconButton {
-                        Layout.alignment: Qt.AlignVCenter
-                        boxSize: 34
-                        iconSize: 17
-                        iconName: "pip"
-                        tint: silverDim
-                        tooltipText: "Mini Player (Ctrl+M)"
-                        onClicked: toggleMiniPlayer()
-                    }
-
-                    PressDepthIconButton {
-                        Layout.alignment: Qt.AlignVCenter
-                        boxSize: 34
-                        iconSize: 17
-                        iconName: nowPlayingOpen ? "chevron-down" : "audio-lines"
-                        tint: nowPlayingOpen ? recordRed : silverDim
-                        highlighted: nowPlayingOpen
-                        tooltipText: nowPlayingOpen ? "Collapse Now Playing" : "Now Playing Deck"
-                        onClicked: nowPlayingOpen = !nowPlayingOpen
                     }
 
                     Rectangle {
@@ -4423,10 +4546,11 @@ ApplicationWindow {
                     VolumeControl {
                         Layout.alignment: Qt.AlignVCenter
                         Layout.preferredWidth: 135
-                        volume: player.volume
-                        paletteSource: window
+                        enabled: !phoneInDock || phonePlayback.volumePercent >= 0
+                        showPercentage: false
+                        volume: shownPlayer.volume
                         onVolumeAdjusted: newVol => {
-                            setPlayerVolume(newVol)
+                            setShownVolume(newVol)
                         }
                     }
                 }
@@ -4444,6 +4568,7 @@ ApplicationWindow {
     Loader {
         id: nowPlayingLoader
         anchors.fill: parent
+        anchors.margins: windowFrame.maximizedMargin
         z: 500
         active: (nowPlayingLoaded || nowPlayingOpen) && !inTray
         sourceComponent: Component {
@@ -4497,7 +4622,7 @@ ApplicationWindow {
                 width: 240
                 height: 240
                 scale: Math.max(parent.width, parent.height) * 1.3 / width
-                track: player.currentTrack
+                track: shownPlayer.currentTrack
                 keepPreviousArtwork: true
                 cacheArtwork: true
                 stableSourceSize: 280
@@ -4580,7 +4705,7 @@ ApplicationWindow {
 
                     Cover {
                         anchors.fill: parent
-                        track: player.currentTrack
+                        track: shownPlayer.currentTrack
                         radius: npArtworkCard.radius
                         keepPreviousArtwork: true
                         cacheArtwork: true
@@ -4597,7 +4722,7 @@ ApplicationWindow {
                                 nowPlayingMode = "controls"
                             }
                         }
-                        onDoubleClicked: toggleFavorite(player.currentTrack.filePath)
+                        onDoubleClicked: toggleFavorite(shownPlayer.currentTrack.filePath)
                     }
                 }
 
@@ -4628,7 +4753,7 @@ ApplicationWindow {
 
                             Label {
                                 Layout.fillWidth: true
-                                text: player.currentTrack.title || "No Track Selected"
+                                text: shownPlayer.currentTrack.title || "No Track Selected"
                                 color: "#FFFFFF"
                                 font.family: displayFont
                                 font.pixelSize: 17
@@ -4641,11 +4766,12 @@ ApplicationWindow {
                             Label {
                                 Layout.fillWidth: true
                                 text: {
-                                    if (!player.currentTrack.title && !player.currentTrack.filePath) {
+                                    const track = shownPlayer.currentTrack
+                                    if (!track.title && !track.filePath) {
                                         return "Select a track to start playback"
                                     }
-                                    let a = player.currentTrack.artist || "Unknown Artist"
-                                    if (player.currentTrack.album) a += " • " + player.currentTrack.album
+                                    let a = track.artist || "Unknown Artist"
+                                    if (track.album) a += " • " + track.album
                                     return a
                                 }
                                 color: textSecondary
@@ -4659,11 +4785,10 @@ ApplicationWindow {
 
                         AudioSeeker {
                             Layout.fillWidth: true
-                            position: player.position
-                            duration: player.duration
+                            position: shownPlayer.position
+                            duration: shownPlayer.duration
                             showRemainingTime: window.showRemainingTime
-                            paletteSource: window
-                            onSeekRequested: posMs => player.seek(posMs)
+                            onSeekRequested: posMs => shownPlayer.seek(posMs)
                             onRemainingToggled: val => { window.showRemainingTime = val; appSettings.setValue("player/showRemainingTime", val) }
                         }
 
@@ -4674,8 +4799,8 @@ ApplicationWindow {
                             TransportButton {
                                 Accessible.name: "Shuffle"
                                 buttonSize: 32
-                                paletteSource: window
                                 iconName: "shuffle"
+                                visible: !phoneInDock
                                 accented: player.shuffleEnabled
                                 onClicked: toggleQueueShuffle()
                             }
@@ -4685,37 +4810,34 @@ ApplicationWindow {
                             TransportButton {
                                 Accessible.name: "Previous track"
                                 buttonSize: 38
-                                paletteSource: window
                                 iconName: "skip-back"
                                 iconColor: textPrimary
-                                onClicked: playPrevious()
+                                onClicked: shownPrevious()
                             }
 
                             TransportButton {
-                                Accessible.name: playerVisuallyPlaying ? "Pause" : "Play"
+                                Accessible.name: shownPlaying ? "Pause" : "Play"
                                 buttonSize: 48
-                                paletteSource: window
-                                iconName: playerVisuallyPlaying ? "pause" : "play"
+                                iconName: shownPlaying ? "pause" : "play"
                                 accented: true
                                 iconColor: recordRed
-                                onClicked: player.togglePlay()
+                                onClicked: shownPlayer.togglePlay()
                             }
 
                             TransportButton {
                                 Accessible.name: "Next track"
                                 buttonSize: 38
-                                paletteSource: window
                                 iconName: "skip-forward"
                                 iconColor: textPrimary
-                                onClicked: playNext()
+                                onClicked: shownNext()
                             }
 
                             Item { Layout.fillWidth: true }
 
                             TransportButton {
                                 Accessible.name: "Repeat"
+                                visible: !phoneInDock
                                 buttonSize: 32
-                                paletteSource: window
                                 iconName: repeatMode === 2 ? "repeat-1" : "repeat"
                                 accented: repeatMode > 0
                                 iconColor: repeatMode > 0 ? recordRed : textPrimary
@@ -4729,9 +4851,8 @@ ApplicationWindow {
                             Item { Layout.fillWidth: true }
                             VolumeControl {
                                 Layout.preferredWidth: 160
-                                volume: player.volume
-                                paletteSource: window
-                                onVolumeAdjusted: newVol => setPlayerVolume(newVol)
+                                volume: shownPlayer.volume
+                                onVolumeAdjusted: newVol => setShownVolume(newVol)
                             }
                             Item { Layout.fillWidth: true }
                         }
@@ -4754,7 +4875,7 @@ ApplicationWindow {
                     width: Math.min(parent.width - 24, 480)
                     height: 310
                     appWindow: window
-                    playerController: player
+                    playerController: shownPlayer
                     visible: opacity > 0.001
                     opacity: nowPlayingMode === "controls" ? 1.0 : 0.0
                     scale: nowPlayingMode === "controls" ? 1.0 : 0.96
@@ -4789,34 +4910,17 @@ ApplicationWindow {
         }
     }
 
-    Popup {
+    AppDialog {
         id: lyricSearchPopup
-        parent: Overlay.overlay
-        modal: true
-        focus: true
         visible: lyricSearchOpen
-        x: Math.round((parent.width - width) / 2)
-        y: Math.round((parent.height - height) / 2)
-        width: Math.min(parent.width - 80, 620)
+        maxWidth: 620
         height: lyricCustomEditorOpen
             ? Math.min(parent.height - 100, 560)
             : Math.min(parent.height - 100, lyricSearchLoading || lyricSearchResults.length ? 560 : 300)
         padding: 0
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
         onClosed: {
             lyricSearchOpen = false
             lyricsSelectionCallback = null
-        }
-
-        Overlay.modal: Rectangle {
-            color: "#B8000000"
-        }
-
-        background: Rectangle {
-            radius: 14
-            color: surfaceCard
-            border.width: 1
-            border.color: borderSubtle
         }
 
         contentItem: ColumnLayout {
@@ -5191,6 +5295,25 @@ ApplicationWindow {
     TrackMetadataDialog {
         id: metadataDialog
         appWindow: window
+    }
+
+    WhatsNewSheet {
+        id: whatsNewSheet
+    }
+
+    SetupSheet {
+        id: setupSheet
+        appWindow: window
+        onAddFolderRequested: folderDialog.open()
+        onFinished: appSettings.setValue("ui/setupDone", true)
+    }
+
+    PhoneRemoteSheet {
+        id: phoneRemoteSheet
+        remote: phoneRemote
+        enabledSetting: svcPhoneRemote
+        offlineBlackout: window.offlineBlackout
+        onEnableRequested: enabled => svcPhoneRemote = enabled
     }
 
     AudioDetailsSheet {

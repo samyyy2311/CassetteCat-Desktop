@@ -146,29 +146,13 @@ BottomSheet {
             }
         }
 
-        Rectangle {
-            Layout.preferredWidth: 30
-            Layout.preferredHeight: 30
+        TransportButton {
             Layout.alignment: Qt.AlignVCenter
-            radius: 15
-            color: closeMouse.containsMouse ? "#20FFFFFF" : "transparent"
-            Behavior on color { ColorAnimation { duration: 120 } }
-
-            LucideIcon {
-                anchors.centerIn: parent
-                width: 16
-                height: 16
-                icon: "x"
-                color: closeMouse.containsMouse ? root.appWindow.textPrimary : root.appWindow.textSecondary
-            }
-
-            MouseArea {
-                id: closeMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: root.close()
-            }
+            Accessible.name: "Close"
+            buttonSize: 32
+            iconName: "x"
+            tooltipText: "Close"
+            onClicked: root.close()
         }
     }
 

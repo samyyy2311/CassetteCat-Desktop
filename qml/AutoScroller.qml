@@ -41,7 +41,7 @@ Item {
         radius: 16
         color: "#E0181715"
         border.width: 1.5
-        border.color: "#C23B30"
+        border.color: recordRed
 
         LucideIcon {
             anchors.centerIn: parent

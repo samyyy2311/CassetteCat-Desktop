@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Popup {
+AppDialog {
     id: root
     property string currentColor: "#C23B30"
     signal colorApplied(string hexColor)
@@ -17,22 +17,8 @@ Popup {
         return /^#[0-9A-Fa-f]{6}$/.test(normalizeHex(h))
     }
 
-    modal: true
-    focus: true
-    width: 380
+    maxWidth: 380
     padding: 22
-    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
-
-    Overlay.modal: Rectangle {
-        color: "#B3000000"
-    }
-
-    background: Rectangle {
-        radius: 16
-        color: surfaceCard
-        border.width: 1
-        border.color: borderVariant
-    }
 
     ColumnLayout {
         anchors.fill: parent

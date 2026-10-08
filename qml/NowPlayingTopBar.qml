@@ -40,7 +40,7 @@ Item {
             readonly property var lines: root.appWindow.parsedLyrics
             readonly property bool synced: lines.length > 0 && lines[0].timeMs >= 0
             readonly property bool syncing: root.appWindow.lyricsTapSyncing
-            readonly property var track: player.currentTrack
+            readonly property var track: root.appWindow.shownPlayer.currentTrack
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
             visible: root.appWindow.nowPlayingMode === "lyrics" && lines.length > 0
@@ -121,15 +121,17 @@ Item {
         }
 
         GlassButton {
-            readonly property bool favorite: root.appWindow.isFavorite(player.currentTrack.filePath)
+            readonly property bool favorite: root.appWindow.isFavorite(root.appWindow.shownPlayer.currentTrack.filePath)
             iconName: "heart"
+            visible: !!root.appWindow.shownPlayer.currentTrack.filePath
             highlighted: favorite
             tooltipText: favorite ? "Remove from Favorites" : "Add to Favorites"
-            onClicked: root.appWindow.toggleFavorite(player.currentTrack.filePath)
+            onClicked: root.appWindow.toggleFavorite(root.appWindow.shownPlayer.currentTrack.filePath)
         }
 
         GlassButton {
             iconName: "more-vertical"
+            visible: !root.appWindow.phoneInDock
             tooltipText: "Track options"
             onClicked: root.appWindow.openTrackActionSheet(player.currentTrack)
         }
@@ -142,6 +144,7 @@ Item {
 
         GlassButton {
             iconName: "quote"
+            visible: !root.appWindow.phoneInDock
             highlighted: root.appWindow.nowPlayingMode === "lyrics"
             tooltipText: highlighted ? "Hide lyrics" : "Show lyrics"
             onClicked: root.appWindow.nowPlayingMode = highlighted ? "controls" : "lyrics"
@@ -149,6 +152,7 @@ Item {
 
         GlassButton {
             iconName: "list"
+            visible: !root.appWindow.phoneInDock
             highlighted: root.appWindow.nowPlayingMode === "queue"
             tooltipText: highlighted ? "Hide queue" : "Show queue"
             onClicked: root.appWindow.nowPlayingMode = highlighted ? "controls" : "queue"

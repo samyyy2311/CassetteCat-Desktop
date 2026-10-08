@@ -69,7 +69,6 @@ Item {
 
             delegate: QueueTrackRow {
                 width: ListView.view.width - 24
-                paletteSource: root.appWindow
                 entry: queueModel.entryByKey[model.key] || ({})
                 removeEnabled: entry.queueEditable === true
                 playNextEnabled: entry.queueEditable === true

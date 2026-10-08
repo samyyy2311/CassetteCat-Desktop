@@ -38,6 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
@@ -50,10 +51,14 @@ jobs:
           target: desktop
           arch: win64_msvc2022_64
           modules: qtmultimedia qtquickeffectmaker
-          cache: true
+          tools: 'tools_opensslv3_x64,qt.tools.opensslv3.win_x64'
+          cache: false
       - name: Configure
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
         shell: pwsh
-        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DCASSETTECAT_PACKAGE_VERSION="$($env:RELEASE_TAG.TrimStart('v'))"
+        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DOPENSSL_ROOT_DIR="$env:IQTA_TOOLS/OpenSSLv3/Win_x64" -DCASSETTECAT_PACKAGE_VERSION="$($env:RELEASE_TAG.TrimStart('v'))"
       - name: Build
         run: cmake --build build/release --parallel 2
       - name: Run self-check and tests
@@ -121,12 +126,14 @@ jobs:
             arch: x86_64
             deb-arch: amd64
             tar-arch: x64
+            linuxdeploy-sha256: c86d6540f1df31061f02f539a2d3445f8d7f85cc3994eee1e74cd1ac97b76df0
           - runner: ubuntu-24.04-arm
             qt-host: linux_arm64
             qt-arch: linux_gcc_arm64
             arch: aarch64
             deb-arch: arm64
             tar-arch: arm64
+            linuxdeploy-sha256: 77d4d5918b5c9c7620dd74465c717ea59e8655eb83410cd86ebd24cec38c4679
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
@@ -136,6 +143,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
       - name: Install Qt
         uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
@@ -145,14 +153,19 @@ jobs:
           target: desktop
           arch: ${{ matrix.qt-arch }}
           modules: qtmultimedia qtquickeffectmaker
-          cache: true
+          cache: false
       - name: Install packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder libpipewire-0.3-0 libsecret-1-dev rpm
+          # Qt's GStreamer plugin needs libgstplay and libgstphotography; ARM runners don't preinstall them.
+          sudo apt-get install -y flatpak flatpak-builder libgstreamer-plugins-bad1.0-0 libgstreamer-plugins-good1.0-0 libpipewire-0.3-0 libsecret-1-dev libssl-dev rpm
           curl -fsSL -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-${{ matrix.arch }}.AppImage
+          echo "${{ matrix.linuxdeploy-sha256 }}  linuxdeploy.AppImage" | sha256sum -c -
           chmod +x linuxdeploy.AppImage
       - name: Configure
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
         run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCASSETTECAT_PACKAGE_VERSION="${RELEASE_TAG#v}"
       - name: Build
         run: cmake --build build/release --parallel 2
@@ -208,6 +221,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
       - name: Install Ninja
         run: command -v ninja || brew install ninja
@@ -218,9 +232,15 @@ jobs:
           target: desktop
           arch: clang_64
           modules: qtmultimedia qtquickeffectmaker
-          cache: true
+          cache: false
+      - name: Build universal OpenSSL
+        run: sh packaging/macos/build-openssl.sh "$RUNNER_TEMP/openssl"
+
       - name: Configure
-        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCASSETTECAT_PACKAGE_VERSION="${RELEASE_TAG#v}"
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
+        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DOPENSSL_ROOT_DIR="$RUNNER_TEMP/openssl" -DOPENSSL_USE_STATIC_LIBS=TRUE -DCASSETTECAT_PACKAGE_VERSION="${RELEASE_TAG#v}"
       - name: Build
         run: cmake --build build/release --parallel 3
       - name: Run self-check and tests
@@ -324,13 +344,14 @@ jobs:
           GH_REPO: ${{ github.repository }}
           TAG: ${{ env.RELEASE_TAG }}
         run: |
+          # A published release is never rewritten; delete it on GitHub first to publish the tag again.
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" release-assets/* --clobber
-          else
-            args=("$TAG" release-assets/* --title "CassetteCat $TAG" --generate-notes)
-            [[ "$TAG" == *-* ]] && args+=(--prerelease)
-            gh release create "${args[@]}"
+            echo "::error::Release $TAG already exists"
+            exit 1
           fi
+          args=("$TAG" release-assets/* --title "CassetteCat $TAG" --generate-notes)
+          [[ "$TAG" == *-* ]] && args+=(--prerelease)
+          gh release create "${args[@]}"
 
   publish-winget:
     needs: publish-release
@@ -361,7 +382,9 @@ jobs:
         if: steps.check-eligibility.outputs.eligible == 'true'
         shell: pwsh
         run: |
-          Invoke-WebRequest -Uri "https://aka.ms/wingetcreate/latest" -OutFile "wingetcreate.exe"
+          Invoke-WebRequest -Uri "https://github.com/microsoft/winget-create/releases/download/v1.12.13.0/wingetcreate.exe" -OutFile "wingetcreate.exe"
+          $hash = (Get-FileHash wingetcreate.exe -Algorithm SHA256).Hash
+          if ($hash -ne '24042BD37915805615E6CF969AC57C6439124C3FE85823327F5F3FB24BD9FFEA') { throw "wingetcreate.exe checksum mismatch: $hash" }
 
       - name: Submit package to WinGet
         if: steps.check-eligibility.outputs.eligible == 'true'

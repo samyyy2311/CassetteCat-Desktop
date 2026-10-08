@@ -13,6 +13,8 @@ ISC License. The full notice is below.
 - [Qt](https://www.qt.io/) is used under its applicable open-source license
   terms.
 - [TagLib](https://taglib.org/) is available under the LGPL or MPL.
+- [OpenSSL](https://www.openssl.org/) is available under the Apache License 2.0. It makes the certificate that
+  encrypts the phone remote connection.
 
 ## Fonts
 

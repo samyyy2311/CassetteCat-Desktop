@@ -593,13 +593,9 @@ Item {
                     ColumnLayout {
                         spacing: 2
 
-                        Label {
+                        OverlineLabel {
                             text: root.serviceLabel
                             color: root.serviceColor
-                            font.family: monoFont
-                            font.pixelSize: 10
-                            font.weight: Font.Bold
-                            font.letterSpacing: 1.5
                         }
 
                         Label {
@@ -834,6 +830,7 @@ Item {
         message: "Your saved login is removed and this server's songs leave your library until you connect again. Nothing is deleted from the server."
         iconName: "log-out"
         confirmText: "Disconnect"
+        destructive: true
         onConfirmed: streamingController.disconnectServer(root.protocol)
     }
 }

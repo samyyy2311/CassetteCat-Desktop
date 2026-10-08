@@ -62,6 +62,9 @@ Item {
     property bool scrobbleLibreFmEnabled: false
     property string scrobbleLibreFmUser: ""
     property bool scrobbleLibreFmConnected: false
+    property bool scrobbleLastFmEnabled: false
+    property string scrobbleLastFmUser: ""
+    property bool scrobbleLastFmConnected: false
     property string updateStatusText: ""
     property bool updateChecking: false
     property bool updateAvailable: false
@@ -76,6 +79,7 @@ Item {
         { id: "lyrics", label: "Lyrics", icon: "mic" },
         { id: "scrobble", label: "Scrobbling", icon: "audio-lines" },
         { id: "network", label: "Network & Services", icon: "globe" },
+        { id: "phone", label: "Phone Remote", icon: "smartphone" },
         { id: "data", label: "Backup & Diagnostics", icon: "refresh-cw" },
         { id: "credits", label: "Credits & Legal", icon: "info" }
     ]
@@ -90,6 +94,7 @@ Item {
             case "lyrics": return secLyrics.implicitHeight
             case "scrobble": return secScrobble.implicitHeight
             case "network": return secNetwork.implicitHeight
+            case "phone": return secPhoneRemote.implicitHeight
             case "data": return secBackup.implicitHeight
             case "credits": return secCredits.implicitHeight
             default: return 600
@@ -141,7 +146,10 @@ Item {
     signal disconnectListenBrainzRequested()
     signal scrobbleLibreFmToggled(bool value)
     signal disconnectLibreFmRequested()
+    signal scrobbleLastFmToggled(bool value)
+    signal disconnectLastFmRequested()
     signal checkUpdatesRequested()
+    signal whatsNewRequested()
     signal downloadUpdateRequested()
     signal sectionSelected(string section)
 
@@ -397,6 +405,11 @@ Item {
                                 onDisconnectListenBrainzRequested: root.disconnectListenBrainzRequested()
                                 onLibreFmEnabledToggled: value => root.scrobbleLibreFmToggled(value)
                                 onDisconnectLibreFmRequested: root.disconnectLibreFmRequested()
+                                lastFmEnabled: root.scrobbleLastFmEnabled
+                                lastFmUser: root.scrobbleLastFmUser
+                                lastFmConnected: root.scrobbleLastFmConnected
+                                onLastFmEnabledToggled: value => root.scrobbleLastFmToggled(value)
+                                onDisconnectLastFmRequested: root.disconnectLastFmRequested()
                             }
 
                             SettingsNetworkSection {
@@ -411,11 +424,19 @@ Item {
                                 svcWiki: root.svcWiki
                                 svcArchive: root.svcArchive
                                 svcDiscord: root.svcDiscord
-                                svcPhoneRemote: root.svcPhoneRemote
                                 onOfflineBlackoutSelected: value => root.offlineBlackoutSelected(value)
                                 onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
                                 onOpenJellyfinRequested: root.openJellyfinRequested()
                                 onOpenSubsonicRequested: root.openSubsonicRequested()
+                            }
+
+                            SettingsPhoneRemoteSection {
+                                id: secPhoneRemote
+                                visible: root.currentSection === "phone"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
+                                offlineBlackout: root.offlineBlackout
+                                svcPhoneRemote: root.svcPhoneRemote
+                                onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
                             }
 
                             SettingsBackupSection {
@@ -432,6 +453,7 @@ Item {
                                 visible: root.currentSection === "credits"
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: visible ? implicitHeight : 0
+                                onWhatsNewRequested: root.whatsNewRequested()
                             }
                         }
                     }

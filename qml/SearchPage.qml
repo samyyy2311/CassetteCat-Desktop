@@ -75,60 +75,30 @@ Item {
     }
 
     // Deduplicated genres by normalized lowercase name
-    readonly property var popularGenres: {
-        // Lists from C++ arrive as sequence objects, which Array.isArray() does not accept.
-        const raw = (cachedGroups && cachedGroups.genres) || []
+    // The twelve most common names in a catalog group, merging names that differ only in case and leaving out
+    // the unknown placeholders. Lists from C++ arrive as sequence objects, which Array.isArray() does not accept.
+    function topGroups(raw, unknownNames) {
         const seen = {}
         const list = []
-        for (let i = 0; i < raw.length; ++i) {
-            const g = raw[i]
-            if (!g) continue
-            const name = (typeof g === "object" ? (g.name || "") : String(g)).trim()
-            if (!name || name.toLowerCase() === "unknown") continue
-            const normKey = name.toLowerCase()
-            if (seen[normKey]) {
-                seen[normKey].count += (g.count || 1)
+        for (let i = 0; i < (raw || []).length; ++i) {
+            const group = raw[i]
+            if (!group) continue
+            const name = (typeof group === "object" ? (group.name || "") : String(group)).trim()
+            const key = name.toLowerCase()
+            if (!name || unknownNames.includes(key)) continue
+            if (seen[key]) {
+                seen[key].count += (group.count || 1)
                 continue
             }
-            const item = {
-                name: name,
-                count: g.count || 1,
-                track: (typeof g === "object" && g.track) ? g.track : ({})
-            }
-            seen[normKey] = item
-            list.push(item)
+            seen[key] = { name: name, count: group.count || 1, track: (typeof group === "object" && group.track) ? group.track : ({}) }
+            list.push(seen[key])
         }
-        list.sort(function(a, b) { return b.count - a.count })
+        list.sort((first, second) => second.count - first.count)
         return list.slice(0, 12)
     }
 
-    // Deduplicated artists by normalized lowercase name
-    readonly property var topArtists: {
-        // Lists from C++ arrive as sequence objects, which Array.isArray() does not accept.
-        const raw = (cachedGroups && cachedGroups.artists) || []
-        const seen = {}
-        const list = []
-        for (let i = 0; i < raw.length; ++i) {
-            const a = raw[i]
-            if (!a) continue
-            const name = (typeof a === "object" ? (a.name || "") : String(a)).trim()
-            if (!name || name.toLowerCase() === "unknown" || name.toLowerCase() === "unknown artist") continue
-            const normKey = name.toLowerCase()
-            if (seen[normKey]) {
-                seen[normKey].count += (a.count || 1)
-                continue
-            }
-            const item = {
-                name: name,
-                count: a.count || 1,
-                track: (typeof a === "object" && a.track) ? a.track : ({})
-            }
-            seen[normKey] = item
-            list.push(item)
-        }
-        list.sort(function(a, b) { return b.count - a.count })
-        return list.slice(0, 12)
-    }
+    readonly property var popularGenres: topGroups(cachedGroups && cachedGroups.genres, ["unknown"])
+    readonly property var topArtists: topGroups(cachedGroups && cachedGroups.artists, ["unknown", "unknown artist"])
 
     // Deduplicated recent listens: unique track and unique artist per card, excluding current playing track
     readonly property var recentListens: {

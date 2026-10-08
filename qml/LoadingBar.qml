@@ -33,7 +33,9 @@ Item {
                 GradientStop { position: 1.0; color: "transparent" }
             }
 
+            // A running animation redraws the whole window every frame, so it only runs while the bar shows.
             SequentialAnimation on x {
+                running: root.visible
                 loops: Animation.Infinite
                 NumberAnimation {
                     from: -indicatorBar.width

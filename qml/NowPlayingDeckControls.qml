@@ -147,7 +147,7 @@ Item {
                 iconName: "skip-back"
                 iconColor: root.appWindow.textPrimary
                 tooltipText: "Previous"
-                onClicked: root.appWindow.playPrevious()
+                onClicked: root.appWindow.shownPrevious()
             }
 
             TransportButton {
@@ -166,7 +166,7 @@ Item {
                 iconName: "skip-forward"
                 iconColor: root.appWindow.textPrimary
                 tooltipText: "Next"
-                onClicked: root.appWindow.playNext()
+                onClicked: root.appWindow.shownNext()
             }
 
             TransportButton {
@@ -198,7 +198,7 @@ Item {
             paletteSource: root.appWindow
             volume: root.playerController.volume
             onVolumeAdjusted: value => {
-                if (root.appWindow && root.appWindow.setPlayerVolume) root.appWindow.setPlayerVolume(value)
+                if (root.appWindow && root.appWindow.setShownVolume) root.appWindow.setShownVolume(value)
                 else root.playerController.setVolume(value)
             }
         }

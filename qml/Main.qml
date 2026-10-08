@@ -130,7 +130,35 @@ ApplicationWindow {
     // While the paired phone plays and this computer doesn't, the dock shows and controls the phone, like a
     // Spotify Connect device.
     readonly property var phonePlayback: phoneRemote.phonePlayback
-    readonly property bool phoneInDock: phonePlayback.title !== undefined && !playerVisuallyPlaying && phoneRemote.controllerName === ""
+    // Set when the phone starts playing while this computer is idle, and cleared once this computer plays again, so
+    // a paused phone or the moment between two songs here never takes over the dock.
+    property bool phoneOwnsDock: false
+    readonly property bool phoneInDock: phoneOwnsDock && phonePlayback.title !== undefined && !playerVisuallyPlaying
+        && phoneRemote.controllerName === ""
+
+    function updatePhoneOwnership() {
+        if (playerVisuallyPlaying || phonePlayback.title === undefined || phoneRemote.controllerName !== "")
+            phoneOwnsDock = false
+        else if (phonePlayback.isPlaying)
+            phoneOwnsDock = true
+    }
+    onPlayerVisuallyPlayingChanged: updatePhoneOwnership()
+    onPhonePlaybackChanged: updatePhoneOwnership()
+
+    // The dock and Now Playing buttons act on whichever player they show; shortcuts, media keys and
+    // automatic advance always act on this computer.
+    function shownPrevious() {
+        if (phoneInDock) phoneRemote.sendToPhone("previous")
+        else playPrevious()
+    }
+    function shownNext() {
+        if (phoneInDock) phoneRemote.sendToPhone("next")
+        else playNext()
+    }
+    function setShownVolume(value) {
+        if (phoneInDock) phonePlayer.setVolume(value)
+        else setPlayerVolume(value)
+    }
     property double phoneClock: Date.now()
     readonly property int phonePositionMs: phoneInDock
         ? Math.min(phonePlayback.durationMs, phonePlayback.positionMs + (phonePlayback.isPlaying ? Math.max(0, phoneClock - phonePlayback.updatedAt) : 0))
@@ -1729,13 +1757,13 @@ ApplicationWindow {
     Shortcut {
         sequence: inAppShortcut("volumeUp")
         enabled: shortcutAllowed(sequence)
-        onActivated: setPlayerVolume(shownPlayer.volume + 0.05)
+        onActivated: setPlayerVolume(player.volume + 0.05)
     }
 
     Shortcut {
         sequence: inAppShortcut("volumeDown")
         enabled: shortcutAllowed(sequence)
-        onActivated: setPlayerVolume(shownPlayer.volume - 0.05)
+        onActivated: setPlayerVolume(player.volume - 0.05)
     }
 
     Shortcut {
@@ -1765,7 +1793,7 @@ ApplicationWindow {
     Shortcut {
         sequence: inAppShortcut("mute")
         enabled: shortcutAllowed(sequence)
-        onActivated: setPlayerVolume(shownPlayer.volume > 0.001 ? 0.0 : 0.8)
+        onActivated: setPlayerVolume(player.volume > 0.001 ? 0.0 : 0.8)
     }
 
     function toggleMaximize() {
@@ -2530,10 +2558,6 @@ ApplicationWindow {
     }
 
     function playNext() {
-        if (phoneInDock) {
-            phoneRemote.sendToPhone("next")
-            return
-        }
         const queue = activePlaybackQueue()
         if (!queue.length) return
         const currentIndex = currentQueueIndex()
@@ -2557,10 +2581,6 @@ ApplicationWindow {
     }
 
     function playPrevious() {
-        if (phoneInDock) {
-            phoneRemote.sendToPhone("previous")
-            return
-        }
         if (player.position > 5000) {
             player.seek(0)
             return
@@ -2954,6 +2974,7 @@ ApplicationWindow {
             if (index >= 0 && index < queue.length) window.removeQueuedTrack(queue[index])
         }
         function onCodeChanged() { appSettings.setValue("services/phoneRemoteCode", phoneRemote.code) }
+        function onControllerChanged() { window.updatePhoneOwnership() }
         function onPairedPhonesChanged() { appSettings.setValue("services/phoneRemotePhones", JSON.stringify(phoneRemote.pairedPhones)) }
     }
 
@@ -3081,10 +3102,6 @@ ApplicationWindow {
 
     function setPlayerVolume(val) {
         let v = Math.max(0.0, Math.min(1.0, val))
-        if (phoneInDock) {
-            phonePlayer.setVolume(v)
-            return
-        }
         if (volumeLimitEnabled) {
             const limit = Math.max(0.05, maxVolumePercent / 100.0)
             if (v > limit) v = limit
@@ -4308,7 +4325,7 @@ ApplicationWindow {
                             iconName: "skip-back"
                             iconColor: textPrimary
                             tooltipText: phoneInDock ? "Previous on " + phonePlayback.name : "Previous"
-                            onClicked: playPrevious()
+                            onClicked: shownPrevious()
                         }
 
                         TransportButton {
@@ -4337,7 +4354,7 @@ ApplicationWindow {
                             iconName: "skip-forward"
                             iconColor: textPrimary
                             tooltipText: phoneInDock ? "Next on " + phonePlayback.name : "Next"
-                            onClicked: playNext()
+                            onClicked: shownNext()
                         }
 
                         TransportButton {
@@ -4463,7 +4480,7 @@ ApplicationWindow {
                         volume: shownPlayer.volume
                         paletteSource: window
                         onVolumeAdjusted: newVol => {
-                            setPlayerVolume(newVol)
+                            setShownVolume(newVol)
                         }
                     }
                 }
@@ -4728,7 +4745,7 @@ ApplicationWindow {
                                 paletteSource: window
                                 iconName: "skip-back"
                                 iconColor: textPrimary
-                                onClicked: playPrevious()
+                                onClicked: shownPrevious()
                             }
 
                             TransportButton {
@@ -4747,7 +4764,7 @@ ApplicationWindow {
                                 paletteSource: window
                                 iconName: "skip-forward"
                                 iconColor: textPrimary
-                                onClicked: playNext()
+                                onClicked: shownNext()
                             }
 
                             Item { Layout.fillWidth: true }
@@ -4772,7 +4789,7 @@ ApplicationWindow {
                                 Layout.preferredWidth: 160
                                 volume: shownPlayer.volume
                                 paletteSource: window
-                                onVolumeAdjusted: newVol => setPlayerVolume(newVol)
+                                onVolumeAdjusted: newVol => setShownVolume(newVol)
                             }
                             Item { Layout.fillWidth: true }
                         }

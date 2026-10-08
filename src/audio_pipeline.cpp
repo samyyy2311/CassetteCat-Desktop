@@ -89,7 +89,8 @@ QAudioBufferOutput *AudioPipeline::addSource() {
         QMutexLocker lock(&m_mutex);
         m_sources.push_back({output});
     }
-    connect(output, &QAudioBufferOutput::audioBufferReceived, &m_audioContext,
+    // Queued on this thread, like clear(), so audio from before a seek or a new song never arrives after it.
+    connect(output, &QAudioBufferOutput::audioBufferReceived, this,
             [this, output](const QAudioBuffer &buffer) { append(output, buffer); });
     return output;
 }

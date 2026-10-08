@@ -82,7 +82,7 @@ class AudioPipeline final : public QObject {
     QAudioDevice m_device;
     bool m_paused = true;
     QThread m_audioThread;
-    // Lives on the audio thread; the device and incoming audio are handled in its context.
+    // Lives on the audio thread, where the device is created, fed and destroyed.
     QObject m_audioContext;
     // Created, used and destroyed on the audio thread only.
     QAudioSink *m_sink = nullptr;

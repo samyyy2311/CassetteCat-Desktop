@@ -136,7 +136,7 @@ ColumnLayout {
     SettingCard {
         Repeater {
             model: [
-                { title: "AutoEq", subtitle: "Calibrated headphone equalizer response curves by Jaakko Pasanen (Planned)", icon: "autoeq", preserveColor: true, url: "https://github.com/jaakkopasanen/AutoEq" },
+                { title: "AutoEq", subtitle: "Headphone correction curves for the equalizer, by Jaakko Pasanen", icon: "autoeq", preserveColor: true, url: "https://github.com/jaakkopasanen/AutoEq" },
                 { title: "Qt Multimedia", subtitle: "Hardware audio playback, streaming, and audio sinks", icon: "music", preserveColor: false, url: "https://doc.qt.io/qt-6/qtmultimedia-index.html" },
                 { title: "Qt Network", subtitle: "High-performance HTTP/REST client for lyrics and data sync", icon: "globe", preserveColor: false, url: "https://doc.qt.io/qt-6/qtnetwork-index.html" },
                 { title: "TagLib", subtitle: "Audio metadata and embedded ID3/MP4/FLAC tag parser", icon: "disc", preserveColor: false, url: "https://taglib.org" },

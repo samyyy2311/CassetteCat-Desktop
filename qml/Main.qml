@@ -2684,6 +2684,7 @@ ApplicationWindow {
                 volumeLimitEnabled: window.volumeLimitEnabled,
                 maxVolumePercent: window.maxVolumePercent,
                 replayGainMode: window.replayGainMode,
+                equalizer: player.equalizer,
                 closeToTray: window.closeToTray,
                 startMinimizedToTray: window.startMinimizedToTray,
                 nowPlayingNotifications: window.nowPlayingNotifications,
@@ -2756,6 +2757,7 @@ ApplicationWindow {
                     if (data.sleepFadeOut !== undefined) { window.sleepFadeOut = data.sleepFadeOut; appSettings.setValue("player/sleepFadeOut", data.sleepFadeOut) }
                     if (data.volumeLimitEnabled !== undefined) { window.volumeLimitEnabled = data.volumeLimitEnabled; appSettings.setValue("player/volumeLimitEnabled", data.volumeLimitEnabled) }
                     if (data.maxVolumePercent !== undefined) { window.maxVolumePercent = data.maxVolumePercent; appSettings.setValue("player/maxVolumePercent", data.maxVolumePercent) }
+                    if (data.equalizer) player.setEqualizer(data.equalizer)
                     if (data.replayGainMode !== undefined) { window.replayGainMode = data.replayGainMode; appSettings.setValue("player/replayGainMode", data.replayGainMode) }
                     if (data.closeToTray !== undefined) { window.closeToTray = data.closeToTray; appSettings.setValue("ui/closeToTray", data.closeToTray) }
                     if (data.startMinimizedToTray !== undefined) { window.startMinimizedToTray = data.startMinimizedToTray; appSettings.setValue("ui/startMinimizedToTray", data.startMinimizedToTray) }

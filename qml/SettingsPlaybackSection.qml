@@ -127,6 +127,10 @@ ColumnLayout {
         }
     }
 
+    SectionLabel { text: "Equalizer" }
+
+    SettingsEqualizerCard {}
+
     SectionLabel { text: "Loudness & Normalization" }
 
     SettingCard {

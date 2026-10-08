@@ -101,6 +101,15 @@ Popup {
                     font.pixelSize: 12
                 }
             }
+
+            TransportButton {
+                Layout.alignment: Qt.AlignTop
+                Accessible.name: "Close"
+                buttonSize: 32
+                iconName: "x"
+                tooltipText: "Close"
+                onClicked: root.close()
+            }
         }
 
         Body {
@@ -178,11 +187,6 @@ Popup {
             spacing: 10
 
             Item { Layout.fillWidth: true }
-
-            SettingButton {
-                text: "Close"
-                onClicked: root.close()
-            }
 
             SettingButton {
                 visible: root.remoteOn && root.controlled

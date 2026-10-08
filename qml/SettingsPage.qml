@@ -76,6 +76,7 @@ Item {
         { id: "lyrics", label: "Lyrics", icon: "mic" },
         { id: "scrobble", label: "Scrobbling", icon: "audio-lines" },
         { id: "network", label: "Network & Services", icon: "globe" },
+        { id: "phone", label: "Phone Remote", icon: "smartphone" },
         { id: "data", label: "Backup & Diagnostics", icon: "refresh-cw" },
         { id: "credits", label: "Credits & Legal", icon: "info" }
     ]
@@ -90,6 +91,7 @@ Item {
             case "lyrics": return secLyrics.implicitHeight
             case "scrobble": return secScrobble.implicitHeight
             case "network": return secNetwork.implicitHeight
+            case "phone": return secPhoneRemote.implicitHeight
             case "data": return secBackup.implicitHeight
             case "credits": return secCredits.implicitHeight
             default: return 600
@@ -411,11 +413,19 @@ Item {
                                 svcWiki: root.svcWiki
                                 svcArchive: root.svcArchive
                                 svcDiscord: root.svcDiscord
-                                svcPhoneRemote: root.svcPhoneRemote
                                 onOfflineBlackoutSelected: value => root.offlineBlackoutSelected(value)
                                 onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
                                 onOpenJellyfinRequested: root.openJellyfinRequested()
                                 onOpenSubsonicRequested: root.openSubsonicRequested()
+                            }
+
+                            SettingsPhoneRemoteSection {
+                                id: secPhoneRemote
+                                visible: root.currentSection === "phone"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
+                                offlineBlackout: root.offlineBlackout
+                                svcPhoneRemote: root.svcPhoneRemote
+                                onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
                             }
 
                             SettingsBackupSection {

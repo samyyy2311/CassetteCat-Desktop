@@ -178,6 +178,7 @@ qt_add_qml_module(CassetteCat
         qml/SettingsScrobbleSection.qml
         qml/CoverSearchPopup.qml
         qml/SettingsNetworkSection.qml
+        qml/SettingsPhoneRemoteSection.qml
         qml/SettingsBackupSection.qml
         qml/ShortcutCaptureField.qml
         qml/ShortcutDefinitions.qml

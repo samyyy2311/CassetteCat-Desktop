@@ -12,7 +12,6 @@ ColumnLayout {
     property bool svcWiki: true
     property bool svcArchive: true
     property bool svcDiscord: false
-    property bool svcPhoneRemote: false
 
     signal offlineBlackoutSelected(bool value)
     signal serviceToggleRequested(string name, bool value)
@@ -107,47 +106,6 @@ ColumnLayout {
                         onToggled: val => root.serviceToggleRequested(modelData.id, val)
                     }
                 }
-            }
-        }
-    }
-
-    SectionLabel { text: "Phone Remote" }
-
-    SettingCard {
-        SettingRow {
-            iconName: "smartphone"
-            title: "Control From Your Phone" + (root.offlineBlackout ? " (paused)" : "")
-            subtitle: "Let the CassetteCat Android app on this Wi-Fi control playback"
-
-            SettingSwitch {
-                enabled: !root.offlineBlackout
-                checked: root.svcPhoneRemote && !root.offlineBlackout
-                onToggled: val => root.serviceToggleRequested("phoneRemote", val)
-            }
-        }
-
-        SettingDivider { visible: pairingRow.visible }
-
-        SettingRow {
-            id: pairingRow
-            readonly property string pairingAddress: phoneRemote.address + "#" + phoneRemote.code
-            visible: phoneRemote.enabled
-            iconName: "link"
-            title: phoneRemote.address ? "Pair a Phone" : "No network connection"
-            subtitle: phoneRemote.address
-                      ? "On your phone, tap the devices button in Now Playing and choose " + phoneRemote.computerName
-                      : "Connect this computer to Wi-Fi to pair a phone"
-
-            SettingButton {
-                text: "Copy Address"
-                enabled: phoneRemote.address !== ""
-                onClicked: appSettings.copyToClipboard(pairingRow.pairingAddress)
-            }
-
-            SettingButton {
-                text: "New Code"
-                iconName: "refresh-cw"
-                onClicked: phoneRemote.regenerateCode()
             }
         }
     }

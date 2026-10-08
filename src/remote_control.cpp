@@ -810,13 +810,15 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
             if (listen.value("title").toString().isEmpty() || listen.value("at").toInteger() <= 0 ||
                 listen.value("ms").toInteger() <= 0)
                 continue;
-            listens.append({{"at", listen.value("at").toInteger()},
-                            {"path", pathByKey.value(matchKey(listen.toVariantMap()))},
-                            {"title", listen.value("title").toString()},
-                            {"artist", listen.value("artist").toString()},
-                            {"album", listen.value("album").toString()},
-                            {"genre", listen.value("genre").toString()},
-                            {"ms", listen.value("ms").toInteger()}});
+            QJsonObject entry{
+                {"at", listen.value("at").toInteger()},      {"path", pathByKey.value(matchKey(listen.toVariantMap()))},
+                {"title", listen.value("title").toString()}, {"artist", listen.value("artist").toString()},
+                {"album", listen.value("album").toString()}, {"genre", listen.value("genre").toString()},
+                {"ms", listen.value("ms").toInteger()}};
+            // A skip on the phone adds listening time here too, without counting as a play.
+            if (!listen.value("counted").toBool(true))
+                entry.insert("counted", false);
+            listens.append(entry);
         }
         return {m_library->appendPhoneListens(listens) ? 200 : 500, {}};
     }

@@ -29,6 +29,17 @@ bool WindowFrame::maximizeHovered() const {
     return m_hovered;
 }
 
+qreal WindowFrame::maximizedMargin() const {
+    return m_maximizedMargin;
+}
+
+void WindowFrame::setMaximizedMargin(qreal margin) {
+    if (qFuzzyCompare(m_maximizedMargin, margin))
+        return;
+    m_maximizedMargin = margin;
+    emit maximizedMarginChanged();
+}
+
 void WindowFrame::setHovered(bool hovered) {
     if (m_hovered == hovered)
         return;
@@ -61,24 +72,22 @@ bool WindowFrame::nativeEventFilter(const QByteArray &eventType, void *message, 
     if (msg->hwnd != hwnd)
         return false;
     switch (msg->message) {
-    // The whole window is client area, so the frame Windows needs for snapping stays invisible. A maximized window
-    // overhangs the screen by its frame, which is cut off here.
-    case WM_NCCALCSIZE: {
+    // The whole window is client area, so the frame Windows needs for snapping stays invisible.
+    case WM_NCCALCSIZE:
         if (!msg->wParam)
             return false;
-        if (IsZoomed(hwnd)) {
-            const UINT dpi = GetDpiForWindow(hwnd);
-            const int padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
-            const int frameX = GetSystemMetricsForDpi(SM_CXFRAME, dpi) + padding;
-            const int frameY = GetSystemMetricsForDpi(SM_CYFRAME, dpi) + padding;
-            RECT &client = reinterpret_cast<NCCALCSIZE_PARAMS *>(msg->lParam)->rgrc[0];
-            client.left += frameX;
-            client.top += frameY;
-            client.right -= frameX;
-            client.bottom -= frameY;
-        }
         *result = 0;
         return true;
+    // Windows places a maximized sizable window past the screen edges by its frame, whatever Qt asks for.
+    case WM_SIZE: {
+        int overhang = 0;
+        MONITORINFO monitor{sizeof(monitor)};
+        RECT frame;
+        if (msg->wParam == SIZE_MAXIMIZED && GetWindowRect(hwnd, &frame) &&
+            GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor))
+            overhang = monitor.rcWork.left - frame.left;
+        setMaximizedMargin(overhang / m_button->window()->devicePixelRatio());
+        return false;
     }
     case WM_NCHITTEST:
         if (overButton(GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam))) {

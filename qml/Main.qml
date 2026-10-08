@@ -3109,6 +3109,9 @@ ApplicationWindow {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
+        anchors.topMargin: windowFrame.maximizedMargin
+        anchors.leftMargin: windowFrame.maximizedMargin
+        anchors.rightMargin: windowFrame.maximizedMargin
         height: 60
         color: surfaceSidebar
         z: 200
@@ -3448,6 +3451,9 @@ ApplicationWindow {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
+        anchors.leftMargin: windowFrame.maximizedMargin
+        anchors.rightMargin: windowFrame.maximizedMargin
+        anchors.bottomMargin: windowFrame.maximizedMargin
 
         Item {
             id: mainBodyArea
@@ -4458,6 +4464,7 @@ ApplicationWindow {
     Loader {
         id: nowPlayingLoader
         anchors.fill: parent
+        anchors.margins: windowFrame.maximizedMargin
         z: 500
         active: (nowPlayingLoaded || nowPlayingOpen) && !inTray
         sourceComponent: Component {

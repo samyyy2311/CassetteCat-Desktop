@@ -142,7 +142,6 @@ ColumnLayout {
 
     ConfirmPopup {
         id: newCodeConfirm
-        iconName: "key-round"
         title: "New Pairing Code?"
         subtitle: "Phones paired by address will need it"
         message: "Phones that paired by entering the address lose access until you give them the new code. Phones under Paired Phones stay connected."

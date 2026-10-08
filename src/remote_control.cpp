@@ -130,7 +130,10 @@ QString localIpv4() {
 
 // Identifies a track's cover for the phone without sending it the file path; changes when the cover does.
 QString artworkKey(const QVariantMap &track) {
-    const QString source = track.value("filePath").toString() + track.value("artworkUrl").toString();
+    // A local song's cover is read from its file, while its artworkUrl is filled in only once it plays, so the
+    // path alone keeps the key the same in the queue and when the song comes up.
+    const QString filePath = track.value("filePath").toString();
+    const QString source = filePath.isEmpty() ? track.value("artworkUrl").toString() : filePath;
     // The size is part of the key so phones holding an earlier, smaller copy fetch the new one.
     return source.isEmpty() ? QString() : QString::number(qHash(source + QString::number(kFullArtworkSize)), 16);
 }

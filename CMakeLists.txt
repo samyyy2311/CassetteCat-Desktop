@@ -200,6 +200,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/shield.svg
         qml/icons/refresh-cw.svg
         qml/icons/smartphone.svg
+        qml/icons/laptop.svg
         qml/icons/zap.svg
         qml/icons/compass.svg
         qml/icons/sliders-horizontal.svg

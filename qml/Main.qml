@@ -4283,6 +4283,17 @@ ApplicationWindow {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 34
                             paletteSource: window
+                            visible: phoneInDock
+                            iconName: "laptop"
+                            iconColor: textPrimary
+                            tooltipText: "Play Here"
+                            onClicked: phoneRemote.sendToPhone("handoff")
+                        }
+
+                        TransportButton {
+                            Layout.alignment: Qt.AlignVCenter
+                            buttonSize: 34
+                            paletteSource: window
                             iconName: "shuffle"
                             visible: !phoneInDock
                             accented: player.shuffleEnabled
@@ -4339,6 +4350,12 @@ ApplicationWindow {
                             iconColor: repeatMode > 0 ? recordRed : textPrimary
                             tooltipText: repeatMode === 2 ? "Repeat Track" : (repeatMode === 1 ? "Repeat All" : "Repeat Off")
                             onClicked: toggleRepeat()
+                        }
+
+                        // Balances Play Here, so play stays centred.
+                        Item {
+                            Layout.preferredWidth: 34
+                            visible: phoneInDock
                         }
                     }
 

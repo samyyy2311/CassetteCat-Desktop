@@ -4317,7 +4317,6 @@ ApplicationWindow {
                             buttonSize: 34
                             paletteSource: window
                             iconName: "shuffle"
-                            filled: false
                             visible: !phoneInDock
                             accented: player.shuffleEnabled
                             tooltipText: player.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
@@ -4329,7 +4328,6 @@ ApplicationWindow {
                             buttonSize: 38
                             paletteSource: window
                             iconName: "skip-back"
-                            filled: false
                             iconColor: textPrimary
                             tooltipText: phoneInDock ? "Previous on " + phonePlayback.name : "Previous"
                             onClicked: shownPrevious()
@@ -4359,7 +4357,6 @@ ApplicationWindow {
                             buttonSize: 38
                             paletteSource: window
                             iconName: "skip-forward"
-                            filled: false
                             iconColor: textPrimary
                             tooltipText: phoneInDock ? "Next on " + phonePlayback.name : "Next"
                             onClicked: shownNext()
@@ -4370,7 +4367,6 @@ ApplicationWindow {
                             buttonSize: 34
                             paletteSource: window
                             iconName: repeatMode === 2 ? "repeat-1" : "repeat"
-                            filled: false
                             visible: !phoneInDock
                             accented: repeatMode > 0
                             iconColor: repeatMode > 0 ? recordRed : textPrimary

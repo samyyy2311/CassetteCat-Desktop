@@ -539,7 +539,12 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         return {401, {}};
     }
     m_failedAttempts = 0;
-    if (!deviceName.isEmpty()) {
+    // Every request names the phone, but only these mean it is controlling this computer; check-ins, syncing and
+    // browsing happen while the phone plays itself.
+    const bool controlsPlayback = path == "/api/playback" || path == "/api/volume" || path == "/api/seek" ||
+                                  path.startsWith("/api/queue") || path == "/api/library/play" ||
+                                  path == "/api/handoff";
+    if (controlsPlayback && !deviceName.isEmpty()) {
         const QString name = QString::fromUtf8(deviceName);
         m_controllerTimeout.start();
         if (m_controllerName != name) {
@@ -955,8 +960,10 @@ bool RemoteControlServer::selfCheck() {
                        R"({"tracks":[{"title":"A","artist":"B"}],"index":0,"positionMs":61000,"playing":true})", lan)
                 .status == 200 &&
         handedTracks.size() == 1 && handedTracks[0].toMap().value("title") == "A" && handedPosition == 61000;
+    remote.respond("POST", "/api/phone-state", auth, R"({"title":"Song"})", lan, "motorola edge 40");
+    const bool checkInIsNotControl = remote.controllerName().isEmpty();
     remote.respond("GET", "/api/playback", auth, {}, lan, "motorola edge 40");
-    const bool namesController = remote.controllerName() == "motorola edge 40";
+    const bool namesController = checkInIsNotControl && remote.controllerName() == "motorola edge 40";
     remote.continueOnPhone();
     const bool handsBackOnce = QJsonDocument::fromJson(remote.respond("GET", "/api/playback", auth, {}, lan).body)
                                    .object()

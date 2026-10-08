@@ -57,6 +57,23 @@ Popup {
             Layout.fillWidth: true
             spacing: 12
 
+            Rectangle {
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
+                radius: 18
+                color: Qt.rgba(1, 0.2, 0.2, 0.12)
+                border.width: 1
+                border.color: Qt.rgba(1, 0.2, 0.2, 0.25)
+
+                LucideIcon {
+                    anchors.centerIn: parent
+                    width: 18
+                    height: 18
+                    icon: "smartphone"
+                    color: recordRed
+                }
+            }
+
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2
@@ -78,15 +95,9 @@ Popup {
                         : root.phoneName !== "" ? root.phoneName + " is playing"
                         : "Ready on " + root.remote.computerName
                     color: silverDim
-                    font.family: bodyFont
-                    font.pixelSize: 12
+                    font.family: monoFont
+                    font.pixelSize: 11
                 }
-            }
-
-            SettingSwitch {
-                enabled: !root.offlineBlackout
-                checked: root.remoteOn
-                onToggled: val => root.enableRequested(val)
             }
         }
 

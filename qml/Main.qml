@@ -134,10 +134,9 @@ ApplicationWindow {
     // a paused phone or the moment between two songs here never takes over the dock.
     property bool phoneOwnsDock: false
     readonly property bool phoneInDock: phoneOwnsDock && phonePlayback.title !== undefined && !playerVisuallyPlaying
-        && phoneRemote.controllerName === ""
 
     function updatePhoneOwnership() {
-        if (playerVisuallyPlaying || phonePlayback.title === undefined || phoneRemote.controllerName !== "")
+        if (playerVisuallyPlaying || phonePlayback.title === undefined)
             phoneOwnsDock = false
         else if (phonePlayback.isPlaying)
             phoneOwnsDock = true
@@ -2974,7 +2973,6 @@ ApplicationWindow {
             if (index >= 0 && index < queue.length) window.removeQueuedTrack(queue[index])
         }
         function onCodeChanged() { appSettings.setValue("services/phoneRemoteCode", phoneRemote.code) }
-        function onControllerChanged() { window.updatePhoneOwnership() }
         function onPairedPhonesChanged() { appSettings.setValue("services/phoneRemotePhones", JSON.stringify(phoneRemote.pairedPhones)) }
     }
 

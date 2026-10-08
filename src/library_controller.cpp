@@ -192,14 +192,13 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
         qint64 listenedMs = 0;
     };
     const auto add = [](QHash<QString, Tally> &tallies, QList<QString> &order, const QString &key,
-                        const QVariantMap &item, qint64 ms, bool counted) {
+                        const QVariantMap &item, qint64 ms, int plays) {
         if (!tallies.contains(key)) {
             order.append(key);
             tallies.insert(key, Tally{item});
         }
         Tally &tally = tallies[key];
-        if (counted)
-            ++tally.plays;
+        tally.plays += plays;
         tally.listenedMs += ms;
     };
     // Only what was played counts as a song, artist, album or genre; skips add listening time.
@@ -248,24 +247,27 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
                                 {"genre", entry.value("genre").toString()}};
         // Plays follow Apple Music, counting once most of a song is heard; listening time counts every minute, as in
         // Apple Music Replay. Listens logged before skips were kept are all plays.
-        const bool counted = entry.value("counted").toBool(true);
-        if (counted)
-            ++plays;
+        // A month's total from the phone carries its plays and is dated the first of the month, so it doesn't set when
+        // listening began.
+        const bool total = entry.contains("plays");
+        const int entryPlays = entry.value("counted").toBool(true) ? qMax(1, entry.value("plays").toInt(1)) : 0;
+        plays += entryPlays;
         listenedMs += ms;
-        firstListen = firstListen == 0 ? at : qMin(firstListen, at);
+        if (!total)
+            firstListen = firstListen == 0 ? at : qMin(firstListen, at);
 
         // A song is its title and artist, as on the phone, so playing it on both devices counts as one song.
         const QString songKey = track.value("title").toString().trimmed().toLower() + QChar(0x1f) +
                                 track.value("artist").toString().trimmed().toLower();
-        add(songs, songOrder, songKey, {{"track", track}}, ms, counted);
+        add(songs, songOrder, songKey, {{"track", track}}, ms, entryPlays);
         for (const QString &artist : splitArtists(track.value("artist").toString()))
-            add(artists, artistOrder, artist.toLower(), {{"name", artist}, {"track", track}}, ms, counted);
+            add(artists, artistOrder, artist.toLower(), {{"name", artist}, {"track", track}}, ms, entryPlays);
         const QString album = track.value("album").toString().trimmed();
         if (!album.isEmpty())
-            add(albums, albumOrder, album.toLower(), {{"name", album}, {"track", track}}, ms, counted);
+            add(albums, albumOrder, album.toLower(), {{"name", album}, {"track", track}}, ms, entryPlays);
         const QString genre = track.value("genre").toString().trimmed();
         if (!genre.isEmpty())
-            add(genres, genreOrder, genre.toLower(), {{"name", genre}}, ms, counted);
+            add(genres, genreOrder, genre.toLower(), {{"name", genre}}, ms, entryPlays);
     }
 
     int busiestMonth = -1;
@@ -529,6 +531,15 @@ bool LibraryController::selfCheck() {
     if (withSkip.value("plays").toInt() != 1 || withSkip.value("songCount").toInt() != 1 ||
         withSkip.value("listenedMs").toLongLong() != 2000 || withSkip.value("topSongs").toList().size() != 1)
         return fail("skipped listens add time but not plays");
+    QJsonObject total = QJsonDocument::fromJson(phoneLine("Old")).object();
+    total.insert("plays", 4);
+    total.insert("at", QDateTime::fromString("2026-01-01T00:00:00", Qt::ISODate).toMSecsSinceEpoch());
+    const QVariantMap withTotal =
+        recapFromLog(phoneLine("Here") + QJsonDocument(total).toJson(QJsonDocument::Compact) + '\n', 2026, -1);
+    if (withTotal.value("plays").toInt() != 5 || withTotal.value("songCount").toInt() != 2 ||
+        withTotal.value("firstListen").toLongLong() !=
+            QDateTime::fromString("2026-04-01T12:00:00", Qt::ISODate).toMSecsSinceEpoch())
+        return fail("monthly totals from the phone");
 
     // Half a second of 8 kHz mono silence is enough for TagLib to accept the file.
     QTemporaryDir tagDir;

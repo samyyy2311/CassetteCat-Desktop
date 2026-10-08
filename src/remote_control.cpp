@@ -818,6 +818,9 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
             // A skip on the phone adds listening time here too, without counting as a play.
             if (!listen.value("counted").toBool(true))
                 entry.insert("counted", false);
+            // A month's total for a song from before the phone kept single listens.
+            if (listen.value("plays").isDouble())
+                entry.insert("plays", qMax(1, listen.value("plays").toInt()));
             listens.append(entry);
         }
         return {m_library->appendPhoneListens(listens) ? 200 : 500, {}};

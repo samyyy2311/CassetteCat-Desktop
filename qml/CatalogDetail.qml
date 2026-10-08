@@ -244,13 +244,8 @@ Rectangle {
                         Layout.alignment: Qt.AlignVCenter
                         spacing: 6
 
-                        Label {
-                            text: root.artistDetail ? "ARTIST" : (root.albumDetail ? "ALBUM" : root.mode.toUpperCase())
-                            color: root.appWindow.recordRed
-                            font.family: root.appWindow.monoFont
-                            font.pixelSize: 11
-                            font.weight: Font.Bold
-                            font.letterSpacing: 2
+                        OverlineLabel {
+                            text: root.artistDetail ? "Artist" : (root.albumDetail ? "Album" : root.mode)
                         }
 
                         Label {
@@ -311,15 +306,10 @@ Rectangle {
                             }
                         }
 
-                        Label {
+                        OverlineLabel {
                             Layout.fillWidth: true
                             visible: root.featuredDetail && root.detailBio.length > 0
-                            text: root.artistDetail ? "ABOUT THIS ARTIST" : "ABOUT THIS ALBUM"
-                            color: root.appWindow.recordRed
-                            font.family: root.appWindow.monoFont
-                            font.pixelSize: 10
-                            font.weight: Font.Bold
-                            font.letterSpacing: 1.2
+                            text: root.artistDetail ? "About this artist" : "About this album"
                         }
 
                         Text {

@@ -57,13 +57,8 @@ Column {
 
                     Item { Layout.fillWidth: true }
 
-                    Label {
-                        text: "TOP " + Math.min(5, root.tracks.length)
-                        color: root.appWindow.recordRed
-                        font.family: root.appWindow.monoFont
-                        font.pixelSize: 10
-                        font.weight: Font.Bold
-                        font.letterSpacing: 1.2
+                    OverlineLabel {
+                        text: "Top " + Math.min(5, root.tracks.length)
                     }
                 }
 
@@ -123,15 +118,10 @@ Column {
                         Layout.topMargin: 6
                         spacing: 10
 
-                        Label {
+                        OverlineLabel {
                             visible: root.discographySections.length > 1
                             text: modelData.title
-                            color: root.appWindow.textSecondary
-                            font.family: root.appWindow.monoFont
-                            font.pixelSize: 10
-                            font.weight: Font.Bold
-                            font.letterSpacing: 1.2
-                            font.capitalization: Font.AllUppercase
+                            color: textSecondary
                         }
 
                         AppListView {

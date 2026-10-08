@@ -144,6 +144,7 @@ qt_add_qml_module(CassetteCat
         qml/JellyfinPage.qml
         qml/SubsonicPage.qml
         qml/NavItem.qml
+        qml/OverlineLabel.qml
         qml/SectionLabel.qml
         qml/LibraryRefineSheet.qml
         qml/BottomSheet.qml

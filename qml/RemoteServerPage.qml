@@ -593,13 +593,9 @@ Item {
                     ColumnLayout {
                         spacing: 2
 
-                        Label {
+                        OverlineLabel {
                             text: root.serviceLabel
                             color: root.serviceColor
-                            font.family: monoFont
-                            font.pixelSize: 10
-                            font.weight: Font.Bold
-                            font.letterSpacing: 1.5
                         }
 
                         Label {

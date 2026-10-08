@@ -50,13 +50,8 @@ Item {
                                 width: homeScrollView.availableWidth - 64
                                 spacing: 4
 
-                                Label {
-                                    text: greeting.toUpperCase()
-                                    color: accentText
-                                    font.family: monoFont
-                                    font.pixelSize: 10
-                                    font.weight: Font.Bold
-                                    font.letterSpacing: 1.0
+                                OverlineLabel {
+                                    text: greeting
                                 }
 
                                 Label {
@@ -169,13 +164,9 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     spacing: 4
 
-                                    Label {
-                                        text: "SHUFFLE"
+                                    OverlineLabel {
+                                        text: "Shuffle"
                                         color: textPrimary
-                                        font.family: monoFont
-                                        font.pixelSize: 10
-                                        font.weight: Font.Bold
-                                        font.letterSpacing: 1.0
                                     }
 
                                     Label {

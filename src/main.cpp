@@ -221,6 +221,10 @@ static void setupWindowsFrameless(QQuickWindow *window) {
     // Frameless windows get square corners unless they ask; Windows 11 rounds them like other apps.
     const int roundCorners = 2 /* DWMWCP_ROUND */;
     DwmSetWindowAttribute(hwnd, 33 /* DWMWA_WINDOW_CORNER_PREFERENCE */, &roundCorners, sizeof(roundCorners));
+
+    // Snap Layouts and Aero Snap only work on sizable windows with a caption. WindowFrame hides both.
+    SetWindowLongPtr(hwnd, GWL_STYLE, GetWindowLongPtr(hwnd, GWL_STYLE) | WS_THICKFRAME | WS_CAPTION);
+    SetWindowPos(hwnd, nullptr, 0, 0, 0, 0, SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
 static void registerWindowsAppIdentity() {

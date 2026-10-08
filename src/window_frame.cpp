@@ -61,6 +61,25 @@ bool WindowFrame::nativeEventFilter(const QByteArray &eventType, void *message, 
     if (msg->hwnd != hwnd)
         return false;
     switch (msg->message) {
+    // The whole window is client area, so the frame Windows needs for snapping stays invisible. A maximized window
+    // overhangs the screen by its frame, which is cut off here.
+    case WM_NCCALCSIZE: {
+        if (!msg->wParam)
+            return false;
+        if (IsZoomed(hwnd)) {
+            const UINT dpi = GetDpiForWindow(hwnd);
+            const int padding = GetSystemMetricsForDpi(SM_CXPADDEDBORDER, dpi);
+            const int frameX = GetSystemMetricsForDpi(SM_CXFRAME, dpi) + padding;
+            const int frameY = GetSystemMetricsForDpi(SM_CYFRAME, dpi) + padding;
+            RECT &client = reinterpret_cast<NCCALCSIZE_PARAMS *>(msg->lParam)->rgrc[0];
+            client.left += frameX;
+            client.top += frameY;
+            client.right -= frameX;
+            client.bottom -= frameY;
+        }
+        *result = 0;
+        return true;
+    }
     case WM_NCHITTEST:
         if (overButton(GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam))) {
             *result = HTMAXBUTTON;
@@ -78,18 +97,15 @@ bool WindowFrame::nativeEventFilter(const QByteArray &eventType, void *message, 
     case WM_MOUSEMOVE:
         setHovered(false);
         return false;
-    // Handled here, so Windows doesn't draw its own button or maximize on press.
+    // Qt filters input messages before dispatching them, without a result. Swallowing them there keeps Windows from
+    // drawing its own button or maximizing on press.
     case WM_NCLBUTTONDOWN:
     case WM_NCLBUTTONDBLCLK:
-        if (msg->wParam != HTMAXBUTTON)
-            return false;
-        *result = 0;
-        return true;
+        return msg->wParam == HTMAXBUTTON;
     case WM_NCLBUTTONUP:
         if (msg->wParam != HTMAXBUTTON)
             return false;
         emit maximizeClicked();
-        *result = 0;
         return true;
     default:
         return false;

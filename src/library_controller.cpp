@@ -1010,6 +1010,8 @@ QVariantMap LibraryController::catalogGroups() const {
     QHash<QString, QVariantMap> albums;
     QHash<QString, QVariantMap> genres;
     QHash<QString, QVariantMap> folders;
+    // Counted the way the search page's format filter matches them.
+    int allFormats = 0, lossless = 0, mp3 = 0, aac = 0;
     const auto add = [](QHash<QString, QVariantMap> &groups, const QString &key, const QVariantMap &track,
                         const QVariantMap &initial) {
         auto it = groups.find(key);
@@ -1027,6 +1029,15 @@ QVariantMap LibraryController::catalogGroups() const {
         const QVariantMap track = value.toMap();
         if (!isAvailable(track))
             continue;
+
+        ++allFormats;
+        const QString format = track.value("format").toString().toUpper();
+        if (format == "FLAC" || format == "WAV" || format == "ALAC")
+            ++lossless;
+        else if (format == "MP3")
+            ++mp3;
+        else if (format == "AAC" || format == "M4A")
+            ++aac;
 
         const QStringList trackArtists = splitArtists(track.value("artist").toString());
         for (const QString &artist : trackArtists) {
@@ -1062,7 +1073,16 @@ QVariantMap LibraryController::catalogGroups() const {
     return {{"artists", values(artists)},
             {"albums", values(albums)},
             {"genres", values(genres)},
-            {"folders", values(folders)}};
+            {"folders", values(folders)},
+            {"formats", QVariantMap{{"ALL", allFormats}, {"FLAC", lossless}, {"MP3", mp3}, {"AAC", aac}}}};
+}
+
+QVariantList LibraryController::visibleTracks() const {
+    QVariantList tracks;
+    tracks.reserve(m_visibleRows.size());
+    for (int row : m_visibleRows)
+        tracks.append(m_tracks.at(row));
+    return tracks;
 }
 
 void LibraryController::setLibraryFilter(const QString &query, const QString &filter, const QVariantMap &favorites,

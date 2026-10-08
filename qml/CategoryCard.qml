@@ -7,7 +7,6 @@ CardBase {
     property string name: ""
     property int count: 0
     property var track: ({})
-    property string iconName: "disc"
     property real cardWidth: 190
     property real cardHeight: 110
     property real cardRadius: 14
@@ -50,48 +49,6 @@ CardBase {
         anchors.margins: 14
         spacing: 4
 
-        RowLayout {
-            Layout.fillWidth: true
-
-            Rectangle {
-                Layout.preferredWidth: 28
-                Layout.preferredHeight: 28
-                radius: 8
-                color: surfaceTag
-                border.width: 1
-                border.color: borderSubtle
-
-                LucideIcon {
-                    anchors.centerIn: parent
-                    width: 14
-                    height: 14
-                    icon: root.iconName
-                    color: root.highlighted ? recordRedHover : textPrimary
-                }
-            }
-
-            Item { Layout.fillWidth: true }
-
-            Rectangle {
-                Layout.preferredHeight: 20
-                Layout.preferredWidth: countLabel.implicitWidth + 12
-                radius: 10
-                color: surfaceTag
-                border.width: 1
-                border.color: borderSubtle
-
-                Label {
-                    id: countLabel
-                    anchors.centerIn: parent
-                    text: root.count + (root.count === 1 ? " track" : " tracks")
-                    color: silverDim
-                    font.family: monoFont
-                    font.pixelSize: 10
-                    font.weight: Font.DemiBold
-                }
-            }
-        }
-
         Item { Layout.fillHeight: true }
 
         Label {
@@ -104,6 +61,13 @@ CardBase {
             font.pixelSize: 15
             font.weight: Font.Bold
             elide: Text.ElideRight
+        }
+
+        Label {
+            text: root.count + (root.count === 1 ? " track" : " tracks")
+            color: textSecondary
+            font.family: bodyFont
+            font.pixelSize: 12
         }
     }
 }

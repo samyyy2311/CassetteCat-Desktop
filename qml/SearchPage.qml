@@ -17,6 +17,48 @@ Item {
     readonly property bool filtering: appWindow.searchQuery.trim().length > 0 || appWindow.activeFormatFilter !== "ALL"
 
     property var cachedGroups: ({})
+    readonly property string query: appWindow.searchQuery.trim().toLowerCase()
+    readonly property var formatCounts: (cachedGroups && cachedGroups.formats) || ({})
+
+    // The last few searches that led somewhere, newest first.
+    property var recentSearches: JSON.parse(appSettings.value("search/recent", "[]"))
+
+    function rememberSearch() {
+        const text = appWindow.searchQuery.trim()
+        if (!text) return
+        const kept = recentSearches.filter(item => item.toLowerCase() !== text.toLowerCase())
+        recentSearches = [text].concat(kept).slice(0, 8)
+        appSettings.setValue("search/recent", JSON.stringify(recentSearches))
+    }
+
+    function forgetSearch(text) {
+        recentSearches = recentSearches.filter(item => item !== text)
+        appSettings.setValue("search/recent", JSON.stringify(recentSearches))
+    }
+
+    function search(text) {
+        pageSearchInput.text = text
+        pageSearchInput.forceActiveFocus()
+    }
+
+    function playResult(track) {
+        rememberSearch()
+        appWindow.playTrack(track)
+    }
+
+    function matches(groups) {
+        if (!query) return []
+        const list = []
+        for (let i = 0; i < groups.length; ++i) {
+            const group = groups[i]
+            if (group && group.name && group.name.toLowerCase().includes(query) && group.name !== "Unknown Album")
+                list.push(group)
+        }
+        list.sort((a, b) => (b.name.toLowerCase().startsWith(query) - a.name.toLowerCase().startsWith(query)) || b.count - a.count)
+        return list.slice(0, 10)
+    }
+    readonly property var matchingArtists: matches((cachedGroups && cachedGroups.artists) || [])
+    readonly property var matchingAlbums: matches((cachedGroups && cachedGroups.albums) || [])
 
     function refreshCatalog() {
         if (root.libraryModel && typeof root.libraryModel.catalogGroups === "function") {
@@ -178,7 +220,17 @@ Item {
                     selectByMouse: true
                     text: root.appWindow.searchQuery
                     onTextChanged: root.appWindow.searchQuery = text
-                    Keys.onEscapePressed: focus = false
+                    Keys.onEscapePressed: {
+                        if (text) text = ""
+                        else focus = false
+                    }
+                    Keys.onReturnPressed: if (root.libraryModel.visibleTrackCount > 0) root.playResult(root.libraryModel.visibleTracks()[0])
+                    Keys.onEnterPressed: if (root.libraryModel.visibleTrackCount > 0) root.playResult(root.libraryModel.visibleTracks()[0])
+                    Keys.onDownPressed: {
+                        if (root.libraryModel.visibleTrackCount === 0) return
+                        searchResults.currentIndex = 0
+                        searchResults.forceActiveFocus()
+                    }
 
                     Text {
                         anchors.fill: parent
@@ -249,15 +301,6 @@ Item {
             Layout.rightMargin: 28
             spacing: 10
 
-            Label {
-                text: "FORMAT"
-                color: silverDim
-                font.family: monoFont
-                font.pixelSize: 10
-                font.weight: Font.Bold
-                font.letterSpacing: 1.0
-            }
-
             Flow {
                 Layout.fillWidth: true
                 spacing: 8
@@ -272,7 +315,9 @@ Item {
 
                     FilterChip {
                         required property var modelData
-                        text: modelData.label
+                        readonly property int count: root.formatCounts[modelData.id] || 0
+                        visible: modelData.id === "ALL" || count > 0
+                        text: modelData.label + "  " + count
                         iconName: modelData.icon
                         selected: root.appWindow.activeFormatFilter === modelData.id
                         onClicked: root.appWindow.activeFormatFilter = modelData.id
@@ -312,6 +357,10 @@ Item {
             id: searchResults
             activeFocusOnTab: true
             onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
+            Keys.onUpPressed: event => {
+                if (currentIndex <= 0) pageSearchInput.forceActiveFocus()
+                else event.accepted = false
+            }
             Layout.fillWidth: true
             Layout.fillHeight: true
             visible: root.filtering
@@ -324,30 +373,90 @@ Item {
             reuseItems: true
             ScrollBar.vertical: AutoHideScrollBar {}
 
-            header: Item {
+            header: ColumnLayout {
                 width: searchResults.width - 56
-                height: 32
+                spacing: 12
+
+                SectionLabel {
+                    visible: root.matchingArtists.length > 0
+                    text: "Artists"
+                }
+
+                AppListView {
+                    visible: root.matchingArtists.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 165
+                    orientation: ListView.Horizontal
+                    spacing: 14
+                    clip: true
+                    model: root.matchingArtists
+
+                    delegate: ArtistCard {
+                        cardWidth: 100
+                        cardHeight: 160
+                        name: modelData.name
+                        count: modelData.count
+                        track: modelData.track
+                        onClicked: {
+                            root.rememberSearch()
+                            root.appWindow.openCatalogDetail("artist", modelData.name, modelData.track)
+                        }
+                    }
+                }
+
+                SectionLabel {
+                    visible: root.matchingAlbums.length > 0
+                    text: "Albums"
+                }
+
+                AppListView {
+                    visible: root.matchingAlbums.length > 0
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 200
+                    orientation: ListView.Horizontal
+                    spacing: 14
+                    clip: true
+                    model: root.matchingAlbums
+
+                    delegate: AlbumCard {
+                        cardWidth: 135
+                        cardHeight: 195
+                        name: modelData.name
+                        artist: modelData.track ? modelData.track.artist : ""
+                        count: modelData.count
+                        track: modelData.track
+                        onClicked: {
+                            root.rememberSearch()
+                            root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
+                        }
+                    }
+                }
 
                 RowLayout {
-                    anchors.fill: parent
-                    anchors.rightMargin: 8
+                    visible: root.libraryModel.visibleTrackCount > 0
+                    Layout.fillWidth: true
+                    Layout.bottomMargin: 4
+                    spacing: 8
 
-                    Label {
-                        text: "MATCHING TRACKS"
-                        color: silverDim
-                        font.family: monoFont
-                        font.pixelSize: 10
-                        font.weight: Font.Bold
-                        font.letterSpacing: 1.0
-                    }
+                    SectionLabel { text: "Songs" }
 
                     Item { Layout.fillWidth: true }
 
-                    Label {
-                        text: root.appWindow.searchQuery.length > 0 ? "Sorted by relevance" : "Filtered by format"
-                        color: silverDim
-                        font.family: monoFont
-                        font.pixelSize: 10
+                    SettingButton {
+                        text: "Shuffle"
+                        onClicked: {
+                            root.rememberSearch()
+                            root.appWindow.shufflePlayback(root.libraryModel.visibleTracks())
+                        }
+                    }
+
+                    SettingButton {
+                        text: "Play"
+                        primary: true
+                        onClicked: {
+                            root.rememberSearch()
+                            root.appWindow.startPlayback(root.libraryModel.visibleTracks(), 0)
+                        }
                     }
                 }
             }
@@ -359,7 +468,7 @@ Item {
                 showCover: true
                 showDuration: true
                 showHeart: true
-                onClicked: root.appWindow.playTrack(model.track)
+                onClicked: root.playResult(model.track)
                 onFavoriteClicked: root.appWindow.toggleFavorite(model.track.filePath)
             }
 
@@ -395,6 +504,73 @@ Item {
                 width: idleScrollView.width - 56
                 spacing: 24
 
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+                    visible: root.recentSearches.length > 0
+
+                    SectionLabel { text: "Recent Searches" }
+
+                    Flow {
+                        Layout.fillWidth: true
+                        spacing: 8
+
+                        Repeater {
+                            model: root.recentSearches
+
+                            delegate: Rectangle {
+                                required property string modelData
+                                implicitWidth: recentRow.implicitWidth + 20
+                                implicitHeight: 28
+                                radius: height / 2
+                                color: recentMouse.containsMouse ? surfaceElevated : surfaceTag
+                                border.width: 1
+                                border.color: recentMouse.containsMouse ? borderVariant : borderSubtle
+
+                                MouseArea {
+                                    id: recentMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: root.search(modelData)
+                                }
+
+                                RowLayout {
+                                    id: recentRow
+                                    anchors.centerIn: parent
+                                    spacing: 6
+
+                                    Label {
+                                        text: modelData
+                                        color: recentMouse.containsMouse ? textPrimary : textSecondary
+                                        font.family: monoFont
+                                        font.pixelSize: 11
+                                        font.weight: Font.DemiBold
+                                    }
+
+                                    LucideIcon {
+                                        Layout.preferredWidth: 12
+                                        Layout.preferredHeight: 12
+                                        icon: "x"
+                                        color: removeMouse.containsMouse ? textPrimary : silverDim
+                                        Accessible.role: Accessible.Button
+                                        Accessible.name: "Remove " + modelData
+
+                                        MouseArea {
+                                            id: removeMouse
+                                            anchors.fill: parent
+                                            anchors.margins: -4
+                                            hoverEnabled: true
+                                            cursorShape: Qt.PointingHandCursor
+                                            onClicked: root.forgetSearch(modelData)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Section 1: Recent Listens Shelf (deduplicated by artist)
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -405,13 +581,6 @@ Item {
                         Layout.fillWidth: true
                         SectionLabel {
                             text: "Recent Listens"
-                        }
-                        Item { Layout.fillWidth: true }
-                        Label {
-                            text: "Jump back in"
-                            color: silverDim
-                            font.family: monoFont
-                            font.pixelSize: 10
                         }
                     }
 
@@ -445,13 +614,6 @@ Item {
                         Layout.fillWidth: true
                         SectionLabel {
                             text: "Explore Genres"
-                        }
-                        Item { Layout.fillWidth: true }
-                        Label {
-                            text: root.popularGenres.length + " categories"
-                            color: silverDim
-                            font.family: monoFont
-                            font.pixelSize: 10
                         }
                     }
 
@@ -487,13 +649,6 @@ Item {
                         Layout.fillWidth: true
                         SectionLabel {
                             text: "Popular Artists"
-                        }
-                        Item { Layout.fillWidth: true }
-                        Label {
-                            text: "In your library"
-                            color: silverDim
-                            font.family: monoFont
-                            font.pixelSize: 10
                         }
                     }
 

@@ -74,6 +74,8 @@ class LibraryController final : public QAbstractListModel {
     /// Up to \p limit available tracks most like \p seed by genre, artist and era, skipping \p excludePaths.
     Q_INVOKABLE QVariantList similarTracks(const QVariantMap &seed, const QStringList &excludePaths, int limit) const;
     Q_INVOKABLE QVariantMap catalogGroups() const;
+    /// The tracks the current filter shows, in the order shown.
+    Q_INVOKABLE QVariantList visibleTracks() const;
     Q_INVOKABLE void setLibraryFilter(const QString &query, const QString &filter, const QVariantMap &favorites,
                                       const QString &sortMetric, bool ascending, const QVariantList &excludedFolders,
                                       bool ignoreShortClips);

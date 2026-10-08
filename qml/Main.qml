@@ -1181,9 +1181,9 @@ ApplicationWindow {
 
     function finishHistoryTracking() {
         pauseHistoryTracking()
-        // Counted song plays are logged with their date and listening time for the yearly recap.
-        if (historyRecordedForTrack && historyTrackedTrack && historyTrackedTrack.format !== "STREAM")
-            library.recordListen(historyTrackedTrack, historyAccumulatedMs)
+        // Every listen is logged for the Listening Record's time, marked as a play once it counted as one.
+        if (historyTrackedTrack && historyTrackedTrack.format !== "STREAM")
+            library.recordListen(historyTrackedTrack, historyAccumulatedMs, historyRecordedForTrack)
         historyTrackedTrack = null
     }
 

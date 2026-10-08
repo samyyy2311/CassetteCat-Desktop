@@ -52,7 +52,8 @@ class LibraryController final : public QAbstractListModel {
     /// The individual artists credited in \p artist, as the Library's Artists tab counts them.
     Q_INVOKABLE QStringList artistNames(const QString &artist) const;
     /// Appends a counted play with the current date and the time listened to the listening log.
-    Q_INVOKABLE void recordListen(const QVariantMap &track, qint64 listenedMs);
+    /// Logs \p listenedMs of listening; \p counted says whether it was a play, as opposed to a skip.
+    Q_INVOKABLE void recordListen(const QVariantMap &track, qint64 listenedMs, bool counted = true);
     /// Adds listens made on the paired phone to the listening log, marked as coming from it.
     bool appendPhoneListens(const QList<QJsonObject> &listens);
     /// Listens made on this computer after \p since, oldest first, as the phone stores them.

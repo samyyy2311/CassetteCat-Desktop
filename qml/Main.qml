@@ -52,6 +52,8 @@ ApplicationWindow {
     readonly property color surfaceElevated: "#282623"
     readonly property color surfaceInput: "#1A1917"
     readonly property color surfaceTag: "#22201E"
+    // Behind a selected chip or a main action button, which also get an accent border and accent text.
+    readonly property color surfaceSelected: "#262320"
     readonly property color silver: "#C4C4C0"
     readonly property color silverDim: "#918E88"
     readonly property color textPrimary: "#F5F0EC"

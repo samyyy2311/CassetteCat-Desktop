@@ -64,11 +64,9 @@ Rectangle {
                 height: 24
                 width: segLabel.implicitWidth + 20
                 radius: 6
-                color: isSelected
-                    ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#2E2B27")
-                    : (segMouse.containsMouse ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#22201D") : "transparent")
-                border.width: 0
-                border.color: "transparent"
+                color: isSelected ? surfaceSelected : (segMouse.containsMouse ? surfaceCardHover : "transparent")
+                border.width: isSelected ? 1 : 0
+                border.color: root.accentColor
                 scale: segMouse.pressed ? 0.97 : 1.0
 
                 Behavior on color { ColorAnimation { duration: 120 } }
@@ -80,7 +78,7 @@ Rectangle {
                     anchors.centerIn: parent
                     text: segItem.optLabel
                     color: segItem.isSelected
-                        ? textPrimary
+                        ? root.accentColor
                         : (segMouse.containsMouse ? textPrimary : textSecondary)
                     font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
                     font.pixelSize: 11

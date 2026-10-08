@@ -15,7 +15,7 @@ Rectangle {
     implicitWidth: chipContent.implicitWidth + 20
     implicitHeight: 28
     radius: height / 2
-    color: selected ? "#262320" : (chipMouse.containsMouse ? surfaceElevated : surfaceTag)
+    color: selected ? surfaceSelected : (chipMouse.containsMouse ? surfaceElevated : surfaceTag)
     border.width: 1
     border.color: selected ? recordRed : (chipMouse.containsMouse ? borderVariant : borderSubtle)
 

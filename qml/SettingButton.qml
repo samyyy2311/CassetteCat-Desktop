@@ -19,21 +19,24 @@ Rectangle {
     implicitWidth: contentRow.implicitWidth + 22
     implicitHeight: 32
     radius: 8
+    // A main action looks like a selected chip, with an accent border and text.
+    readonly property color contentColor: root.destructive ? (mouseArea.containsMouse ? "#FF6B6B" : Qt.rgba(1, 0.45, 0.45, 0.9))
+        : root.primary ? root.accentColor
+        : (mouseArea.containsMouse ? textPrimary : textSecondary)
     color: {
         if (mouseArea.containsMouse) {
             if (root.destructive) return Qt.rgba(1, 0.15, 0.15, 0.18)
-            if (root.primary) return root.accentHoverColor
-            return (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623")
+            return surfaceElevated
         }
         if (root.destructive) return "transparent"
-        if (root.primary) return root.accentColor
-        return (typeof surfaceInput !== "undefined" ? surfaceInput : "#1A1917")
+        if (root.primary) return surfaceSelected
+        return surfaceInput
     }
-    border.width: root.primary ? 0 : (mouseArea.containsMouse || root.destructive ? 1 : 0)
+    border.width: root.primary || root.destructive || mouseArea.containsMouse ? 1 : 0
     border.color: {
         if (root.destructive) return mouseArea.containsMouse ? Qt.rgba(1, 0.35, 0.35, 0.5) : Qt.rgba(1, 0.25, 0.25, 0.25)
-        if (root.primary) return "transparent"
-        return mouseArea.containsMouse ? (typeof borderVariant !== "undefined" ? borderVariant : Qt.rgba(255, 255, 255, 0.09)) : "transparent"
+        if (root.primary) return mouseArea.containsMouse ? root.accentHoverColor : root.accentColor
+        return mouseArea.containsMouse ? borderVariant : borderSubtle
     }
     Accessible.name: root.accessibleName
     Accessible.role: Accessible.Button
@@ -56,17 +59,17 @@ Rectangle {
             Layout.alignment: Qt.AlignVCenter
             icon: root.iconName
             preserveColor: root.preserveIconColor
-            color: root.primary ? "#FFFFFF" : (root.destructive ? (mouseArea.containsMouse ? "#FF6B6B" : Qt.rgba(1, 0.45, 0.45, 0.9)) : (mouseArea.containsMouse ? textPrimary : textSecondary))
+            color: root.contentColor
 
             Behavior on color { ColorAnimation { duration: 120 } }
         }
 
         Label {
             text: root.text
-            color: root.primary ? "#FFFFFF" : (root.destructive ? (mouseArea.containsMouse ? "#FF6B6B" : Qt.rgba(1, 0.45, 0.45, 0.9)) : (mouseArea.containsMouse ? textPrimary : textSecondary))
+            color: root.contentColor
             font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
             font.pixelSize: 12
-            font.weight: root.primary ? Font.Bold : Font.DemiBold
+            font.weight: Font.DemiBold
             Layout.alignment: Qt.AlignVCenter
 
             Behavior on color { ColorAnimation { duration: 120 } }
@@ -79,7 +82,7 @@ Rectangle {
             Layout.alignment: Qt.AlignVCenter
             icon: root.iconName
             preserveColor: root.preserveIconColor
-            color: root.primary ? "#FFFFFF" : (root.destructive ? (mouseArea.containsMouse ? "#FF6B6B" : Qt.rgba(1, 0.45, 0.45, 0.9)) : (mouseArea.containsMouse ? textPrimary : textSecondary))
+            color: root.contentColor
 
             Behavior on color { ColorAnimation { duration: 120 } }
         }

@@ -834,6 +834,7 @@ Item {
         message: "Your saved login is removed and this server's songs leave your library until you connect again. Nothing is deleted from the server."
         iconName: "log-out"
         confirmText: "Disconnect"
+        destructive: true
         onConfirmed: streamingController.disconnectServer(root.protocol)
     }
 }

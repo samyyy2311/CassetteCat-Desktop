@@ -8,6 +8,8 @@ Popup {
     property string subtitle: "This cannot be undone"
     property string message: ""
     property string iconName: ""
+    // Gives the confirm button the warning look, for actions that remove something.
+    property bool destructive: false
     property string confirmText: ""
     property string cancelText: "Cancel"
 
@@ -52,9 +54,9 @@ Popup {
                 Layout.preferredWidth: 36
                 Layout.preferredHeight: 36
                 radius: 18
-                color: Qt.rgba(1, 0.2, 0.2, 0.12)
+                color: "transparent"
                 border.width: 1
-                border.color: Qt.rgba(1, 0.2, 0.2, 0.25)
+                border.color: recordRed
 
                 LucideIcon {
                     anchors.centerIn: parent
@@ -109,8 +111,8 @@ Popup {
 
             SettingButton {
                 text: root.confirmText
-                iconName: root.iconName
-                destructive: true
+                primary: !root.destructive
+                destructive: root.destructive
                 onClicked: {
                     root.confirmed()
                     root.close()

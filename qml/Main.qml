@@ -2680,6 +2680,8 @@ ApplicationWindow {
         function onIsPlayingChanged() {
             tray.setPlaying(player.isPlaying)
             if (player.isPlaying) {
+                // Music plays on one device at a time, so starting here stops the phone.
+                if (phonePlayback.isPlaying) phoneRemote.sendToPhone("pause")
                 playbackPending = false
                 resumeHistoryTracking()
             } else {

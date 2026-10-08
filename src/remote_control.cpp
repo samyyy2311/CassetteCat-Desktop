@@ -746,16 +746,22 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         return {200, QJsonDocument(reply).toJson(QJsonDocument::Compact)};
     }
     if (path == "/api/handoff" && request.value("tracks").isArray()) {
+        // The phone plays the song itself when this computer doesn't have it, so it is told which happened.
+        const QJsonArray tracks = request.value("tracks").toArray();
+        const QString wanted = matchKey(tracks.at(request.value("index").toInt()).toObject().toVariantMap());
+        const QVariantList library = m_library->playbackTracks();
+        const bool played = std::any_of(library.cbegin(), library.cend(),
+                                        [&](const QVariant &track) { return matchKey(track.toMap()) == wanted; });
         // The phone stops playing when it hands over, so its strip goes at once.
-        if (!m_phonePlayback.isEmpty()) {
+        if (played && !m_phonePlayback.isEmpty()) {
             m_phonePlayback.clear();
             m_phoneTimeout.stop();
             emit phonePlaybackChanged();
         }
-        emit handoffRequested(request.value("tracks").toArray().toVariantList(), request.value("index").toInt(),
+        emit handoffRequested(tracks.toVariantList(), request.value("index").toInt(),
                               qMax<qint64>(0, request.value("positionMs").toInteger()),
                               request.value("playing").toBool());
-        return {200, {}};
+        return {200, QJsonDocument(QJsonObject{{"played", played}}).toJson(QJsonDocument::Compact)};
     }
     if (path == "/api/likes") {
         if (!request.value("like").isArray() || !request.value("unlike").isArray())
@@ -955,10 +961,12 @@ bool RemoteControlServer::selfCheck() {
                 handedTracks = tracks;
                 handedPosition = positionMs;
             });
-    const bool acceptsHandoff =
+    const Response handoff =
         remote.respond("POST", "/api/handoff", auth,
-                       R"({"tracks":[{"title":"A","artist":"B"}],"index":0,"positionMs":61000,"playing":true})", lan)
-                .status == 200 &&
+                       R"({"tracks":[{"title":"A","artist":"B"}],"index":0,"positionMs":61000,"playing":true})", lan);
+    // The test library is empty, so the phone is told to play the song itself.
+    const bool acceptsHandoff =
+        handoff.status == 200 && QJsonDocument::fromJson(handoff.body).object().value("played") == QJsonValue(false) &&
         handedTracks.size() == 1 && handedTracks[0].toMap().value("title") == "A" && handedPosition == 61000;
     remote.respond("POST", "/api/phone-state", auth, R"({"title":"Song"})", lan, "motorola edge 40");
     const bool checkInIsNotControl = remote.controllerName().isEmpty();

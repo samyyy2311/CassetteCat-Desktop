@@ -14,6 +14,7 @@ ColumnLayout {
     spacing: 0
 
     component Value: Label {
+        anchors.verticalCenter: parent ? parent.verticalCenter : undefined
         color: textPrimary
         font.family: monoFont
         font.pixelSize: 13
@@ -40,7 +41,7 @@ ColumnLayout {
 
         SettingRow {
             visible: root.remoteOn
-            iconName: root.phoneName !== "" ? "smartphone" : "link"
+            iconName: "link"
             title: phoneRemote.controllerName !== "" ? "Controlled from " + phoneRemote.controllerName
                  : root.phoneName !== "" ? root.phoneName + " is playing"
                  : phoneRemote.address !== "" ? "Pair a Phone" : "No Network Connection"
@@ -48,6 +49,47 @@ ColumnLayout {
                     : phoneRemote.address !== ""
                       ? "In the app, tap the devices button in Now Playing and choose " + phoneRemote.computerName + ", then allow it here"
                       : "Connect this computer to Wi-Fi to pair a phone"
+        }
+    }
+
+    SectionLabel {
+        visible: root.remoteOn
+        text: "Paired Phones"
+    }
+
+    SettingCard {
+        visible: root.remoteOn
+
+        SettingRow {
+            visible: phoneRemote.pairedPhones.length === 0
+            iconName: "smartphone"
+            title: "No Phones Yet"
+            subtitle: "Phones you allow from this computer appear here"
+        }
+
+        Repeater {
+            model: phoneRemote.pairedPhones
+
+            ColumnLayout {
+                required property var modelData
+                required property int index
+                Layout.fillWidth: true
+                spacing: 0
+
+                SettingDivider { visible: index > 0 }
+
+                SettingRow {
+                    iconName: "smartphone"
+                    title: modelData.name
+                    subtitle: modelData.name === root.phoneName ? "Connected now" : "Paired"
+
+                    SettingButton {
+                        text: "Remove"
+                        accessibleName: "Remove " + modelData.name
+                        onClicked: phoneRemote.unpairPhone(modelData.code)
+                    }
+                }
+            }
         }
     }
 
@@ -86,15 +128,25 @@ ColumnLayout {
         SettingRow {
             iconName: "key-round"
             title: "Pairing Code"
-            subtitle: "Phones ask for it when they pair by address or after the code changes. A new code unpairs every phone"
+            subtitle: "For pairing by address. A new code unpairs phones paired that way; phones listed above stay paired"
 
             Value { text: phoneRemote.code }
 
             SettingButton {
                 text: "New Code"
                 iconName: "refresh-cw"
-                onClicked: phoneRemote.regenerateCode()
+                onClicked: newCodeConfirm.open()
             }
         }
+    }
+
+    ConfirmPopup {
+        id: newCodeConfirm
+        iconName: "key-round"
+        title: "New Pairing Code?"
+        subtitle: "Phones paired by address will need it"
+        message: "Phones that paired by entering the address lose access until you give them the new code. Phones under Paired Phones stay connected."
+        confirmText: "New Code"
+        onConfirmed: phoneRemote.regenerateCode()
     }
 }

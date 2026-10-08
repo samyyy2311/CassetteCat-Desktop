@@ -86,6 +86,13 @@ QByteArray audioContentType(const QString &path) {
     return "application/octet-stream";
 }
 
+QString randomCode() {
+    QString code;
+    for (int i = 0; i < 6; ++i)
+        code += QChar(kCodeAlphabet[QRandomGenerator::system()->bounded(int(sizeof(kCodeAlphabet) - 1))]);
+    return code;
+}
+
 bool isLocalPeer(const QHostAddress &peer) {
     bool isV4 = false;
     const QHostAddress address(peer.toIPv4Address(&isV4));
@@ -203,8 +210,6 @@ RemoteControlServer::RemoteControlServer(PlayerController *player, LibraryContro
         emit controllerChanged();
     });
     m_phoneTimeout.setSingleShot(true);
-    // A locked phone checks in every few seconds over Wi-Fi that may be dozing, so a late check-in is not a drop.
-    m_phoneTimeout.setInterval(12 * 1000);
     connect(&m_phoneTimeout, &QTimer::timeout, this, [this] {
         m_phonePlayback.clear();
         m_phoneCommands.clear();
@@ -270,7 +275,13 @@ QVariantMap RemoteControlServer::phonePlayback() const {
 }
 
 void RemoteControlServer::sendToPhone(const QString &command) {
-    if (!m_phonePlayback.isEmpty() && m_phoneCommands.size() < 8)
+    if (m_phonePlayback.isEmpty())
+        return;
+    // Dragging a slider sends many values; only the last one matters.
+    const QString kind = command.section(':', 0, 0) + ':';
+    if (command.contains(':'))
+        m_phoneCommands.removeIf([&](const QString &queued) { return queued.startsWith(kind); });
+    if (m_phoneCommands.size() < 8)
         m_phoneCommands.append(command);
 }
 
@@ -314,11 +325,35 @@ QString RemoteControlServer::computerName() const {
     return QSysInfo::machineHostName();
 }
 
+QVariantList RemoteControlServer::pairedPhones() const {
+    return m_pairedPhones;
+}
+
+void RemoteControlServer::setPairedPhones(const QVariantList &phones) {
+    if (m_pairedPhones == phones)
+        return;
+    m_pairedPhones = phones;
+    emit pairedPhonesChanged();
+}
+
+void RemoteControlServer::unpairPhone(const QString &code) {
+    QVariantList phones = m_pairedPhones;
+    phones.removeIf([&](const QVariant &phone) { return phone.toMap().value("code") == code; });
+    setPairedPhones(phones);
+}
+
+bool RemoteControlServer::acceptsCode(const QByteArray &code) const {
+    if (code.isEmpty())
+        return false;
+    if (code == m_code.toLatin1())
+        return true;
+    return std::any_of(m_pairedPhones.cbegin(), m_pairedPhones.cend(), [&](const QVariant &phone) {
+        return phone.toMap().value("code").toString().toLatin1() == code;
+    });
+}
+
 void RemoteControlServer::regenerateCode() {
-    QString code;
-    for (int i = 0; i < 6; ++i)
-        code += QChar(kCodeAlphabet[QRandomGenerator::system()->bounded(int(sizeof(kCodeAlphabet) - 1))]);
-    setCode(code);
+    setCode(randomCode());
 }
 
 void RemoteControlServer::serve(QTcpSocket *socket) {
@@ -364,7 +399,8 @@ void RemoteControlServer::serve(QTcpSocket *socket) {
                 : kMaxBodyBytes;
         Response response{413, {}};
         // Only a paired phone may make the server wait for and hold a large upload.
-        if (contentLength > kMaxBodyBytes && authorization != "Bearer " + m_code.toLatin1())
+        if (contentLength > kMaxBodyBytes &&
+            !(authorization.startsWith("Bearer ") && acceptsCode(authorization.mid(7))))
             response = respond(requestLine.value(0), requestLine.value(1), authorization, {}, socket->peerAddress(),
                                deviceName);
         else if (contentLength >= 0 && contentLength <= maxBodyBytes) {
@@ -463,7 +499,7 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         if (method == "POST") {
             const QString name =
                 QString::fromUtf8(QJsonDocument::fromJson(body).object().value("name").toString().toUtf8().left(64));
-            if (name.trimmed().isEmpty() || m_code.isEmpty())
+            if (name.trimmed().isEmpty())
                 return {400, {}};
             if (!m_pairingRequestId.isEmpty())
                 return {409, {}};
@@ -480,15 +516,19 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         if (m_pairingAnswer == PairingAnswer::Waiting)
             return {200, R"({"status":"waiting"})"};
         const bool allowed = m_pairingAnswer == PairingAnswer::Allowed;
+        const QString phoneCode = allowed ? randomCode() : QString();
+        if (allowed)
+            setPairedPhones(m_pairedPhones +
+                            QVariantList{QVariantMap{{"name", m_pairingRequestName}, {"code", phoneCode}}});
         m_pairingTimeout.stop();
         m_pairingRequestId.clear();
         m_pairingRequestName.clear();
         m_pairingAnswer = PairingAnswer::Waiting;
-        return {200, QJsonDocument(allowed ? QJsonObject{{"status", "allowed"}, {"code", m_code}}
+        return {200, QJsonDocument(allowed ? QJsonObject{{"status", "allowed"}, {"code", phoneCode}}
                                            : QJsonObject{{"status", "denied"}})
                          .toJson(QJsonDocument::Compact)};
     }
-    if (m_code.isEmpty() || code != m_code.toLatin1()) {
+    if (!acceptsCode(code)) {
         if (++m_failedAttempts >= kMaxFailedAttempts) {
             m_failedAttempts = 0;
             m_lockedSince.start();
@@ -674,14 +714,16 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                         {"isPlaying", request.value("isPlaying").toBool()},
                         {"positionMs", request.value("positionMs").toDouble()},
                         {"durationMs", request.value("durationMs").toDouble()},
+                        {"volumePercent", request.value("volumePercent").toInt(-1)},
                         {"updatedAt", QDateTime::currentMSecsSinceEpoch()},
                         {"artwork", artwork},
                         {"filePath", filePath}};
         }
+        // A phone paused for a while checks in only every 30 seconds.
         if (playback.isEmpty())
             m_phoneTimeout.stop();
         else
-            m_phoneTimeout.start();
+            m_phoneTimeout.start(playback.value("isPlaying").toBool() ? 12 * 1000 : 75 * 1000);
         if (playback != m_phonePlayback) {
             m_phonePlayback = playback;
             emit phonePlaybackChanged();
@@ -997,9 +1039,16 @@ bool RemoteControlServer::selfCheck() {
     remote.answerPairing(true);
     const bool keepsAllowedUntilCollected =
         remote.respond("POST", "/api/pair-request", {}, R"({"name":"Other"})", lan).status == 409;
+    const QByteArray phoneCode = pairingStatus(allowedId).value("code").toString().toLatin1();
     const bool givesCodeOnceAllowed =
-        pairingStatus(allowedId).value("code") == "ABC234" &&
+        phoneCode.size() == 6 && phoneCode != "ABC234" &&
+        remote.pairedPhones().value(0).toMap().value("name") == "Pixel" &&
+        remote.respond("GET", "/api/playback", "Bearer " + phoneCode, {}, lan).status == 200 &&
         remote.respond("GET", "/api/pair-request?id=" + allowedId.toLatin1(), {}, {}, lan).status == 404;
+    remote.unpairPhone(QString::fromLatin1(phoneCode));
+    const bool unpairsOnePhone = remote.pairedPhones().isEmpty() &&
+                                 remote.respond("GET", "/api/playback", "Bearer " + phoneCode, {}, lan).status == 401 &&
+                                 remote.respond("GET", "/api/playback", auth, {}, lan).status == 200;
     const QString deniedId = pairingId();
     remote.answerPairing(false);
     const QJsonObject denied = pairingStatus(deniedId);
@@ -1131,8 +1180,8 @@ bool RemoteControlServer::selfCheck() {
                     answersDiscovery && locksOutGuessing && rejectsInvalidBackup && keepsPreviousBackup &&
                     routesPlayNext && relaysPlayNextOnce && refusesUnpairedUploadEarly && keysByTitleAndArtist &&
                     syncsLikes && copiesPlaylists && rejectsBadListens && asksBeforePairing &&
-                    keepsAllowedUntilCollected && givesCodeOnceAllowed && turnsAwayDenied && servesLibrary &&
-                    streamsOnlyLibraryFiles && streamsRanges;
+                    keepsAllowedUntilCollected && givesCodeOnceAllowed && unpairsOnePhone && turnsAwayDenied &&
+                    servesLibrary && streamsOnlyLibraryFiles && streamsRanges;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
                    << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << asksForCover
@@ -1140,7 +1189,7 @@ bool RemoteControlServer::selfCheck() {
                    << servesQueue << servesHttp << answersDiscovery << locksOutGuessing << rejectsInvalidBackup
                    << keepsPreviousBackup << routesPlayNext << relaysPlayNextOnce << refusesUnpairedUploadEarly
                    << keysByTitleAndArtist << syncsLikes << copiesPlaylists << rejectsBadListens << asksBeforePairing
-                   << keepsAllowedUntilCollected << givesCodeOnceAllowed << turnsAwayDenied << servesLibrary
-                   << streamsOnlyLibraryFiles << streamsRanges;
+                   << keepsAllowedUntilCollected << givesCodeOnceAllowed << unpairsOnePhone << turnsAwayDenied
+                   << servesLibrary << streamsOnlyLibraryFiles << streamsRanges;
     return ok;
 }

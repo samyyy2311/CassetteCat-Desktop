@@ -54,7 +54,7 @@ Item {
             MouseArea {
                 id: artistMouseArea
                 anchors.fill: parent
-                enabled: !!root.playerController.currentTrack.filePath
+                enabled: !!root.playerController.currentTrack.filePath && !root.appWindow.phoneInDock
                 hoverEnabled: true
                 cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
                 onClicked: root.appWindow.openTrackActionSheet(root.playerController.currentTrack)
@@ -135,6 +135,7 @@ Item {
                 buttonSize: 42
                 paletteSource: root.appWindow
                 iconName: "shuffle"
+                visible: !root.appWindow.phoneInDock
                 accented: root.playerController.shuffleEnabled
                 tooltipText: root.playerController.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
                 onClicked: root.appWindow.toggleQueueShuffle()
@@ -152,10 +153,10 @@ Item {
             TransportButton {
                 buttonSize: 72
                 paletteSource: root.appWindow
-                iconName: root.appWindow.playerVisuallyPlaying ? "pause" : "play"
+                iconName: root.appWindow.shownPlaying ? "pause" : "play"
                 accented: true
                 iconColor: root.appWindow.recordRed
-                tooltipText: root.appWindow.playerVisuallyPlaying ? "Pause" : "Play"
+                tooltipText: root.appWindow.shownPlaying ? "Pause" : "Play"
                 onClicked: root.playerController.togglePlay()
             }
 
@@ -172,6 +173,7 @@ Item {
                 buttonSize: 42
                 paletteSource: root.appWindow
                 iconName: root.appWindow.repeatMode === 2 ? "repeat-1" : "repeat"
+                visible: !root.appWindow.phoneInDock
                 accented: root.appWindow.repeatMode > 0
                 iconColor: root.appWindow.repeatMode > 0 ? root.appWindow.recordRed : root.appWindow.textPrimary
                 tooltipText: root.appWindow.repeatMode === 2 ? "Repeat Track" : (root.appWindow.repeatMode === 1 ? "Repeat All" : "Repeat Off")

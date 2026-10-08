@@ -130,12 +130,33 @@ ApplicationWindow {
     // While the paired phone plays and this computer doesn't, the dock shows and controls the phone, like a
     // Spotify Connect device.
     readonly property var phonePlayback: phoneRemote.phonePlayback
-    readonly property bool phoneInDock: phonePlayback.title !== undefined && !playerVisuallyPlaying
-    readonly property var phoneTrack: ({ title: phonePlayback.title, artist: phonePlayback.artist, artworkUrl: phonePlayback.artwork })
+    readonly property bool phoneInDock: phonePlayback.title !== undefined && !playerVisuallyPlaying && phoneRemote.controllerName === ""
     property double phoneClock: Date.now()
     readonly property int phonePositionMs: phoneInDock
         ? Math.min(phonePlayback.durationMs, phonePlayback.positionMs + (phonePlayback.isPlaying ? Math.max(0, phoneClock - phonePlayback.updatedAt) : 0))
         : 0
+
+    // The phone as a player, so the dock and Now Playing show it the way they show this computer's player.
+    QtObject {
+        id: phonePlayer
+        readonly property var currentTrack: ({
+            title: phonePlayback.title,
+            artist: phonePlayback.artist,
+            artworkUrl: phonePlayback.artwork,
+            filePath: phonePlayback.filePath
+        })
+        readonly property int position: phonePositionMs
+        readonly property int duration: phonePlayback.durationMs || 0
+        readonly property real volume: Math.max(0, phonePlayback.volumePercent) / 100
+        readonly property bool shuffleEnabled: false
+        readonly property var audioFormat: ({})
+        function seek(positionMs) { phoneRemote.sendToPhone("seek:" + Math.round(positionMs)) }
+        function togglePlay() { phoneRemote.sendToPhone(phonePlayback.isPlaying ? "pause" : "play") }
+        function setVolume(value) { phoneRemote.sendToPhone("volume:" + Math.round(value * 100)) }
+    }
+    readonly property var shownPlayer: phoneInDock ? phonePlayer : player
+    readonly property bool shownPlaying: phoneInDock ? !!phonePlayback.isPlaying : playerVisuallyPlaying
+    onPhoneInDockChanged: if (phoneInDock && nowPlayingMode !== "controls") nowPlayingMode = "controls"
 
     Timer {
         interval: 500
@@ -607,6 +628,7 @@ ApplicationWindow {
         svcDiscord = appSettings.value("services/discord", false)
         svcPhoneRemote = appSettings.value("services/phoneRemote", true)
         phoneRemote.code = appSettings.value("services/phoneRemoteCode", "")
+        phoneRemote.pairedPhones = JSON.parse(appSettings.value("services/phoneRemotePhones", "[]"))
         scrobbleListenBrainzEnabled = appSettings.value("scrobble/listenbrainz_enabled", false)
         scrobbleListenBrainzUser = appSettings.value("scrobble/listenbrainz_user", "")
         scrobbleListenBrainzConnected = services.hasListenBrainzSession()
@@ -1707,13 +1729,13 @@ ApplicationWindow {
     Shortcut {
         sequence: inAppShortcut("volumeUp")
         enabled: shortcutAllowed(sequence)
-        onActivated: setPlayerVolume(player.volume + 0.05)
+        onActivated: setPlayerVolume(shownPlayer.volume + 0.05)
     }
 
     Shortcut {
         sequence: inAppShortcut("volumeDown")
         enabled: shortcutAllowed(sequence)
-        onActivated: setPlayerVolume(player.volume - 0.05)
+        onActivated: setPlayerVolume(shownPlayer.volume - 0.05)
     }
 
     Shortcut {
@@ -1743,7 +1765,7 @@ ApplicationWindow {
     Shortcut {
         sequence: inAppShortcut("mute")
         enabled: shortcutAllowed(sequence)
-        onActivated: setPlayerVolume(player.volume > 0.001 ? 0.0 : 0.8)
+        onActivated: setPlayerVolume(shownPlayer.volume > 0.001 ? 0.0 : 0.8)
     }
 
     function toggleMaximize() {
@@ -2508,6 +2530,10 @@ ApplicationWindow {
     }
 
     function playNext() {
+        if (phoneInDock) {
+            phoneRemote.sendToPhone("next")
+            return
+        }
         const queue = activePlaybackQueue()
         if (!queue.length) return
         const currentIndex = currentQueueIndex()
@@ -2531,6 +2557,10 @@ ApplicationWindow {
     }
 
     function playPrevious() {
+        if (phoneInDock) {
+            phoneRemote.sendToPhone("previous")
+            return
+        }
         if (player.position > 5000) {
             player.seek(0)
             return
@@ -2924,6 +2954,7 @@ ApplicationWindow {
             if (index >= 0 && index < queue.length) window.removeQueuedTrack(queue[index])
         }
         function onCodeChanged() { appSettings.setValue("services/phoneRemoteCode", phoneRemote.code) }
+        function onPairedPhonesChanged() { appSettings.setValue("services/phoneRemotePhones", JSON.stringify(phoneRemote.pairedPhones)) }
     }
 
     Connections {
@@ -3050,6 +3081,10 @@ ApplicationWindow {
 
     function setPlayerVolume(val) {
         let v = Math.max(0.0, Math.min(1.0, val))
+        if (phoneInDock) {
+            phonePlayer.setVolume(v)
+            return
+        }
         if (volumeLimitEnabled) {
             const limit = Math.max(0.05, maxVolumePercent / 100.0)
             if (v > limit) v = limit
@@ -4100,11 +4135,11 @@ ApplicationWindow {
 
                         Cover {
                             anchors.fill: parent
-                            track: phoneInDock ? phoneTrack : player.currentTrack
+                            track: shownPlayer.currentTrack
                             radius: parent.radius
                             keepPreviousArtwork: true
                             cacheArtwork: !phoneInDock
-                            visible: phoneInDock ? !!phonePlayback.artwork : !!player.currentTrack.filePath
+                            visible: !!shownPlayer.currentTrack.filePath || !!shownPlayer.currentTrack.artworkUrl
                         }
 
                         Image {
@@ -4113,7 +4148,7 @@ ApplicationWindow {
                             height: 34
                             source: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
                             fillMode: Image.PreserveAspectFit
-                            visible: phoneInDock ? !phonePlayback.artwork : !player.currentTrack.filePath
+                            visible: !shownPlayer.currentTrack.filePath && !shownPlayer.currentTrack.artworkUrl
                         }
 
                         MouseArea {
@@ -4123,7 +4158,7 @@ ApplicationWindow {
                             cursorShape: Qt.PointingHandCursor
                             onClicked: mouse => {
                                 if (phoneInDock) {
-                                    phoneRemoteSheet.open()
+                                    nowPlayingOpen = !nowPlayingOpen
                                 } else if (mouse.button === Qt.RightButton) {
                                     if (player.currentTrack.filePath) {
                                         dockTrackMenu.popup()
@@ -4161,7 +4196,7 @@ ApplicationWindow {
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: mouse => {
                                     if (phoneInDock) {
-                                        phoneRemoteSheet.open()
+                                        nowPlayingOpen = !nowPlayingOpen
                                     } else if (mouse.button === Qt.RightButton) {
                                         if (player.currentTrack.filePath) {
                                             dockTrackMenu.popup()
@@ -4223,7 +4258,7 @@ ApplicationWindow {
 
                     PressDepthIconButton {
                         // The phone's song can be liked when the same song is in this library; likes sync to the phone.
-                        readonly property string likePath: phoneInDock ? phonePlayback.filePath : player.currentTrack.filePath
+                        readonly property string likePath: shownPlayer.currentTrack.filePath || ""
                         Layout.alignment: Qt.AlignVCenter
                         boxSize: 32
                         iconSize: 16
@@ -4262,21 +4297,20 @@ ApplicationWindow {
                             iconName: "skip-back"
                             iconColor: textPrimary
                             tooltipText: phoneInDock ? "Previous on " + phonePlayback.name : "Previous"
-                            onClicked: phoneInDock ? phoneRemote.sendToPhone("previous") : playPrevious()
+                            onClicked: playPrevious()
                         }
 
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 46
                             paletteSource: window
-                            readonly property bool showsPlaying: phoneInDock ? !!phonePlayback.isPlaying : playerVisuallyPlaying
-                            iconName: showsPlaying ? "pause" : "play"
+                            iconName: shownPlaying ? "pause" : "play"
                             accented: true
                             iconColor: recordRed
-                            tooltipText: (showsPlaying ? "Pause" : "Play") + (phoneInDock ? " on " + phonePlayback.name : "")
+                            tooltipText: (shownPlaying ? "Pause" : "Play") + (phoneInDock ? " on " + phonePlayback.name : "")
                             onClicked: {
                                 if (phoneInDock) {
-                                    phoneRemote.sendToPhone(phonePlayback.isPlaying ? "pause" : "play")
+                                    phonePlayer.togglePlay()
                                 } else if (!player.currentTrack.filePath && library.trackCount > 0) {
                                     shuffleAll()
                                 } else {
@@ -4292,7 +4326,7 @@ ApplicationWindow {
                             iconName: "skip-forward"
                             iconColor: textPrimary
                             tooltipText: phoneInDock ? "Next on " + phonePlayback.name : "Next"
-                            onClicked: phoneInDock ? phoneRemote.sendToPhone("next") : playNext()
+                            onClicked: playNext()
                         }
 
                         TransportButton {
@@ -4312,11 +4346,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.maximumWidth: 580
                         Layout.alignment: Qt.AlignHCenter
-                        position: phoneInDock ? phonePositionMs : player.position
-                        duration: phoneInDock ? phonePlayback.durationMs : player.duration
+                        position: shownPlayer.position
+                        duration: shownPlayer.duration
                         showRemainingTime: window.showRemainingTime
                         paletteSource: window
-                        onSeekRequested: posMs => phoneInDock ? phoneRemote.sendToPhone("seek:" + posMs) : player.seek(posMs)
+                        onSeekRequested: posMs => shownPlayer.seek(posMs)
                         onRemainingToggled: val => { window.showRemainingTime = val; appSettings.setValue("player/showRemainingTime", val) }
                     }
                 }
@@ -4408,7 +4442,8 @@ ApplicationWindow {
                     VolumeControl {
                         Layout.alignment: Qt.AlignVCenter
                         Layout.preferredWidth: 135
-                        volume: player.volume
+                        enabled: !phoneInDock || phonePlayback.volumePercent >= 0
+                        volume: shownPlayer.volume
                         paletteSource: window
                         onVolumeAdjusted: newVol => {
                             setPlayerVolume(newVol)
@@ -4483,7 +4518,7 @@ ApplicationWindow {
                 width: 240
                 height: 240
                 scale: Math.max(parent.width, parent.height) * 1.3 / width
-                track: player.currentTrack
+                track: shownPlayer.currentTrack
                 keepPreviousArtwork: true
                 cacheArtwork: true
                 stableSourceSize: 280
@@ -4566,7 +4601,7 @@ ApplicationWindow {
 
                     Cover {
                         anchors.fill: parent
-                        track: player.currentTrack
+                        track: shownPlayer.currentTrack
                         radius: npArtworkCard.radius
                         keepPreviousArtwork: true
                         cacheArtwork: true
@@ -4583,7 +4618,7 @@ ApplicationWindow {
                                 nowPlayingMode = "controls"
                             }
                         }
-                        onDoubleClicked: toggleFavorite(player.currentTrack.filePath)
+                        onDoubleClicked: toggleFavorite(shownPlayer.currentTrack.filePath)
                     }
                 }
 
@@ -4614,7 +4649,7 @@ ApplicationWindow {
 
                             Label {
                                 Layout.fillWidth: true
-                                text: player.currentTrack.title || "No Track Selected"
+                                text: shownPlayer.currentTrack.title || "No Track Selected"
                                 color: "#FFFFFF"
                                 font.family: displayFont
                                 font.pixelSize: 17
@@ -4627,11 +4662,12 @@ ApplicationWindow {
                             Label {
                                 Layout.fillWidth: true
                                 text: {
-                                    if (!player.currentTrack.title && !player.currentTrack.filePath) {
+                                    const track = shownPlayer.currentTrack
+                                    if (!track.title && !track.filePath) {
                                         return "Select a track to start playback"
                                     }
-                                    let a = player.currentTrack.artist || "Unknown Artist"
-                                    if (player.currentTrack.album) a += " • " + player.currentTrack.album
+                                    let a = track.artist || "Unknown Artist"
+                                    if (track.album) a += " • " + track.album
                                     return a
                                 }
                                 color: textSecondary
@@ -4645,11 +4681,11 @@ ApplicationWindow {
 
                         AudioSeeker {
                             Layout.fillWidth: true
-                            position: player.position
-                            duration: player.duration
+                            position: shownPlayer.position
+                            duration: shownPlayer.duration
                             showRemainingTime: window.showRemainingTime
                             paletteSource: window
-                            onSeekRequested: posMs => player.seek(posMs)
+                            onSeekRequested: posMs => shownPlayer.seek(posMs)
                             onRemainingToggled: val => { window.showRemainingTime = val; appSettings.setValue("player/showRemainingTime", val) }
                         }
 
@@ -4662,6 +4698,7 @@ ApplicationWindow {
                                 buttonSize: 32
                                 paletteSource: window
                                 iconName: "shuffle"
+                                visible: !phoneInDock
                                 accented: player.shuffleEnabled
                                 onClicked: toggleQueueShuffle()
                             }
@@ -4678,13 +4715,13 @@ ApplicationWindow {
                             }
 
                             TransportButton {
-                                Accessible.name: playerVisuallyPlaying ? "Pause" : "Play"
+                                Accessible.name: shownPlaying ? "Pause" : "Play"
                                 buttonSize: 48
                                 paletteSource: window
-                                iconName: playerVisuallyPlaying ? "pause" : "play"
+                                iconName: shownPlaying ? "pause" : "play"
                                 accented: true
                                 iconColor: recordRed
-                                onClicked: player.togglePlay()
+                                onClicked: shownPlayer.togglePlay()
                             }
 
                             TransportButton {
@@ -4700,6 +4737,7 @@ ApplicationWindow {
 
                             TransportButton {
                                 Accessible.name: "Repeat"
+                                visible: !phoneInDock
                                 buttonSize: 32
                                 paletteSource: window
                                 iconName: repeatMode === 2 ? "repeat-1" : "repeat"
@@ -4715,7 +4753,7 @@ ApplicationWindow {
                             Item { Layout.fillWidth: true }
                             VolumeControl {
                                 Layout.preferredWidth: 160
-                                volume: player.volume
+                                volume: shownPlayer.volume
                                 paletteSource: window
                                 onVolumeAdjusted: newVol => setPlayerVolume(newVol)
                             }
@@ -4740,7 +4778,7 @@ ApplicationWindow {
                     width: Math.min(parent.width - 24, 480)
                     height: 310
                     appWindow: window
-                    playerController: player
+                    playerController: shownPlayer
                     visible: opacity > 0.001
                     opacity: nowPlayingMode === "controls" ? 1.0 : 0.0
                     scale: nowPlayingMode === "controls" ? 1.0 : 0.96

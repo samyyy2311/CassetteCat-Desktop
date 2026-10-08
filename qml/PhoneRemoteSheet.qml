@@ -57,21 +57,6 @@ Popup {
             Layout.fillWidth: true
             spacing: 12
 
-            Rectangle {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
-                radius: 18
-                color: root.phoneName !== "" ? Qt.alpha(recordRed, 0.14) : surfaceElevated
-
-                LucideIcon {
-                    anchors.centerIn: parent
-                    width: 18
-                    height: 18
-                    icon: "smartphone"
-                    color: root.phoneName !== "" ? accentText : textSecondary
-                }
-            }
-
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2

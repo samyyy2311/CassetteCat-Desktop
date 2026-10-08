@@ -23,13 +23,17 @@ class QTcpSocket;
 class RemoteControlServer final : public QObject {
     Q_OBJECT
     Q_PROPERTY(bool enabled READ enabled WRITE setEnabled NOTIFY enabledChanged)
+    /// The code for pairing by address. Phones allowed from this computer get their own code instead.
     Q_PROPERTY(QString code READ code WRITE setCode NOTIFY codeChanged)
+    /// Phones allowed from this computer, as {name, code}; removing one unpairs only that phone.
+    Q_PROPERTY(QVariantList pairedPhones READ pairedPhones WRITE setPairedPhones NOTIFY pairedPhonesChanged)
     Q_PROPERTY(QString address READ address NOTIFY addressChanged)
     /// The name phones show for this computer when they find it.
     Q_PROPERTY(QString computerName READ computerName CONSTANT)
     /// The phone controlling playback right now, or empty.
     Q_PROPERTY(QString controllerName READ controllerName NOTIFY controllerChanged)
-    /// What a paired phone is playing itself, as {name, title, artist, isPlaying}; empty when none is.
+    /// What a paired phone is playing itself, as {name, title, artist, isPlaying, positionMs, durationMs, updatedAt,
+    /// volumePercent, artwork, filePath}; empty when none is. filePath is the same song in this library, if any.
     Q_PROPERTY(QVariantMap phonePlayback READ phonePlayback NOTIFY phonePlaybackChanged)
     Q_PROPERTY(int repeatMode MEMBER m_repeatMode)
     /// The next few queued tracks as {index, title, artist, durationMs, filePath, artworkUrl}, kept current by QML.
@@ -48,6 +52,9 @@ class RemoteControlServer final : public QObject {
     void setEnabled(bool enabled);
     QString code() const;
     void setCode(const QString &code);
+    QVariantList pairedPhones() const;
+    void setPairedPhones(const QVariantList &phones);
+    Q_INVOKABLE void unpairPhone(const QString &code);
     /// Returns "ip:port" for the phone to connect to, or empty while stopped.
     QString address() const;
     QString computerName() const;
@@ -70,6 +77,7 @@ class RemoteControlServer final : public QObject {
   signals:
     void enabledChanged();
     void codeChanged();
+    void pairedPhonesChanged();
     void addressChanged();
     void controllerChanged();
     void phonePlaybackChanged();
@@ -107,6 +115,7 @@ class RemoteControlServer final : public QObject {
         QString filePath;
     };
 
+    bool acceptsCode(const QByteArray &code) const;
     void serve(QTcpSocket *socket);
     /// Sends \p response's library file over \p socket, from the byte range in \p range if one was asked for.
     void streamFile(QTcpSocket *socket, const Response &response, const QByteArray &range);
@@ -127,6 +136,7 @@ class RemoteControlServer final : public QObject {
     QTcpServer m_server;
     QUdpSocket m_discovery;
     QString m_code;
+    QVariantList m_pairedPhones;
     bool m_enabled = false;
     int m_repeatMode = 0;
     QVariantList m_upNext;

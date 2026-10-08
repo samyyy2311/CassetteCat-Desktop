@@ -5218,6 +5218,7 @@ ApplicationWindow {
         title: "Connect " + phoneRemote.pairingRequest + "?"
         subtitle: "Only allow phones you own"
         message: "This phone will be able to control playback here, sync likes and playlists, and back up to this computer."
+        iconName: "smartphone"
         confirmText: "Allow"
         cancelText: "Deny"
         onConfirmed: phoneRemote.answerPairing(true)
@@ -5238,6 +5239,7 @@ ApplicationWindow {
         title: "Update available"
         subtitle: "CassetteCat v" + version
         message: "A new version is ready to download. Your library, playlists and settings stay as they are."
+        iconName: "arrow-down"
         confirmText: "Download"
         cancelText: "Later"
         onConfirmed: downloadUpdate()

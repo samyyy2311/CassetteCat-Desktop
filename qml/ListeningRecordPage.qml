@@ -1409,8 +1409,8 @@ Item {
         id: clearPopup
         title: "Clear Listening Record?"
         message: "This will reset all your play counts, top statistics, and playback history. Your music library files and playlists will not be affected."
+        iconName: "rotate-ccw"
         confirmText: "Clear Record"
-        destructive: true
         onConfirmed: root.appWindow.clearListeningRecord()
     }
 }

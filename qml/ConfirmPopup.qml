@@ -7,8 +7,7 @@ Popup {
     property string title: ""
     property string subtitle: "This cannot be undone"
     property string message: ""
-    // Styles the confirm button as a warning, for actions that remove something.
-    property bool destructive: false
+    property string iconName: ""
     property string confirmText: ""
     property string cancelText: "Cancel"
 
@@ -49,6 +48,23 @@ Popup {
             Layout.fillWidth: true
             spacing: 12
 
+            Rectangle {
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 36
+                radius: 18
+                color: Qt.rgba(1, 0.2, 0.2, 0.12)
+                border.width: 1
+                border.color: Qt.rgba(1, 0.2, 0.2, 0.25)
+
+                LucideIcon {
+                    anchors.centerIn: parent
+                    width: 18
+                    height: 18
+                    icon: root.iconName
+                    color: recordRed
+                }
+            }
+
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2
@@ -58,14 +74,14 @@ Popup {
                     color: textPrimary
                     font.family: displayFont
                     font.pixelSize: 16
-                    font.weight: Font.DemiBold
+                    font.weight: Font.Bold
                 }
 
                 Label {
                     text: root.subtitle
-                    color: textSecondary
-                    font.family: bodyFont
-                    font.pixelSize: 12
+                    color: silverDim
+                    font.family: monoFont
+                    font.pixelSize: 11
                 }
             }
         }
@@ -93,8 +109,8 @@ Popup {
 
             SettingButton {
                 text: root.confirmText
-                primary: !root.destructive
-                destructive: root.destructive
+                iconName: root.iconName
+                destructive: true
                 onClicked: {
                     root.confirmed()
                     root.close()

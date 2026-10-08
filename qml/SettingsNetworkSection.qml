@@ -133,9 +133,9 @@ ColumnLayout {
             readonly property string pairingAddress: phoneRemote.address + "#" + phoneRemote.code
             visible: phoneRemote.enabled
             iconName: "link"
-            title: phoneRemote.address ? "Pairing code  " + phoneRemote.code : "No network connection"
+            title: phoneRemote.address ? "Pair a Phone" : "No network connection"
             subtitle: phoneRemote.address
-                      ? "On your phone, tap the devices button and choose this computer. Manual address: " + pairingRow.pairingAddress
+                      ? "On your phone, tap the devices button in Now Playing and choose " + phoneRemote.computerName
                       : "Connect this computer to Wi-Fi to pair a phone"
 
             SettingButton {

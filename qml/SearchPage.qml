@@ -495,7 +495,21 @@ Item {
                                 radius: height / 2
                                 color: recentMouse.containsMouse ? surfaceElevated : surfaceTag
                                 border.width: 1
-                                border.color: recentMouse.containsMouse ? borderVariant : borderSubtle
+                                border.color: activeFocus ? recordRed : recentMouse.containsMouse ? borderVariant : borderSubtle
+                                activeFocusOnTab: true
+                                Accessible.role: Accessible.Button
+                                Accessible.name: "Search for " + modelData + ". Press Delete to remove it."
+                                Accessible.onPressAction: root.search(modelData)
+                                Keys.onReturnPressed: root.search(modelData)
+                                Keys.onEnterPressed: root.search(modelData)
+                                Keys.onSpacePressed: root.search(modelData)
+                                Keys.onDeletePressed: root.forgetSearch(modelData)
+                                Keys.onPressed: event => {
+                                    if (event.key === Qt.Key_Backspace) {
+                                        root.forgetSearch(modelData)
+                                        event.accepted = true
+                                    }
+                                }
 
                                 MouseArea {
                                     id: recentMouse

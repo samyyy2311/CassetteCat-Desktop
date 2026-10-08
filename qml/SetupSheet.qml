@@ -113,9 +113,21 @@ AppDialog {
                 }
             }
 
-            SettingsPathList {
-                paths: library.folders
-                onRemoveRequested: path => library.removeFolder(path)
+            // Scrolls past four folders so the step's buttons stay in the window.
+            AppFlickable {
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(folderList.implicitHeight, 184)
+                contentWidth: width
+                contentHeight: folderList.implicitHeight
+                clip: true
+                ScrollBar.vertical: AutoHideScrollBar {}
+
+                SettingsPathList {
+                    id: folderList
+                    width: parent.width
+                    paths: library.folders
+                    onRemoveRequested: path => library.removeFolder(path)
+                }
             }
         }
 

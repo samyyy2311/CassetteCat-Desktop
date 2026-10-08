@@ -79,7 +79,10 @@ void MacNowPlaying::setTrack(const QString &title, const QString &artist, const 
                                                                            }];
     }
     center.nowPlayingInfo = info;
+    // A new song starts from zero until its first timeline report.
+    reportedPositionMs = 0;
     reportedDurationMs = 0;
+    sinceReport.restart();
 }
 
 void MacNowPlaying::setPlaying(bool isPlaying) {

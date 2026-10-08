@@ -441,13 +441,26 @@ void RemoteControlServer::streamFile(QTcpSocket *socket, const Response &respons
     const qint64 size = file->size();
     qint64 start = 0;
     qint64 end = size - 1;
-    // Only the single "bytes=start-[end]" form; the phone's player never asks for more than one range.
-    const bool partial = range.startsWith("bytes=") && !range.contains(',');
+    // A single range only: "bytes=start-", "bytes=start-end", or "bytes=-length" for the end of the file. An
+    // unreadable bound is ignored, as HTTP asks.
+    bool partial = range.startsWith("bytes=") && !range.contains(',');
     if (partial) {
         const QList<QByteArray> bounds = range.mid(6).split('-');
-        start = bounds.value(0).toLongLong();
-        if (!bounds.value(1).isEmpty())
-            end = qMin(end, bounds.value(1).toLongLong());
+        bool startOk = false;
+        bool endOk = false;
+        const qint64 first = bounds.value(0).trimmed().toLongLong(&startOk);
+        const qint64 last = bounds.value(1).trimmed().toLongLong(&endOk);
+        if (bounds.size() != 2) {
+            partial = false;
+        } else if (bounds.value(0).trimmed().isEmpty() && endOk && last > 0) {
+            start = qMax<qint64>(0, size - last);
+        } else if (startOk) {
+            start = first;
+            if (endOk)
+                end = qMin(end, last);
+        } else {
+            partial = false;
+        }
     }
     if (start < 0 || start > end || start >= size) {
         socket->write("HTTP/1.1 416 Range Not Satisfiable\r\nContent-Range: bytes */" + QByteArray::number(size) +
@@ -1187,10 +1200,14 @@ bool RemoteControlServer::selfCheck() {
     };
     const QByteArray partialReply = streamed("bytes=2-5");
     const QByteArray wholeReply = streamed({});
-    const bool streamsRanges = partialReply.startsWith("HTTP/1.1 206") &&
-                               partialReply.contains("Content-Range: bytes 2-5/10") &&
-                               partialReply.endsWith("\r\n\r\n2345") && wholeReply.startsWith("HTTP/1.1 200") &&
-                               wholeReply.endsWith("\r\n\r\n0123456789");
+    const QByteArray tailReply = streamed("bytes=-3");
+    const QByteArray openEndReply = streamed("bytes=5-x");
+    const bool streamsRanges =
+        partialReply.startsWith("HTTP/1.1 206") && partialReply.contains("Content-Range: bytes 2-5/10") &&
+        partialReply.endsWith("\r\n\r\n2345") && wholeReply.startsWith("HTTP/1.1 200") &&
+        wholeReply.endsWith("\r\n\r\n0123456789") && tailReply.contains("Content-Range: bytes 7-9/10") &&
+        tailReply.endsWith("\r\n\r\n789") && openEndReply.contains("Content-Range: bytes 5-9/10") &&
+        openEndReply.endsWith("\r\n\r\n56789");
     const bool servesHttp = reply.startsWith("HTTP/1.1 200 OK") && reply.endsWith(R"({"ok":true})") && nextCount == 2;
 
     const QJsonObject libraryPage =

@@ -666,7 +666,11 @@ ApplicationWindow {
         svcDiscord = appSettings.value("services/discord", false)
         svcPhoneRemote = appSettings.value("services/phoneRemote", true)
         phoneRemote.code = appSettings.value("services/phoneRemoteCode", "")
-        phoneRemote.pairedPhones = JSON.parse(appSettings.value("services/phoneRemotePhones", "[]"))
+        try {
+            phoneRemote.pairedPhones = JSON.parse(appSettings.value("services/phoneRemotePhones", "[]"))
+        } catch (e) {
+            phoneRemote.pairedPhones = []
+        }
         scrobbleListenBrainzEnabled = appSettings.value("scrobble/listenbrainz_enabled", false)
         scrobbleListenBrainzUser = appSettings.value("scrobble/listenbrainz_user", "")
         scrobbleListenBrainzConnected = services.hasListenBrainzSession()

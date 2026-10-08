@@ -243,11 +243,9 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
         listenedMs += ms;
         firstListen = firstListen == 0 ? at : qMin(firstListen, at);
 
-        // A phone listen of a song this computer does not have is told apart by title and artist.
-        const QString path = track.value("filePath").toString();
-        const QString songKey = path.isEmpty() ? track.value("title").toString().trimmed().toLower() + QChar(0x1f) +
-                                                     track.value("artist").toString().trimmed().toLower()
-                                               : pathKey(path);
+        // A song is its title and artist, as on the phone, so playing it on both devices counts as one song.
+        const QString songKey = track.value("title").toString().trimmed().toLower() + QChar(0x1f) +
+                                track.value("artist").toString().trimmed().toLower();
         add(songs, songOrder, songKey, {{"track", track}}, ms);
         for (const QString &artist : splitArtists(track.value("artist").toString()))
             add(artists, artistOrder, artist.toLower(), {{"name", artist}, {"track", track}}, ms);
@@ -720,7 +718,8 @@ void LibraryController::recordListen(const QVariantMap &track, qint64 listenedMs
 
 bool LibraryController::appendPhoneListens(const QList<QJsonObject> &listens) {
     QFile file(listeningLogFilePath());
-    // A phone retries an upload whose answer it missed, so a listen it already sent is not counted twice.
+    // A phone retries an upload whose answer it missed, and its full history includes this computer's own listens it
+    // was sent, so any listen already in the log is not counted twice.
     const auto identity = [](const QJsonObject &listen) {
         return QString::number(static_cast<qint64>(listen.value("at").toDouble())) + QChar(0x1f) +
                listen.value("title").toString();
@@ -728,8 +727,7 @@ bool LibraryController::appendPhoneListens(const QList<QJsonObject> &listens) {
     QSet<QString> recorded;
     if (file.open(QIODevice::ReadOnly)) {
         for (const QJsonObject &entry : readListeningLog(file.readAll()))
-            if (entry.value("device") == "phone")
-                recorded.insert(identity(entry));
+            recorded.insert(identity(entry));
         file.close();
     }
     if (!file.open(QIODevice::Append)) {

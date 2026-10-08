@@ -1285,7 +1285,7 @@ Item {
                                             id: monthLabel
                                             anchors.bottom: parent.bottom
                                             anchors.horizontalCenter: parent.horizontalCenter
-                                            text: Qt.locale().standaloneMonthName(monthBar.index, Locale.NarrowFormat)
+                                            text: Qt.locale().standaloneMonthName(monthBar.index, Locale.ShortFormat)
                                             color: monthBar.selected ? root.appWindow.textPrimary : root.appWindow.silverDim
                                             font.family: root.appWindow.bodyFont
                                             font.pixelSize: 12

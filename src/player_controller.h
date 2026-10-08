@@ -163,6 +163,7 @@ class PlayerController final : public QObject {
     QTimer *m_fadeTimer = nullptr;
     QElapsedTimer m_fadeClock;
     int m_crossfadeMs = 0;
+    int m_activeFadeMs = 0;
     bool m_crossfadeReady = false;
     float m_fadingGain = 1.0f;
     float m_fadeIn = 1.0f;

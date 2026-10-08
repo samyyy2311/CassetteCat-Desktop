@@ -71,7 +71,7 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     m_fadeTimer = new QTimer(this);
     m_fadeTimer->setInterval(40);
     connect(m_fadeTimer, &QTimer::timeout, this, [this] {
-        const float progress = std::min(1.0f, float(m_fadeClock.elapsed()) / float(std::max(1, m_crossfadeMs)));
+        const float progress = std::min(1.0f, float(m_fadeClock.elapsed()) / float(std::max(1, m_activeFadeMs)));
         m_fadeIn = progress;
         applyEffectiveVolume();
         m_pipeline->setGain(m_fadingPlayer->audioBufferOutput(), m_fadingGain * m_baseVolume * (1.0f - progress));
@@ -512,9 +512,13 @@ void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs)
 }
 
 bool PlayerController::playTrack(const QVariantMap &track) {
-    // At a track's natural end the next one fades in on the other player while this one keeps playing out.
-    const bool crossfade = m_crossfadeReady && m_crossfadeMs > 0 && m_position >= m_duration - m_crossfadeMs &&
-                           m_player->playbackState() == QMediaPlayer::PlayingState;
+    // The next track fades in on the other player while this one plays out: over the crossfade at a track's natural
+    // end, and briefly when the song is changed mid-play so the switch isn't a hard cut.
+    constexpr int songChangeFadeMs = 300;
+    const bool playing = m_player->playbackState() == QMediaPlayer::PlayingState;
+    const bool naturalEnd = m_crossfadeReady && m_crossfadeMs > 0 && m_position >= m_duration - m_crossfadeMs;
+    const bool crossfade = playing && !isNetworkStream(m_player->source());
+    m_activeFadeMs = naturalEnd ? m_crossfadeMs : songChangeFadeMs;
     if (m_fadeTimer->isActive())
         finishCrossfade();
     if (crossfade) {

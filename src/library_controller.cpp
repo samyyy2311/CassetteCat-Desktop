@@ -261,9 +261,8 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
         if (track.value("title").toString().isEmpty())
             continue;
 
-        // A song is its title and artist, as on the phone, so playing it on both devices counts as one song.
-        const QString songKey = track.value("title").toString().trimmed().toLower() + QChar(0x1f) +
-                                track.value("artist").toString().trimmed().toLower();
+        // Playing a song on both devices counts as one song.
+        const QString songKey = LibraryController::matchKey(track);
         add(songs, songOrder, songKey, {{"track", track}}, ms, entryPlays);
         for (const QString &artist : splitArtists(track.value("artist").toString()))
             add(artists, artistOrder, artist.toLower(), {{"name", artist}, {"track", track}}, ms, entryPlays);
@@ -614,6 +613,12 @@ QString LibraryController::localPath(const QUrl &url) const {
 
 QVariantList LibraryController::parseM3u(const QString &filePath) const {
     return parseM3uPlaylist(filePath);
+}
+
+QString LibraryController::matchKey(const QVariantMap &track) {
+    const QString title = track.value("title").toString().trimmed();
+    return (title.isEmpty() ? track.value("fileName").toString().trimmed() : title).toLower() + QChar(0x1f) +
+           track.value("artist").toString().trimmed().toLower();
 }
 
 void LibraryController::loadFolder(const QUrl &url) {

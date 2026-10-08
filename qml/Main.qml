@@ -2419,18 +2419,16 @@ ApplicationWindow {
     }
 
     // Continues a queue handed over from the phone with the matching songs in this library, by title and artist.
-    function trackMatchKey(track) {
-        return (String(track.title || "").trim() || String(track.fileName || "").trim()).toLowerCase() + "\u001f"
-            + String(track.artist || "").trim().toLowerCase()
-    }
-
     function continueHandoff(tracks, index, positionMs, playing) {
-        const library = {}
-        availableTracks().forEach(track => { if (!library[trackMatchKey(track)]) library[trackMatchKey(track)] = track })
+        const byKey = {}
+        availableTracks().forEach(track => {
+            const key = library.matchKey(track)
+            if (!byKey[key]) byKey[key] = track
+        })
         const queue = []
         let start = -1
         tracks.forEach((track, i) => {
-            const match = library[trackMatchKey(track)]
+            const match = byKey[library.matchKey(track)]
             if (!match) return
             if (i === index) start = queue.length
             queue.push(match)
@@ -2986,8 +2984,8 @@ ApplicationWindow {
             if (unlikePaths.length) window.setFavorites(unlikePaths, false)
         }
         function onPlayNextRequested(title, artist) {
-            const wanted = window.trackMatchKey({ title: title, artist: artist })
-            const match = window.availableTracks().find(track => window.trackMatchKey(track) === wanted)
+            const wanted = library.matchKey({ title: title, artist: artist })
+            const match = window.availableTracks().find(track => library.matchKey(track) === wanted)
             if (match) window.insertTrackNext(match)
         }
         function onQueueMoveRequested(from, to) {

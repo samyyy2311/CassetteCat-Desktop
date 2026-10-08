@@ -39,6 +39,8 @@ class LibraryController final : public QAbstractListModel {
     QHash<int, QByteArray> roleNames() const override;
 
     Q_INVOKABLE void loadFolder(const QUrl &url);
+    /// The key that makes two tracks the same song, here and on the phone: title and artist, ignoring case.
+    Q_INVOKABLE static QString matchKey(const QVariantMap &track);
     Q_INVOKABLE void removeFolder(const QString &path);
     Q_INVOKABLE QString localPath(const QUrl &url) const;
     Q_INVOKABLE QString artworkFor(const QString &filePath);

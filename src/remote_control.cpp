@@ -652,6 +652,18 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
             // The phone sends a song's cover once, so later check-ins about the same song keep it.
             const QByteArray cover = QByteArray::fromBase64(request.value("artwork").toString().toLatin1());
             const bool sameSong = m_phonePlayback.value("title") == title && m_phonePlayback.value("artist") == artist;
+            // The same song in this library, so it can be liked here.
+            QString filePath = m_phonePlayback.value("filePath").toString();
+            if (!sameSong) {
+                filePath.clear();
+                const QString key = matchKey({{"title", title}, {"artist", artist}});
+                for (const QVariant &value : m_library->playbackTracks()) {
+                    if (matchKey(value.toMap()) == key) {
+                        filePath = value.toMap().value("filePath").toString();
+                        break;
+                    }
+                }
+            }
             const QString artwork = cover.startsWith("\xFF\xD8")
                                         ? "data:image/jpeg;base64," + QString::fromLatin1(cover.toBase64())
                                     : sameSong ? m_phonePlayback.value("artwork").toString()
@@ -663,7 +675,8 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                         {"positionMs", request.value("positionMs").toDouble()},
                         {"durationMs", request.value("durationMs").toDouble()},
                         {"updatedAt", QDateTime::currentMSecsSinceEpoch()},
-                        {"artwork", artwork}};
+                        {"artwork", artwork},
+                        {"filePath", filePath}};
         }
         if (playback.isEmpty())
             m_phoneTimeout.stop();

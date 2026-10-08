@@ -4181,10 +4181,21 @@ ApplicationWindow {
                             id: dockArtistLabel
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
+                            leftPadding: phoneInDock ? 18 : 0
                             text: phoneInDock
-                                  ? (phonePlayback.artist ? phonePlayback.artist + " · " : "") + "Playing on " + phonePlayback.name
+                                  ? phonePlayback.artist || phonePlayback.name
                                   : player.currentTrack.artist || (library.trackCount > 0 ? "Pick a track to start playback" : "Choose a music folder to begin")
-                            color: phoneInDock ? accentText : dockArtistMouse.containsMouse && player.currentTrack.artist ? textPrimary : textSecondary
+                            color: !phoneInDock && dockArtistMouse.containsMouse && player.currentTrack.artist ? textPrimary : textSecondary
+
+                            LucideIcon {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 13
+                                height: 13
+                                visible: phoneInDock
+                                icon: "smartphone"
+                                color: recordRed
+                            }
                             font.family: bodyFont
                             font.pixelSize: 12
                             font.underline: dockArtistMouse.containsMouse && !!player.currentTrack.artist && !phoneInDock
@@ -4211,21 +4222,16 @@ ApplicationWindow {
                     }
 
                     PressDepthIconButton {
+                        // The phone's song can be liked when the same song is in this library; likes sync to the phone.
+                        readonly property string likePath: phoneInDock ? phonePlayback.filePath : player.currentTrack.filePath
                         Layout.alignment: Qt.AlignVCenter
                         boxSize: 32
                         iconSize: 16
                         iconName: "heart"
-                        visible: !!player.currentTrack.filePath && !phoneInDock
-                        tint: isFavorite(player.currentTrack.filePath) ? recordRed : silverDim
-                        tooltipText: isFavorite(player.currentTrack.filePath) ? "Remove from Favorites" : "Add to Favorites"
-                        onClicked: toggleFavorite(player.currentTrack.filePath)
-                    }
-
-                    SettingButton {
-                        Layout.alignment: Qt.AlignVCenter
-                        visible: phoneInDock
-                        text: "Play Here"
-                        onClicked: phoneRemote.sendToPhone("handoff")
+                        visible: !!likePath
+                        tint: isFavorite(likePath) ? recordRed : silverDim
+                        tooltipText: isFavorite(likePath) ? "Remove from Favorites" : "Add to Favorites"
+                        onClicked: toggleFavorite(likePath)
                     }
                 }
 
@@ -4243,8 +4249,7 @@ ApplicationWindow {
                             buttonSize: 34
                             paletteSource: window
                             iconName: "shuffle"
-                            enabled: !phoneInDock
-                            opacity: enabled ? 1 : 0.35
+                            visible: !phoneInDock
                             accented: player.shuffleEnabled
                             tooltipText: player.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
                             onClicked: toggleQueueShuffle()
@@ -4295,8 +4300,7 @@ ApplicationWindow {
                             buttonSize: 34
                             paletteSource: window
                             iconName: repeatMode === 2 ? "repeat-1" : "repeat"
-                            enabled: !phoneInDock
-                            opacity: enabled ? 1 : 0.35
+                            visible: !phoneInDock
                             accented: repeatMode > 0
                             iconColor: repeatMode > 0 ? recordRed : textPrimary
                             tooltipText: repeatMode === 2 ? "Repeat Track" : (repeatMode === 1 ? "Repeat All" : "Repeat Off")
@@ -4331,7 +4335,7 @@ ApplicationWindow {
                         iconName: "smartphone"
                         tint: phoneConnected ? recordRed : silverDim
                         highlighted: phoneConnected
-                        tooltipText: phoneRemote.controllerName !== "" ? "Controlled from " + phoneRemote.controllerName : "Phone Remote"
+                        tooltipText: phoneInDock ? "Playing on " + phonePlayback.name : phoneRemote.controllerName !== "" ? "Controlled from " + phoneRemote.controllerName : "Phone Remote"
                         onClicked: phoneRemoteSheet.open()
                     }
 

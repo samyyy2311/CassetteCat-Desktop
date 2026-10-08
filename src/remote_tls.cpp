@@ -61,7 +61,9 @@ bool makeIdentity(QByteArray &certificatePem, QByteArray &keyPem) {
 
 bool save(const QString &path, const QByteArray &data, QFileDevice::Permissions permissions) {
     QSaveFile file(path);
-    if (!file.open(QIODevice::WriteOnly) || file.write(data) != data.size() || !file.commit())
+    // Restricted before writing, as a new temporary file otherwise starts readable by others until the commit.
+    if (!file.open(QIODevice::WriteOnly) || !file.setPermissions(permissions) || file.write(data) != data.size() ||
+        !file.commit())
         return false;
     return QFile::setPermissions(path, permissions);
 }

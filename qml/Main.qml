@@ -682,6 +682,8 @@ ApplicationWindow {
         } else {
             page = appSettings.value("ui/page", "home")
         }
+        if (!appSettings.value("ui/setupDone", false) && library.folders.length === 0)
+            Qt.callLater(setupSheet.open)
 
         songSortMetric = appSettings.value("sort/songMetric", "title")
         songSortAscending = appSettings.value("sort/songAscending", true)
@@ -5316,6 +5318,13 @@ ApplicationWindow {
     TrackMetadataDialog {
         id: metadataDialog
         appWindow: window
+    }
+
+    SetupSheet {
+        id: setupSheet
+        appWindow: window
+        onAddFolderRequested: folderDialog.open()
+        onFinished: appSettings.setValue("ui/setupDone", true)
     }
 
     PhoneRemoteSheet {

@@ -34,11 +34,12 @@ jobs:
           target: desktop
           arch: win64_msvc2022_64
           modules: qtmultimedia qtquickeffectmaker
+          tools: 'tools_opensslv3_x64,qt.tools.opensslv3.win_x64'
           cache: true
 
       - name: Configure
         shell: pwsh
-        run: cmake -S . -B build/ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR"
+        run: cmake -S . -B build/ci -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DOPENSSL_ROOT_DIR="$env:IQTA_TOOLS/OpenSSLv3/Win_x64"
 
       - name: Build
         run: cmake --build build/ci --parallel 2
@@ -110,7 +111,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Linux dependencies
-        run: sudo apt-get update && sudo apt-get install -y gnome-keyring libpipewire-0.3-0 libsecret-1-dev
+        run: sudo apt-get update && sudo apt-get install -y gnome-keyring libpipewire-0.3-0 libsecret-1-dev libssl-dev
 
       - name: Install Qt
         uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
@@ -175,7 +176,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Linux dependencies
-        run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-0 libsecret-1-dev
+        run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-0 libsecret-1-dev libssl-dev
 
       - name: Install Qt
         uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
@@ -230,9 +231,20 @@ jobs:
       - name: Verify Keychain credential lifecycle
         run: ./build/vault-probe/credential_vault_probe
 
+      - name: Restore universal OpenSSL
+        id: openssl-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/openssl
+          key: openssl-macos-universal-${{ hashFiles('packaging/macos/build-openssl.sh') }}
+
+      - name: Build universal OpenSSL
+        if: steps.openssl-cache.outputs.cache-hit != 'true'
+        run: sh packaging/macos/build-openssl.sh "$RUNNER_TEMP/openssl"
+
       - name: Configure
         # Release and universal, so the disk image below runs on any Mac a tester has.
-        run: cmake -S . -B build/ci-macos -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+        run: cmake -S . -B build/ci-macos -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DOPENSSL_ROOT_DIR="$RUNNER_TEMP/openssl" -DOPENSSL_USE_STATIC_LIBS=TRUE
 
       - name: Build
         run: cmake --build build/ci-macos --parallel 3

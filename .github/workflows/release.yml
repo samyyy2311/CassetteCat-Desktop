@@ -51,13 +51,14 @@ jobs:
           target: desktop
           arch: win64_msvc2022_64
           modules: qtmultimedia qtquickeffectmaker
+          tools: 'tools_opensslv3_x64,qt.tools.opensslv3.win_x64'
           cache: false
       - name: Configure
         env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
         shell: pwsh
-        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DCASSETTECAT_PACKAGE_VERSION="$($env:RELEASE_TAG.TrimStart('v'))"
+        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DOPENSSL_ROOT_DIR="$env:IQTA_TOOLS/OpenSSLv3/Win_x64" -DCASSETTECAT_PACKAGE_VERSION="$($env:RELEASE_TAG.TrimStart('v'))"
       - name: Build
         run: cmake --build build/release --parallel 2
       - name: Run self-check and tests
@@ -156,7 +157,7 @@ jobs:
       - name: Install packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder libpipewire-0.3-0 libsecret-1-dev rpm
+          sudo apt-get install -y flatpak flatpak-builder libpipewire-0.3-0 libsecret-1-dev libssl-dev rpm
           curl -fsSL -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-${{ matrix.arch }}.AppImage
           echo "${{ matrix.linuxdeploy-sha256 }}  linuxdeploy.AppImage" | sha256sum -c -
           chmod +x linuxdeploy.AppImage
@@ -231,11 +232,14 @@ jobs:
           arch: clang_64
           modules: qtmultimedia qtquickeffectmaker
           cache: false
+      - name: Build universal OpenSSL
+        run: sh packaging/macos/build-openssl.sh "$RUNNER_TEMP/openssl"
+
       - name: Configure
         env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
-        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCASSETTECAT_PACKAGE_VERSION="${RELEASE_TAG#v}"
+        run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DOPENSSL_ROOT_DIR="$RUNNER_TEMP/openssl" -DOPENSSL_USE_STATIC_LIBS=TRUE -DCASSETTECAT_PACKAGE_VERSION="${RELEASE_TAG#v}"
       - name: Build
         run: cmake --build build/release --parallel 3
       - name: Run self-check and tests

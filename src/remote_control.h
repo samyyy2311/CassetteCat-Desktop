@@ -6,7 +6,7 @@
 #include <QJsonObject>
 #include <QObject>
 #include <QString>
-#include <QTcpServer>
+#include <QSslServer>
 #include <QTimer>
 #include <QUdpSocket>
 #include <QStringList>
@@ -135,7 +135,7 @@ class RemoteControlServer final : public QObject {
     QVariantList m_playlists;
     // Tells a syncing phone that likes or the library changed since it last looked.
     int m_likesRevision = 0;
-    QTcpServer m_server;
+    QSslServer m_server;
     QUdpSocket m_discovery;
     QString m_code;
     QVariantList m_pairedPhones;

@@ -30,5 +30,5 @@ modules:
         path: ../..
       - type: git
         url: https://github.com/taglib/taglib.git
-        commit: e3de03501ff66221d1f1f971022b248d5b38ba06
+        commit: deadc2990767dfbda0701e0ab35fdeea653db08f
         dest: taglib-src

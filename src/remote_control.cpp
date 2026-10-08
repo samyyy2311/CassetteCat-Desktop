@@ -2,6 +2,7 @@
 
 #include "app_paths.h"
 #include "audio_metadata.h"
+#include "remote_tls.h"
 #include "library_controller.h"
 #include "player_controller.h"
 
@@ -21,6 +22,7 @@
 #include <QSet>
 #include <QSysInfo>
 #include <QTemporaryDir>
+#include <QSslSocket>
 #include <QTcpSocket>
 #include <QTimer>
 #include <QUrl>
@@ -232,8 +234,15 @@ void RemoteControlServer::setEnabled(bool enabled) {
     if (enabled) {
         if (m_code.isEmpty())
             regenerateCode();
-        if (!m_server.listen(QHostAddress::Any, kPreferredPort) && !m_server.listen(QHostAddress::Any))
-            qWarning().noquote() << "Phone remote could not listen:" << m_server.errorString();
+        // Phones only speak to this computer over TLS, so without a certificate it doesn't listen at all.
+        const QSslConfiguration tls = remoteTlsConfiguration();
+        if (tls.localCertificate().isNull()) {
+            qWarning() << "Phone remote is off: no TLS certificate";
+        } else {
+            m_server.setSslConfiguration(tls);
+            if (!m_server.listen(QHostAddress::Any, kPreferredPort) && !m_server.listen(QHostAddress::Any))
+                qWarning().noquote() << "Phone remote could not listen:" << m_server.errorString();
+        }
         if (!m_discovery.bind(QHostAddress::AnyIPv4, kPreferredPort, QUdpSocket::ShareAddress))
             qWarning().noquote() << "Phone remote cannot be found automatically:" << m_discovery.errorString();
     } else {
@@ -1148,7 +1157,21 @@ bool RemoteControlServer::selfCheck() {
                                      read(backupPath) == R"({"n":2})" && read(backupPath + ".previous") == R"({"n":1})";
 
     remote.setEnabled(true);
+    // Phones pin the certificate; this check only needs the connection to be encrypted.
     const auto exchange = [&](const QByteArray &request) {
+        QSslSocket client;
+        client.setPeerVerifyMode(QSslSocket::VerifyNone);
+        QByteArray reply;
+        QEventLoop loop;
+        QTimer::singleShot(3000, &loop, &QEventLoop::quit);
+        connect(&client, &QSslSocket::encrypted, &loop, [&] { client.write(request); });
+        connect(&client, &QTcpSocket::readyRead, &loop, [&] { reply += client.readAll(); });
+        connect(&client, &QTcpSocket::disconnected, &loop, &QEventLoop::quit);
+        client.connectToHostEncrypted(QStringLiteral("127.0.0.1"), remote.m_server.serverPort());
+        loop.exec();
+        return reply;
+    };
+    const bool refusesPlainHttp = [&] {
         QTcpSocket client;
         QByteArray reply;
         QEventLoop loop;
@@ -1156,10 +1179,10 @@ bool RemoteControlServer::selfCheck() {
         connect(&client, &QTcpSocket::readyRead, &loop, [&] { reply += client.readAll(); });
         connect(&client, &QTcpSocket::disconnected, &loop, &QEventLoop::quit);
         client.connectToHost(QHostAddress::LocalHost, remote.m_server.serverPort());
-        client.write(request);
+        client.write("GET /api/playback HTTP/1.1\r\n\r\n");
         loop.exec();
-        return reply;
-    };
+        return !reply.contains("HTTP/1.1");
+    }();
     const QByteArray reply = exchange("POST /api/playback HTTP/1.1\r\nAuthorization: Bearer ABC234\r\n"
                                       "Content-Length: 17\r\n\r\n"
                                       R"({"action":"next"})");
@@ -1229,7 +1252,7 @@ bool RemoteControlServer::selfCheck() {
                     routesPlayNext && relaysPlayNextOnce && refusesUnpairedUploadEarly && keysByTitleAndArtist &&
                     syncsLikes && copiesPlaylists && rejectsBadListens && asksBeforePairing &&
                     keepsAllowedUntilCollected && givesCodeOnceAllowed && unpairsOnePhone && turnsAwayDenied &&
-                    servesLibrary && streamsOnlyLibraryFiles && streamsRanges;
+                    servesLibrary && streamsOnlyLibraryFiles && streamsRanges && refusesPlainHttp;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
                    << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << asksForCover
@@ -1238,6 +1261,6 @@ bool RemoteControlServer::selfCheck() {
                    << keepsPreviousBackup << routesPlayNext << relaysPlayNextOnce << refusesUnpairedUploadEarly
                    << keysByTitleAndArtist << syncsLikes << copiesPlaylists << rejectsBadListens << asksBeforePairing
                    << keepsAllowedUntilCollected << givesCodeOnceAllowed << unpairsOnePhone << turnsAwayDenied
-                   << servesLibrary << streamsOnlyLibraryFiles << streamsRanges;
+                   << servesLibrary << streamsOnlyLibraryFiles << streamsRanges << refusesPlainHttp;
     return ok;
 }

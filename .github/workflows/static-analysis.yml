@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
       - name: Install analysis tools
-        run: sudo apt-get update && sudo apt-get install -y clang-tidy clang-format libsecret-1-dev
+        run: sudo apt-get update && sudo apt-get install -y clang-tidy clang-format libsecret-1-dev libssl-dev
       - name: Verify changed C++ formatting
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}

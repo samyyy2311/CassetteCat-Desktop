@@ -6,6 +6,8 @@ set(CASSETTECAT_PACKAGE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version used 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 6.10 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Concurrent QuickEffects Network Widgets)
+# Makes the phone remote's TLS certificate.
+find_package(OpenSSL 3 REQUIRED COMPONENTS Crypto)
 if(UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(LIBSECRET REQUIRED IMPORTED_TARGET libsecret-1)
@@ -58,6 +60,7 @@ qt_add_executable(CassetteCat
     src/discord_presence.cpp
     src/remote_control.h
     src/remote_control.cpp
+    src/remote_tls.cpp
     src/streaming.h
     src/streaming.cpp
     src/streaming_library.cpp
@@ -341,7 +344,7 @@ if(TARGET tag)
     set_target_properties(tag PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 endif()
 
-target_link_libraries(CassetteCat PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent Qt6::QuickEffects Qt6::Network Qt6::Widgets tag)
+target_link_libraries(CassetteCat PRIVATE Qt6::Quick Qt6::QuickControls2 Qt6::Multimedia Qt6::Concurrent Qt6::QuickEffects Qt6::Network Qt6::Widgets tag OpenSSL::Crypto)
 if(UNIX AND NOT APPLE)
     target_link_libraries(CassetteCat PRIVATE PkgConfig::LIBSECRET Qt6::DBus)
     target_compile_definitions(CassetteCat PRIVATE CASSETTECAT_HAVE_LIBSECRET=1 CASSETTECAT_HAVE_DBUS=1)
@@ -421,6 +424,19 @@ qt_generate_deploy_qml_app_script(
 )
 
 install(SCRIPT ${deploy_script} COMPONENT runtime)
+
+# OpenSSL comes as a DLL on Windows, so it ships next to the app.
+if(WIN32)
+    get_filename_component(opensslRoot "${OPENSSL_INCLUDE_DIR}" DIRECTORY)
+    file(GLOB opensslCryptoDll "${opensslRoot}/bin/libcrypto-3*.dll")
+    if(NOT opensslCryptoDll)
+        message(FATAL_ERROR "No libcrypto DLL in ${opensslRoot}/bin")
+    endif()
+    add_custom_command(TARGET CassetteCat POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${opensslCryptoDll}" "$<TARGET_FILE_DIR:CassetteCat>"
+    )
+    install(FILES ${opensslCryptoDll} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT runtime)
+endif()
 
 if(UNIX AND NOT APPLE)
     install(FILES

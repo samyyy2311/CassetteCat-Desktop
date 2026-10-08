@@ -1,0 +1,2 @@
+# TagLib writes empty buffers as fwrite(nullptr, 1, 0, file): harmless, but glibc marks the pointer non-null.
+nonnull-attribute:tfilestream.cpp

@@ -157,7 +157,8 @@ jobs:
       - name: Install packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y flatpak flatpak-builder libpipewire-0.3-0 libsecret-1-dev libssl-dev rpm
+          # Qt's GStreamer plugin needs libgstplay and libgstphotography; ARM runners don't preinstall them.
+          sudo apt-get install -y flatpak flatpak-builder libgstreamer-plugins-bad1.0-0 libgstreamer-plugins-good1.0-0 libpipewire-0.3-0 libsecret-1-dev libssl-dev rpm
           curl -fsSL -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-${{ matrix.arch }}.AppImage
           echo "${{ matrix.linuxdeploy-sha256 }}  linuxdeploy.AppImage" | sha256sum -c -
           chmod +x linuxdeploy.AppImage

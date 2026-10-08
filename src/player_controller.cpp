@@ -88,24 +88,26 @@ void PlayerController::connectPlayer(QMediaPlayer *player) {
         const bool playing = (state == QMediaPlayer::PlayingState);
         qInfo().noquote() << "[PLAYER] state=" << static_cast<int>(state) << "positionMs=" << m_player->position()
                           << "track=" << m_currentTrack.value("filePath").toString();
-        if (m_isPlaying != playing) {
-            m_isPlaying = playing;
-#ifdef _WIN32
-            SetThreadExecutionState(ES_CONTINUOUS | (playing ? ES_SYSTEM_REQUIRED : 0));
-#endif
-            emit isPlayingChanged();
-        }
-        if (!playing)
-            setAudioLevel(0.0);
+        // Between two songs the player stops for a moment; that only counts as stopping if no song follows.
+        const bool naturalEnd =
+            state == QMediaPlayer::StoppedState && m_player->mediaStatus() == QMediaPlayer::EndOfMedia;
+        if (playing)
+            m_switchingTrack = false;
+        if (!m_switchingTrack && !naturalEnd)
+            setPlaying(playing);
         if (playing) {
             m_pipeline->setPaused(false);
-        } else if (state == QMediaPlayer::PausedState || m_player->mediaStatus() != QMediaPlayer::EndOfMedia) {
+        } else if (m_switchingTrack) {
+            // The device keeps running, so the next song follows without the device stopping and starting.
+        } else if (!naturalEnd) {
             m_pipeline->setPaused(true);
         } else {
             // At a song's natural end the queued audio plays out while the next song opens.
             QTimer::singleShot(1500, this, [this] {
-                if (!m_isPlaying && !m_fadeTimer->isActive())
+                if (m_player->playbackState() != QMediaPlayer::PlayingState && !m_fadeTimer->isActive()) {
+                    setPlaying(false);
                     m_pipeline->setPaused(true);
+                }
             });
         }
         if (state == QMediaPlayer::StoppedState && !m_pauseExpected && !m_currentTrack.isEmpty()) {
@@ -155,6 +157,11 @@ void PlayerController::connectPlayer(QMediaPlayer *player) {
         if (player != m_player)
             return;
         qWarning().noquote() << "[PLAYER] error positionMs=" << m_player->position() << message;
+        if (m_switchingTrack) {
+            m_switchingTrack = false;
+            setPlaying(false);
+            m_pipeline->setPaused(true);
+        }
         if (m_error == message)
             return;
         m_error = message;
@@ -518,7 +525,9 @@ bool PlayerController::playTrack(const QVariantMap &track) {
         m_fadeIn = 0.0f;
     }
     m_pendingRestorePositionMs = 0;
+    m_switchingTrack = m_isPlaying;
     if (!loadTrack(track)) {
+        m_switchingTrack = false;
         if (crossfade) {
             std::swap(m_player, m_fadingPlayer);
             m_pipeline->setMeteredSource(m_player->audioBufferOutput());
@@ -616,6 +625,7 @@ void PlayerController::play() {
 
 void PlayerController::pause() {
     qInfo().noquote() << "[PLAYER] pause requested positionMs=" << m_player->position();
+    m_switchingTrack = false;
     if (m_fadeTimer->isActive())
         finishCrossfade();
     m_pauseExpected = true;
@@ -625,9 +635,25 @@ void PlayerController::pause() {
 void PlayerController::stop() {
     if (m_fadeTimer->isActive())
         finishCrossfade();
+    m_switchingTrack = false;
     m_pauseExpected = true;
     m_player->stop();
     m_pipeline->clear(m_player->audioBufferOutput());
+    // Stopping between two songs changes no player state, so it is reported here.
+    setPlaying(false);
+    m_pipeline->setPaused(true);
+}
+
+void PlayerController::setPlaying(bool playing) {
+    if (!playing)
+        setAudioLevel(0.0);
+    if (m_isPlaying == playing)
+        return;
+    m_isPlaying = playing;
+#ifdef _WIN32
+    SetThreadExecutionState(ES_CONTINUOUS | (playing ? ES_SYSTEM_REQUIRED : 0));
+#endif
+    emit isPlayingChanged();
 }
 
 void PlayerController::seek(qint64 positionMs) {

@@ -123,6 +123,7 @@ class PlayerController final : public QObject {
     bool loadTrack(const QVariantMap &track);
     void openDeferredSource();
     void setAudioLevel(qreal level);
+    void setPlaying(bool playing);
     /// Applies ReplayGain and the configured ceiling to the audio output.
     void applyEffectiveVolume();
     /// The base volume with ReplayGain and the configured ceiling applied.
@@ -152,6 +153,8 @@ class PlayerController final : public QObject {
     QUrl m_deferredSource;
     QString m_error;
     bool m_pauseExpected = false;
+    // Set while a playing player stops to open the next song, so the switch never shows as a pause.
+    bool m_switchingTrack = false;
     QString m_replayGainMode = QStringLiteral("off");
     float m_currentReplayGainDb = 0.0f;
     float m_baseVolume = 1.0f;

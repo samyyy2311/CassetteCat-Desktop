@@ -178,7 +178,9 @@ QList<QJsonObject> readListeningLog(const QByteArray &log) {
     QList<QJsonObject> entries;
     for (const QByteArray &line : log.split('\n')) {
         const QJsonObject entry = QJsonDocument::fromJson(line).object();
-        const bool named = !entry.value("path").toString().isEmpty() || !entry.value("title").toString().isEmpty();
+        // A month's total from the phone may be untitled; any other entry needs a song.
+        const bool named = !entry.value("path").toString().isEmpty() || !entry.value("title").toString().isEmpty() ||
+                           entry.contains("plays");
         if (named && entry.value("at").toDouble() > 0)
             entries.append(entry);
     }
@@ -255,6 +257,9 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
         listenedMs += ms;
         if (!total)
             firstListen = firstListen == 0 ? at : qMin(firstListen, at);
+        // An untitled total covers songs the phone no longer has; like the phone, it counts but isn't listed.
+        if (track.value("title").toString().isEmpty())
+            continue;
 
         // A song is its title and artist, as on the phone, so playing it on both devices counts as one song.
         const QString songKey = track.value("title").toString().trimmed().toLower() + QChar(0x1f) +
@@ -540,6 +545,12 @@ bool LibraryController::selfCheck() {
         withTotal.value("firstListen").toLongLong() !=
             QDateTime::fromString("2026-04-01T12:00:00", Qt::ISODate).toMSecsSinceEpoch())
         return fail("monthly totals from the phone");
+    total.insert("title", "");
+    const QVariantMap withUntitled =
+        recapFromLog(phoneLine("Here") + QJsonDocument(total).toJson(QJsonDocument::Compact) + '\n', 2026, -1);
+    if (withUntitled.value("plays").toInt() != 5 || withUntitled.value("songCount").toInt() != 1 ||
+        withUntitled.value("topSongs").toList().size() != 1)
+        return fail("untitled monthly totals from the phone");
 
     // Half a second of 8 kHz mono silence is enough for TagLib to accept the file.
     QTemporaryDir tagDir;

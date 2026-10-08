@@ -807,8 +807,9 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         QList<QJsonObject> listens;
         for (const QJsonValue &value : request.value("listens").toArray()) {
             const QJsonObject listen = value.toObject();
-            if (listen.value("title").toString().isEmpty() || listen.value("at").toInteger() <= 0 ||
-                listen.value("ms").toInteger() <= 0)
+            // Only a month's total may be untitled: it covers songs the phone no longer has.
+            if ((listen.value("title").toString().isEmpty() && !listen.value("plays").isDouble()) ||
+                listen.value("at").toInteger() <= 0 || listen.value("ms").toInteger() <= 0)
                 continue;
             QJsonObject entry{
                 {"at", listen.value("at").toInteger()},      {"path", pathByKey.value(matchKey(listen.toVariantMap()))},

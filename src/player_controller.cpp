@@ -1,6 +1,7 @@
 #include "player_controller.h"
 
 #include "app_paths.h"
+#include "audio_pipeline.h"
 #include "app_settings.h"
 #include "audio_metadata.h"
 #include "streaming.h"
@@ -10,7 +11,6 @@
 #include <QAudioDevice>
 #include <QAudioFormat>
 #include <QMediaDevices>
-#include <QAudioOutput>
 #include <QBuffer>
 #include <QDataStream>
 #include <QElapsedTimer>
@@ -39,10 +39,10 @@ bool isNetworkStream(const QUrl &url) {
 } // namespace
 
 PlayerController::PlayerController(QObject *parent, StreamingController *streaming)
-    : QObject(parent), m_streaming(streaming), m_audioOutput(new QAudioOutput(this)),
-      m_mediaDevices(new QMediaDevices(this)), m_bufferOutput(new QAudioBufferOutput(this)),
-      m_player(new QMediaPlayer(this)) {
-    m_player->setAudioOutput(m_audioOutput);
+    : QObject(parent), m_streaming(streaming), m_pipeline(new AudioPipeline(this)),
+      m_mediaDevices(new QMediaDevices(this)), m_player(new QMediaPlayer(this)) {
+    m_player->setAudioBufferOutput(m_pipeline->addSource());
+    m_pipeline->setMeteredSource(m_player->audioBufferOutput());
     m_replayGainMode = SettingsController::globalValue("player/replayGainMode", QStringLiteral("off")).toString();
     m_baseVolume = std::clamp(SettingsController::globalValue("player/volume", 1.0f).toFloat(), 0.0f, 1.0f);
     if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
@@ -56,36 +56,16 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
         emit audioDeviceChanged();
     });
 
-    m_fadingOutput = new QAudioOutput(this);
     m_fadingPlayer = new QMediaPlayer(this);
-    m_fadingPlayer->setAudioOutput(m_fadingOutput);
+    m_fadingPlayer->setAudioBufferOutput(m_pipeline->addSource());
+    m_pipeline->setGain(m_fadingPlayer->audioBufferOutput(), 0.0f);
     connectPlayer(m_player);
     connectPlayer(m_fadingPlayer);
+    setEqualizer(SettingsController::globalValue("player/equalizer").toMap());
 
-    connect(m_bufferOutput, &QAudioBufferOutput::audioBufferReceived, this, [this](const QAudioBuffer &buffer) {
-        if (!audioMeterEnabled())
-            return;
-        const int sampleCount = buffer.sampleCount();
-        if (sampleCount <= 0)
-            return;
-
-        double sum = 0.0;
-        if (buffer.format().sampleFormat() == QAudioFormat::Float) {
-            const auto *samples = buffer.constData<float>();
-            for (int i = 0; i < sampleCount; ++i) {
-                const double sample = samples[i];
-                sum += sample * sample;
-            }
-        } else if (buffer.format().sampleFormat() == QAudioFormat::Int16) {
-            const auto *samples = buffer.constData<qint16>();
-            for (int i = 0; i < sampleCount; ++i) {
-                const double sample = samples[i] / 32768.0;
-                sum += sample * sample;
-            }
-        } else {
-            return;
-        }
-        setAudioLevel(std::clamp(std::sqrt(sum / sampleCount) * 3.0, 0.0, 1.0));
+    connect(m_pipeline, &AudioPipeline::levelReceived, this, [this](double rms) {
+        if (m_meterEnabled)
+            setAudioLevel(std::clamp(rms * 3.0, 0.0, 1.0));
     });
 
     m_fadeTimer = new QTimer(this);
@@ -94,7 +74,7 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
         const float progress = std::min(1.0f, float(m_fadeClock.elapsed()) / float(std::max(1, m_crossfadeMs)));
         m_fadeIn = progress;
         applyEffectiveVolume();
-        m_fadingOutput->setVolume(m_fadingGain * m_baseVolume * (1.0f - progress));
+        m_pipeline->setGain(m_fadingPlayer->audioBufferOutput(), m_fadingGain * m_baseVolume * (1.0f - progress));
         if (progress >= 1.0f)
             finishCrossfade();
     });
@@ -117,6 +97,17 @@ void PlayerController::connectPlayer(QMediaPlayer *player) {
         }
         if (!playing)
             setAudioLevel(0.0);
+        if (playing) {
+            m_pipeline->setPaused(false);
+        } else if (state == QMediaPlayer::PausedState || m_player->mediaStatus() != QMediaPlayer::EndOfMedia) {
+            m_pipeline->setPaused(true);
+        } else {
+            // At a song's natural end the queued audio plays out while the next song opens.
+            QTimer::singleShot(1500, this, [this] {
+                if (!m_isPlaying && !m_fadeTimer->isActive())
+                    m_pipeline->setPaused(true);
+            });
+        }
         if (state == QMediaPlayer::StoppedState && !m_pauseExpected && !m_currentTrack.isEmpty()) {
             const QString stoppedTrackPath = m_currentTrack.value("filePath").toString();
             QTimer::singleShot(75, this, [this, stoppedTrackPath] {
@@ -209,7 +200,7 @@ qreal PlayerController::audioLevel() const {
     return m_audioLevel;
 }
 bool PlayerController::audioMeterEnabled() const {
-    return m_player->audioBufferOutput() != nullptr;
+    return m_meterEnabled;
 }
 qint64 PlayerController::position() const {
     return m_position;
@@ -246,9 +237,7 @@ QVariantList PlayerController::audioOutputs() const {
 }
 
 QString PlayerController::audioDeviceId() const {
-    if (!m_audioOutput)
-        return QString();
-    const QByteArray currentId = m_audioOutput->device().id();
+    const QByteArray currentId = m_pipeline->device().id();
     if (currentId.isEmpty() || currentId == QMediaDevices::defaultAudioOutput().id()) {
         return QString();
     }
@@ -256,24 +245,15 @@ QString PlayerController::audioDeviceId() const {
 }
 
 bool PlayerController::setAudioDevice(const QString &id) {
-    if (!m_audioOutput)
-        return false;
     if (id.isEmpty()) {
-        const QAudioDevice defaultDevice = QMediaDevices::defaultAudioOutput();
-        if (m_audioOutput->device().id() != defaultDevice.id()) {
-            m_audioOutput->setDevice(defaultDevice);
-            m_fadingOutput->setDevice(defaultDevice);
-        }
+        m_pipeline->setDevice(QMediaDevices::defaultAudioOutput());
         emit audioDeviceChanged();
         return true;
     }
     for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
         if (QString::fromLatin1(device.id().toHex()) != id)
             continue;
-        if (m_audioOutput->device().id() != device.id()) {
-            m_audioOutput->setDevice(device);
-            m_fadingOutput->setDevice(device);
-        }
+        m_pipeline->setDevice(device);
         emit audioDeviceChanged();
         return true;
     }
@@ -286,7 +266,7 @@ QString PlayerController::error() const {
 void PlayerController::setAudioMeterEnabled(bool enabled) {
     if (enabled == audioMeterEnabled())
         return;
-    m_player->setAudioBufferOutput(enabled ? m_bufferOutput : nullptr);
+    m_meterEnabled = enabled;
     if (!enabled)
         setAudioLevel(0.0);
     emit audioMeterEnabledChanged();
@@ -302,28 +282,22 @@ bool PlayerController::selfCheck() {
     if (isNetworkStream(QUrl::fromLocalFile(QStringLiteral("C:/music/track.flac"))))
         return false;
 
-    QAudioFormat format;
-    format.setSampleRate(48000);
-    format.setChannelCount(1);
-    format.setSampleFormat(QAudioFormat::Float);
-    QAudioBuffer buffer(2, format);
-    buffer.data<float>()[0] = 0.25f;
-    buffer.data<float>()[1] = -0.25f;
-
-    player.m_bufferOutput->audioBufferReceived(buffer);
+    if (!AudioPipeline::selfCheck())
+        return false;
+    emit player.m_pipeline->levelReceived(0.25);
     if (player.audioLevel() != 0.0)
         return false;
     for (int i = 0; i < 3; ++i) {
         player.setAudioMeterEnabled(true);
-        player.m_bufferOutput->audioBufferReceived(buffer);
+        emit player.m_pipeline->levelReceived(0.25);
         if (!player.audioMeterEnabled() || qAbs(player.audioLevel() - 0.75) > 0.001)
             return false;
         player.setAudioMeterEnabled(false);
-        player.m_bufferOutput->audioBufferReceived(buffer);
+        emit player.m_pipeline->levelReceived(0.25);
         if (player.audioMeterEnabled() || player.audioLevel() != 0.0)
             return false;
     }
-    if (player.m_player->audioOutput() != player.m_audioOutput)
+    if (!player.m_player->audioBufferOutput() || !player.m_fadingPlayer->audioBufferOutput())
         return false;
     player.setReplayGainMode(QStringLiteral("track"));
     if (player.replayGainMode() != QStringLiteral("track"))
@@ -387,7 +361,8 @@ bool PlayerController::selfCheck() {
         return condition();
     };
 
-    player.m_audioOutput->setMuted(true);
+    player.m_baseVolume = 0.0f;
+    player.applyEffectiveVolume();
     player.m_player->setSourceDevice(&source, QUrl("meter-check.wav"));
     player.m_player->play();
     if (!waitFor([&] { return player.position() > 100; }))
@@ -406,8 +381,7 @@ bool PlayerController::selfCheck() {
     player.setAudioMeterEnabled(false);
     if (!waitFor([&] { return player.position() > position + 100; }))
         return false;
-    return player.audioLevel() == 0.0 && player.error().isEmpty() &&
-           player.m_player->audioOutput() == player.m_audioOutput;
+    return player.audioLevel() == 0.0 && player.error().isEmpty();
 }
 
 QString PlayerController::getLyrics(const QString &filePath) const {
@@ -451,9 +425,7 @@ void PlayerController::setVolume(float vol) {
 }
 
 void PlayerController::applyEffectiveVolume() {
-    if (!m_audioOutput)
-        return;
-    m_audioOutput->setVolume(effectiveVolume() * m_fadeIn);
+    m_pipeline->setGain(m_player->audioBufferOutput(), effectiveVolume() * m_fadeIn);
 }
 
 float PlayerController::effectiveVolume() const {
@@ -475,6 +447,8 @@ void PlayerController::finishCrossfade() {
     m_fadeTimer->stop();
     m_fadingPlayer->stop();
     m_fadingPlayer->setSource(QUrl());
+    m_pipeline->setGain(m_fadingPlayer->audioBufferOutput(), 0.0f);
+    m_pipeline->clear(m_fadingPlayer->audioBufferOutput());
     m_fadeIn = 1.0f;
     applyEffectiveVolume();
 }
@@ -492,6 +466,29 @@ void PlayerController::setReplayGainMode(const QString &mode) {
     }
     applyEffectiveVolume();
     emit replayGainModeChanged();
+}
+
+void PlayerController::setEqualizer(const QVariantMap &settings) {
+    const auto clampDb = [](const QVariant &value) { return std::clamp(value.toFloat(), -12.0f, 12.0f); };
+    const QVariantList requested = settings.value("bands").toList();
+    std::array<float, AudioPipeline::kBandCount> bands{};
+    QVariantList saved;
+    for (int i = 0; i < AudioPipeline::kBandCount; ++i) {
+        bands[i] = requested.size() == AudioPipeline::kBandCount ? clampDb(requested[i]) : 0.0f;
+        saved.append(bands[i]);
+    }
+    const bool enabled = settings.value("enabled").toBool();
+    const float preamp = clampDb(settings.value("preamp"));
+    m_pipeline->setEqualizer(enabled, bands, preamp);
+    const QVariantMap normalized{{"enabled", enabled},
+                                 {"preset", settings.value("preset", QStringLiteral("Flat")).toString()},
+                                 {"preamp", preamp},
+                                 {"bands", saved}};
+    if (normalized == m_equalizer)
+        return;
+    m_equalizer = normalized;
+    SettingsController::setGlobalValue("player/equalizer", m_equalizer);
+    emit equalizerChanged();
 }
 
 void PlayerController::restoreTrack(const QVariantMap &track, qint64 positionMs) {
@@ -514,22 +511,18 @@ bool PlayerController::playTrack(const QVariantMap &track) {
     if (m_fadeTimer->isActive())
         finishCrossfade();
     if (crossfade) {
-        std::swap(m_player, m_fadingPlayer);
-        std::swap(m_audioOutput, m_fadingOutput);
-        m_audioOutput->setDevice(m_fadingOutput->device());
-        m_player->setAudioBufferOutput(m_fadingPlayer->audioBufferOutput());
-        m_fadingPlayer->setAudioBufferOutput(nullptr);
         // The outgoing track keeps its own ReplayGain but follows volume changes made during the fade.
-        m_fadingGain = m_baseVolume > 0.0f ? m_fadingOutput->volume() / m_baseVolume : 1.0f;
+        m_fadingGain = m_baseVolume > 0.0f ? effectiveVolume() * m_fadeIn / m_baseVolume : 1.0f;
+        std::swap(m_player, m_fadingPlayer);
+        m_pipeline->setMeteredSource(m_player->audioBufferOutput());
         m_fadeIn = 0.0f;
     }
     m_pendingRestorePositionMs = 0;
     if (!loadTrack(track)) {
         if (crossfade) {
             std::swap(m_player, m_fadingPlayer);
-            std::swap(m_audioOutput, m_fadingOutput);
-            m_player->setAudioBufferOutput(m_fadingPlayer->audioBufferOutput());
-            m_fadingPlayer->setAudioBufferOutput(nullptr);
+            m_pipeline->setMeteredSource(m_player->audioBufferOutput());
+            m_pipeline->setGain(m_fadingPlayer->audioBufferOutput(), 0.0f);
             m_fadeIn = 1.0f;
             applyEffectiveVolume();
         }
@@ -580,6 +573,9 @@ bool PlayerController::loadTrack(const QVariantMap &track) {
         m_currentReplayGainDb = 0.0f;
     }
     applyEffectiveVolume();
+    // After a natural end the last of the previous song is still queued; the new one follows it without a gap.
+    if (m_player->mediaStatus() != QMediaPlayer::EndOfMedia)
+        m_pipeline->clear(m_player->audioBufferOutput());
     m_pauseExpected = true;
     m_player->stop();
     m_deferredSource = mediaSource;
@@ -631,6 +627,7 @@ void PlayerController::stop() {
         finishCrossfade();
     m_pauseExpected = true;
     m_player->stop();
+    m_pipeline->clear(m_player->audioBufferOutput());
 }
 
 void PlayerController::seek(qint64 positionMs) {
@@ -642,6 +639,7 @@ void PlayerController::seek(qint64 positionMs) {
         return;
     }
     m_pendingRestorePositionMs = 0;
+    m_pipeline->clear(m_player->audioBufferOutput());
     m_player->setPosition(positionMs);
 }
 

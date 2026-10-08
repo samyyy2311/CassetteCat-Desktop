@@ -42,6 +42,8 @@ qt_add_executable(CassetteCat
     src/library_scanner.cpp
     src/library_controller.h
     src/library_controller.cpp
+    src/audio_pipeline.h
+    src/audio_pipeline.cpp
     src/player_controller.h
     src/player_controller.cpp
     src/services_controller.h
@@ -114,6 +116,7 @@ qt_add_qml_module(CassetteCat
         qml/SongRow.qml
         qml/TrackTitles.js
         qml/LyricsText.js
+        qml/AutoEqProfiles.js
         qml/SongCard.qml
         qml/ArtistCard.qml
         qml/AlbumCard.qml
@@ -166,6 +169,7 @@ qt_add_qml_module(CassetteCat
         qml/SettingsLibrarySection.qml
         qml/SettingsAppearanceSection.qml
         qml/SettingsPlaybackSection.qml
+        qml/SettingsEqualizerCard.qml
         qml/SettingsShortcutsSection.qml
         qml/SettingsDesktopSection.qml
         qml/SettingsLyricsSection.qml
@@ -221,6 +225,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/volume-x.svg
         qml/icons/heart.svg
         qml/icons/disc.svg
+        qml/icons/headphones.svg
         qml/icons/mic.svg
         qml/icons/audio-lines.svg
         qml/icons/repeat.svg

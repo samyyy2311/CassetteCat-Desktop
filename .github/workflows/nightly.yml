@@ -20,6 +20,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
         with:
@@ -69,6 +71,8 @@ jobs:
       QT_QPA_OFFSCREEN_NO_GLX: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Install Qt
         uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
         with:
@@ -82,6 +86,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpipewire-0.3-0 libsecret-1-dev rpm
           curl -fsSL -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-x86_64.AppImage
+          echo "c86d6540f1df31061f02f539a2d3445f8d7f85cc3994eee1e74cd1ac97b76df0  linuxdeploy.AppImage" | sha256sum -c -
           chmod +x linuxdeploy.AppImage
       - name: Configure
         env:

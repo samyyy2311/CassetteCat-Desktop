@@ -16,7 +16,7 @@ ScrollBar {
         implicitWidth: root.hovered ? 6 : 4
         implicitHeight: root.hovered ? 6 : 4
         radius: width / 2
-        color: root.pressed ? "#D14337" : (root.hovered ? "#D0FFFFFF" : "#60FFFFFF")
+        color: root.pressed ? recordRedHover : (root.hovered ? "#D0FFFFFF" : "#60FFFFFF")
 
         Behavior on implicitWidth { NumberAnimation { duration: 100 } }
         Behavior on implicitHeight { NumberAnimation { duration: 100 } }

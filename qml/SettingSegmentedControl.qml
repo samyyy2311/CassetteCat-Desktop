@@ -7,8 +7,8 @@ Rectangle {
     property var selectedValue: ""
     signal optionSelected(var value)
 
-    readonly property color accentColor: (typeof recordRed !== "undefined" ? recordRed : "#C23B30")
-    readonly property color accentHoverColor: (typeof recordRedHover !== "undefined" ? recordRedHover : "#D64337")
+    readonly property color accentColor: recordRed
+    readonly property color accentHoverColor: recordRedHover
 
     implicitHeight: 32
     implicitWidth: rowLayout.implicitWidth + 8

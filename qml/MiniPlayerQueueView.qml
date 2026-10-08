@@ -59,7 +59,6 @@ Item {
 
                 delegate: QueueTrackRow {
                     width: ListView.view.width - 4
-                    paletteSource: miniPlayer
                     entry: queueModel.entryByKey[model.key] || ({})
                     compact: true
                     allowCurrentActivation: true

@@ -3153,8 +3153,6 @@ ApplicationWindow {
             bodyFont: window.bodyFont
             monoFont: window.monoFont
             tracksCount: library.trackCount
-            accentColor: window.recordRed
-            accentHover: window.recordRedHover
             lyricsActiveStyle: window.lyricsActiveStyle
             lyricsAlignment: window.lyricsAlignment
             lyricsFontSize: window.lyricsFontSize
@@ -4337,7 +4335,6 @@ ApplicationWindow {
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 34
-                            paletteSource: window
                             visible: phoneInDock
                             iconName: "laptop"
                             iconColor: textPrimary
@@ -4348,7 +4345,6 @@ ApplicationWindow {
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 34
-                            paletteSource: window
                             iconName: "shuffle"
                             visible: !phoneInDock
                             accented: player.shuffleEnabled
@@ -4359,7 +4355,6 @@ ApplicationWindow {
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 38
-                            paletteSource: window
                             iconName: "skip-back"
                             iconColor: textPrimary
                             tooltipText: phoneInDock ? "Previous on " + phonePlayback.name : "Previous"
@@ -4369,7 +4364,6 @@ ApplicationWindow {
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 46
-                            paletteSource: window
                             iconName: shownPlaying ? "pause" : "play"
                             accented: true
                             iconColor: recordRed
@@ -4388,7 +4382,6 @@ ApplicationWindow {
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 38
-                            paletteSource: window
                             iconName: "skip-forward"
                             iconColor: textPrimary
                             tooltipText: phoneInDock ? "Next on " + phonePlayback.name : "Next"
@@ -4398,7 +4391,6 @@ ApplicationWindow {
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 34
-                            paletteSource: window
                             iconName: repeatMode === 2 ? "repeat-1" : "repeat"
                             visible: !phoneInDock
                             accented: repeatMode > 0
@@ -4421,7 +4413,6 @@ ApplicationWindow {
                         position: shownPlayer.position
                         duration: shownPlayer.duration
                         showRemainingTime: window.showRemainingTime
-                        paletteSource: window
                         onSeekRequested: posMs => shownPlayer.seek(posMs)
                         onRemainingToggled: val => { window.showRemainingTime = val; appSettings.setValue("player/showRemainingTime", val) }
                     }
@@ -4556,7 +4547,6 @@ ApplicationWindow {
                         enabled: !phoneInDock || phonePlayback.volumePercent >= 0
                         showPercentage: false
                         volume: shownPlayer.volume
-                        paletteSource: window
                         onVolumeAdjusted: newVol => {
                             setShownVolume(newVol)
                         }
@@ -4796,7 +4786,6 @@ ApplicationWindow {
                             position: shownPlayer.position
                             duration: shownPlayer.duration
                             showRemainingTime: window.showRemainingTime
-                            paletteSource: window
                             onSeekRequested: posMs => shownPlayer.seek(posMs)
                             onRemainingToggled: val => { window.showRemainingTime = val; appSettings.setValue("player/showRemainingTime", val) }
                         }
@@ -4808,7 +4797,6 @@ ApplicationWindow {
                             TransportButton {
                                 Accessible.name: "Shuffle"
                                 buttonSize: 32
-                                paletteSource: window
                                 iconName: "shuffle"
                                 visible: !phoneInDock
                                 accented: player.shuffleEnabled
@@ -4820,7 +4808,6 @@ ApplicationWindow {
                             TransportButton {
                                 Accessible.name: "Previous track"
                                 buttonSize: 38
-                                paletteSource: window
                                 iconName: "skip-back"
                                 iconColor: textPrimary
                                 onClicked: shownPrevious()
@@ -4829,7 +4816,6 @@ ApplicationWindow {
                             TransportButton {
                                 Accessible.name: shownPlaying ? "Pause" : "Play"
                                 buttonSize: 48
-                                paletteSource: window
                                 iconName: shownPlaying ? "pause" : "play"
                                 accented: true
                                 iconColor: recordRed
@@ -4839,7 +4825,6 @@ ApplicationWindow {
                             TransportButton {
                                 Accessible.name: "Next track"
                                 buttonSize: 38
-                                paletteSource: window
                                 iconName: "skip-forward"
                                 iconColor: textPrimary
                                 onClicked: shownNext()
@@ -4851,7 +4836,6 @@ ApplicationWindow {
                                 Accessible.name: "Repeat"
                                 visible: !phoneInDock
                                 buttonSize: 32
-                                paletteSource: window
                                 iconName: repeatMode === 2 ? "repeat-1" : "repeat"
                                 accented: repeatMode > 0
                                 iconColor: repeatMode > 0 ? recordRed : textPrimary
@@ -4866,7 +4850,6 @@ ApplicationWindow {
                             VolumeControl {
                                 Layout.preferredWidth: 160
                                 volume: shownPlayer.volume
-                                paletteSource: window
                                 onVolumeAdjusted: newVol => setShownVolume(newVol)
                             }
                             Item { Layout.fillWidth: true }

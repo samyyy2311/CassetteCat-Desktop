@@ -13,16 +13,11 @@ Item {
     implicitWidth: 400
     implicitHeight: 28
 
-    property var paletteSource: null
-    property color accentColor: paletteSource ? paletteSource.recordRed : "#C23B30"
-    property color accentHover: paletteSource ? paletteSource.recordRedHover : "#D14337"
+    property color accentColor: window.recordRed
+    property color accentHover: window.recordRedHover
     readonly property color recordRed: accentColor
     readonly property color recordRedHover: accentHover
-    readonly property color surfaceElevated: "#2A2825"
     readonly property color surfaceTooltip: "#1A1816"
-    readonly property color borderSubtle: "#2E2B28"
-    readonly property color silver: "#C4C4C0"
-    readonly property color silverDim: "#918E88"
     readonly property string monoFont: (typeof monoFontFamily !== "undefined" && monoFontFamily.length > 0) ? monoFontFamily : "IBM Plex Mono"
 
     property bool isDragging: false
@@ -70,7 +65,7 @@ Item {
             Layout.preferredWidth: 42
             Layout.alignment: Qt.AlignVCenter
             text: root.formatTime(root.currentPosMs)
-            color: (trackMouse.containsMouse || root.isDragging) ? "#F5F0EC" : root.silverDim
+            color: (trackMouse.containsMouse || root.isDragging) ? textPrimary : silverDim
             font.family: root.monoFont
             font.pixelSize: 11
             font.weight: Font.Medium
@@ -90,9 +85,9 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 height: (trackMouse.containsMouse || root.isDragging) ? 5 : 3
                 radius: height / 2
-                color: root.surfaceElevated
+                color: surfaceElevated
                 border.width: 1
-                border.color: root.borderSubtle
+                border.color: borderVariant
 
                 Behavior on height {
                     NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
@@ -147,7 +142,7 @@ Item {
                     id: hoverText
                     anchors.centerIn: parent
                     text: root.formatTime(Math.floor((trackMouse.mouseX / Math.max(1, trackContainer.width)) * root.duration))
-                    color: "#F5F0EC"
+                    color: textPrimary
                     font.family: root.monoFont
                     font.pixelSize: 10
                     font.weight: Font.Bold
@@ -209,7 +204,7 @@ Item {
             text: root.showRemainingTime
                 ? root.formatRemaining(root.currentPosMs, root.duration)
                 : root.formatTime(root.duration)
-            color: (trackMouse.containsMouse || root.isDragging || timeMouse.containsMouse) ? "#F5F0EC" : root.silverDim
+            color: (trackMouse.containsMouse || root.isDragging || timeMouse.containsMouse) ? textPrimary : silverDim
             font.family: root.monoFont
             font.pixelSize: 11
             font.weight: Font.Medium

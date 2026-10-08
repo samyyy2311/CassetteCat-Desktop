@@ -9,12 +9,12 @@ Rectangle {
     implicitHeight: 26
     radius: 13
     color: root.checked
-        ? (mouseArea.containsMouse ? (typeof recordRedHover !== "undefined" ? recordRedHover : "#D64337") : (typeof recordRed !== "undefined" ? recordRed : "#C23B30"))
+        ? (mouseArea.containsMouse ? recordRedHover : recordRed)
         : (mouseArea.containsMouse ? "#201E1C" : "#181715")
     opacity: root.enabled ? 1.0 : 0.4
     border.width: root.activeFocus ? 2 : 0
     border.color: root.activeFocus
-        ? (typeof recordRedHover !== "undefined" ? recordRedHover : "#D64337")
+        ? recordRedHover
         : "transparent"
 
     activeFocusOnTab: true

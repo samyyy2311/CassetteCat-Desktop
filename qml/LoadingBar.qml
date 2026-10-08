@@ -4,7 +4,7 @@ import QtQuick.Controls
 Item {
     id: root
 
-    readonly property color accentColor: (typeof window !== "undefined" && window.recordRedHover) ? window.recordRedHover : "#E11D48"
+    readonly property color accentColor: recordRedHover
     readonly property color barBgColor: (typeof window !== "undefined" && window.surfaceCard) ? window.surfaceCard : "#1B1917"
 
     // Indeterminate progress bar along the top edge

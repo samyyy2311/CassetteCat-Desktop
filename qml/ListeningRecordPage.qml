@@ -34,6 +34,12 @@ Item {
         return result
     }
 
+    // Listens synced from the phone show up at once.
+    Connections {
+        target: library
+        function onListensChanged() { root.refreshRecap() }
+    }
+
     function refreshRecap() {
         const years = toArray(library.listeningYears())
         const currentYear = new Date().getFullYear()
@@ -441,6 +447,19 @@ Item {
                         if (tracksToSave.length === 0) return
                         root.appWindow.createPlaylist("Listening Record", tracksToSave)
                         root.appWindow.playlistStatus = "Listening Record playlist saved"
+                    }
+                }
+
+                PressDepthIconButton {
+                    visible: phoneRemote.enabled
+                    boxSize: 34
+                    iconSize: 16
+                    iconName: "refresh-cw"
+                    tint: root.appWindow.textPrimary
+                    tooltipText: "Sync with your phone"
+                    onClicked: {
+                        phoneRemote.requestSync()
+                        root.appWindow.playlistStatus = "Your phone will sync the next time it connects"
                     }
                 }
 

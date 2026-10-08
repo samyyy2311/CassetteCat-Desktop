@@ -62,6 +62,8 @@ class RemoteControlServer final : public QObject {
     Q_INVOKABLE void regenerateCode();
     /// Asks the controlling phone to take over playback; it picks this up on its next poll.
     Q_INVOKABLE void continueOnPhone();
+    /// Asks the paired phone to sync likes and the listening record the next time it is in touch.
+    Q_INVOKABLE void requestSync();
     QVariantMap phonePlayback() const;
     /// Queues \p command (play, pause, next, previous, handoff) for the phone's next check-in.
     Q_INVOKABLE void sendToPhone(const QString &command);
@@ -146,6 +148,7 @@ class RemoteControlServer final : public QObject {
     // A controlling phone polls every couple of seconds; when it stops, it is no longer shown.
     QTimer m_controllerTimeout;
     bool m_handoffToPhone = false;
+    bool m_syncRequested = false;
     QVariantMap m_phonePlayback;
     QStringList m_phoneCommands;
     QJsonArray m_phonePlayNext;

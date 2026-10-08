@@ -754,9 +754,11 @@ bool LibraryController::appendPhoneListens(const QList<QJsonObject> &listens) {
         qWarning() << "Could not record listens from the phone:" << file.errorString();
         return false;
     }
+    bool added = false;
     for (QJsonObject listen : listens) {
         if (recorded.contains(identity(listen)))
             continue;
+        added = true;
         listen.insert("device", "phone");
         const QByteArray line = QJsonDocument(listen).toJson(QJsonDocument::Compact) + '\n';
         if (file.write(line) != line.size()) {
@@ -765,6 +767,9 @@ bool LibraryController::appendPhoneListens(const QList<QJsonObject> &listens) {
         }
         recorded.insert(identity(listen));
     }
+    file.close();
+    if (added)
+        emit listensChanged();
     return true;
 }
 

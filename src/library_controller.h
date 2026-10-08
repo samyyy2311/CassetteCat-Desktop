@@ -89,6 +89,8 @@ class LibraryController final : public QAbstractListModel {
     void changed();
     void tracksChanged();
     void visibleTracksChanged();
+    /// Listens from the phone were added to the listening log.
+    void listensChanged();
 
   private:
     QVariantMap refreshTrack(const QString &filePath);

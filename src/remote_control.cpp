@@ -277,6 +277,12 @@ QVariantMap RemoteControlServer::phonePlayback() const {
     return m_phonePlayback;
 }
 
+void RemoteControlServer::requestSync() {
+    // A playing phone hears through its check-in, a controlling phone through the playback status it polls.
+    sendToPhone("sync");
+    m_syncRequested = true;
+}
+
 void RemoteControlServer::sendToPhone(const QString &command) {
     if (m_phonePlayback.isEmpty())
         return;
@@ -904,6 +910,7 @@ QJsonObject RemoteControlServer::status() {
         {"deviceName", computerName()},
         // Reported once, so the phone takes over a single time.
         {"handoffRequested", std::exchange(m_handoffToPhone, false)},
+        {"syncRequested", std::exchange(m_syncRequested, false)},
     };
 }
 

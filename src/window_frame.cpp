@@ -49,7 +49,7 @@ void WindowFrame::setHovered(bool hovered) {
 
 bool WindowFrame::overButton(int x, int y) const {
 #ifdef Q_OS_WIN
-    if (!m_button || !m_button->isVisible() || !m_button->window())
+    if (!m_button || !m_button->isVisible() || !m_button->isEnabled() || !m_button->window())
         return false;
     POINT point{x, y};
     ScreenToClient(reinterpret_cast<HWND>(m_button->window()->winId()), &point);

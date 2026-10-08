@@ -3406,6 +3406,8 @@ ApplicationWindow {
                     readonly property bool hovered: maxBtnMouse.containsMouse || windowFrame.maximizeHovered
                     width: 48
                     height: 60
+                    // Now Playing covers the title bar, and its own buttons sit where this one is.
+                    enabled: !window.nowPlayingOpen
                     color: hovered ? surfaceElevated : "transparent"
                     Component.onCompleted: windowFrame.setMaximizeButton(maxBtn)
 

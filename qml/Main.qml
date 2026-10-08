@@ -127,6 +127,23 @@ ApplicationWindow {
     property int queueRevision: 0
     property bool playbackPending: false
     readonly property bool playerVisuallyPlaying: player.isPlaying || playbackPending
+    // While the paired phone plays and this computer doesn't, the dock shows and controls the phone, like a
+    // Spotify Connect device.
+    readonly property var phonePlayback: phoneRemote.phonePlayback
+    readonly property bool phoneInDock: phonePlayback.title !== undefined && !playerVisuallyPlaying
+    readonly property var phoneTrack: ({ title: phonePlayback.title, artist: phonePlayback.artist, artworkUrl: phonePlayback.artwork })
+    property double phoneClock: Date.now()
+    readonly property int phonePositionMs: phoneInDock
+        ? Math.min(phonePlayback.durationMs, phonePlayback.positionMs + (phonePlayback.isPlaying ? Math.max(0, phoneClock - phonePlayback.updatedAt) : 0))
+        : 0
+
+    Timer {
+        interval: 500
+        repeat: true
+        running: phoneInDock && phonePlayback.isPlaying
+        triggeredOnStart: true
+        onTriggered: phoneClock = Date.now()
+    }
 
     property var miniPlayerWindow: miniPlayerLoader.item
     readonly property bool miniPlayerMode: miniPlayerWindow ? miniPlayerWindow.visible : false
@@ -3461,7 +3478,6 @@ ApplicationWindow {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: miniPlayerDock.top
-            anchors.bottomMargin: phonePlaybackStrip.visible ? phonePlaybackStrip.height : 0
 
             Rectangle {
                 id: sidebarPanel
@@ -3939,7 +3955,6 @@ ApplicationWindow {
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.bottom: miniPlayerDock.top
-            anchors.bottomMargin: phonePlaybackStrip.visible ? phonePlaybackStrip.height : 0
             z: 350
             // Stays loaded while the close animation plays.
             active: (catalogDetailOpen || detailExit.running) && !inTray
@@ -4035,81 +4050,6 @@ ApplicationWindow {
                 color: borderSubtle
             }
 
-            // What the paired phone is playing itself, like a Spotify Connect device.
-            Rectangle {
-                id: phonePlaybackStrip
-                visible: phoneRemote.phonePlayback.title !== undefined && player.error.length === 0
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.top
-                height: 38
-                color: surfaceCard
-                z: 2
-
-                Rectangle {
-                    anchors.top: parent.top
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    height: 1
-                    color: borderSubtle
-                }
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 24
-                    anchors.rightMargin: 16
-                    spacing: 10
-
-                    LucideIcon {
-                        icon: "smartphone"
-                        Layout.preferredWidth: 15
-                        Layout.preferredHeight: 15
-                        color: recordRed
-                    }
-
-                    Label {
-                        text: "Playing on " + (phoneRemote.phonePlayback.name || "your phone")
-                        color: textSecondary
-                        font.family: bodyFont
-                        font.pixelSize: 12
-                    }
-
-                    Label {
-                        Layout.fillWidth: true
-                        text: (phoneRemote.phonePlayback.title || "")
-                              + (phoneRemote.phonePlayback.artist ? "  ·  " + phoneRemote.phonePlayback.artist : "")
-                        color: textPrimary
-                        font.family: bodyFont
-                        font.pixelSize: 12
-                        elide: Text.ElideRight
-                    }
-
-                    TransportButton {
-                        buttonSize: 28
-                        paletteSource: window
-                        iconName: phoneRemote.phonePlayback.isPlaying ? "pause" : "play"
-                        iconColor: textPrimary
-                        tooltipText: phoneRemote.phonePlayback.isPlaying ? "Pause on phone" : "Play on phone"
-                        onClicked: phoneRemote.sendToPhone(phoneRemote.phonePlayback.isPlaying ? "pause" : "play")
-                    }
-
-                    TransportButton {
-                        buttonSize: 28
-                        paletteSource: window
-                        iconName: "skip-forward"
-                        iconColor: textPrimary
-                        tooltipText: "Next on phone"
-                        onClicked: phoneRemote.sendToPhone("next")
-                    }
-
-                    SettingButton {
-                        text: "Play Here"
-                        iconName: "play"
-                        onClicked: phoneRemote.sendToPhone("handoff")
-                    }
-                }
-            }
-
             Rectangle {
                 visible: player.error.length > 0
                 anchors.left: parent.left
@@ -4160,11 +4100,11 @@ ApplicationWindow {
 
                         Cover {
                             anchors.fill: parent
-                            track: player.currentTrack
+                            track: phoneInDock ? phoneTrack : player.currentTrack
                             radius: parent.radius
                             keepPreviousArtwork: true
-                            cacheArtwork: true
-                            visible: !!player.currentTrack.filePath
+                            cacheArtwork: !phoneInDock
+                            visible: phoneInDock ? !!phonePlayback.artwork : !!player.currentTrack.filePath
                         }
 
                         Image {
@@ -4173,7 +4113,7 @@ ApplicationWindow {
                             height: 34
                             source: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
                             fillMode: Image.PreserveAspectFit
-                            visible: !player.currentTrack.filePath
+                            visible: phoneInDock ? !phonePlayback.artwork : !player.currentTrack.filePath
                         }
 
                         MouseArea {
@@ -4182,7 +4122,9 @@ ApplicationWindow {
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
                             onClicked: mouse => {
-                                if (mouse.button === Qt.RightButton) {
+                                if (phoneInDock) {
+                                    phoneRemoteSheet.open()
+                                } else if (mouse.button === Qt.RightButton) {
                                     if (player.currentTrack.filePath) {
                                         dockTrackMenu.popup()
                                     }
@@ -4205,7 +4147,7 @@ ApplicationWindow {
                         Label {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
-                            text: player.currentTrack.title || (library.trackCount > 0 ? "CassetteCat Audio" : "Library Empty")
+                            text: phoneInDock ? phonePlayback.title : (player.currentTrack.title || (library.trackCount > 0 ? "CassetteCat Audio" : "Library Empty"))
                             color: textPrimary
                             font.family: displayFont
                             font.pixelSize: 14
@@ -4218,7 +4160,9 @@ ApplicationWindow {
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: mouse => {
-                                    if (mouse.button === Qt.RightButton) {
+                                    if (phoneInDock) {
+                                        phoneRemoteSheet.open()
+                                    } else if (mouse.button === Qt.RightButton) {
                                         if (player.currentTrack.filePath) {
                                             dockTrackMenu.popup()
                                         }
@@ -4237,16 +4181,19 @@ ApplicationWindow {
                             id: dockArtistLabel
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
-                            text: player.currentTrack.artist || (library.trackCount > 0 ? "Pick a track to start playback" : "Choose a music folder to begin")
-                            color: dockArtistMouse.containsMouse && player.currentTrack.artist ? textPrimary : textSecondary
+                            text: phoneInDock
+                                  ? (phonePlayback.artist ? phonePlayback.artist + " · " : "") + "Playing on " + phonePlayback.name
+                                  : player.currentTrack.artist || (library.trackCount > 0 ? "Pick a track to start playback" : "Choose a music folder to begin")
+                            color: phoneInDock ? accentText : dockArtistMouse.containsMouse && player.currentTrack.artist ? textPrimary : textSecondary
                             font.family: bodyFont
                             font.pixelSize: 12
-                            font.underline: dockArtistMouse.containsMouse && !!player.currentTrack.artist
+                            font.underline: dockArtistMouse.containsMouse && !!player.currentTrack.artist && !phoneInDock
                             elide: Text.ElideRight
 
                             MouseArea {
                                 id: dockArtistMouse
                                 anchors.fill: parent
+                                enabled: !phoneInDock
                                 hoverEnabled: true
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                                 cursorShape: player.currentTrack.artist ? Qt.PointingHandCursor : Qt.ArrowCursor
@@ -4268,10 +4215,17 @@ ApplicationWindow {
                         boxSize: 32
                         iconSize: 16
                         iconName: "heart"
-                        visible: !!player.currentTrack.filePath
+                        visible: !!player.currentTrack.filePath && !phoneInDock
                         tint: isFavorite(player.currentTrack.filePath) ? recordRed : silverDim
                         tooltipText: isFavorite(player.currentTrack.filePath) ? "Remove from Favorites" : "Add to Favorites"
                         onClicked: toggleFavorite(player.currentTrack.filePath)
+                    }
+
+                    SettingButton {
+                        Layout.alignment: Qt.AlignVCenter
+                        visible: phoneInDock
+                        text: "Play Here"
+                        onClicked: phoneRemote.sendToPhone("handoff")
                     }
                 }
 
@@ -4289,6 +4243,8 @@ ApplicationWindow {
                             buttonSize: 34
                             paletteSource: window
                             iconName: "shuffle"
+                            enabled: !phoneInDock
+                            opacity: enabled ? 1 : 0.35
                             accented: player.shuffleEnabled
                             tooltipText: player.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
                             onClicked: toggleQueueShuffle()
@@ -4300,20 +4256,23 @@ ApplicationWindow {
                             paletteSource: window
                             iconName: "skip-back"
                             iconColor: textPrimary
-                            tooltipText: "Previous"
-                            onClicked: playPrevious()
+                            tooltipText: phoneInDock ? "Previous on " + phonePlayback.name : "Previous"
+                            onClicked: phoneInDock ? phoneRemote.sendToPhone("previous") : playPrevious()
                         }
 
                         TransportButton {
                             Layout.alignment: Qt.AlignVCenter
                             buttonSize: 46
                             paletteSource: window
-                            iconName: playerVisuallyPlaying ? "pause" : "play"
+                            readonly property bool showsPlaying: phoneInDock ? !!phonePlayback.isPlaying : playerVisuallyPlaying
+                            iconName: showsPlaying ? "pause" : "play"
                             accented: true
                             iconColor: recordRed
-                            tooltipText: playerVisuallyPlaying ? "Pause" : "Play"
+                            tooltipText: (showsPlaying ? "Pause" : "Play") + (phoneInDock ? " on " + phonePlayback.name : "")
                             onClicked: {
-                                if (!player.currentTrack.filePath && library.trackCount > 0) {
+                                if (phoneInDock) {
+                                    phoneRemote.sendToPhone(phonePlayback.isPlaying ? "pause" : "play")
+                                } else if (!player.currentTrack.filePath && library.trackCount > 0) {
                                     shuffleAll()
                                 } else {
                                     player.togglePlay()
@@ -4327,8 +4286,8 @@ ApplicationWindow {
                             paletteSource: window
                             iconName: "skip-forward"
                             iconColor: textPrimary
-                            tooltipText: "Next"
-                            onClicked: playNext()
+                            tooltipText: phoneInDock ? "Next on " + phonePlayback.name : "Next"
+                            onClicked: phoneInDock ? phoneRemote.sendToPhone("next") : playNext()
                         }
 
                         TransportButton {
@@ -4336,6 +4295,8 @@ ApplicationWindow {
                             buttonSize: 34
                             paletteSource: window
                             iconName: repeatMode === 2 ? "repeat-1" : "repeat"
+                            enabled: !phoneInDock
+                            opacity: enabled ? 1 : 0.35
                             accented: repeatMode > 0
                             iconColor: repeatMode > 0 ? recordRed : textPrimary
                             tooltipText: repeatMode === 2 ? "Repeat Track" : (repeatMode === 1 ? "Repeat All" : "Repeat Off")
@@ -4347,11 +4308,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.maximumWidth: 580
                         Layout.alignment: Qt.AlignHCenter
-                        position: player.position
-                        duration: player.duration
+                        position: phoneInDock ? phonePositionMs : player.position
+                        duration: phoneInDock ? phonePlayback.durationMs : player.duration
                         showRemainingTime: window.showRemainingTime
                         paletteSource: window
-                        onSeekRequested: posMs => player.seek(posMs)
+                        onSeekRequested: posMs => phoneInDock ? phoneRemote.sendToPhone("seek:" + posMs) : player.seek(posMs)
                         onRemainingToggled: val => { window.showRemainingTime = val; appSettings.setValue("player/showRemainingTime", val) }
                     }
                 }

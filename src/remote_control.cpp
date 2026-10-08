@@ -6,6 +6,7 @@
 #include "player_controller.h"
 
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
@@ -202,7 +203,8 @@ RemoteControlServer::RemoteControlServer(PlayerController *player, LibraryContro
         emit controllerChanged();
     });
     m_phoneTimeout.setSingleShot(true);
-    m_phoneTimeout.setInterval(6 * 1000);
+    // A locked phone checks in every few seconds over Wi-Fi that may be dozing, so a late check-in is not a drop.
+    m_phoneTimeout.setInterval(12 * 1000);
     connect(&m_phoneTimeout, &QTimer::timeout, this, [this] {
         m_phonePlayback.clear();
         m_phoneCommands.clear();
@@ -644,12 +646,25 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
     }
     if (path == "/api/phone-state") {
         const QString title = request.value("title").toString();
+        const QString artist = request.value("artist").toString();
         QVariantMap playback;
-        if (!title.isEmpty())
+        if (!title.isEmpty()) {
+            // The phone sends a song's cover once, so later check-ins about the same song keep it.
+            const QByteArray cover = QByteArray::fromBase64(request.value("artwork").toString().toLatin1());
+            const bool sameSong = m_phonePlayback.value("title") == title && m_phonePlayback.value("artist") == artist;
+            const QString artwork = cover.startsWith("\xFF\xD8")
+                                        ? "data:image/jpeg;base64," + QString::fromLatin1(cover.toBase64())
+                                    : sameSong ? m_phonePlayback.value("artwork").toString()
+                                               : QString();
             playback = {{"name", QString::fromUtf8(deviceName)},
                         {"title", title},
-                        {"artist", request.value("artist").toString()},
-                        {"isPlaying", request.value("isPlaying").toBool()}};
+                        {"artist", artist},
+                        {"isPlaying", request.value("isPlaying").toBool()},
+                        {"positionMs", request.value("positionMs").toDouble()},
+                        {"durationMs", request.value("durationMs").toDouble()},
+                        {"updatedAt", QDateTime::currentMSecsSinceEpoch()},
+                        {"artwork", artwork}};
+        }
         if (playback.isEmpty())
             m_phoneTimeout.stop();
         else
@@ -659,10 +674,12 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
             emit phonePlaybackChanged();
         }
         const QJsonArray commands = QJsonArray::fromStringList(std::exchange(m_phoneCommands, {}));
-        const QJsonObject reply{{"ok", true},
-                                {"commands", commands},
-                                {"playNext", std::exchange(m_phonePlayNext, {})},
-                                {"likesRevision", m_likesRevision}};
+        const QJsonObject reply{
+            {"ok", true},
+            {"commands", commands},
+            {"playNext", std::exchange(m_phonePlayNext, {})},
+            {"likesRevision", m_likesRevision},
+            {"needsArtwork", !playback.isEmpty() && playback.value("artwork").toString().isEmpty()}};
         return {200, QJsonDocument(reply).toJson(QJsonDocument::Compact)};
     }
     if (path == "/api/handoff" && request.value("tracks").isArray()) {
@@ -910,6 +927,18 @@ bool RemoteControlServer::selfCheck() {
             .value("commands")
             .toArray()
             .isEmpty();
+    const auto checkIn = [&](const QByteArray &body) {
+        return QJsonDocument::fromJson(
+                   remote.respond("POST", "/api/phone-state", auth, body, lan, "motorola edge 40").body)
+            .object();
+    };
+    const bool asksForCover = checkIn(R"({"title":"Cover","artist":"Ann"})").value("needsArtwork").toBool();
+    const bool keepsPhoneCover =
+        !checkIn(R"({"title":"Cover","artist":"Ann","artwork":"/9j/AA=="})").value("needsArtwork").toBool() &&
+        !checkIn(R"({"title":"Cover","artist":"Ann","positionMs":5000})").value("needsArtwork").toBool() &&
+        remote.phonePlayback().value("artwork") == "data:image/jpeg;base64,/9j/AA==" &&
+        remote.phonePlayback().value("positionMs").toInt() == 5000 &&
+        checkIn(R"({"title":"Next","artist":"Ann"})").value("needsArtwork").toBool();
     const bool rejectsUnknownAction =
         remote.respond("POST", "/api/playback", auth, R"({"action":"reset"})", lan).status == 400;
     const bool keysByTitleAndArtist =
@@ -1084,19 +1113,20 @@ bool RemoteControlServer::selfCheck() {
     const bool locksOutGuessing = remote.respond("GET", "/api/playback", auth, {}, lan).status == 429;
 
     const bool ok = rejectsPublicPeer && rejectsWrongCode && reportsStatus && routesNext && clampsVolume &&
-                    rejectsUnknownAction && relaysToPhone && acceptsHandoff && namesController && handsBackOnce &&
-                    codeInQueryOnlyForArtwork && servesQueue && servesHttp && answersDiscovery && locksOutGuessing &&
-                    rejectsInvalidBackup && keepsPreviousBackup && routesPlayNext && relaysPlayNextOnce &&
-                    refusesUnpairedUploadEarly && keysByTitleAndArtist && syncsLikes && copiesPlaylists &&
-                    rejectsBadListens && asksBeforePairing && keepsAllowedUntilCollected && givesCodeOnceAllowed &&
-                    turnsAwayDenied && servesLibrary && streamsOnlyLibraryFiles && streamsRanges;
+                    rejectsUnknownAction && relaysToPhone && asksForCover && keepsPhoneCover && acceptsHandoff &&
+                    namesController && handsBackOnce && codeInQueryOnlyForArtwork && servesQueue && servesHttp &&
+                    answersDiscovery && locksOutGuessing && rejectsInvalidBackup && keepsPreviousBackup &&
+                    routesPlayNext && relaysPlayNextOnce && refusesUnpairedUploadEarly && keysByTitleAndArtist &&
+                    syncsLikes && copiesPlaylists && rejectsBadListens && asksBeforePairing &&
+                    keepsAllowedUntilCollected && givesCodeOnceAllowed && turnsAwayDenied && servesLibrary &&
+                    streamsOnlyLibraryFiles && streamsRanges;
     if (!ok)
         qWarning() << "Remote control self-check failed:" << rejectsPublicPeer << rejectsWrongCode << reportsStatus
-                   << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << acceptsHandoff
-                   << namesController << handsBackOnce << codeInQueryOnlyForArtwork << servesQueue << servesHttp
-                   << answersDiscovery << locksOutGuessing << rejectsInvalidBackup << keepsPreviousBackup
-                   << routesPlayNext << relaysPlayNextOnce << refusesUnpairedUploadEarly << keysByTitleAndArtist
-                   << syncsLikes << copiesPlaylists << rejectsBadListens << asksBeforePairing
+                   << routesNext << clampsVolume << rejectsUnknownAction << relaysToPhone << asksForCover
+                   << keepsPhoneCover << acceptsHandoff << namesController << handsBackOnce << codeInQueryOnlyForArtwork
+                   << servesQueue << servesHttp << answersDiscovery << locksOutGuessing << rejectsInvalidBackup
+                   << keepsPreviousBackup << routesPlayNext << relaysPlayNextOnce << refusesUnpairedUploadEarly
+                   << keysByTitleAndArtist << syncsLikes << copiesPlaylists << rejectsBadListens << asksBeforePairing
                    << keepsAllowedUntilCollected << givesCodeOnceAllowed << turnsAwayDenied << servesLibrary
                    << streamsOnlyLibraryFiles << streamsRanges;
     return ok;

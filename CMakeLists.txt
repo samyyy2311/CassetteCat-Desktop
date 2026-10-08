@@ -269,6 +269,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/archive.svg
         qml/icons/listenbrainz.svg
         qml/icons/librefm.svg
+        qml/icons/lastfm.svg
         qml/icons/github.svg
         qml/icons/autoeq.svg
         qml/icons/ibm.svg
@@ -376,6 +377,11 @@ target_include_directories(CassetteCat PRIVATE
     ${taglib_SOURCE_DIR}/taglib/mp4
 )
 target_compile_definitions(CassetteCat PRIVATE TAGLIB_STATIC CASSETTECAT_VERSION="${PROJECT_VERSION}")
+# Last.fm needs the project's own API account, so builds without LASTFM_API_KEY and LASTFM_API_SECRET leave it out.
+if(NOT "$ENV{LASTFM_API_KEY}" STREQUAL "" AND NOT "$ENV{LASTFM_API_SECRET}" STREQUAL "")
+    target_compile_definitions(CassetteCat PRIVATE CASSETTECAT_LASTFM_API_KEY="$ENV{LASTFM_API_KEY}"
+                                                   CASSETTECAT_LASTFM_API_SECRET="$ENV{LASTFM_API_SECRET}")
+endif()
 
 set_target_properties(CassetteCat PROPERTIES
     WIN32_EXECUTABLE TRUE

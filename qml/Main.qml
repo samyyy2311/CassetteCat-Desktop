@@ -246,6 +246,9 @@ ApplicationWindow {
     property bool scrobbleLibreFmEnabled: false
     property string scrobbleLibreFmUser: ""
     property bool scrobbleLibreFmConnected: false
+    property bool scrobbleLastFmEnabled: false
+    property string scrobbleLastFmUser: ""
+    property bool scrobbleLastFmConnected: false
     property bool lastTrackRestored: false
     property bool playerStateDirty: false
     property bool jellyfinConnecting: false
@@ -473,14 +476,20 @@ ApplicationWindow {
                 appSettings.setValue("scrobble/listenbrainz_enabled", true)
             }
         }
-        function onLibreFmAuthFinished(success, userName, sessionKey, error) {
-            if (success) {
+        function onScrobbleAccountAuthFinished(service, success, userName, error) {
+            if (!success)
+                return
+            if (service === "lastfm") {
+                window.scrobbleLastFmUser = userName
+                window.scrobbleLastFmConnected = true
+                window.scrobbleLastFmEnabled = true
+            } else {
                 window.scrobbleLibreFmUser = userName
                 window.scrobbleLibreFmConnected = true
                 window.scrobbleLibreFmEnabled = true
-                appSettings.setValue("scrobble/librefm_user", userName)
-                appSettings.setValue("scrobble/librefm_enabled", true)
             }
+            appSettings.setValue("scrobble/" + service + "_user", userName)
+            appSettings.setValue("scrobble/" + service + "_enabled", true)
         }
         function onCoverApplied(album, artist, artworkPath, filePath) {
             library.setAlbumArtwork(album, artist, artworkPath)
@@ -663,7 +672,10 @@ ApplicationWindow {
         scrobbleListenBrainzConnected = services.hasListenBrainzSession()
         scrobbleLibreFmEnabled = appSettings.value("scrobble/librefm_enabled", false)
         scrobbleLibreFmUser = appSettings.value("scrobble/librefm_user", "")
-        scrobbleLibreFmConnected = services.hasLibreFmSession()
+        scrobbleLibreFmConnected = services.hasScrobbleSession("librefm")
+        scrobbleLastFmEnabled = appSettings.value("scrobble/lastfm_enabled", false)
+        scrobbleLastFmUser = appSettings.value("scrobble/lastfm_user", "")
+        scrobbleLastFmConnected = services.hasScrobbleSession("lastfm")
 
         if (defaultLaunchPage && defaultLaunchPage !== "last") {
             page = defaultLaunchPage
@@ -1415,6 +1427,7 @@ ApplicationWindow {
     onSvcPhoneRemoteChanged: saveSetting("services/phoneRemote", svcPhoneRemote)
     onScrobbleListenBrainzEnabledChanged: saveSetting("scrobble/listenbrainz_enabled", scrobbleListenBrainzEnabled)
     onScrobbleLibreFmEnabledChanged: saveSetting("scrobble/librefm_enabled", scrobbleLibreFmEnabled)
+    onScrobbleLastFmEnabledChanged: saveSetting("scrobble/lastfm_enabled", scrobbleLastFmEnabled)
     onLyricsSyncOffsetMsChanged: if (settingsInitialized) {
         if (player.currentTrack && player.currentTrack.filePath) appSettings.setValue(lyricsSyncKey(player.currentTrack), lyricsSyncOffsetMs)
         parsedLyrics = parseLrc(player.currentLyrics)
@@ -1632,6 +1645,8 @@ ApplicationWindow {
             "scrobble/listenbrainz_user": scrobbleListenBrainzUser,
             "scrobble/librefm_enabled": scrobbleLibreFmEnabled,
             "scrobble/librefm_user": scrobbleLibreFmUser,
+            "scrobble/lastfm_enabled": scrobbleLastFmEnabled,
+            "scrobble/lastfm_user": scrobbleLastFmUser,
             "sort/songMetric": songSortMetric,
             "sort/songAscending": songSortAscending,
             "sort/artistMetric": artistSortMetric,
@@ -3909,6 +3924,9 @@ ApplicationWindow {
                                 scrobbleLibreFmEnabled: window.scrobbleLibreFmEnabled
                                 scrobbleLibreFmUser: window.scrobbleLibreFmUser
                                 scrobbleLibreFmConnected: window.scrobbleLibreFmConnected
+                                scrobbleLastFmEnabled: window.scrobbleLastFmEnabled
+                                scrobbleLastFmUser: window.scrobbleLastFmUser
+                                scrobbleLastFmConnected: window.scrobbleLastFmConnected
                                 updateStatusText: window.updateStatusText
                                 updateChecking: window.updateChecking
                                 updateAvailable: window.updateAvailableState
@@ -3985,10 +4003,17 @@ ApplicationWindow {
                                 }
                                 onScrobbleLibreFmToggled: value => window.scrobbleLibreFmEnabled = value
                                 onDisconnectLibreFmRequested: {
-                                    services.disconnectLibreFm()
+                                    services.disconnectScrobbleAccount("librefm")
                                     window.scrobbleLibreFmConnected = false
                                     window.scrobbleLibreFmUser = ""
                                     window.scrobbleLibreFmEnabled = false
+                                }
+                                onScrobbleLastFmToggled: value => window.scrobbleLastFmEnabled = value
+                                onDisconnectLastFmRequested: {
+                                    services.disconnectScrobbleAccount("lastfm")
+                                    window.scrobbleLastFmConnected = false
+                                    window.scrobbleLastFmUser = ""
+                                    window.scrobbleLastFmEnabled = false
                                 }
                                 onCheckUpdatesRequested: window.checkForUpdates()
                                 onDownloadUpdateRequested: window.downloadUpdate()

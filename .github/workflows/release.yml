@@ -52,6 +52,9 @@ jobs:
           modules: qtmultimedia qtquickeffectmaker
           cache: true
       - name: Configure
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
         shell: pwsh
         run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DCASSETTECAT_PACKAGE_VERSION="$($env:RELEASE_TAG.TrimStart('v'))"
       - name: Build
@@ -153,6 +156,9 @@ jobs:
           curl -fsSL -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/1-alpha-20240109-1/linuxdeploy-${{ matrix.arch }}.AppImage
           chmod +x linuxdeploy.AppImage
       - name: Configure
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
         run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCASSETTECAT_PACKAGE_VERSION="${RELEASE_TAG#v}"
       - name: Build
         run: cmake --build build/release --parallel 2
@@ -220,6 +226,9 @@ jobs:
           modules: qtmultimedia qtquickeffectmaker
           cache: true
       - name: Configure
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
         run: cmake -S . -B build/release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR" -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCASSETTECAT_PACKAGE_VERSION="${RELEASE_TAG#v}"
       - name: Build
         run: cmake --build build/release --parallel 3

@@ -62,6 +62,9 @@ Item {
     property bool scrobbleLibreFmEnabled: false
     property string scrobbleLibreFmUser: ""
     property bool scrobbleLibreFmConnected: false
+    property bool scrobbleLastFmEnabled: false
+    property string scrobbleLastFmUser: ""
+    property bool scrobbleLastFmConnected: false
     property string updateStatusText: ""
     property bool updateChecking: false
     property bool updateAvailable: false
@@ -143,6 +146,8 @@ Item {
     signal disconnectListenBrainzRequested()
     signal scrobbleLibreFmToggled(bool value)
     signal disconnectLibreFmRequested()
+    signal scrobbleLastFmToggled(bool value)
+    signal disconnectLastFmRequested()
     signal checkUpdatesRequested()
     signal downloadUpdateRequested()
     signal sectionSelected(string section)
@@ -399,6 +404,11 @@ Item {
                                 onDisconnectListenBrainzRequested: root.disconnectListenBrainzRequested()
                                 onLibreFmEnabledToggled: value => root.scrobbleLibreFmToggled(value)
                                 onDisconnectLibreFmRequested: root.disconnectLibreFmRequested()
+                                lastFmEnabled: root.scrobbleLastFmEnabled
+                                lastFmUser: root.scrobbleLastFmUser
+                                lastFmConnected: root.scrobbleLastFmConnected
+                                onLastFmEnabledToggled: value => root.scrobbleLastFmToggled(value)
+                                onDisconnectLastFmRequested: root.disconnectLastFmRequested()
                             }
 
                             SettingsNetworkSection {

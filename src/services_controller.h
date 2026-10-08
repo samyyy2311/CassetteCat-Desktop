@@ -42,15 +42,18 @@ class ServicesController : public QObject {
     /// Opens \p url when online services are enabled.
     Q_INVOKABLE void openExternalUrl(const QString &url);
     Q_INVOKABLE void validateListenBrainzToken(const QString &token);
-    Q_INVOKABLE void authenticateLibreFm(const QString &username, const QString &password);
+    /// Signs in to an Audioscrobbler network, \p service being "librefm" or "lastfm".
+    Q_INVOKABLE void authenticateScrobbleAccount(const QString &service, const QString &username,
+                                                 const QString &password);
     Q_INVOKABLE void scrobbleNowPlaying(const QVariantMap &track);
     Q_INVOKABLE void scrobbleTrack(const QVariantMap &track, qint64 timestampSec);
     Q_INVOKABLE void saveListenBrainzSession(const QString &token, const QString &userName);
     Q_INVOKABLE void disconnectListenBrainz();
-    Q_INVOKABLE void saveLibreFmSession(const QString &username, const QString &sessionKey);
-    Q_INVOKABLE void disconnectLibreFm();
+    Q_INVOKABLE void disconnectScrobbleAccount(const QString &service);
     Q_INVOKABLE bool hasListenBrainzSession();
-    Q_INVOKABLE bool hasLibreFmSession();
+    Q_INVOKABLE bool hasScrobbleSession(const QString &service);
+    /// Whether this build has a Last.fm API account.
+    Q_INVOKABLE bool lastFmAvailable() const;
     /// Searches enabled artwork providers for matching album covers.
     Q_INVOKABLE void searchAlbumCovers(const QString &album, const QString &artist = "");
     /// Downloads and caches \p imageUrl as album artwork.
@@ -72,7 +75,8 @@ class ServicesController : public QObject {
     void albumBioLoaded(const QString &album, const QString &bio);
     void artistImageLoaded(const QString &artist, const QString &imageUrl);
     void listenBrainzValidationFinished(bool valid, const QString &userName, const QString &error);
-    void libreFmAuthFinished(bool success, const QString &userName, const QString &sessionKey, const QString &error);
+    void scrobbleAccountAuthFinished(const QString &service, bool success, const QString &userName,
+                                     const QString &error);
     /// Announces the result of a completed update check.
     void updateCheckFinished(bool updateAvailable, const QString &latestVersion, const QString &releaseUrl,
                              const QString &releaseNotes, bool manual);
@@ -93,7 +97,8 @@ class ServicesController : public QObject {
     void fetchArtistBioFromAudioDb(const QString &artist);
     void fetchAlbumBioFromWikipedia(const QString &album, const QStringList &queries, int index);
     void initScrobbleCredentials();
-    static QString generateLibreFmApiSig(const QMap<QString, QString> &params);
+    void saveScrobbleSession(const QString &service, const QString &username, const QString &sessionKey);
+    void postToScrobbleAccounts(const QMap<QString, QString> &params);
 
     QNetworkAccessManager *m_net = nullptr;
     QHash<QString, QString> m_artistImages;
@@ -104,6 +109,6 @@ class ServicesController : public QObject {
     quint64 m_lyricsRequestToken = 0;
     quint64 m_coverRequestToken = 0;
     QString m_listenBrainzToken;
-    QString m_libreFmSessionKey;
+    QHash<QString, QString> m_scrobbleSessionKeys;
     bool m_scrobbleCredentialsLoaded = false;
 };

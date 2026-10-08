@@ -71,6 +71,8 @@ qt_add_executable(CassetteCat
     src/mpris_controller.cpp
     src/tray_controller.h
     src/tray_controller.cpp
+    src/window_frame.h
+    src/window_frame.cpp
     src/global_shortcut_controller.h
     src/global_shortcut_controller.cpp
     src/network_requests.h

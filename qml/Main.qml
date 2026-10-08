@@ -497,10 +497,8 @@ ApplicationWindow {
         if (savedW > 400) window.width = savedW
         if (savedH > 300) window.height = savedH
 
-        const isMaximized = appSettings.value("window/maximized", false)
-        if (isMaximized) {
+        if (wasMaximized)
             window.showMaximized()
-        }
 
         page = appSettings.value("ui/page", "home")
         homeScrollPosition = appSettings.value("ui/homeScrollPosition", 0)
@@ -664,7 +662,9 @@ ApplicationWindow {
         if (page === "radio") Qt.callLater(refreshRadio)
         if (!startMinimizedToTray) {
             Qt.callLater(function() {
-                if (!isMaximized) {
+                if (wasMaximized) {
+                    window.showMaximized()
+                } else {
                     window.showNormal()
                     const savedX = appSettings.value("window/x", -1)
                     const savedY = appSettings.value("window/y", -1)
@@ -1443,11 +1443,27 @@ ApplicationWindow {
         }
     }
 
+    // Hidden or minimized says nothing about the size to come back to, so only these two states are remembered.
+    property bool wasMaximized: appSettings.value("window/maximized", false) === true
+        || appSettings.value("window/maximized", false) === "true"
+
+    /// Shows the window as it was before it was minimized or hidden in the tray.
+    function restoreWindow() {
+        if (wasMaximized)
+            window.showMaximized()
+        else
+            window.showNormal()
+        window.raise()
+        window.requestActivate()
+    }
+
     onVisibilityChanged: {
         if (window.visibility === Window.Hidden || window.visibility === Window.Minimized)
             window.releaseResources()
-        if (settingsInitialized) {
+        // The window shows as Windowed while loading, before startup applies the saved state.
+        if (settingsInitialized && (window.visibility === Window.Windowed || window.visibility === Window.Maximized)) {
             const isMax = (window.visibility === Window.Maximized)
+            wasMaximized = isMax
             appSettings.setValue("window/maximized", isMax)
             if (!isMax && window.width > 400 && window.height > 300) {
                 appSettings.setValue("window/width", window.width)
@@ -1491,7 +1507,7 @@ ApplicationWindow {
             if (window.x >= 0) appSettings.setValue("window/x", window.x)
             if (window.y >= 0) appSettings.setValue("window/y", window.y)
         }
-        appSettings.setValue("window/maximized", window.visibility === Window.Maximized)
+        appSettings.setValue("window/maximized", wasMaximized)
         appSettings.setValues({
             "ui/page": page,
             "ui/homeScrollPosition": homeScrollPosition,
@@ -1582,9 +1598,7 @@ ApplicationWindow {
             showMiniPlayer()
         } else {
             miniPlayerWindow.visible = false
-            window.showNormal()
-            window.raise()
-            window.requestActivate()
+            window.restoreWindow()
         }
     }
 
@@ -2909,9 +2923,7 @@ ApplicationWindow {
             if (window.miniPlayerMode) window.toggleMiniPlayer()
             window.nowPlayingOpen = false
             window.page = "search"
-            window.showNormal()
-            window.raise()
-            window.requestActivate()
+            window.restoreWindow()
         }
         function onMiniPlayerRequested() {
             window.toggleMiniPlayer()
@@ -2928,12 +2940,14 @@ ApplicationWindow {
     }
 
     Connections {
+        target: windowFrame
+        function onMaximizeClicked() { toggleMaximize() }
+    }
+
+    Connections {
         target: tray
         function onShowRequested() {
-            window.show()
-            window.showNormal()
-            window.raise()
-            window.requestActivate()
+            window.restoreWindow()
         }
         function onPlayPauseRequested() { player.togglePlay() }
         function onNextRequested() { window.playNext() }
@@ -3065,11 +3079,7 @@ ApplicationWindow {
             }
             onRestoreRequested: {
                 miniPlayerWindow.visible = false
-                if (window.visibility === Window.Minimized) {
-                    window.showNormal()
-                }
-                window.raise()
-                window.requestActivate()
+                window.restoreWindow()
             }
             onCloseRequested: {
                 miniPlayerWindow.visible = false
@@ -3302,9 +3312,11 @@ ApplicationWindow {
 
                 Rectangle {
                     id: maxBtn
+                    readonly property bool hovered: maxBtnMouse.containsMouse || windowFrame.maximizeHovered
                     width: 48
                     height: 60
-                    color: maxBtnMouse.containsMouse ? surfaceElevated : "transparent"
+                    color: hovered ? surfaceElevated : "transparent"
+                    Component.onCompleted: windowFrame.setMaximizeButton(maxBtn)
 
                     Item {
                         anchors.centerIn: parent
@@ -3316,7 +3328,7 @@ ApplicationWindow {
                             visible: window.visibility !== Window.Maximized
                             color: "transparent"
                             border.width: 1.2
-                            border.color: maxBtnMouse.containsMouse ? textPrimary : silverDim
+                            border.color: maxBtn.hovered ? textPrimary : silverDim
                             radius: 1
                         }
 
@@ -3331,7 +3343,7 @@ ApplicationWindow {
                                 height: 8
                                 color: "transparent"
                                 border.width: 1.2
-                                border.color: maxBtnMouse.containsMouse ? textPrimary : silverDim
+                                border.color: maxBtn.hovered ? textPrimary : silverDim
                                 radius: 1
                             }
 
@@ -3340,9 +3352,9 @@ ApplicationWindow {
                                 y: 2
                                 width: 8
                                 height: 8
-                                color: maxBtnMouse.containsMouse ? surfaceElevated : surfaceSidebar
+                                color: maxBtn.hovered ? surfaceElevated : surfaceSidebar
                                 border.width: 1.2
-                                border.color: maxBtnMouse.containsMouse ? textPrimary : silverDim
+                                border.color: maxBtn.hovered ? textPrimary : silverDim
                                 radius: 1
                             }
                         }

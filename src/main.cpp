@@ -33,6 +33,7 @@
 #include "mpris_controller.h"
 #include "global_shortcut_controller.h"
 #include "tray_controller.h"
+#include "window_frame.h"
 
 #include "app_paths.h"
 #include "app_settings.h"
@@ -137,8 +138,9 @@ bool singleInstanceSelfCheck() {
 void activateWindow(QQuickWindow *window) {
     if (!window)
         return;
+    // Main.qml remembers whether the window was maximized before it was hidden or minimized.
     if (!window->isVisible() || window->visibility() == QWindow::Minimized)
-        window->showNormal();
+        QMetaObject::invokeMethod(window, "restoreWindow");
 #ifdef Q_OS_WIN
     HWND hwnd = reinterpret_cast<HWND>(window->winId());
     if (hwnd) {
@@ -215,6 +217,10 @@ static void setupWindowsFrameless(QQuickWindow *window) {
     // Blend window border seamlessly with the app surface background (#0E0D0C) on Windows 11
     COLORREF borderColor = RGB(14, 13, 12);
     DwmSetWindowAttribute(hwnd, 34 /* DWMWA_BORDER_COLOR */, &borderColor, sizeof(borderColor));
+
+    // Frameless windows get square corners unless they ask; Windows 11 rounds them like other apps.
+    const int roundCorners = 2 /* DWMWCP_ROUND */;
+    DwmSetWindowAttribute(hwnd, 33 /* DWMWA_WINDOW_CORNER_PREFERENCE */, &roundCorners, sizeof(roundCorners));
 }
 
 static void registerWindowsAppIdentity() {
@@ -494,6 +500,8 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("appSettings", &appSettings);
     engine.rootContext()->setContextProperty("installedFromStore", installedFromStore());
     engine.rootContext()->setContextProperty("smtc", &smtc);
+    WindowFrame windowFrame;
+    engine.rootContext()->setContextProperty("windowFrame", &windowFrame);
     engine.rootContext()->setContextProperty("mpris", &mpris);
     engine.rootContext()->setContextProperty("discord", &discord);
     engine.rootContext()->setContextProperty("phoneRemote", &phoneRemote);

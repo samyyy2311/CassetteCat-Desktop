@@ -4198,6 +4198,7 @@ ApplicationWindow {
                         Layout.minimumWidth: 0
                         // As wide as the title or artist, so the like button sits right after them.
                         Layout.maximumWidth: Math.max(dockTitleLabel.implicitWidth, dockArtistLabel.implicitWidth)
+                        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
                         spacing: 2
 
                         Label {
@@ -4290,6 +4291,8 @@ ApplicationWindow {
                         tooltipText: isFavorite(likePath) ? "Remove from Favorites" : "Add to Favorites"
                         onClicked: toggleFavorite(likePath)
                     }
+
+                    Item { Layout.fillWidth: true }
                 }
 
                 ColumnLayout {

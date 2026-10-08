@@ -19,6 +19,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756 # v1.13.0
@@ -104,6 +106,8 @@ jobs:
       QT_QPA_OFFSCREEN_NO_GLX: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Linux dependencies
         run: sudo apt-get update && sudo apt-get install -y gnome-keyring libpipewire-0.3-0 libsecret-1-dev
@@ -155,12 +159,56 @@ jobs:
     steps:
       - run: test "${{ needs.linux-build.result }}" = success
 
+  # AddressSanitizer and UndefinedBehaviorSanitizer over the self-checks, which parse tags, playlists and network
+  # replies like the app does.
+  sanitizers:
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+      QT_QPA_OFFSCREEN_NO_GLX: "1"
+      # Qt keeps some allocations until exit, which isn't a leak to fail on.
+      ASAN_OPTIONS: detect_leaks=0
+      UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install Linux dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-0 libsecret-1-dev
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
+        with:
+          version: "6.10.3"
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtmultimedia qtquickeffectmaker
+          cache: true
+
+      - name: Configure
+        run: >-
+          cmake -S . -B build/sanitizers -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer"
+          -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+
+      - name: Build
+        run: cmake --build build/sanitizers --parallel 2
+
+      - name: Run self-check
+        run: ./build/sanitizers/bin/CassetteCat --self-check
+
+      - name: Run tests
+        run: ctest --test-dir build/sanitizers --output-on-failure
+
   macos:
     runs-on: macos-15
     env:
       QT_QPA_PLATFORM: offscreen
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Ninja
         run: command -v ninja || brew install ninja

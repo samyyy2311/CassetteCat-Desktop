@@ -5,6 +5,18 @@ Checks: >-
   performance-*,
   modernize-use-nullptr,
   modernize-use-override
-WarningsAsErrors: ''
+WarningsAsErrors: >-
+  bugprone-use-after-move,
+  bugprone-dangling-handle,
+  bugprone-undefined-memory-manipulation,
+  bugprone-infinite-loop,
+  bugprone-sizeof-expression,
+  bugprone-string-constructor,
+  bugprone-unused-return-value,
+  bugprone-integer-division,
+  bugprone-signed-char-misuse,
+  clang-analyzer-core.*,
+  clang-analyzer-security.*,
+  clang-analyzer-unix.*
 HeaderFilterRegex: '(^|/)src/'
 FormatStyle: none

@@ -333,7 +333,11 @@ QString RemoteControlServer::address() const {
 }
 
 QString RemoteControlServer::computerName() const {
+#ifdef CASSETTECAT_DEV_BUILD
+    return QSysInfo::machineHostName() + " (Dev)";
+#else
     return QSysInfo::machineHostName();
+#endif
 }
 
 QVariantList RemoteControlServer::pairedPhones() const {

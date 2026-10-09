@@ -12,7 +12,7 @@ ApplicationWindow {
     height: 800
     minimumWidth: 720
     minimumHeight: 480
-    title: "CassetteCat"
+    title: Qt.application.name
     color: surfaceBase
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
 

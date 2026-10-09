@@ -4,6 +4,7 @@
 
 #include "credential_vault.h"
 
+#include <QCoreApplication>
 #include <QDebug>
 #include <QRegularExpression>
 
@@ -63,7 +64,7 @@ bool CredentialVault::saveSecret(const QString &key, const QString &secret) {
     }
 
 #ifdef _WIN32
-    const std::wstring target = (QString("CassetteCat/") + key).toStdWString();
+    const std::wstring target = (QCoreApplication::applicationName() + '/' + key).toStdWString();
     const std::wstring blob = secret.toStdWString();
     CREDENTIALW credential{};
     credential.Type = CRED_TYPE_GENERIC;
@@ -122,7 +123,7 @@ QString CredentialVault::loadSecret(const QString &key) const {
     }
 
 #ifdef _WIN32
-    const std::wstring target = (QString("CassetteCat/") + key).toStdWString();
+    const std::wstring target = (QCoreApplication::applicationName() + '/' + key).toStdWString();
     PCREDENTIALW credential = nullptr;
     if (CredReadW(target.c_str(), CRED_TYPE_GENERIC, 0, &credential) == FALSE) {
         return {};
@@ -171,7 +172,7 @@ bool CredentialVault::clearSecret(const QString &key) {
     }
 
 #ifdef _WIN32
-    const std::wstring target = (QString("CassetteCat/") + key).toStdWString();
+    const std::wstring target = (QCoreApplication::applicationName() + '/' + key).toStdWString();
     if (CredDeleteW(target.c_str(), CRED_TYPE_GENERIC, 0) != FALSE) {
         return true;
     }

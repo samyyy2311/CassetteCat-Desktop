@@ -58,13 +58,26 @@
 
 namespace {
 
+#ifdef CASSETTECAT_DEV_BUILD
+constexpr auto kApplicationName = "CassetteCat Dev";
+constexpr auto kInstanceServerName = "CassetteCat.Desktop.Dev.Instance";
+#else
+constexpr auto kApplicationName = "CassetteCat";
 constexpr auto kInstanceServerName = "CassetteCat.Desktop.Instance";
+#endif
 constexpr qint64 kMaxDebugLogBytes = 1024 * 1024;
 QMutex gDebugLogMutex;
 QString gDebugLogPath;
 qint64 gDebugLogBytes = 0;
 #ifdef _WIN32
+#ifdef CASSETTECAT_DEV_BUILD
+constexpr auto kInstanceMutexName = L"CassetteCat.AudioEngine.Desktop.Dev.InstanceMutex";
+constexpr auto kAppUserModelId = L"CassetteCat.AudioEngine.Desktop.Dev.App";
+#else
+// The installer checks this mutex to see whether the app is running.
 constexpr auto kInstanceMutexName = L"CassetteCat.AudioEngine.Desktop.InstanceMutex";
+constexpr auto kAppUserModelId = L"CassetteCat.AudioEngine.Desktop.App";
+#endif
 #endif
 
 // MSIX installs come only from the Microsoft Store, which delivers their updates itself.
@@ -229,7 +242,7 @@ static void setupWindowsFrameless(QQuickWindow *window) {
 
 static void registerWindowsAppIdentity() {
     const QString shortcutPath =
-        QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation) + "/CassetteCat.lnk";
+        QStandardPaths::writableLocation(QStandardPaths::ApplicationsLocation) + '/' + kApplicationName + ".lnk";
     IShellLinkW *shellLink = nullptr;
     if (FAILED(CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW,
                                 reinterpret_cast<void **>(&shellLink))))
@@ -242,7 +255,7 @@ static void registerWindowsAppIdentity() {
     if (SUCCEEDED(shellLink->QueryInterface(IID_PPV_ARGS(&properties)))) {
         PROPVARIANT value;
         PropVariantInit(&value);
-        if (SUCCEEDED(InitPropVariantFromString(L"CassetteCat.AudioEngine.Desktop.App", &value))) {
+        if (SUCCEEDED(InitPropVariantFromString(kAppUserModelId, &value))) {
             properties->SetValue(PKEY_AppUserModel_ID, value);
             properties->Commit();
         }
@@ -270,7 +283,7 @@ int main(int argc, char *argv[]) {
     }
 
 #ifdef Q_OS_WIN
-    SetCurrentProcessExplicitAppUserModelID(L"CassetteCat.AudioEngine.Desktop.App");
+    SetCurrentProcessExplicitAppUserModelID(kAppUserModelId);
 #endif
 
     // Ensure display swap interval is synchronized with monitor VSync (supports high refresh 144Hz, 240Hz, 360Hz,
@@ -283,7 +296,7 @@ int main(int argc, char *argv[]) {
     app.setQuitOnLastWindowClosed(false);
     QQuickStyle::setStyle("Basic");
     QCoreApplication::setOrganizationName("CassetteCat");
-    QCoreApplication::setApplicationName("CassetteCat");
+    QCoreApplication::setApplicationName(kApplicationName);
     QCoreApplication::setApplicationVersion(QStringLiteral(CASSETTECAT_VERSION));
     initializeDebugLog();
 #ifdef Q_OS_WIN

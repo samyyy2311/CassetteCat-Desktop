@@ -8,6 +8,7 @@
 #endif
 
 #include <QAction>
+#include <QCoreApplication>
 #include <QCursor>
 #include <QMenu>
 #include <QSystemTrayIcon>
@@ -45,7 +46,7 @@ TrayController::TrayController(const QIcon &icon, QObject *parent) : QObject(par
         }
     });
 
-    m_tray->setToolTip("CassetteCat");
+    m_tray->setToolTip(QCoreApplication::applicationName());
     m_tray->show();
 
     connect(m_tray, &QSystemTrayIcon::activated, this, [this](QSystemTrayIcon::ActivationReason reason) {
@@ -68,8 +69,8 @@ bool TrayController::available() const {
 void TrayController::setTrack(const QString &title, const QString &artist) {
     if (!m_tray)
         return;
-    m_tray->setToolTip(title.isEmpty() ? "CassetteCat"
-                                       : "CassetteCat\n" + title + (artist.isEmpty() ? QString() : " - " + artist));
+    const QString app = QCoreApplication::applicationName();
+    m_tray->setToolTip(title.isEmpty() ? app : app + '\n' + title + (artist.isEmpty() ? QString() : " - " + artist));
 }
 
 void TrayController::setPlaying(bool playing) {

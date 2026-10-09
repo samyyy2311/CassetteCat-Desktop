@@ -385,6 +385,8 @@ target_include_directories(CassetteCat PRIVATE
     ${taglib_SOURCE_DIR}/taglib/mp4
 )
 target_compile_definitions(CassetteCat PRIVATE TAGLIB_STATIC CASSETTECAT_VERSION="${PROJECT_VERSION}")
+# Debug builds run as "CassetteCat Dev", beside the installed app and with their own settings and data.
+target_compile_definitions(CassetteCat PRIVATE $<$<CONFIG:Debug>:CASSETTECAT_DEV_BUILD>)
 # Last.fm needs the project's own API account, so builds without LASTFM_API_KEY and LASTFM_API_SECRET leave it out.
 if(NOT "$ENV{LASTFM_API_KEY}" STREQUAL "" AND NOT "$ENV{LASTFM_API_SECRET}" STREQUAL "")
     target_compile_definitions(CassetteCat PRIVATE CASSETTECAT_LASTFM_API_KEY="$ENV{LASTFM_API_KEY}"

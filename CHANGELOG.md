@@ -4,7 +4,7 @@ All notable changes to CassetteCat Desktop are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [0.9.0]
+## [0.9.0] - 2026-10-09
 
 ### Added
 * Your phone can browse this computer's music and play it, on the computer or streamed to the phone.

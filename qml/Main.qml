@@ -1552,9 +1552,23 @@ ApplicationWindow {
         window.requestActivate()
     }
 
+    // Windows brings a frameless window back from the taskbar as Windowed, even when it was minimized while maximized.
+    property bool restoringFromMinimized: false
+
     onVisibilityChanged: {
         if (window.visibility === Window.Hidden || window.visibility === Window.Minimized)
             window.releaseResources()
+        if (window.visibility === Window.Minimized) {
+            restoringFromMinimized = true
+            return
+        }
+        if (restoringFromMinimized) {
+            restoringFromMinimized = false
+            if (wasMaximized && window.visibility === Window.Windowed) {
+                window.showMaximized()
+                return
+            }
+        }
         // The window shows as Windowed while loading, before startup applies the saved state.
         if (settingsInitialized && (window.visibility === Window.Windowed || window.visibility === Window.Maximized)) {
             const isMax = (window.visibility === Window.Maximized)
@@ -1718,9 +1732,7 @@ ApplicationWindow {
     Shortcut {
         sequence: inAppShortcut("toggleSidebar")
         enabled: shortcutAllowed(sequence)
-        onActivated: {
-            if (!miniPlayerMode) sidebarCollapsed = !sidebarCollapsed
-        }
+        onActivated: sidebarCollapsed = !sidebarCollapsed
     }
 
     function openSearchPage() {
@@ -1735,7 +1747,6 @@ ApplicationWindow {
         sequence: inAppShortcut("search")
         enabled: shortcutAllowed(sequence)
         onActivated: {
-            if (miniPlayerMode) return
             catalogDetailOpen = false
             const loaders = { library: libraryPageLoader, radio: radioPageLoader, jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader, stats: listeningRecordPageLoader }
             const pageItem = !nowPlayingOpen && loaders[page] ? loaders[page].item : null
@@ -1748,20 +1759,14 @@ ApplicationWindow {
     Shortcut {
         sequence: inAppShortcut("quickSwitcher")
         enabled: shortcutAllowed(sequence)
-        onActivated: if (!miniPlayerMode) openSearchPage()
+        onActivated: openSearchPage()
     }
 
     Shortcut {
         sequence: inAppShortcut("closePlayerView")
         // An open sheet handles Escape itself; two enabled shortcuts on one key would both be ignored as ambiguous.
         enabled: shortcutAllowed(sequence) && !refineSheetOpen && !radioRefineOpen && !trackActionSheet.isOpen
-        onActivated: {
-            if (miniPlayerMode) {
-                toggleMiniPlayer()
-            } else if (nowPlayingOpen) {
-                nowPlayingOpen = false
-            }
-        }
+        onActivated: nowPlayingOpen = false
     }
 
     Shortcut {
@@ -1827,7 +1832,6 @@ ApplicationWindow {
     }
 
     function toggleMaximize() {
-        if (miniPlayerMode) return
         if (window.visibility === Window.Maximized) {
             window.showNormal()
         } else {
@@ -3391,6 +3395,9 @@ ApplicationWindow {
                     id: minBtn
                     width: 48
                     height: 60
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Minimize"
+                    Accessible.onPressAction: window.showMinimized()
                     color: minBtnMouse.containsMouse ? surfaceElevated : "transparent"
 
                     Rectangle {
@@ -3417,6 +3424,9 @@ ApplicationWindow {
                     // Now Playing covers the title bar, and its own buttons sit where this one is.
                     enabled: !window.nowPlayingOpen
                     color: hovered ? surfaceElevated : "transparent"
+                    Accessible.role: Accessible.Button
+                    Accessible.name: window.visibility === Window.Maximized ? "Restore" : "Maximize"
+                    Accessible.onPressAction: toggleMaximize()
                     Component.onCompleted: windowFrame.setMaximizeButton(maxBtn)
 
                     Item {
@@ -3474,6 +3484,9 @@ ApplicationWindow {
                     id: closeBtn
                     width: 48
                     height: 60
+                    Accessible.role: Accessible.Button
+                    Accessible.name: "Close"
+                    Accessible.onPressAction: window.close()
                     color: closeBtnMouse.containsMouse ? recordRed : "transparent"
 
                     Label {

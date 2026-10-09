@@ -358,7 +358,7 @@ Item {
                     Layout.preferredHeight: 165
                     orientation: ListView.Horizontal
                     spacing: 14
-                    clip: true
+                    clip: false
                     model: root.matchingArtists
 
                     delegate: ArtistCard {
@@ -385,7 +385,7 @@ Item {
                     Layout.preferredHeight: 200
                     orientation: ListView.Horizontal
                     spacing: 14
-                    clip: true
+                    clip: false
                     model: root.matchingAlbums
 
                     delegate: AlbumCard {

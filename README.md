@@ -5,64 +5,37 @@
 <h1 align="center">CassetteCat</h1>
 
 <p align="center">
-  A desktop music player for the music you already own: your local files, your Subsonic or Jellyfin server, and internet radio.<br />
-  Pairs with <a href="https://github.com/samyyy2311/CassetteCat">CassetteCat for Android</a>, so a song can move between your phone and your computer.
+  A desktop music player for the music you own: your own files, your Subsonic or Jellyfin server, and internet radio.<br />
+  Pairs with <a href="https://github.com/samyyy2311/CassetteCat">CassetteCat for Android</a>, so your phone becomes a remote and your music moves between the two.
 </p>
 
 <p align="center">
   <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest"><img src="https://img.shields.io/github/v/release/samyyy2311/CassetteCat-Desktop?style=flat-square&color=C23B30&labelColor=1A1917&label=release" alt="Latest release" /></a>
   <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases"><img src="https://img.shields.io/github/downloads/samyyy2311/CassetteCat-Desktop/total?style=flat-square&color=C23B30&labelColor=1A1917&label=downloads" alt="Total downloads" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-C23B30?style=flat-square&labelColor=1A1917" alt="GPL-3.0-or-later license" /></a>
+  <img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-1A1917?style=flat-square" alt="Windows, macOS and Linux" />
+  <a href="https://www.qt.io"><img src="https://img.shields.io/badge/Qt%206-1A1917?style=flat-square&logo=qt&logoColor=41CD52" alt="Qt 6" /></a>
 </p>
 
 <p align="center">
   <a href="#install">Install</a> ·
-  <a href="https://cassettecat.caffeinelabs.in">Website</a> ·
+  <a href="docs/README.md">Docs</a> ·
+  <a href="https://cassettecat.caffeinelabs.in/desktop">Website</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="PRIVACY_POLICY.md">Privacy</a>
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/now-playing.png" width="88%" alt="CassetteCat's Now Playing screen with synced lyrics" />
+  <img src="assets/screenshots/now-playing.png" width="88%" alt="CassetteCat's Now Playing screen with large album art" />
 </p>
-
-## Your phone and your computer, one queue
-
-Pair CassetteCat with the Android app over your home Wi-Fi and the phone becomes a remote for your computer. Pick the computer from the phone's device list and the song, the queue and the position move across; pick the phone and they come back. Likes stay in sync both ways, and the phone can keep its backups on your computer.
-
-Pairing takes a six-character code from Settings, Network. Nothing leaves your network.
-
-## What it plays
-
-**Your own files.** Point it at your music folder and it sorts everything by song, album, artist and folder. FLAC, MP3, AAC, M4A, ALAC, OGG, Opus and WAV all play, and the tag editor ([TagLib](https://taglib.org)) can fix artist, album, genre, year and cover art on many files at once.
-
-**Your server.** Stream from Subsonic-compatible servers (Navidrome, Gonic, Airsonic) or from Jellyfin, alongside your local library.
-
-**Radio.** Live stations from the [Radio Browser](https://www.radio-browser.info) directory, with their own page apart from your library.
-
-## How it plays
-
-- Crossfade between songs, ReplayGain to keep volume even, and a sleep timer.
-- A queue that survives restarts. When it runs out, Autoplay continues with songs like the last one.
-- Synced lyrics from `.lrc` files, embedded tags or [LRCLIB](https://lrclib.net). For songs with plain lyrics, tap along once and CassetteCat saves the timings into the file.
-- A floating mini player, media keys, system tray controls, and keyboard shortcuts for playback, volume, seeking, search and the quick switcher.
-- Windows media controls on Windows and MPRIS on Linux, so the system's own player controls work.
-- Listening Record keeps your play counts, top artists and history, with monthly and yearly Rewind summaries.
-- Scrobbling to [ListenBrainz](https://listenbrainz.org) and [Libre.fm](https://libre.fm), and an optional Discord status.
-
-## Private by default
-
-No account, no telemetry, no analytics. Your library, history and settings stay on your computer. Offline Blackout Mode turns off every internet request with one switch, for when you only want your own files. The details are in [PRIVACY_POLICY.md](PRIVACY_POLICY.md).
 
 ## Install
 
 <p align="center">
-  <a href="https://apps.microsoft.com/detail/9NXNRR95X3K0">
-    <img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from the Microsoft Store" height="52" />
-  </a>
+  <a href="https://apps.microsoft.com/detail/9NXNRR95X3K0"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from the Microsoft Store" height="52" /></a>
 </p>
 
-On Windows 10 and 11, the Microsoft Store version updates itself. It is also on the Windows Package Manager:
+On Windows 10 and 11, the Microsoft Store version updates itself. It's also on the Windows Package Manager:
 
 ```powershell
 winget install CassetteCat
@@ -81,11 +54,9 @@ Everything else is on the [latest release](https://github.com/samyyy2311/Cassett
 | Linux | `.rpm` | Fedora, openSUSE, RHEL |
 | Linux | `.tar.gz` | Portable. Run `CassetteCat/bin/CassetteCat` |
 
-Linux packages come in x86_64 and ARM64 versions; pick the one for your machine. The macOS and ARM64 downloads start with v0.8.1.
+Linux packages come for x86_64 and ARM64; pick the one for your machine. Every release lists `SHA256SUMS.txt` for checking your download.
 
-The macOS app is not notarized by Apple yet. The first time, right-click CassetteCat in Applications and choose Open, or allow it under System Settings, Privacy & Security.
-
-Every release lists `SHA256SUMS.txt` for checking your download.
+The macOS app isn't notarized by Apple yet. The first time, right-click CassetteCat in Applications and choose **Open**, or allow it under **System Settings > Privacy & Security**.
 
 ## Screenshots
 
@@ -94,37 +65,91 @@ Every release lists `SHA256SUMS.txt` for checking your download.
   <img src="assets/screenshots/library-albums.png" width="48%" alt="Album library" />
 </p>
 <p align="center">
-  <img src="assets/screenshots/library-songs.png" width="48%" alt="Song library" />
+  <img src="assets/screenshots/listening-record.png" width="48%" alt="Listening Record" />
   <img src="assets/screenshots/radio.png" width="48%" alt="Internet radio" />
 </p>
 
+## Features
+
+### Your music
+
+- **Your own files**: point it at your music folders and it sorts everything by song, album, artist, genre and folder, and picks up new files as you add them. FLAC, MP3, AAC, M4A, ALAC, OGG, Opus and WAV all play.
+- **Your server**: stream from Subsonic-compatible servers (Navidrome, Gonic, Airsonic) or Jellyfin, with Quick Connect, alongside your local library.
+- **Internet radio**: live stations from [Radio Browser](https://www.radio-browser.info), plus stations you add yourself.
+- **Tag editor**: fix the artist, album, genre, year, lyrics and cover art of many songs at once, written back to the files with [TagLib](https://taglib.org).
+- **Playlists**: make them from a selection or the queue, and import or export M3U.
+- **Search**: songs, artists and albums as you type, from anywhere with Ctrl+K.
+
+### Listening
+
+- **Gapless playback**, a short fade when you change songs, and crossfade up to 10 seconds.
+- **Ten-band equalizer** with [AutoEq](https://github.com/jaakkopasanen/AutoEq) correction curves for your headphones.
+- **ReplayGain** by track or album, a volume limit, and a sleep timer with a gentle fade-out.
+- **Synced lyrics** from `.lrc` files, tags, Jellyfin or [LRCLIB](https://lrclib.net). For songs with plain lyrics, press Space along with the song once and CassetteCat saves the timings.
+- **Audio details**: Hi-Res Lossless, Lossless or the codec at a glance, with the sample rate, bit depth and bitrate a click away.
+- **Autoplay** keeps going with similar songs when the queue ends.
+
+### On your desktop
+
+- A floating **mini player** with artwork, lyrics or the queue, kept on top if you like.
+- **System media controls**: the media overlay and taskbar buttons on Windows, Now Playing in Control Center on macOS, and MPRIS on Linux.
+- **Keyboard shortcuts** for playback, volume, seeking, search and the mini player, all changeable.
+- **Close to the system tray**, start minimized, and notifications when the song changes.
+- **Listening Record**: top songs, artists and albums, your full history, and monthly and yearly Rewind.
+- **Scrobbling** to Last.fm, [ListenBrainz](https://listenbrainz.org) and [Libre.fm](https://libre.fm), and an optional Discord status.
+
+### With your phone
+
+Pair with the Android app over your home Wi-Fi by clicking **Allow** when the phone asks. Then:
+
+- your phone controls the computer, also from its notification and volume keys;
+- the song, queue and position move between the two, and music plays on one device at a time;
+- your phone can browse this computer's music and play it here or stream it;
+- likes and playlists stay in sync, both apps keep one Listening Record, and the phone keeps a daily backup here.
+
+The connection stays on your network and is encrypted. See [Using CassetteCat with your phone](docs/guide/phone-remote.md).
+
+### Private by default
+
+No account, no telemetry, no analytics. Your library, history and settings stay on your computer, and passwords are kept in the system's credential store. **Offline Blackout Mode** turns off every internet request with one switch. The details are in [PRIVACY_POLICY.md](PRIVACY_POLICY.md).
+
 ## Building from source
 
-CassetteCat is written in C++20 with Qt 6. You need Qt 6.10 or newer (Quick, Quick Controls 2, Multimedia, Network), CMake 3.24 or newer and Ninja. On Linux, also install `libsecret-1-dev`; on macOS, the Xcode command line tools.
+CassetteCat is written in C++20 with Qt 6. You need Qt 6.10 or newer, CMake 3.24 or newer, Ninja and OpenSSL 3; on Linux also `libsecret-1-dev`, and on macOS the Xcode command line tools.
 
 ```bash
-cmake --preset dev
-cmake --build --preset dev
-```
-
-The build lands in `build/dev/`. To run the checks:
-
-```bash
-build/dev/CassetteCat --self-check
+cmake -S . -B build/dev -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x/<platform>
+cmake --build build/dev
 ctest --test-dir build/dev --output-on-failure
 ```
+
+See [Building and testing](docs/dev/building.md) for each system's details.
+
+## Documentation
+
+- [User guide](docs/README.md#using-the-app): installing, every feature, the phone remote and troubleshooting
+- [Developer guide](docs/README.md#working-on-the-code): building, architecture, design and releasing
+- [Privacy policy](PRIVACY_POLICY.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and [AI_DISCLOSURE.md](AI_DISCLOSURE.md) for how AI assistance is used here. Report security issues privately, as described in [SECURITY.md](.github/SECURITY.md).
 
-If CassetteCat is useful to you, you can support its development on [Ko-fi](https://ko-fi.com/samyyy2311) or [Buy Me a Coffee](https://buymeacoffee.com/samyyy2311).
+## Support
+
+If CassetteCat is useful to you, you can support its development:
+
+<p align="center">
+  <a href="https://ko-fi.com/samyyy2311"><img src="https://img.shields.io/badge/Ko--fi-FF5E5B?style=flat-square&logo=kofi&logoColor=white" alt="Ko-fi" /></a>
+  <a href="https://buymeacoffee.com/samyyy2311"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee" /></a>
+</p>
 
 ## Credits
 
-**Services:** [LRCLIB](https://lrclib.net) for lyrics, [Cover Art Archive](https://coverartarchive.org) and [MusicBrainz](https://musicbrainz.org) for artwork and metadata, [Radio Browser](https://www.radio-browser.info) for stations, [ListenBrainz](https://listenbrainz.org) and [Libre.fm](https://libre.fm) for scrobbling, [Wikipedia](https://wikipedia.org) for artist biographies (CC BY-SA 4.0), [Deezer](https://deezer.com) and [TheAudioDB](https://theaudiodb.com) for artist images, and [GitHub](https://github.com) for update checks.
+**Services:** [LRCLIB](https://lrclib.net) for lyrics, [Cover Art Archive](https://coverartarchive.org) and [MusicBrainz](https://musicbrainz.org) for artwork and metadata, [Radio Browser](https://www.radio-browser.info) for stations, [Last.fm](https://www.last.fm), [ListenBrainz](https://listenbrainz.org) and [Libre.fm](https://libre.fm) for scrobbling, [Wikipedia](https://wikipedia.org) for artist biographies (CC BY-SA 4.0), [Deezer](https://deezer.com) and [TheAudioDB](https://theaudiodb.com) for artist images, and [GitHub](https://github.com) for update checks.
 
-**Libraries and design:** [Qt 6](https://www.qt.io) for the interface and playback, [TagLib](https://taglib.org) for tags and artwork, [Lucide](https://lucide.dev) and [Simple Icons](https://simpleicons.org) for icons, and [IBM Plex](https://github.com/IBM/plex) and [Space Grotesk](https://github.com/floriankarsten/space-grotesk) for type.
+**Libraries and design:** [Qt 6](https://www.qt.io) for the interface and playback, [TagLib](https://taglib.org) for tags and artwork, [OpenSSL](https://www.openssl.org) for the phone remote's encryption, [AutoEq](https://github.com/jaakkopasanen/AutoEq) for headphone curves, [Lucide](https://lucide.dev) and [Simple Icons](https://simpleicons.org) for icons, and [IBM Plex](https://github.com/IBM/plex) and [Space Grotesk](https://github.com/floriankarsten/space-grotesk) for type.
 
 Code review on this project is done with the help of [CodeRabbit](https://coderabbit.ai), which supports open-source projects with free reviews. CassetteCat is also listed on [AlternativeTo](https://alternativeto.net/software/cassettecat/about/).
 

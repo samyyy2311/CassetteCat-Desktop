@@ -27,12 +27,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
-        with:
-          languages: cpp
-          build-mode: manual
-
       - name: Install Linux dependencies
         run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev libssl-dev
 
@@ -47,6 +41,16 @@ jobs:
 
       - name: Configure
         run: cmake -S . -B build/codeql -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+
+      # TagLib is third-party code; building it before CodeQL starts keeps it out of the analysis.
+      - name: Build TagLib
+        run: cmake --build build/codeql --target tag --parallel 2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          languages: cpp
+          build-mode: manual
 
       - name: Build
         run: cmake --build build/codeql --parallel 2

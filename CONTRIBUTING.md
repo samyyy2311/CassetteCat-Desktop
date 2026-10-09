@@ -25,6 +25,7 @@ Before opening a pull request:
 
 - Explain what changed and why.
 - Build the app and run the self-check and `ctest`.
+- Add or extend a self-check or test for new functionality and for bugs you fix, so the change stays covered.
 - Format C++ changes with the repository's `.clang-format`; CI checks it.
 - Include screenshots for visible changes.
 - Do not commit `build/`, local logs, editor files, or generated converter files.

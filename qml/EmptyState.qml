@@ -67,7 +67,7 @@ Item {
             Layout.preferredHeight: 34
             Layout.preferredWidth: btnLbl.implicitWidth + 28
             radius: 17
-            color: btnMouse.containsMouse ? "#20FF3344" : "transparent"
+            color: btnMouse.containsMouse ? Qt.alpha(recordRed, 0.12) : "transparent"
             border.width: 1.5
             border.color: recordRed
 

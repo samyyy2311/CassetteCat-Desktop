@@ -546,9 +546,9 @@ Item {
                             anchors.fill: parent
                             radius: root.appWindow.albumArtRadius
                             gradient: Gradient {
-                                GradientStop { position: 0.0; color: "#500E0D0C" }
-                                GradientStop { position: 0.4; color: "#B80E0D0C" }
-                                GradientStop { position: 1.0; color: "#F20E0D0C" }
+                                GradientStop { position: 0.0; color: Qt.alpha(surfaceBase, 0.31) }
+                                GradientStop { position: 0.4; color: Qt.alpha(surfaceBase, 0.72) }
+                                GradientStop { position: 1.0; color: Qt.alpha(surfaceBase, 0.95) }
                             }
                         }
 

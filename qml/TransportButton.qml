@@ -17,10 +17,6 @@ Item {
     implicitWidth: root.buttonSize
     implicitHeight: root.buttonSize
 
-    readonly property color surfaceContainerHigh: "#22201D"
-    readonly property color surfaceContainerHover: "#2C2A26"
-    readonly property color surfaceContainerLowest: "#161513"
-
     readonly property bool isPressed: mouseArea.pressed
     readonly property bool isHovered: mouseArea.containsMouse || (root.activeFocus && !root.mouseFocused)
     property bool mouseFocused: false
@@ -42,10 +38,10 @@ Item {
         y: root.isPressed ? 1.5 : 0
         radius: width / 2
         color: root.isPressed 
-            ? root.surfaceContainerLowest 
+            ? surfaceDock 
             : (root.isHovered 
-                ? root.surfaceContainerHover 
-                : (root.filled ? root.surfaceContainerHigh : "transparent"))
+                ? surfaceElevated 
+                : (root.filled ? surfaceCardHover : "transparent"))
 
         Behavior on y {
             NumberAnimation { duration: 80; easing.type: Easing.Linear }

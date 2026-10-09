@@ -14,9 +14,9 @@ Rectangle {
     implicitHeight: 28
     implicitWidth: Math.max(76, contentLayout.implicitWidth + 20)
     radius: 6
-    color: activeFocus ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623") : (fieldMouse.containsMouse ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#22201D") : (typeof surfaceInput !== "undefined" ? surfaceInput : "#1A1917"))
+    color: activeFocus || fieldMouse.containsMouse ? surfaceElevated : surfaceInput
     border.width: activeFocus ? 1.5 : (fieldMouse.containsMouse ? 1 : 0)
-    border.color: activeFocus ? recordRed : (fieldMouse.containsMouse ? Qt.rgba(255, 255, 255, 0.08) : "transparent")
+    border.color: activeFocus ? recordRed : (fieldMouse.containsMouse ? borderVariant : "transparent")
     enabled: true
     activeFocusOnTab: true
     Accessible.role: Accessible.Button

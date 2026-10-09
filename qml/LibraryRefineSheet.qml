@@ -56,9 +56,9 @@ BottomSheet {
             Layout.preferredHeight: 32
             Layout.preferredWidth: rstContentRow.implicitWidth + 28
             radius: 16
-            color: rstMouse.containsMouse ? "#20FF3344" : "transparent"
+            color: rstMouse.containsMouse ? Qt.alpha(recordRed, 0.12) : "transparent"
             border.width: 1.2
-            border.color: root.isCustomized ? recordRed : "#40FF3344"
+            border.color: root.isCustomized ? recordRed : Qt.alpha(recordRed, 0.25)
 
             Behavior on border.color { ColorAnimation { duration: 120 } }
             Behavior on color { ColorAnimation { duration: 120 } }
@@ -247,7 +247,7 @@ BottomSheet {
                 }
             }
 
-            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: "#222222" }
+            Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: borderVariant }
 
             ColumnLayout {
                 Layout.fillWidth: true

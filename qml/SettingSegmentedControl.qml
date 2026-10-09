@@ -13,7 +13,7 @@ Rectangle {
     implicitHeight: 32
     implicitWidth: rowLayout.implicitWidth + 8
     radius: 8
-    color: (typeof surfaceInput !== "undefined" ? surfaceInput : "#1A1917")
+    color: surfaceInput
     border.width: 0
     border.color: "transparent"
 

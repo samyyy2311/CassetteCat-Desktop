@@ -89,7 +89,7 @@ SettingRow {
             }
 
             background: Rectangle {
-                color: (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#1C1B18")
+                color: surfaceElevated
                 radius: 10
                 border.width: 1
                 border.color: Qt.rgba(255, 255, 255, 0.08)
@@ -134,8 +134,8 @@ SettingRow {
                     height: 36
                     radius: 7
                     color: isSelected
-                        ? (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623")
-                        : (optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus) ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#282623") : "transparent")
+                        ? surfaceElevated
+                        : (optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus) ? surfaceCardHover : "transparent")
                     border.width: 0
 
                     RowLayout {

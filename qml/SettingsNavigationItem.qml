@@ -18,8 +18,8 @@ Rectangle {
     implicitHeight: compact ? 34 : 40
     radius: compact ? 17 : 8
     color: selected
-        ? (compact ? root.accentColor : (typeof surfaceElevated !== "undefined" ? surfaceElevated : "#282623"))
-        : (mouse.containsMouse ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#22201D") : "transparent")
+        ? (compact ? root.accentColor : surfaceElevated)
+        : (mouse.containsMouse ? surfaceCardHover : "transparent")
     border.width: 0
     border.color: "transparent"
     Accessible.role: Accessible.Button

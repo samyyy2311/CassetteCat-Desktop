@@ -17,7 +17,6 @@ Item {
     property color accentHover: window.recordRedHover
     readonly property color recordRed: accentColor
     readonly property color recordRedHover: accentHover
-    readonly property color surfaceTooltip: "#1A1816"
     readonly property string monoFont: (typeof monoFontFamily !== "undefined" && monoFontFamily.length > 0) ? monoFontFamily : "IBM Plex Mono"
 
     property bool isDragging: false
@@ -134,7 +133,7 @@ Item {
                 width: hoverText.implicitWidth + 12
                 height: 20
                 radius: 5
-                color: root.surfaceTooltip
+                color: surfaceCardHover
                 border.width: 1
                 border.color: root.recordRed
 

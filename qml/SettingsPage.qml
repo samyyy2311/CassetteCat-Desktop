@@ -13,8 +13,8 @@ Item {
     property string songSortMetric: "title"
     property string trackDensity: "comfortable"
     property bool showFormatBadges: true
-    property string accentName: "recordRed"
-    property string customAccentColor: "#C23B30"
+    property string accentName
+    property string customAccentColor
     property int albumArtRadius: 16
     property string nowPlayingBackdrop: "tinted"
     property bool showRemainingTime: true

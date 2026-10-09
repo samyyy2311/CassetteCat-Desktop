@@ -16,19 +16,18 @@ ApplicationWindow {
     color: surfaceBase
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
 
+    readonly property var accentPresets: [
+        { id: "recordRed", label: "Red", base: "#C23B30", hover: "#D64337" },
+        { id: "amber", label: "Amber", base: "#F59E0B", hover: "#FBBF24" },
+        { id: "cyan", label: "Cyan", base: "#06B6D4", hover: "#22D3EE" },
+        { id: "emerald", label: "Green", base: "#10B981", hover: "#34D399" },
+        { id: "magenta", label: "Pink", base: "#EC4899", hover: "#F472B6" },
+        { id: "silver", label: "Mono", base: "#C4C4C0", hover: "#E5E5E3" }
+    ]
     property string accentName: "recordRed"
-    property string customAccentColor: "#C23B30"
-    readonly property var accentColorMap: ({
-        "recordRed": { base: "#C23B30", hover: "#D64337" },
-        "amber": { base: "#F59E0B", hover: "#FBBF24" },
-        "cyan": { base: "#06B6D4", hover: "#22D3EE" },
-        "emerald": { base: "#10B981", hover: "#34D399" },
-        "magenta": { base: "#EC4899", hover: "#F472B6" },
-        "silver": { base: "#C4C4C0", hover: "#E5E5E3" }
-    })
-    readonly property color recordRed: accentName === "custom"
-        ? Qt.color(customAccentColor)
-        : (accentColorMap[accentName] || accentColorMap["recordRed"]).base
+    property string customAccentColor: accentPresets[0].base
+    readonly property var accentPreset: accentPresets.find(preset => preset.id === accentName) || accentPresets[0]
+    readonly property color recordRed: accentName === "custom" ? Qt.color(customAccentColor) : accentPreset.base
     // The accent as small text: lightened only as far as needed to reach 4.5:1 on both the page and the cards.
     readonly property color accentText: {
         const luminance = c => {
@@ -41,10 +40,10 @@ ApplicationWindow {
             shade = Qt.tint(shade, Qt.rgba(1, 1, 1, 0.15))
         return shade
     }
-    readonly property color recordRedHover: accentName === "custom"
-        ? Qt.lighter(Qt.color(customAccentColor), 1.15)
-        : (accentColorMap[accentName] || accentColorMap["recordRed"]).hover
+    readonly property color recordRedHover: accentName === "custom" ? Qt.lighter(Qt.color(customAccentColor), 1.15) : accentPreset.hover
     readonly property color surfaceBase: "#0E0D0C"
+    // Behind full-bleed artwork in Now Playing and the album and artist pages.
+    readonly property color surfaceDeep: "#0B0A09"
     readonly property color surfaceSidebar: "#131211"
     readonly property color surfaceDock: "#151412"
     readonly property color surfaceCard: "#181715"
@@ -58,6 +57,9 @@ ApplicationWindow {
     readonly property color silverDim: "#918E88"
     readonly property color textPrimary: "#F5F0EC"
     readonly property color textSecondary: "#A8A49E"
+    readonly property color danger: "#FF6B6B"
+    readonly property color success: "#34D399"
+    readonly property color windowCloseHover: "#E53935"
     readonly property color borderSubtle: Qt.rgba(1, 1, 1, 0.05)
     readonly property color borderVariant: Qt.rgba(1, 1, 1, 0.09)
     readonly property color borderCard: borderVariant
@@ -630,7 +632,7 @@ ApplicationWindow {
         }
         lyricsFontSize = appSettings.value("lyrics/fontSize", 28)
         accentName = appSettings.value("ui/accentName", "recordRed")
-        customAccentColor = appSettings.value("ui/customAccentColor", "#C23B30")
+        customAccentColor = appSettings.value("ui/customAccentColor", accentPresets[0].base)
         albumArtRadius = appSettings.value("ui/albumArtRadius", 16)
         nowPlayingBackdrop = appSettings.value("player/nowPlayingBackdrop", "tinted")
         showRemainingTime = appSettings.value("player/showRemainingTime", true)
@@ -4577,7 +4579,7 @@ ApplicationWindow {
                 readonly property bool audioMeterVisible: nowPlayingOpen && nowPlayingLyricsView.meterVisible
                     && window.visible && window.visibility !== Window.Minimized
                 anchors.fill: parent
-                color: "#0A0908"
+                color: surfaceDeep
                 visible: opacity > 0.001
                 opacity: nowPlayingOpen ? 1.0 : 0.0
                 layer.enabled: opacity < 0.999 && opacity > 0.001
@@ -4641,8 +4643,8 @@ ApplicationWindow {
                 anchors.fill: parent
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: "#50000000" }
-                    GradientStop { position: 0.45; color: "#C00A0908" }
-                    GradientStop { position: 1.0; color: "#F80A0908" }
+                    GradientStop { position: 0.45; color: Qt.alpha(surfaceDeep, 0.75) }
+                    GradientStop { position: 1.0; color: Qt.alpha(surfaceDeep, 0.97) }
                 }
             }
         }

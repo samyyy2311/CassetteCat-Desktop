@@ -84,7 +84,7 @@ ColumnLayout {
             Layout.topMargin: 8
             Layout.bottomMargin: 4
             text: "Click a shortcut field to record keys. Press Backspace to clear, Escape to cancel."
-            color: (typeof textSecondary !== "undefined" ? textSecondary : "#96918A")
+            color: textSecondary
             font.family: (typeof bodyFont !== "undefined" ? bodyFont : "Space Grotesk")
             font.pixelSize: 11
         }
@@ -96,8 +96,8 @@ ColumnLayout {
             Layout.bottomMargin: 6
             text: root.inAppShortcutStatus
             color: root.inAppShortcutStatus.toLowerCase().includes("already")
-                ? "#FF5555"
-                : (root.inAppShortcutStatus.toLowerCase().includes("cleared") ? textSecondary : "#10B981")
+                ? danger
+                : (root.inAppShortcutStatus.toLowerCase().includes("cleared") ? textSecondary : success)
             font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
             font.pixelSize: 12
             font.weight: Font.Medium

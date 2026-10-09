@@ -15,7 +15,6 @@ Item {
     property color accentHover: window.recordRedHover
     readonly property color recordRed: accentColor
     readonly property color recordRedHover: accentHover
-    readonly property color surfaceTooltip: "#1A1816"
     readonly property string monoFont: (typeof monoFontFamily !== "undefined" && monoFontFamily.length > 0) ? monoFontFamily : "IBM Plex Mono"
 
     property real lastNonZeroVolume: 0.8
@@ -125,7 +124,7 @@ Item {
                 width: volTooltipText.implicitWidth + 10
                 height: 18
                 radius: 4
-                color: root.surfaceTooltip
+                color: surfaceCardHover
                 border.width: 1
                 border.color: root.recordRed
 

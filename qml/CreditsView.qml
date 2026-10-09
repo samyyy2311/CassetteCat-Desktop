@@ -18,7 +18,7 @@ ColumnLayout {
         Layout.fillWidth: true
         Layout.preferredHeight: 52
         radius: 8
-        color: m.containsMouse ? (typeof surfaceCardHover !== "undefined" ? surfaceCardHover : "#282623") : "transparent"
+        color: m.containsMouse ? surfaceCardHover : "transparent"
         Behavior on color { ColorAnimation { duration: 120 } }
 
         RowLayout {
@@ -33,7 +33,7 @@ ColumnLayout {
                 Layout.alignment: Qt.AlignVCenter
                 icon: itemRoot.itemData.icon || ""
                 preserveColor: !!itemRoot.itemData.preserveColor
-                color: itemRoot.itemData.iconColor ? itemRoot.itemData.iconColor : (typeof textSecondary !== "undefined" ? textSecondary : "#96918A")
+                color: itemRoot.itemData.iconColor ? itemRoot.itemData.iconColor : textSecondary
             }
 
             ColumnLayout {
@@ -66,7 +66,7 @@ ColumnLayout {
                 Layout.preferredHeight: 14
                 Layout.alignment: Qt.AlignVCenter
                 icon: "external-link"
-                color: m.containsMouse ? textPrimary : (typeof silverDim !== "undefined" ? silverDim : "#918E88")
+                color: m.containsMouse ? textPrimary : silverDim
             }
         }
 

@@ -732,7 +732,7 @@ Item {
         Rectangle {
             anchors.fill: parent
             visible: parent.containsDrag
-            color: "#B00E0D0C"
+            color: Qt.alpha(surfaceBase, 0.69)
             border.width: 2
             border.color: recordRed
             radius: 12

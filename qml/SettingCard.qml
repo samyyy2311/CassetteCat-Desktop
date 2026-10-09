@@ -9,7 +9,7 @@ Rectangle {
     implicitHeight: inner.implicitHeight + 12
     radius: 14
     clip: true
-    color: (typeof surfaceCard !== "undefined" ? surfaceCard : "#161514")
+    color: surfaceCard
     border.width: 0
     border.color: "transparent"
 

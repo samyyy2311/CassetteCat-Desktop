@@ -15,6 +15,8 @@ TestCase {
             property alias group: choiceGroup
             property color textPrimary: "#F5F0EC"
             property color textSecondary: "#8E8A84"
+            property color surfaceElevated: "#282623"
+            property color surfaceCardHover: "#22201D"
 
             width: 800
             height: 600

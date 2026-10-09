@@ -44,11 +44,11 @@ Window {
         }
     }
 
-    readonly property color surfaceBg: "#161514"
-    readonly property color surfaceCard: "#1D1C1A"
-    readonly property color surfaceElevated: "#252320"
-    readonly property color surfacePill: "#23211F"
-    readonly property color borderCard: "#2B2825"
+    readonly property color surfaceBg: window.surfaceDock
+    readonly property color surfaceCard: window.surfaceInput
+    readonly property color surfaceElevated: window.surfaceSelected
+    readonly property color surfacePill: window.surfaceTag
+    readonly property color borderCard: window.surfaceElevated
     readonly property color accentColor: window.recordRed
     readonly property color accentHover: window.recordRedHover
     readonly property color recordRed: accentColor
@@ -216,7 +216,7 @@ Window {
                 width: compactControlsRow.implicitWidth + 8
                 height: 26
                 radius: 13
-                color: compactHoverHandler.hovered ? "#22201E" : "#1A1918"
+                color: compactHoverHandler.hovered ? window.surfaceTag : window.surfaceInput
                 border.width: 1
                 border.color: compactHoverHandler.hovered ? "#35FFFFFF" : "#1AFFFFFF"
                 z: 20
@@ -313,7 +313,7 @@ Window {
 
                     Rectangle {
                         width: 22; height: 22; radius: 11
-                        color: closeHover.containsMouse ? "#E53935" : "transparent"
+                        color: closeHover.containsMouse ? window.windowCloseHover : "transparent"
                         scale: closeHover.pressed ? 0.90 : 1.0
                         Behavior on color { ColorAnimation { duration: 120 } }
                         Behavior on scale { NumberAnimation { duration: 80 } }
@@ -467,7 +467,7 @@ Window {
                             anchors.verticalCenter: parent.verticalCenter
                             height: 2.5
                             radius: 1.25
-                            color: "#2C2926"
+                            color: window.surfaceElevated
 
                             Rectangle {
                                 anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom

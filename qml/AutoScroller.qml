@@ -39,7 +39,7 @@ Item {
         width: 32
         height: 32
         radius: 16
-        color: "#E0181715"
+        color: Qt.alpha(surfaceCard, 0.88)
         border.width: 1.5
         border.color: recordRed
 

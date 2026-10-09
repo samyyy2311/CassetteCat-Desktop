@@ -28,7 +28,7 @@ jobs:
           arch: x64
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: "6.10.3"
           target: desktop
@@ -114,7 +114,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y gnome-keyring libpipewire-0.3-0 libsecret-1-dev libssl-dev
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: "6.10.3"
           host: ${{ matrix.qt-host }}
@@ -179,7 +179,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libpipewire-0.3-0 libsecret-1-dev libssl-dev
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: "6.10.3"
           target: desktop
@@ -215,7 +215,7 @@ jobs:
         run: command -v ninja || brew install ninja
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: "6.10.3"
           target: desktop

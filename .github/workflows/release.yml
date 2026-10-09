@@ -45,7 +45,7 @@ jobs:
         with:
           arch: x64
       - name: Install Qt
-        uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: "6.10.3"
           target: desktop
@@ -146,7 +146,7 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
       - name: Install Qt
-        uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: "6.10.3"
           host: ${{ matrix.qt-host }}
@@ -226,7 +226,7 @@ jobs:
       - name: Install Ninja
         run: command -v ninja || brew install ninja
       - name: Install Qt
-        uses: jurplel/install-qt-action@bcb88e3bed2e992f5f9e24c0f9e364a231d278eb # v4.4.0
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: "6.10.3"
           target: desktop
@@ -302,7 +302,7 @@ jobs:
           for deb in release-assets/*.deb; do dpkg-deb --info "$deb" >/dev/null; done
           for rpm in release-assets/*.rpm; do rpm -qip "$rpm" >/dev/null && rpm -qlp "$rpm" >/dev/null; done
       - name: Generate SPDX SBOM
-        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           path: release-assets
           format: spdx-json

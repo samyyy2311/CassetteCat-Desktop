@@ -40,7 +40,7 @@ CardBase {
         gradient: Gradient {
             orientation: Gradient.Vertical
             GradientStop { position: 0.0; color: "#25000000" }
-            GradientStop { position: 1.0; color: "#E0181615" }
+            GradientStop { position: 1.0; color: Qt.alpha(surfaceCard, 0.88) }
         }
     }
 

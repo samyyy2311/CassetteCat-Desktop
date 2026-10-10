@@ -220,7 +220,7 @@ Item {
 
             Rectangle {
                 width: 22; height: 22; radius: 11
-                color: subCloseH.containsMouse ? "#E53935" : "transparent"
+                color: subCloseH.containsMouse ? windowCloseHover : "transparent"
                 scale: subCloseH.pressed ? 0.90 : 1.0
                 Behavior on color { ColorAnimation { duration: 120 } }
                 Behavior on scale { NumberAnimation { duration: 80 } }

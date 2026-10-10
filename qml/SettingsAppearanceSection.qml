@@ -4,8 +4,8 @@ import QtQuick.Layouts
 
 ColumnLayout {
     id: root
-    property string accentName: "recordRed"
-    property string customAccentColor: "#C23B30"
+    property string accentName
+    property string customAccentColor
     property int albumArtRadius: 16
     property string nowPlayingBackdrop: "tinted"
     property bool showRemainingTime: true
@@ -35,14 +35,7 @@ ColumnLayout {
             spacing: 14
 
             Repeater {
-                model: [
-                    { id: "recordRed", color: "#C23B30", label: "Red" },
-                    { id: "amber", color: "#F59E0B", label: "Amber" },
-                    { id: "cyan", color: "#06B6D4", label: "Cyan" },
-                    { id: "emerald", color: "#10B981", label: "Green" },
-                    { id: "magenta", color: "#EC4899", label: "Pink" },
-                    { id: "silver", color: "#C4C4C0", label: "Mono" }
-                ]
+                model: accentPresets
                 delegate: Column {
                     spacing: 6
 
@@ -50,7 +43,7 @@ ColumnLayout {
                         width: 36
                         height: 36
                         radius: 18
-                        color: modelData.color
+                        color: modelData.base
                         border.width: root.accentName === modelData.id ? 2.5 : 1
                         border.color: root.accentName === modelData.id ? textPrimary : borderSubtle
                         scale: swatchMouse.pressed ? 0.92 : (swatchMouse.containsMouse ? 1.08 : 1.0)
@@ -94,7 +87,7 @@ ColumnLayout {
                     width: 36
                     height: 36
                     radius: 18
-                    color: root.accentName === "custom" ? root.customAccentColor : "#2C2926"
+                    color: root.accentName === "custom" ? root.customAccentColor : surfaceElevated
                     border.width: root.accentName === "custom" ? 2.5 : 1
                     border.color: root.accentName === "custom" ? textPrimary : borderSubtle
                     scale: customMouse.pressed ? 0.92 : (customMouse.containsMouse ? 1.08 : 1.0)

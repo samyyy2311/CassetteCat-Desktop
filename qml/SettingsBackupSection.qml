@@ -5,6 +5,7 @@ import QtQuick.Layouts
 ColumnLayout {
     id: root
     property string backupStatus: ""
+    readonly property bool backupFailed: /error|fail/i.test(backupStatus)
     property bool logsVisible: false
     property string recentLogs: ""
 
@@ -45,8 +46,7 @@ ColumnLayout {
             Layout.bottomMargin: 8
             height: 36
             radius: 8
-            color: (root.backupStatus.toLowerCase().includes("error") || root.backupStatus.toLowerCase().includes("fail"))
-                   ? "#33FF4444" : "#2510B981"
+            color: root.backupFailed ? Qt.alpha(danger, 0.2) : Qt.alpha(success, 0.15)
 
             RowLayout {
                 anchors.fill: parent
@@ -57,17 +57,14 @@ ColumnLayout {
                 LucideIcon {
                     Layout.preferredWidth: 16
                     Layout.preferredHeight: 16
-                    icon: (root.backupStatus.toLowerCase().includes("error") || root.backupStatus.toLowerCase().includes("fail"))
-                          ? "shield" : "refresh-cw"
-                    color: (root.backupStatus.toLowerCase().includes("error") || root.backupStatus.toLowerCase().includes("fail"))
-                           ? "#FF6677" : "#34D399"
+                    icon: root.backupFailed ? "shield" : "refresh-cw"
+                    color: root.backupFailed ? danger : success
                 }
 
                 Label {
                     Layout.fillWidth: true
                     text: root.backupStatus
-                    color: (root.backupStatus.toLowerCase().includes("error") || root.backupStatus.toLowerCase().includes("fail"))
-                           ? "#FF8899" : "#6EE7B7"
+                    color: root.backupFailed ? danger : success
                     font.family: displayFont
                     font.pixelSize: 12
                     font.weight: Font.DemiBold
@@ -136,7 +133,7 @@ ColumnLayout {
             Layout.fillWidth: true
             Layout.preferredHeight: 180
             radius: 8
-            color: (typeof surfaceInput !== "undefined" ? surfaceInput : "#141312")
+            color: surfaceInput
             border.width: 0
             clip: true
 
@@ -155,7 +152,7 @@ ColumnLayout {
                     readOnly: true
                     selectByMouse: true
                     text: root.recentLogs
-                    color: (typeof textPrimary !== "undefined" ? textPrimary : "#F5F0EC")
+                    color: textPrimary
                     font.family: (typeof monoFont !== "undefined") ? monoFont : "IBM Plex Mono"
                     font.pixelSize: 11
                 }

@@ -10,7 +10,7 @@ Rectangle {
     radius: 13
     color: root.checked
         ? (mouseArea.containsMouse ? recordRedHover : recordRed)
-        : (mouseArea.containsMouse ? "#201E1C" : "#181715")
+        : (mouseArea.containsMouse ? surfaceCardHover : surfaceCard)
     opacity: root.enabled ? 1.0 : 0.4
     border.width: root.activeFocus ? 2 : 0
     border.color: root.activeFocus
@@ -43,7 +43,7 @@ Rectangle {
         radius: 9
         color: root.checked
             ? "#FFFFFF"
-            : (mouseArea.containsMouse ? "#B5B0AA" : "#96918A")
+            : (mouseArea.containsMouse ? textSecondary : silverDim)
 
         Behavior on x {
             NumberAnimation {

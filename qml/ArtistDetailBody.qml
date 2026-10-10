@@ -132,11 +132,9 @@ Column {
                             activeFocusOnTab: true
                             onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
                             Layout.fillWidth: true
-                            Layout.preferredHeight: cardWidth + 72 + topMargin
+                            Layout.preferredHeight: cardWidth + 72
                             orientation: ListView.Horizontal
-                            clip: true
-                            // Keeps the hover zoom inside the clip.
-                            topMargin: 6
+                            clip: false
                             spacing: 16
                             snapMode: ListView.SnapToItem
                             model: modelData.releases

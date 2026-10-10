@@ -244,7 +244,7 @@ AppDialog {
                                     anchors.bottom: parent.bottom
                                     anchors.margins: 4
                                     radius: 3
-                                    color: "#D00E0D0C"
+                                    color: Qt.alpha(surfaceBase, 0.82)
                                     implicitWidth: resLabel.implicitWidth + 6
                                     implicitHeight: resLabel.implicitHeight + 2
 
@@ -264,7 +264,7 @@ AppDialog {
                                     anchors.top: parent.top
                                     anchors.margins: 4
                                     radius: 3
-                                    color: "#D00E0D0C"
+                                    color: Qt.alpha(surfaceBase, 0.82)
                                     implicitWidth: srcLabel.implicitWidth + 6
                                     implicitHeight: srcLabel.implicitHeight + 2
 

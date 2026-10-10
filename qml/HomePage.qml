@@ -126,8 +126,8 @@ Item {
                                     gradient: Gradient {
                                         orientation: Gradient.Horizontal
                                         // Dark enough that the text stays readable over the palest cover art.
-                                        GradientStop { position: 0.0; color: "#C70E0D0C" }
-                                        GradientStop { position: 1.0; color: "#E00E0D0C" }
+                                        GradientStop { position: 0.0; color: Qt.alpha(surfaceBase, 0.78) }
+                                        GradientStop { position: 1.0; color: Qt.alpha(surfaceBase, 0.88) }
                                     }
                                 }
 

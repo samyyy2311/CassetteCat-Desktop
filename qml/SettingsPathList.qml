@@ -8,7 +8,7 @@ ColumnLayout {
     property var paths: []
     signal removeRequested(string path)
 
-    readonly property color accentHoverColor: (typeof recordRedHover !== "undefined" ? recordRedHover : "#FF5C4D")
+    readonly property color accentHoverColor: recordRedHover
 
     Layout.fillWidth: true
     spacing: 0
@@ -22,7 +22,7 @@ ColumnLayout {
             Layout.topMargin: 4
             Layout.bottomMargin: 4
             radius: 8
-            color: (typeof surfaceInput !== "undefined" ? surfaceInput : "#1A1917")
+            color: surfaceInput
             border.width: 0
             border.color: "transparent"
 

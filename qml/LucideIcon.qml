@@ -4,7 +4,7 @@ import QtQuick.Effects
 Item {
     id: root
     property string icon: ""
-    property color color: "#F5F0EC"
+    property color color: textPrimary
     property bool preserveColor: false
 
     implicitWidth: 20

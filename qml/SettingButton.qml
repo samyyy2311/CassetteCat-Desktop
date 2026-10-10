@@ -20,12 +20,12 @@ Rectangle {
     implicitHeight: 32
     radius: 8
     // A main action looks like a selected chip, with an accent border and text.
-    readonly property color contentColor: root.destructive ? (mouseArea.containsMouse ? "#FF6B6B" : Qt.rgba(1, 0.45, 0.45, 0.9))
+    readonly property color contentColor: root.destructive ? (mouseArea.containsMouse ? danger : Qt.alpha(danger, 0.9))
         : root.primary ? root.accentColor
         : (mouseArea.containsMouse ? textPrimary : textSecondary)
     color: {
         if (mouseArea.containsMouse) {
-            if (root.destructive) return Qt.rgba(1, 0.15, 0.15, 0.18)
+            if (root.destructive) return Qt.alpha(danger, 0.18)
             return surfaceElevated
         }
         if (root.destructive) return "transparent"
@@ -34,7 +34,7 @@ Rectangle {
     }
     border.width: root.primary || root.destructive || mouseArea.containsMouse ? 1 : 0
     border.color: {
-        if (root.destructive) return mouseArea.containsMouse ? Qt.rgba(1, 0.35, 0.35, 0.5) : Qt.rgba(1, 0.25, 0.25, 0.25)
+        if (root.destructive) return Qt.alpha(danger, mouseArea.containsMouse ? 0.5 : 0.25)
         if (root.primary) return mouseArea.containsMouse ? root.accentHoverColor : root.accentColor
         return mouseArea.containsMouse ? borderVariant : borderSubtle
     }

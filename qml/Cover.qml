@@ -144,7 +144,7 @@ Item {
         id: bgPlaceholder
         anchors.fill: parent
         radius: root.radius
-        color: (typeof surfaceCard !== "undefined" ? surfaceCard : "#181715")
+        color: surfaceCard
 
         // Built only for covers without art; held on every cover, it kept three images per card.
         Loader {

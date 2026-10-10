@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 AppDialog {
     id: root
-    property string currentColor: "#C23B30"
+    property string currentColor
     signal colorApplied(string hexColor)
 
     function normalizeHex(h) {

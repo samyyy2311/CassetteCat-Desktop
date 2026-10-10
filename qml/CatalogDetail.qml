@@ -96,7 +96,7 @@ Rectangle {
         }
     }
 
-    color: "#0B0A09"
+    color: surfaceDeep
 
     AlbumDetailBody {
         id: scrollView
@@ -118,9 +118,9 @@ Rectangle {
                 Rectangle {
                     anchors.fill: parent
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#161412" }
-                        GradientStop { position: 0.75; color: "#100E0D" }
-                        GradientStop { position: 1.0; color: "#0B0A09" }
+                        GradientStop { position: 0.0; color: surfaceDock }
+                        GradientStop { position: 0.75; color: surfaceBase }
+                        GradientStop { position: 1.0; color: surfaceDeep }
                     }
                 }
 
@@ -146,9 +146,9 @@ Rectangle {
                 Rectangle {
                     anchors.fill: parent
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: root.albumDetail ? "#280B0A09" : "#620B0A09" }
-                        GradientStop { position: 0.75; color: "#D00B0A09" }
-                        GradientStop { position: 1.0; color: "#0B0A09" }
+                        GradientStop { position: 0.0; color: Qt.alpha(surfaceDeep, root.albumDetail ? 0.16 : 0.38) }
+                        GradientStop { position: 0.75; color: Qt.alpha(surfaceDeep, 0.82) }
+                        GradientStop { position: 1.0; color: surfaceDeep }
                     }
                 }
 
@@ -188,7 +188,7 @@ Rectangle {
                         Rectangle {
                             anchors.fill: parent
                             radius: root.artistDetail ? width / 2 : ((typeof window !== "undefined" && window.albumArtRadius !== undefined) ? window.albumArtRadius : 16)
-                            color: "#181715"
+                            color: surfaceCard
                             clip: true
                             border.width: root.featuredDetail ? 2 : 1.5
                             border.color: root.artistDetail && heroArtistImg.status === Image.Ready ? "#B8FFFFFF" : "#30FFFFFF"
@@ -287,7 +287,7 @@ Rectangle {
                             Layout.maximumWidth: parent.width
                             visible: root.albumDetail && root.heroTrack && root.heroTrack.artist
                             text: root.heroTrack.artist || ""
-                            color: artistLinkMouse.containsMouse ? root.appWindow.recordRedHover : "#F5F0EC"
+                            color: artistLinkMouse.containsMouse ? root.appWindow.recordRedHover : textPrimary
                             font.family: root.appWindow.displayFont
                             font.pixelSize: 18
                             font.weight: Font.DemiBold

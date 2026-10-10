@@ -5,7 +5,6 @@ Item {
     id: root
 
     readonly property color accentColor: recordRedHover
-    readonly property color barBgColor: (typeof window !== "undefined" && window.surfaceCard) ? window.surfaceCard : "#1B1917"
 
     // Indeterminate progress bar along the top edge
     Item {
@@ -17,7 +16,7 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: root.barBgColor
+            color: surfaceCard
             opacity: 0.3
         }
 

@@ -42,7 +42,7 @@ Item {
         radius: root.isCompactDensity ? 5 : 8
         color: root.header ? "transparent" : (root.highlighted
             ? surfaceElevated
-            : (root.current ? (root.compact ? "#1E1C1A" : "#1C1A18") : "transparent"))
+            : (root.current ? (root.compact ? surfaceCardHover : surfaceCard) : "transparent"))
         border.width: root.current && root.compact ? 1 : 0
         border.color: borderCard
         opacity: (root.reorderEnabled && gripMouse.drag.active) ? 0.35 : 1.0

@@ -10,6 +10,7 @@ Surfaces are warm near-black, darkest to lightest:
 
 | Token | Value | Use |
 |---|---|---|
+| `surfaceDeep` | `#0B0A09` | Behind full-bleed artwork: Now Playing, album and artist pages |
 | `surfaceBase` | `#0E0D0C` | Window background |
 | `surfaceSidebar` | `#131211` | Sidebar |
 | `surfaceDock` | `#151412` | Player dock |
@@ -26,6 +27,8 @@ Text, brightest to dimmest. Each meets WCAG AA (4.5:1) on every surface above:
 | `textSecondary` | `#A8A49E` | Supporting text |
 | `silverDim` | `#918E88` | Metadata, idle icons |
 | `accentText` | accent, lightened to 4.5:1 | Small text in the accent color |
+
+Status colors: `danger` (`#FF6B6B`) for errors and destructive actions, `success` (`#34D399`) for confirmations. Tints of them, the accent and the surfaces come from `Qt.alpha()` on the token, not new hex values.
 
 Use `accentText`, never the raw accent, for text under 18px. Icons and shapes need 3:1: the raw accent meets it on `surfaceBase` and `surfaceCard` but not on `surfaceElevated` (2.85:1), so use `accentText` there. Text over cover art needs a dark overlay strong enough to hold 4.5:1 over pale art.
 

@@ -72,7 +72,7 @@ ToolTip {
 
     background: Rectangle {
         radius: 8
-        color: "#22201D"
+        color: surfaceCardHover
         border.width: 1
         border.color: "#45FFFFFF"
     }

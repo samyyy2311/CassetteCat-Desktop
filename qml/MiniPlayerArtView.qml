@@ -71,7 +71,7 @@ Item {
             width: artControlsRow.implicitWidth + 8
             height: 28
             radius: 14
-            color: "#E2141312"
+            color: Qt.alpha(surfaceSidebar, 0.89)
             border.width: 1
             border.color: "#35FFFFFF"
             z: 20
@@ -200,7 +200,7 @@ Item {
 
                 Rectangle {
                     width: 24; height: 24; radius: 12
-                    color: artCloseH.containsMouse ? "#E53935" : "transparent"
+                    color: artCloseH.containsMouse ? windowCloseHover : "transparent"
                     scale: artCloseH.pressed ? 0.90 : 1.0
                     Behavior on color { ColorAnimation { duration: 120 } }
                     Behavior on scale { NumberAnimation { duration: 80 } }
@@ -234,7 +234,7 @@ Item {
             anchors.margins: 12
             height: 72
             radius: 16
-            color: "#D8141312"
+            color: Qt.alpha(surfaceSidebar, 0.85)
             border.width: 1
             border.color: "#30FFFFFF"
             opacity: root.artHoverActive ? 1.0 : 0.0

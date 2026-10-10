@@ -15,6 +15,8 @@ Item {
     property bool showFormatBadges: true
     property string accentName
     property string customAccentColor
+    property var theme
+    property string themeStatus
     property int albumArtRadius: 16
     property string nowPlayingBackdrop: "tinted"
     property bool showRemainingTime: true
@@ -112,6 +114,9 @@ Item {
     signal showFormatBadgesSelected(bool value)
     signal accentSelected(string value)
     signal customAccentSelected(string value)
+    signal themeSelected(var theme)
+    signal themeImportRequested()
+    signal themeExportRequested()
     signal albumArtRadiusSelected(int value)
     signal nowPlayingBackdropSelected(string value)
     signal showRemainingTimeSelected(bool value)
@@ -300,11 +305,16 @@ Item {
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 accentName: root.accentName
                                 customAccentColor: root.customAccentColor
+                                theme: root.theme
+                                themeStatus: root.themeStatus
                                 albumArtRadius: root.albumArtRadius
                                 nowPlayingBackdrop: root.nowPlayingBackdrop
                                 showRemainingTime: root.showRemainingTime
                                 onAccentSelected: value => root.accentSelected(value)
                                 onCustomAccentSelected: value => root.customAccentSelected(value)
+                                onThemeSelected: value => root.themeSelected(value)
+                                onThemeImportRequested: root.themeImportRequested()
+                                onThemeExportRequested: root.themeExportRequested()
                                 onAlbumArtRadiusSelected: value => root.albumArtRadiusSelected(value)
                                 onNowPlayingBackdropSelected: value => root.nowPlayingBackdropSelected(value)
                                 onShowRemainingTimeSelected: value => root.showRemainingTimeSelected(value)

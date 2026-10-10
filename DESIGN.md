@@ -32,6 +32,22 @@ Status colors: `danger` (`#FF6B6B`) for errors and destructive actions, `success
 
 Use `accentText`, never the raw accent, for text under 18px. Icons and shapes need 3:1: the raw accent meets it on `surfaceBase` and `surfaceCard` but not on `surfaceElevated` (2.85:1), so use `accentText` there. Text over cover art needs a dark overlay strong enough to hold 4.5:1 over pale art.
 
+## Themes
+
+The values above are the default theme. A theme sets three colors, plus the accent:
+
+- `background` becomes `surfaceBase`. Every other surface is the background with a little of the text color mixed in (`surfaceShade()` in `Main.qml`), so any theme keeps the same steps between them. `surfaceDeep` is the background darkened by a fifth.
+- `text` becomes `textPrimary`, and borders are faint versions of it.
+- `textMuted` becomes `textSecondary`. `silverDim` is it mixed 15% toward the background.
+
+`silver`, white text and the dark overlays sit on cover art, so they don't change with the theme. Themes are dark only for now: Settings warns about a light background, and about any text under 4.5:1 on `surfaceElevated`.
+
+A theme file is JSON, and `accent` is optional:
+
+```json
+{ "background": "#0E0D0C", "text": "#F5F0EC", "textMuted": "#A8A49E", "accent": "#C23B30" }
+```
+
 ## Type
 
 - Headings: Space Grotesk (`displayFont`).

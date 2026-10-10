@@ -16,6 +16,7 @@
   <img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-1A1917?style=flat-square" alt="Windows, macOS and Linux" />
   <a href="https://www.qt.io"><img src="https://img.shields.io/badge/Qt%206-1A1917?style=flat-square&logo=qt&logoColor=41CD52" alt="Qt 6" /></a>
   <a href="https://www.bestpractices.dev/projects/15328"><img src="https://www.bestpractices.dev/projects/15328/badge" alt="OpenSSF Best Practices" /></a>
+  <a href="https://app.codacy.com/gh/samyyy2311/CassetteCat-Desktop/dashboard"><img src="https://img.shields.io/codacy/grade/775f07dda4494cb98d88f1c91cd179f0?style=flat-square&labelColor=1A1917&label=codacy" alt="Codacy code quality" /></a>
 </p>
 
 <p align="center">

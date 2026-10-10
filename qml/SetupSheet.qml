@@ -14,6 +14,8 @@ AppDialog {
     ]
 
     signal addFolderRequested()
+    signal themeImportRequested()
+    signal themeExportRequested()
     signal finished()
 
     maxWidth: 560
@@ -146,10 +148,15 @@ AppDialog {
                 width: parent.width
                 accentName: root.appWindow.accentName
                 customAccentColor: root.appWindow.customAccentColor
+                theme: root.appWindow.theme
+                themeStatus: root.appWindow.themeStatus
                 albumArtRadius: root.appWindow.albumArtRadius
                 nowPlayingBackdrop: root.appWindow.nowPlayingBackdrop
                 showRemainingTime: root.appWindow.showRemainingTime
                 onAccentSelected: value => root.appWindow.accentName = value
+                onThemeSelected: value => root.appWindow.theme = value
+                onThemeImportRequested: root.themeImportRequested()
+                onThemeExportRequested: root.themeExportRequested()
                 onCustomAccentSelected: hex => {
                     root.appWindow.customAccentColor = hex
                     root.appWindow.accentName = "custom"

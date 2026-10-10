@@ -4,6 +4,7 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Effects
 import "LyricsText.js" as LyricsText
+import "ThemeColors.js" as ThemeColors
 
 ApplicationWindow {
     id: window
@@ -30,38 +31,39 @@ ApplicationWindow {
     readonly property color recordRed: accentName === "custom" ? Qt.color(customAccentColor) : accentPreset.base
     // The accent as small text: lightened only as far as needed to reach 4.5:1 on both the page and the cards.
     readonly property color accentText: {
-        const luminance = c => {
-            const lin = v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
-            return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
-        }
-        const backdrop = Math.max(luminance(surfaceBase), luminance(surfaceCard)) + 0.05
         let shade = recordRed
-        for (let step = 0; step < 12 && (luminance(shade) + 0.05) / backdrop < 4.5; ++step)
+        for (let step = 0; step < 12 && Math.min(ThemeColors.contrast(shade, surfaceBase), ThemeColors.contrast(shade, surfaceCard)) < 4.5; ++step)
             shade = Qt.tint(shade, Qt.rgba(1, 1, 1, 0.15))
         return shade
     }
     readonly property color recordRedHover: accentName === "custom" ? Qt.lighter(Qt.color(customAccentColor), 1.15) : accentPreset.hover
-    readonly property color surfaceBase: "#0E0D0C"
+    readonly property var defaultTheme: ({ background: "#0E0D0C", text: "#F5F0EC", textMuted: "#A8A49E" })
+    property var theme: defaultTheme
+    property string themeStatus: ""
+    readonly property color surfaceBase: theme.background
     // Behind full-bleed artwork in Now Playing and the album and artist pages.
-    readonly property color surfaceDeep: "#0B0A09"
-    readonly property color surfaceSidebar: "#131211"
-    readonly property color surfaceDock: "#151412"
-    readonly property color surfaceCard: "#181715"
-    readonly property color surfaceCardHover: "#22201D"
-    readonly property color surfaceElevated: "#282623"
-    readonly property color surfaceInput: "#1A1917"
-    readonly property color surfaceTag: "#22201E"
+    readonly property color surfaceDeep: Qt.tint(surfaceBase, Qt.rgba(0, 0, 0, 0.2))
+    // Every surface is the background with a little of the text color mixed in, so a theme keeps the same steps.
+    function surfaceShade(amount) { return Qt.tint(surfaceBase, Qt.alpha(textPrimary, amount)) }
+    readonly property color surfaceSidebar: surfaceShade(0.02)
+    readonly property color surfaceDock: surfaceShade(0.03)
+    readonly property color surfaceCard: surfaceShade(0.045)
+    readonly property color surfaceCardHover: surfaceShade(0.087)
+    readonly property color surfaceElevated: surfaceShade(0.112)
+    readonly property color surfaceInput: surfaceShade(0.052)
+    readonly property color surfaceTag: surfaceCardHover
     // Behind a selected chip or a main action button, which also get an accent border and accent text.
-    readonly property color surfaceSelected: "#262320"
+    readonly property color surfaceSelected: surfaceShade(0.103)
+    // Text over cover art, so it doesn't follow the theme.
     readonly property color silver: "#C4C4C0"
-    readonly property color silverDim: "#918E88"
-    readonly property color textPrimary: "#F5F0EC"
-    readonly property color textSecondary: "#A8A49E"
+    readonly property color silverDim: Qt.tint(surfaceBase, Qt.alpha(textSecondary, 0.85))
+    readonly property color textPrimary: theme.text
+    readonly property color textSecondary: theme.textMuted
     readonly property color danger: "#FF6B6B"
     readonly property color success: "#34D399"
     readonly property color windowCloseHover: "#E53935"
-    readonly property color borderSubtle: Qt.rgba(1, 1, 1, 0.05)
-    readonly property color borderVariant: Qt.rgba(1, 1, 1, 0.09)
+    readonly property color borderSubtle: Qt.alpha(textPrimary, 0.05)
+    readonly property color borderVariant: Qt.alpha(textPrimary, 0.09)
     readonly property color borderCard: borderVariant
 
     readonly property string displayFont: (typeof displayFontFamily !== "undefined" && displayFontFamily.length > 0) ? displayFontFamily : "Space Grotesk"
@@ -633,6 +635,7 @@ ApplicationWindow {
         lyricsFontSize = appSettings.value("lyrics/fontSize", 28)
         accentName = appSettings.value("ui/accentName", "recordRed")
         customAccentColor = appSettings.value("ui/customAccentColor", accentPresets[0].base)
+        theme = storedTheme(appSettings.value("ui/theme", ""))
         albumArtRadius = appSettings.value("ui/albumArtRadius", 16)
         nowPlayingBackdrop = appSettings.value("player/nowPlayingBackdrop", "tinted")
         showRemainingTime = appSettings.value("player/showRemainingTime", true)
@@ -1396,6 +1399,7 @@ ApplicationWindow {
     }
     onLyricsFontSizeChanged: saveSetting("lyrics/fontSize", lyricsFontSize)
     onAccentNameChanged: saveSetting("ui/accentName", accentName)
+    onThemeChanged: saveSetting("ui/theme", JSON.stringify(theme))
     onCustomAccentColorChanged: saveSetting("ui/customAccentColor", customAccentColor)
     onAlbumArtRadiusChanged: saveSetting("ui/albumArtRadius", albumArtRadius)
     onNowPlayingBackdropChanged: saveSetting("player/nowPlayingBackdrop", nowPlayingBackdrop)
@@ -1625,6 +1629,7 @@ ApplicationWindow {
             "ui/sidebarCollapsed": sidebarCollapsed,
             "ui/accentName": accentName,
             "ui/customAccentColor": customAccentColor,
+            "ui/theme": JSON.stringify(theme),
             "ui/albumArtRadius": albumArtRadius,
             "search/formatFilter": activeFormatFilter,
             "radio/activeTag": radioActiveTag,
@@ -1694,6 +1699,36 @@ ApplicationWindow {
             "library/playlists": JSON.stringify(playlists)
         })
         appSettings.sync()
+    }
+
+    // Settings and backups only hold themes this app wrote, so one that can't be read falls back to the built-in colors.
+    function storedTheme(text) {
+        if (!text) return defaultTheme
+        try {
+            return ThemeColors.parse(text)
+        } catch (error) {
+            console.warn("Ignoring the saved theme:", error.message)
+            return defaultTheme
+        }
+    }
+
+    function importTheme(fileUrl) {
+        try {
+            const imported = ThemeColors.parse(appSettings.readTextFile(fileUrl))
+            theme = { background: imported.background, text: imported.text, textMuted: imported.textMuted }
+            if (imported.accent) {
+                customAccentColor = imported.accent
+                accentName = "custom"
+            }
+            themeStatus = "Theme imported"
+        } catch (error) {
+            themeStatus = error.message
+        }
+    }
+
+    function exportTheme(fileUrl) {
+        const file = Object.assign({ accent: recordRed.toString().toUpperCase() }, theme)
+        themeStatus = appSettings.exportTextFile(fileUrl, JSON.stringify(file, null, 2)) ? "Theme exported" : "Couldn't save the theme file"
     }
 
     function setBackupStatus(message) {
@@ -2780,6 +2815,7 @@ ApplicationWindow {
                 timestamp: new Date().toISOString(),
                 accentName: window.accentName,
                 customAccentColor: window.customAccentColor,
+                theme: window.theme,
                 albumArtRadius: window.albumArtRadius,
                 nowPlayingBackdrop: window.nowPlayingBackdrop,
                 showRemainingTime: window.showRemainingTime,
@@ -2843,6 +2879,7 @@ ApplicationWindow {
                     const data = JSON.parse(text)
                     if (data.accentName) { window.accentName = data.accentName; appSettings.setValue("ui/accentName", data.accentName) }
                     if (data.customAccentColor) { window.customAccentColor = data.customAccentColor; appSettings.setValue("ui/customAccentColor", data.customAccentColor) }
+                    if (data.theme) window.theme = storedTheme(JSON.stringify(data.theme))
                     if (data.albumArtRadius !== undefined) { window.albumArtRadius = data.albumArtRadius; appSettings.setValue("ui/albumArtRadius", data.albumArtRadius) }
                     if (data.nowPlayingBackdrop) { window.nowPlayingBackdrop = data.nowPlayingBackdrop; appSettings.setValue("player/nowPlayingBackdrop", data.nowPlayingBackdrop) }
                     if (data.showRemainingTime !== undefined) { window.showRemainingTime = data.showRemainingTime; appSettings.setValue("player/showRemainingTime", data.showRemainingTime) }
@@ -2913,6 +2950,23 @@ ApplicationWindow {
                 setBackupStatus("Failed to read backup file")
             }
         }
+    }
+
+    FileDialog {
+        id: themeImportDialog
+        title: "Import Theme"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["Theme files (*.json)", "All files (*.*)"]
+        onAccepted: importTheme(selectedFile)
+    }
+
+    FileDialog {
+        id: themeExportDialog
+        title: "Export Theme"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["Theme files (*.json)"]
+        defaultSuffix: "json"
+        onAccepted: exportTheme(selectedFile)
     }
 
     FileDialog {
@@ -3920,6 +3974,8 @@ ApplicationWindow {
                                 showFormatBadges: window.showFormatBadges
                                 accentName: window.accentName
                                 customAccentColor: window.customAccentColor
+                                theme: window.theme
+                                themeStatus: window.themeStatus
                                 albumArtRadius: window.albumArtRadius
                                 nowPlayingBackdrop: window.nowPlayingBackdrop
                                 showRemainingTime: window.showRemainingTime
@@ -3984,6 +4040,9 @@ ApplicationWindow {
                                     window.customAccentColor = hex
                                     window.accentName = "custom"
                                 }
+                                onThemeSelected: value => window.theme = value
+                                onThemeImportRequested: themeImportDialog.open()
+                                onThemeExportRequested: themeExportDialog.open()
                                 onAlbumArtRadiusSelected: value => window.albumArtRadius = value
                                 onNowPlayingBackdropSelected: value => window.nowPlayingBackdrop = value
                                 onShowRemainingTimeSelected: value => window.showRemainingTime = value
@@ -5320,6 +5379,8 @@ ApplicationWindow {
         id: setupSheet
         appWindow: window
         onAddFolderRequested: folderDialog.open()
+        onThemeImportRequested: themeImportDialog.open()
+        onThemeExportRequested: themeExportDialog.open()
         onFinished: appSettings.setValue("ui/setupDone", true)
     }
 

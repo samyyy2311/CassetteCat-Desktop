@@ -1,17 +1,36 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "ThemeColors.js" as ThemeColors
 
 ColumnLayout {
     id: root
     property string accentName
     property string customAccentColor
+    property var theme
+    property string themeStatus
     property int albumArtRadius: 16
     property string nowPlayingBackdrop: "tinted"
     property bool showRemainingTime: true
 
+    readonly property bool isDefaultTheme: ["background", "text", "textMuted"].every(key => theme[key] === defaultTheme[key])
+    // Measured on the lightest surface, where light text has the least contrast.
+    readonly property real themeContrast: Math.min(ThemeColors.contrast(textPrimary, surfaceElevated),
+                                                   ThemeColors.contrast(textSecondary, surfaceElevated),
+                                                   ThemeColors.contrast(silverDim, surfaceElevated))
+    readonly property string themeWarning: {
+        if (ThemeColors.luminance(surfaceBase) > ThemeColors.luminance(textPrimary))
+            return "Light backgrounds aren't supported yet, so parts of the app will be hard to read"
+        if (themeContrast < 4.5)
+            return "Some text is hard to read with these colours (" + themeContrast.toFixed(1) + ":1, it needs 4.5:1)"
+        return ""
+    }
+
     signal accentSelected(string value)
     signal customAccentSelected(string hexColor)
+    signal themeSelected(var theme)
+    signal themeImportRequested()
+    signal themeExportRequested()
     signal albumArtRadiusSelected(int value)
     signal nowPlayingBackdropSelected(string value)
     signal showRemainingTimeSelected(bool value)
@@ -36,93 +55,88 @@ ColumnLayout {
 
             Repeater {
                 model: accentPresets
-                delegate: Column {
-                    spacing: 6
-
-                    Rectangle {
-                        width: 36
-                        height: 36
-                        radius: 18
-                        color: modelData.base
-                        border.width: root.accentName === modelData.id ? 2.5 : 1
-                        border.color: root.accentName === modelData.id ? textPrimary : borderSubtle
-                        scale: swatchMouse.pressed ? 0.92 : (swatchMouse.containsMouse ? 1.08 : 1.0)
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                        Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
-
-                        LucideIcon {
-                            visible: root.accentName === modelData.id
-                            anchors.centerIn: parent
-                            width: 16
-                            height: 16
-                            icon: "check"
-                            color: "#FFFFFF"
-                        }
-
-                        MouseArea {
-                            id: swatchMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.accentSelected(modelData.id)
-                        }
-                    }
-
-                    Label {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: modelData.label
-                        color: root.accentName === modelData.id ? textPrimary : textSecondary
-                        font.family: displayFont
-                        font.pixelSize: 10
-                        font.weight: root.accentName === modelData.id ? Font.Bold : Font.Medium
-                    }
+                delegate: ColorSwatch {
+                    required property var modelData
+                    color: modelData.base
+                    label: modelData.label
+                    selected: root.accentName === modelData.id
+                    icon: selected ? "check" : ""
+                    onClicked: root.accentSelected(modelData.id)
                 }
             }
 
-            Column {
-                spacing: 6
+            ColorSwatch {
+                color: selected ? root.customAccentColor : surfaceElevated
+                label: "Custom"
+                selected: root.accentName === "custom"
+                icon: selected ? "check" : "sliders-horizontal"
+                onClicked: colorPicker.open()
+            }
+        }
+    }
 
-                Rectangle {
-                    width: 36
-                    height: 36
-                    radius: 18
-                    color: root.accentName === "custom" ? root.customAccentColor : surfaceElevated
-                    border.width: root.accentName === "custom" ? 2.5 : 1
-                    border.color: root.accentName === "custom" ? textPrimary : borderSubtle
-                    scale: customMouse.pressed ? 0.92 : (customMouse.containsMouse ? 1.08 : 1.0)
+    SettingCard {
+        SettingRow {
+            iconName: "eye"
+            title: "Theme Colours"
+            subtitle: root.themeStatus.length > 0
+                ? root.themeStatus
+                : "Cards, menus and fields are shaded from the background. Export a theme to share it with your accent"
 
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+            SettingButton {
+                text: "Import"
+                onClicked: root.themeImportRequested()
+            }
 
-                    LucideIcon {
-                        anchors.centerIn: parent
-                        width: 16
-                        height: 16
-                        icon: root.accentName === "custom" ? "check" : "sliders-horizontal"
-                        color: "#FFFFFF"
+            SettingButton {
+                text: "Export"
+                onClicked: root.themeExportRequested()
+            }
+
+            SettingButton {
+                visible: !root.isDefaultTheme
+                text: "Reset"
+                iconName: "rotate-ccw"
+                onClicked: root.themeSelected(defaultTheme)
+            }
+        }
+
+        Flow {
+            Layout.fillWidth: true
+            Layout.topMargin: 4
+            Layout.bottomMargin: 8
+            spacing: 14
+
+            Repeater {
+                model: [
+                    { key: "background", label: "Background" },
+                    { key: "text", label: "Text" },
+                    { key: "textMuted", label: "Muted Text" }
+                ]
+                delegate: ColorSwatch {
+                    required property var modelData
+                    color: root.theme[modelData.key]
+                    label: modelData.label
+                    onClicked: {
+                        themePicker.key = modelData.key
+                        themePicker.title = modelData.label + " Colour"
+                        themePicker.currentColor = root.theme[modelData.key]
+                        themePicker.open()
                     }
-
-                    MouseArea {
-                        id: customMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: colorPicker.open()
-                    }
-                }
-
-                Label {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Custom"
-                    color: root.accentName === "custom" ? textPrimary : textSecondary
-                    font.family: displayFont
-                    font.pixelSize: 10
-                    font.weight: Font.Medium
                 }
             }
         }
 
+        Label {
+            visible: root.themeWarning.length > 0
+            Layout.fillWidth: true
+            Layout.bottomMargin: 8
+            text: root.themeWarning
+            color: danger
+            font.family: bodyFont
+            font.pixelSize: 12
+            wrapMode: Text.WordWrap
+        }
     }
 
     SectionLabel { text: "Cover Art & Backdrop" }
@@ -179,6 +193,13 @@ ColumnLayout {
                 onOptionSelected: val => root.showRemainingTimeSelected(Boolean(val))
             }
         }
+    }
+
+    SettingColorPicker {
+        id: themePicker
+        property string key
+        presets: []
+        onColorApplied: hex => root.themeSelected(Object.assign({}, root.theme, { [key]: hex.toUpperCase() }))
     }
 
     SettingColorPicker {

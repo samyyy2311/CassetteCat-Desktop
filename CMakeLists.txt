@@ -121,6 +121,7 @@ qt_add_qml_module(CassetteCat
         qml/SongRow.qml
         qml/TrackTitles.js
         qml/LyricsText.js
+        qml/ThemeColors.js
         qml/AutoEqProfiles.js
         qml/SongCard.qml
         qml/ArtistCard.qml
@@ -132,6 +133,7 @@ qt_add_qml_module(CassetteCat
         qml/AppGridView.qml
         qml/AppListView.qml
         qml/CardBase.qml
+        qml/ColorSwatch.qml
         qml/EnterAnimation.qml
         qml/CategoryCard.qml
         qml/HomeSectionHeader.qml
@@ -498,6 +500,7 @@ if(CASSETTECAT_BUILD_TESTING AND BUILD_TESTING)
     add_test(NAME catalog-tracklist COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_catalogtracklist.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME track-titles COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_tracktitles.qml")
     add_test(NAME lyrics-text COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_lyricstext.qml")
+    add_test(NAME theme-colors COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_themecolors.qml")
     add_test(NAME queue-model COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_queuemodel.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME setting-choice-group COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_settingchoicegroup.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
     set_tests_properties(library-scan streaming-protocol service-cancellation audio-meter catalog-tracklist setting-choice-group PROPERTIES

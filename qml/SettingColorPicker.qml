@@ -5,6 +5,12 @@ import QtQuick.Layouts
 AppDialog {
     id: root
     property string currentColor
+    property string title: "Custom Accent Colour"
+    property var presets: [
+        "#8B5CF6", "#6366F1", "#3B82F6", "#06B6D4",
+        "#10B981", "#84CC16", "#EAB308", "#F97316",
+        "#EF4444", "#EC4899", "#D946EF", "#14B8A6"
+    ]
     signal colorApplied(string hexColor)
 
     function normalizeHex(h) {
@@ -18,6 +24,8 @@ AppDialog {
     }
 
     maxWidth: 380
+    // Typing replaces the field's binding, so each opening starts again from the current color.
+    onAboutToShow: hexInput.text = currentColor
     padding: 22
 
     ColumnLayout {
@@ -25,7 +33,7 @@ AppDialog {
         spacing: 14
 
         Label {
-            text: "Custom Accent Colour"
+            text: root.title
             color: textPrimary
             font.family: displayFont
             font.pixelSize: 17
@@ -33,7 +41,7 @@ AppDialog {
         }
 
         Label {
-            text: "Pick a color swatch or enter a hex code"
+            text: root.presets.length > 0 ? "Pick a color swatch or enter a hex code" : "Enter a hex code"
             color: textSecondary
             font.family: bodyFont
             font.pixelSize: 12
@@ -61,6 +69,7 @@ AppDialog {
         }
 
         Label {
+            visible: root.presets.length > 0
             text: "PRESET PALETTE"
             color: silverDim
             font.family: monoFont
@@ -71,15 +80,12 @@ AppDialog {
         }
 
         Flow {
+            visible: root.presets.length > 0
             Layout.fillWidth: true
             spacing: 8
 
             Repeater {
-                model: [
-                    "#8B5CF6", "#6366F1", "#3B82F6", "#06B6D4",
-                    "#10B981", "#84CC16", "#EAB308", "#F97316",
-                    "#EF4444", "#EC4899", "#D946EF", "#14B8A6"
-                ]
+                model: root.presets
                 delegate: Rectangle {
                     width: 30
                     height: 30

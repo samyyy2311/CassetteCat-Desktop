@@ -25,6 +25,7 @@ Rectangle {
     Accessible.role: Accessible.Button
     Accessible.name: label
     Accessible.checked: selected
+    Accessible.onPressAction: root.clicked()
 
     Behavior on color { ColorAnimation { duration: 120 } }
     Behavior on border.color { ColorAnimation { duration: 120 } }

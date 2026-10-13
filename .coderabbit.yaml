@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-GB
+tone_instructions: Be brief and specific. Point out real bugs, regressions and simpler ways to do the same thing. Skip praise, style opinions and anything already covered by clang-format or the linters.
+knowledge_base:
+  code_guidelines:
+    filePatterns: ["AGENTS.md"]
+reviews:
+  profile: chill
+  # Pull request descriptions are written by hand, so the summary stays in CodeRabbit's own comment.
+  high_level_summary_in_walkthrough: true
+  estimate_code_review_effort: false
+  in_progress_fortune: false
+  suggested_reviewers: false
+  pre_merge_checks:
+    # Comments are only written where the reason isn't obvious, so docstring coverage isn't a goal.
+    docstrings:
+      mode: "off"
+    description:
+      mode: "off"
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
+  path_instructions:
+    - path: "**/*"
+      instructions: >-
+        Review against AGENTS.md. The smallest correct change wins: flag duplicated logic, unused code, new
+        abstractions with one use, new dependencies and speculative fallbacks. Don't ask for comments or
+        docstrings that restate the code; a comment should explain a reason that isn't obvious. Flag comments
+        that narrate the code or mention AI tools.
+    - path: "src/**"
+      instructions: >-
+        Qt 6 C++20. Prefer Qt and the standard library over new code or dependencies. Check object lifetimes and
+        thread affinity: AudioPipeline's sink lives on its own audio thread, and anything QML binds to must
+        outlive the QML engine. Network replies go through trackReply() and must check onlineEnabled() and the
+        relevant serviceEnabled() before using results. Log through qInfo/qWarning with the existing [TAG]
+        prefixes and never log secrets; CredentialVault::redactSecrets runs on every log line. Known false
+        positives: QRandomGenerator::system() doesn't run a program, and opening Qt's QIODevice isn't file access.
+    - path: "qml/**"
+      instructions: >-
+        Reuse the existing components (ButtonBase, PressDepthIconButton, TransportButton, DialogHeader,
+        SettingButton, SettingRow, SettingCard, AppToolTip, LucideIcon, Cover) instead of new near-copies. Use the
+        theme properties (recordRed, textPrimary, textSecondary, displayFont, bodyFont) rather than literal
+        colours or fonts. Icons come from the bundled Lucide set and must be listed in CMakeLists.txt. No glows,
+        gradients or tinted fills for emphasis; selection uses a border highlight. Labels use Title Case where the
+        rest of the app does. Interactive items need keyboard focus, Enter/Space activation and an Accessible
+        name.
+    - path: "tests/**"
+      instructions: >-
+        Tests should check behaviour a person would notice, using real logic rather than mocks. Pure queue and
+        ordering logic lives in .js libraries so qmltestrunner can test it directly.
+    - path: ".github/workflows/**"
+      instructions: >-
+        Actions are pinned to a full commit SHA with the version in a comment. Keep permissions to the least each
+        job needs, set persist-credentials: false on checkout, and pass untrusted values through env rather than
+        inline ${{ }} in run steps. `id-token: write` is a permission, not a hard-coded token.
+    - path: "**/*.md"
+      instructions: >-
+        Plain, direct language for people using or contributing to the app. No marketing tone, emoji headings or
+        badges beyond the existing ones.

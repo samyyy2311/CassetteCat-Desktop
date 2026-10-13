@@ -17,21 +17,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest"><img src="https://img.shields.io/github/v/release/samyyy2311/CassetteCat-Desktop?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=&logo=git&logoColor=E55B3C" alt="Latest release" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/GPL--3.0--or--later-2A2A2A?style=flat-square&logo=gnu&logoColor=white" alt="GPL-3.0-or-later" /></a>
-  <img src="https://img.shields.io/badge/Windows_%C2%B7_macOS_%C2%B7_Linux-2A2A2A?style=flat-square" alt="Windows, macOS and Linux" />
-  <a href="https://www.qt.io"><img src="https://img.shields.io/badge/Qt_6-2A2A2A?style=flat-square&logo=qt&logoColor=41CD52" alt="Qt 6" /></a>
-  <a href="https://isocpp.org"><img src="https://img.shields.io/badge/C%2B%2B20-2A2A2A?style=flat-square&logo=cplusplus&logoColor=659AD2" alt="C++20" /></a>
-  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases"><img src="https://img.shields.io/github/downloads/samyyy2311/CassetteCat-Desktop/total?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=downloads&logo=github&logoColor=white" alt="GitHub downloads" /></a>
-  <br />
-  <a href="https://alternativeto.net/software/cassettecat/about/"><img src="https://img.shields.io/badge/AlternativeTo-2A2A2A?style=flat-square&logo=alternativeto&logoColor=white" alt="AlternativeTo" /></a>
-  <a href="https://coderabbit.ai"><img src="https://img.shields.io/coderabbit/prs/github/samyyy2311/CassetteCat-Desktop?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=CodeRabbit&logo=coderabbit&logoColor=FF570A" alt="CodeRabbit pull request reviews" /></a>
-  <a href="https://app.codacy.com/gh/samyyy2311/CassetteCat-Desktop/dashboard"><img src="https://img.shields.io/codacy/grade/775f07dda4494cb98d88f1c91cd179f0?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=Codacy&logo=codacy&logoColor=white" alt="Codacy code quality" /></a>
-  <a href="https://www.codefactor.io/repository/github/samyyy2311/cassettecat-desktop"><img src="https://img.shields.io/codefactor/grade/github/samyyy2311/CassetteCat-Desktop?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=CodeFactor&logo=codefactor&logoColor=F44A6A" alt="CodeFactor grade" /></a>
-  <a href="https://www.bestpractices.dev/projects/15328"><img src="https://img.shields.io/cii/level/15328?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=OpenSSF&logo=linuxfoundation&logoColor=white" alt="OpenSSF Best Practices" /></a>
-</p>
-
-<p align="center">
   <img src="assets/screenshots/framed/now-playing.png" width="88%" alt="CassetteCat's Now Playing screen with large album art" />
 </p>
 

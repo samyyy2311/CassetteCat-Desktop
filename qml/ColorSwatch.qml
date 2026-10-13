@@ -13,6 +13,7 @@ Column {
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
     Accessible.name: label
+    Accessible.selected: root.selected
     Accessible.onPressAction: root.clicked()
     Keys.onReturnPressed: root.clicked()
     Keys.onEnterPressed: root.clicked()
@@ -36,7 +37,7 @@ Column {
             width: 16
             height: 16
             icon: root.icon
-            color: "#FFFFFF"
+            color: textPrimary
         }
 
         MouseArea {

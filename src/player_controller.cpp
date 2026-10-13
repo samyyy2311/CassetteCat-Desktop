@@ -52,8 +52,9 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     }
     applyEffectiveVolume();
     connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged, this, [this] {
+        // applyAudioDevice() already announces audioOutputsChanged(), since the "unavailable" entry in
+        // audioOutputs() can change along with the chosen device's availability.
         applyAudioDevice();
-        emit audioOutputsChanged();
     });
 
     m_fadingPlayer = new QMediaPlayer(this);
@@ -235,32 +236,53 @@ QVariantList PlayerController::audioOutputs() const {
     defaultDevice.insert(QStringLiteral("label"), QStringLiteral("System Default"));
     outputs.append(defaultDevice);
 
+    bool chosenFound = m_chosenDeviceId.isEmpty();
     for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
         QVariantMap output;
         output.insert(QStringLiteral("value"), QString::fromLatin1(device.id().toHex()));
         output.insert(QStringLiteral("label"), device.description());
         outputs.append(output);
+        if (device.id() == m_chosenDeviceId)
+            chosenFound = true;
+    }
+    if (!chosenFound) {
+        // The chosen device isn't connected right now; keep it listed as selected, with its last known name,
+        // so the choice stays visible and identifiable while playback falls back to the system default.
+        QVariantMap unavailable;
+        unavailable.insert(QStringLiteral("value"), QString::fromLatin1(m_chosenDeviceId.toHex()));
+        const QString label = m_chosenDeviceLabel.isEmpty() ? QStringLiteral("Previous device") : m_chosenDeviceLabel;
+        unavailable.insert(QStringLiteral("label"), label + QStringLiteral(" (unavailable, using System Default)"));
+        outputs.append(unavailable);
     }
     return outputs;
 }
 
 QString PlayerController::audioDeviceId() const {
-    return m_pipeline->device().id() == m_chosenDeviceId ? QString::fromLatin1(m_chosenDeviceId.toHex()) : QString();
+    // Returned regardless of whether it's the pipeline's active device, so the chosen output stays identifiable
+    // in the UI while it's unavailable and playback has fallen back to the system default.
+    return QString::fromLatin1(m_chosenDeviceId.toHex());
 }
 
 void PlayerController::setAudioDevice(const QString &id) {
     m_chosenDeviceId = QByteArray::fromHex(id.toLatin1());
+    if (m_chosenDeviceId.isEmpty())
+        m_chosenDeviceLabel.clear();
     applyAudioDevice();
 }
 
 void PlayerController::applyAudioDevice() {
     // A chosen device that is unplugged plays on the system default until it comes back.
     QAudioDevice device = QMediaDevices::defaultAudioOutput();
-    for (const QAudioDevice &output : QMediaDevices::audioOutputs())
-        if (output.id() == m_chosenDeviceId)
+    for (const QAudioDevice &output : QMediaDevices::audioOutputs()) {
+        if (output.id() == m_chosenDeviceId) {
             device = output;
+            m_chosenDeviceLabel = output.description();
+        }
+    }
     m_pipeline->setDevice(device);
     emit audioDeviceChanged();
+    // The chosen device's availability can change the "unavailable" entry in audioOutputs().
+    emit audioOutputsChanged();
 }
 QString PlayerController::error() const {
     return m_error;

@@ -20,6 +20,9 @@ constexpr qint64 kPrimeFrames = kRate * 3 / 20;
 constexpr qint64 kMaxQueuedFrames = kRate / 2;
 // Without a working device nothing is played, so queues are capped instead of growing.
 constexpr qint64 kMaxBufferedFrames = kRate * 2;
+// Caps automatic reopen attempts after the sink stops with an error, so a persistently broken device doesn't
+// reopen forever.
+constexpr int kMaxRecoveryAttempts = 3;
 } // namespace
 
 // The device reads its source on the thread the source lives on, so the mix is read through this device, which
@@ -158,7 +161,12 @@ QAudioDevice AudioPipeline::device() const {
 
 void AudioPipeline::restartSink() {
     QMetaObject::invokeMethod(
-        &m_audioContext, [this, device = m_device, paused = m_paused] { openSink(device, paused); },
+        &m_audioContext,
+        [this, device = m_device, paused = m_paused.load()] {
+            // An explicit restart (a new device chosen, or construction) is not an automatic recovery attempt.
+            m_recoveryAttempts = 0;
+            openSink(device, paused);
+        },
         Qt::BlockingQueuedConnection);
 }
 
@@ -168,9 +176,32 @@ void AudioPipeline::openSink(const QAudioDevice &device, bool paused) {
         m_feed = new Feed(this);
     m_sink = new QAudioSink(device, format());
     m_sink->setBufferSize(format().bytesForDuration(80'000));
-    connect(m_sink, &QAudioSink::stateChanged, m_sink, [sink = m_sink](QAudio::State state) {
+    connect(m_sink, &QAudioSink::stateChanged, m_sink, [this, sink = m_sink](QAudio::State state) {
         if (sink->error() != QAudio::NoError)
             qWarning().noquote() << "[AUDIO] output state=" << state << "error=" << sink->error();
+        if (state == QAudio::ActiveState) {
+            m_recoveryAttempts = 0;
+            return;
+        }
+        // A device that disappears mid-playback, such as Bluetooth headphones going out of range, leaves the
+        // sink stopped with an error instead of suspended. openSink() deletes m_sink, so it can't be called
+        // from here directly while this callback is still running on it; queue the reopen instead.
+        if (state != QAudio::StoppedState || sink->error() == QAudio::NoError || m_paused)
+            return;
+        if (m_recoveryAttempts >= kMaxRecoveryAttempts) {
+            qWarning() << "[AUDIO] output kept failing; giving up on automatic recovery";
+            return;
+        }
+        ++m_recoveryAttempts;
+        QMetaObject::invokeMethod(
+            &m_audioContext,
+            [this, sink, device = m_device] {
+                if (sink != m_sink || m_paused)
+                    return;
+                qWarning() << "[AUDIO] output stopped with error; reopening it";
+                openSink(device, false);
+            },
+            Qt::QueuedConnection);
     });
     m_sink->start(m_feed);
     if (paused)
@@ -186,7 +217,8 @@ void AudioPipeline::setPaused(bool paused) {
             m_sink->suspend();
         } else if (m_sink->state() == QAudio::StoppedState) {
             // A device lost while paused, such as headphones that moved to the phone, leaves the output stopped,
-            // and resuming it would play nothing.
+            // and resuming it would play nothing. This is an explicit restart, not an automatic recovery attempt.
+            m_recoveryAttempts = 0;
             qWarning() << "[AUDIO] output had stopped; reopening it";
             openSink(device, false);
         } else {

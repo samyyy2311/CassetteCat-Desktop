@@ -187,7 +187,7 @@ void ServicesController::searchDeezerCovers(quint64 requestToken, const QString 
 
                 QVariantList found = results;
                 QSet<QString> seenUrls = seen;
-                if (deezerReply->error() == QNetworkReply::NoError)
+                if (serviceEnabled("deezer") && deezerReply->error() == QNetworkReply::NoError)
                     found += deezerCovers(
                         QJsonDocument::fromJson(deezerReply->readAll()).object().value("data").toArray(), seenUrls);
                 searchArchiveCovers(requestToken, album, artist, found, seenUrls);
@@ -249,7 +249,7 @@ void ServicesController::searchArchiveCovers(quint64 requestToken, const QString
 
                     QVariantList found = results;
                     QSet<QString> seenUrls = seen;
-                    if (mbReply->error() == QNetworkReply::NoError)
+                    if (serviceEnabled("archive") && mbReply->error() == QNetworkReply::NoError)
                         found += archiveCovers(
                             QJsonDocument::fromJson(mbReply->readAll()).object().value("releases").toArray(), seenUrls);
                     emit coverSearchResultsReady(found);

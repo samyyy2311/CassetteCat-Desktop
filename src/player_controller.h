@@ -139,6 +139,8 @@ class PlayerController final : public QObject {
     QMediaDevices *m_mediaDevices = nullptr;
     // Empty follows the system default.
     QByteArray m_chosenDeviceId;
+    // The chosen device's last known name, kept so it stays readable in the UI while unavailable.
+    QString m_chosenDeviceLabel;
     bool m_meterEnabled = false;
     QVariantMap m_equalizer;
     QMediaPlayer *m_player = nullptr;

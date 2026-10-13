@@ -172,50 +172,36 @@ If CassetteCat is useful to you, you can support its development:
 
 ### Services & Data
 
-- <a href="https://lrclib.net"><img src="https://img.shields.io/badge/LRCLIB-38BDF8?style=flat-square" alt="LRCLIB" /></a>
-  Synced and plain lyrics.
-- <a href="https://coverartarchive.org"><img src="https://img.shields.io/badge/Cover%20Art%20Archive-20656C?style=flat-square" alt="Cover Art Archive" /></a>
-  <a href="https://musicbrainz.org"><img src="https://img.shields.io/badge/MusicBrainz-EB743B?style=flat-square&logo=musicbrainz&logoColor=white" alt="MusicBrainz" /></a>
-  Album artwork and metadata.
-- <a href="https://www.radio-browser.info"><img src="https://img.shields.io/badge/Radio%20Browser-1C1917?style=flat-square" alt="Radio Browser" /></a>
-  Internet radio stations.
-- <a href="https://www.last.fm"><img src="https://img.shields.io/badge/Last.fm-D51007?style=flat-square&logo=lastdotfm&logoColor=white" alt="Last.fm" /></a>
-  <a href="https://listenbrainz.org"><img src="https://img.shields.io/badge/ListenBrainz-EB743B?style=flat-square&logo=listenbrainz&logoColor=white" alt="ListenBrainz" /></a>
-  <a href="https://libre.fm"><img src="https://img.shields.io/badge/Libre.fm-990000?style=flat-square&logo=gnu&logoColor=white" alt="Libre.fm" /></a>
-  Scrobbling.
-- <a href="https://wikipedia.org"><img src="https://img.shields.io/badge/Wikipedia-000000?style=flat-square&logo=wikipedia&logoColor=white" alt="Wikipedia" /></a>
-  Artist biographies (CC BY-SA 4.0).
-- <a href="https://deezer.com"><img src="https://img.shields.io/badge/Deezer-FEAA2D?style=flat-square&logo=deezer&logoColor=white" alt="Deezer" /></a>
-  <a href="https://theaudiodb.com"><img src="https://img.shields.io/badge/TheAudioDB-6599CD?style=flat-square" alt="TheAudioDB" /></a>
-  Artist images.
-- <a href="https://github.com"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub" /></a>
-  Update checks.
+| Project | Used for |
+| :--- | :--- |
+| [LRCLIB](https://lrclib.net) | Synced and plain lyrics |
+| [Cover Art Archive](https://coverartarchive.org) and [MusicBrainz](https://musicbrainz.org) | Album artwork and metadata |
+| [Radio Browser](https://www.radio-browser.info) | Internet radio stations |
+| [Last.fm](https://www.last.fm), [ListenBrainz](https://listenbrainz.org) and [Libre.fm](https://libre.fm) | Scrobbling |
+| [Wikipedia](https://wikipedia.org) | Artist biographies (CC BY-SA 4.0) |
+| [Deezer](https://deezer.com) and [TheAudioDB](https://theaudiodb.com) | Artist images |
+| [GitHub](https://github.com) | Update checks |
 
 ### Libraries & Design
 
-- <a href="https://www.qt.io"><img src="https://img.shields.io/badge/Qt%206-41CD52?style=flat-square&logo=qt&logoColor=white" alt="Qt 6" /></a>
-  Interface and playback.
-- <a href="https://taglib.org"><img src="https://img.shields.io/badge/TagLib-1C1917?style=flat-square" alt="TagLib" /></a>
-  Reading and writing tags and artwork.
-- <a href="https://www.openssl.org"><img src="https://img.shields.io/badge/OpenSSL-721412?style=flat-square&logo=openssl&logoColor=white" alt="OpenSSL" /></a>
-  Encryption for the phone remote.
-- <a href="https://github.com/jaakkopasanen/AutoEq"><img src="https://img.shields.io/badge/AutoEq-1C1917?style=flat-square" alt="AutoEq" /></a>
-  Headphone EQ profiles by Jaakko Pasanen.
-- <a href="https://lucide.dev"><img src="https://img.shields.io/badge/Lucide-F56565?style=flat-square&logo=lucide&logoColor=white" alt="Lucide" /></a>
-  <a href="https://simpleicons.org"><img src="https://img.shields.io/badge/Simple%20Icons-111111?style=flat-square&logo=simpleicons&logoColor=white" alt="Simple Icons" /></a>
-  Icons.
-- <a href="https://github.com/IBM/plex"><img src="https://img.shields.io/badge/IBM%20Plex-0F62FE?style=flat-square&logo=ibm&logoColor=white" alt="IBM Plex" /></a>
-  <a href="https://github.com/floriankarsten/space-grotesk"><img src="https://img.shields.io/badge/Space%20Grotesk-242424?style=flat-square" alt="Space Grotesk" /></a>
-  Typefaces (OFL 1.1).
+| Project | Used for |
+| :--- | :--- |
+| [Qt 6](https://www.qt.io) | Interface and playback |
+| [TagLib](https://taglib.org) | Reading and writing tags and artwork |
+| [OpenSSL](https://www.openssl.org) | Encryption for the phone remote |
+| [AutoEq](https://github.com/jaakkopasanen/AutoEq) | Headphone EQ profiles by Jaakko Pasanen |
+| [Lucide](https://lucide.dev) and [Simple Icons](https://simpleicons.org) | Icons |
+| [IBM Plex](https://github.com/IBM/plex) and [Space Grotesk](https://github.com/floriankarsten/space-grotesk) | Typefaces (OFL 1.1) |
 
 ---
 
 ## Acknowledgements
 
 <p align="center">
-  <a href="https://coderabbit.ai">
-    <img src="assets/coderabbit_logo.svg" width="60" height="60" alt="CodeRabbit logo" />
-  </a>
+  <a href="https://coderabbit.ai"><img src="assets/coderabbit_logo.svg" width="56" height="56" alt="CodeRabbit" /></a>
+  <a href="https://www.codacy.com"><img src="assets/codacy_logo.svg" width="56" height="56" alt="Codacy" /></a>
+  <a href="https://www.codefactor.io"><img src="assets/codefactor_logo.svg" width="56" height="56" alt="CodeFactor" /></a>
+  <a href="https://www.mintlify.com"><img src="assets/mintlify_logo.svg" width="56" height="56" alt="Mintlify" /></a>
 </p>
 
 <p align="center">

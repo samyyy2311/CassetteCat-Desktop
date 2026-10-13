@@ -4,6 +4,7 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Effects
 import "LyricsText.js" as LyricsText
+import "QueueOrder.js" as QueueOrder
 
 ApplicationWindow {
     id: window
@@ -993,9 +994,7 @@ ApplicationWindow {
         const insertAt = currentIdx >= 0 ? currentIdx + 1 : 0
         const filtered = playbackQueue.filter(candidate => trackIdentity(candidate) !== trackIdentity(track))
         playbackQueue = filtered.slice(0, insertAt).concat([track]).concat(filtered.slice(insertAt))
-        if (!originalPlaybackQueue.some(candidate => trackIdentity(candidate) === trackIdentity(track))) {
-            originalPlaybackQueue = originalPlaybackQueue.concat([track])
-        }
+        originalPlaybackQueue = QueueOrder.withNext(originalPlaybackQueue, player.currentTrack, track, trackIdentity)
         queueRevision++
         return true
     }
@@ -2582,9 +2581,10 @@ ApplicationWindow {
             const shuffled = queue.slice(0, currentIndex + 1).concat(shuffledTracks(queue.slice(currentIndex + 1)))
             if (radioQueue) radioPlaybackQueue = shuffled
             else playbackQueue = shuffled
+        } else if (radioQueue) {
+            radioPlaybackQueue = QueueOrder.unshuffled(queue, currentIndex, originalRadioPlaybackQueue, trackIdentity)
         } else {
-            if (radioQueue) radioPlaybackQueue = originalRadioPlaybackQueue.length ? originalRadioPlaybackQueue.slice() : queue.slice()
-            else playbackQueue = originalPlaybackQueue.length ? originalPlaybackQueue.slice() : queue.slice()
+            playbackQueue = QueueOrder.unshuffled(queue, currentIndex, originalPlaybackQueue, trackIdentity)
         }
         queueRevision++
     }
@@ -2608,7 +2608,7 @@ ApplicationWindow {
     function continueWithSimilar() {
         const recent = activePlaybackQueue().concat(playbackHistory).map(track => track.filePath)
         const similar = library.similarTracks(player.currentTrack, recent, 25)
-        if (similar.length) startPlayback(similar, 0)
+        if (similar.length) startPlayback(similar, 0, player.shuffleEnabled)
         else shuffleAll()
     }
 

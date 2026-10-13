@@ -32,7 +32,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/now-playing.png" width="88%" alt="CassetteCat's Now Playing screen with large album art" />
+  <img src="assets/screenshots/framed/now-playing.png" width="88%" alt="CassetteCat's Now Playing screen with large album art" />
 </p>
 
 ---
@@ -71,12 +71,12 @@ The macOS app isn't notarized by Apple yet. The first time, right-click Cassette
 ## Screenshots
 
 <p align="center">
-  <img src="assets/screenshots/home.png" width="48%" alt="Home" />
-  <img src="assets/screenshots/library-albums.png" width="48%" alt="Album library" />
+  <img src="assets/screenshots/framed/home.png" width="48%" alt="Home" />
+  <img src="assets/screenshots/framed/library-albums.png" width="48%" alt="Album library" />
 </p>
 <p align="center">
-  <img src="assets/screenshots/listening-record.png" width="48%" alt="Listening Record" />
-  <img src="assets/screenshots/radio.png" width="48%" alt="Internet radio" />
+  <img src="assets/screenshots/framed/listening-record.png" width="48%" alt="Listening Record" />
+  <img src="assets/screenshots/framed/radio.png" width="48%" alt="Internet radio" />
 </p>
 
 ---

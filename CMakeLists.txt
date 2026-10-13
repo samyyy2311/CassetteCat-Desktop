@@ -249,6 +249,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/list-music.svg
         qml/icons/quote.svg
         qml/icons/chevron-down.svg
+        qml/icons/chevron-up.svg
         qml/icons/chevron-left.svg
         qml/icons/chevron-right.svg
         qml/icons/eye.svg

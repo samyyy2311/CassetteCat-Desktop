@@ -506,6 +506,8 @@ int main(int argc, char *argv[]) {
     };
     QObject::connect(&instanceServer, &QLocalServer::newConnection, &app, processInstanceConnections);
     processInstanceConnections();
+    // Declared before the engine so it outlives the QML that binds to it while the app quits.
+    WindowFrame windowFrame;
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("displayFontFamily", displayFontFamily);
     engine.rootContext()->setContextProperty("bodyFontFamily", bodyFontFamily);
@@ -517,7 +519,6 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("appSettings", &appSettings);
     engine.rootContext()->setContextProperty("installedFromStore", installedFromStore());
     engine.rootContext()->setContextProperty("smtc", &smtc);
-    WindowFrame windowFrame;
     engine.rootContext()->setContextProperty("windowFrame", &windowFrame);
     engine.rootContext()->setContextProperty("mpris", &mpris);
     engine.rootContext()->setContextProperty("discord", &discord);

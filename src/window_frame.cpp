@@ -7,6 +7,7 @@
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <windowsx.h>
+#include <dwmapi.h>
 #endif
 
 WindowFrame::WindowFrame(QObject *parent) : QObject(parent) {
@@ -87,6 +88,10 @@ bool WindowFrame::nativeEventFilter(const QByteArray &eventType, void *message, 
             GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor))
             overhang = monitor.rcWork.left - frame.left;
         setMaximizedMargin(overhang / m_button->window()->devicePixelRatio());
+        // Windows 11 keeps a frameless window's rounded corners when it's maximized, so square them while it fills
+        // the screen.
+        const DWORD corners = msg->wParam == SIZE_MAXIMIZED ? 1 /* DWMWCP_DONOTROUND */ : 2 /* DWMWCP_ROUND */;
+        DwmSetWindowAttribute(hwnd, 33 /* DWMWA_WINDOW_CORNER_PREFERENCE */, &corners, sizeof(corners));
         return false;
     }
     case WM_NCHITTEST:

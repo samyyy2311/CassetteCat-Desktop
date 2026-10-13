@@ -52,10 +52,8 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     }
     applyEffectiveVolume();
     connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged, this, [this] {
-        if (m_followsDefaultOutput)
-            m_pipeline->setDevice(QMediaDevices::defaultAudioOutput());
+        applyAudioDevice();
         emit audioOutputsChanged();
-        emit audioDeviceChanged();
     });
 
     m_fadingPlayer = new QMediaPlayer(this);
@@ -247,25 +245,22 @@ QVariantList PlayerController::audioOutputs() const {
 }
 
 QString PlayerController::audioDeviceId() const {
-    return m_followsDefaultOutput ? QString() : QString::fromLatin1(m_pipeline->device().id().toHex());
+    return m_pipeline->device().id() == m_chosenDeviceId ? QString::fromLatin1(m_chosenDeviceId.toHex()) : QString();
 }
 
-bool PlayerController::setAudioDevice(const QString &id) {
-    if (id.isEmpty()) {
-        m_followsDefaultOutput = true;
-        m_pipeline->setDevice(QMediaDevices::defaultAudioOutput());
-        emit audioDeviceChanged();
-        return true;
-    }
-    for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
-        if (QString::fromLatin1(device.id().toHex()) != id)
-            continue;
-        m_followsDefaultOutput = false;
-        m_pipeline->setDevice(device);
-        emit audioDeviceChanged();
-        return true;
-    }
-    return false;
+void PlayerController::setAudioDevice(const QString &id) {
+    m_chosenDeviceId = QByteArray::fromHex(id.toLatin1());
+    applyAudioDevice();
+}
+
+void PlayerController::applyAudioDevice() {
+    // A chosen device that is unplugged plays on the system default until it comes back.
+    QAudioDevice device = QMediaDevices::defaultAudioOutput();
+    for (const QAudioDevice &output : QMediaDevices::audioOutputs())
+        if (output.id() == m_chosenDeviceId)
+            device = output;
+    m_pipeline->setDevice(device);
+    emit audioDeviceChanged();
 }
 QString PlayerController::error() const {
     return m_error;

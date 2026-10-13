@@ -1638,7 +1638,6 @@ ApplicationWindow {
             "ui/nowPlayingNotifications": nowPlayingNotifications,
             "player/resumeQueueOnLaunch": resumeQueueOnLaunch,
             "player/nowPlayingMode": nowPlayingMode,
-            "player/audioDeviceId": player.audioDeviceId,
             "ui/closeToTray": closeToTray,
             "ui/startMinimizedToTray": startMinimizedToTray,
             "ui/defaultLaunchPage": defaultLaunchPage,
@@ -3982,7 +3981,8 @@ ApplicationWindow {
                                 onInAppShortcutSelected: (action, shortcut) => window.setInAppShortcut(action, shortcut)
                                 onMiniPlayerAlwaysOnTopSelected: value => window.miniPlayerAlwaysOnTop = value
                                 onAudioDeviceSelected: value => {
-                                    if (player.setAudioDevice(value)) appSettings.setValue("player/audioDeviceId", player.audioDeviceId)
+                                    player.setAudioDevice(value)
+                                    appSettings.setValue("player/audioDeviceId", value)
                                 }
                                 onLyricsFontSizeSelected: value => window.lyricsFontSize = value
                                 onDefaultLaunchPageSelected: value => window.defaultLaunchPage = value

@@ -52,6 +52,8 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     }
     applyEffectiveVolume();
     connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged, this, [this] {
+        if (m_followsDefaultOutput)
+            m_pipeline->setDevice(QMediaDevices::defaultAudioOutput());
         emit audioOutputsChanged();
         emit audioDeviceChanged();
     });
@@ -143,6 +145,7 @@ void PlayerController::connectPlayer(QMediaPlayer *player) {
             if (m_pendingRestorePositionMs > 0) {
                 const qint64 targetPos = m_pendingRestorePositionMs;
                 m_pendingRestorePositionMs = 0;
+                m_pipeline->clear(m_player->audioBufferOutput());
                 m_player->setPosition(targetPos);
                 m_position = targetPos;
                 emit positionChanged();
@@ -244,15 +247,12 @@ QVariantList PlayerController::audioOutputs() const {
 }
 
 QString PlayerController::audioDeviceId() const {
-    const QByteArray currentId = m_pipeline->device().id();
-    if (currentId.isEmpty() || currentId == QMediaDevices::defaultAudioOutput().id()) {
-        return QString();
-    }
-    return QString::fromLatin1(currentId.toHex());
+    return m_followsDefaultOutput ? QString() : QString::fromLatin1(m_pipeline->device().id().toHex());
 }
 
 bool PlayerController::setAudioDevice(const QString &id) {
     if (id.isEmpty()) {
+        m_followsDefaultOutput = true;
         m_pipeline->setDevice(QMediaDevices::defaultAudioOutput());
         emit audioDeviceChanged();
         return true;
@@ -260,6 +260,7 @@ bool PlayerController::setAudioDevice(const QString &id) {
     for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
         if (QString::fromLatin1(device.id().toHex()) != id)
             continue;
+        m_followsDefaultOutput = false;
         m_pipeline->setDevice(device);
         emit audioDeviceChanged();
         return true;

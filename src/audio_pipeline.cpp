@@ -3,6 +3,7 @@
 #include <QAudioBuffer>
 #include <QAudioBufferOutput>
 #include <QAudioSink>
+#include <QDebug>
 #include <QMediaDevices>
 
 #include <algorithm>
@@ -157,25 +158,41 @@ QAudioDevice AudioPipeline::device() const {
 
 void AudioPipeline::restartSink() {
     QMetaObject::invokeMethod(
-        &m_audioContext,
-        [this, device = m_device, paused = m_paused] {
-            delete m_sink;
-            if (!m_feed)
-                m_feed = new Feed(this);
-            m_sink = new QAudioSink(device, format());
-            m_sink->setBufferSize(format().bytesForDuration(80'000));
-            m_sink->start(m_feed);
-            if (paused)
-                m_sink->suspend();
-        },
+        &m_audioContext, [this, device = m_device, paused = m_paused] { openSink(device, paused); },
         Qt::BlockingQueuedConnection);
+}
+
+void AudioPipeline::openSink(const QAudioDevice &device, bool paused) {
+    delete m_sink;
+    if (!m_feed)
+        m_feed = new Feed(this);
+    m_sink = new QAudioSink(device, format());
+    m_sink->setBufferSize(format().bytesForDuration(80'000));
+    connect(m_sink, &QAudioSink::stateChanged, m_sink, [sink = m_sink](QAudio::State state) {
+        if (sink->error() != QAudio::NoError)
+            qWarning().noquote() << "[AUDIO] output state=" << state << "error=" << sink->error();
+    });
+    m_sink->start(m_feed);
+    if (paused)
+        m_sink->suspend();
 }
 
 void AudioPipeline::setPaused(bool paused) {
     if (paused == m_paused)
         return;
     m_paused = paused;
-    QMetaObject::invokeMethod(&m_audioContext, [this, paused] { paused ? m_sink->suspend() : m_sink->resume(); });
+    QMetaObject::invokeMethod(&m_audioContext, [this, paused, device = m_device] {
+        if (paused) {
+            m_sink->suspend();
+        } else if (m_sink->state() == QAudio::StoppedState) {
+            // A device lost while paused, such as headphones that moved to the phone, leaves the output stopped,
+            // and resuming it would play nothing.
+            qWarning() << "[AUDIO] output had stopped; reopening it";
+            openSink(device, false);
+        } else {
+            m_sink->resume();
+        }
+    });
 }
 
 void AudioPipeline::setEqualizer(bool enabled, const std::array<float, kBandCount> &bandsDb, float preampDb) {

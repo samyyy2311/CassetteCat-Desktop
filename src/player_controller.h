@@ -136,6 +136,7 @@ class PlayerController final : public QObject {
     // Both players decode into this; it mixes, equalizes and plays them on the chosen device.
     AudioPipeline *m_pipeline = nullptr;
     QMediaDevices *m_mediaDevices = nullptr;
+    bool m_followsDefaultOutput = true;
     bool m_meterEnabled = false;
     QVariantMap m_equalizer;
     QMediaPlayer *m_player = nullptr;

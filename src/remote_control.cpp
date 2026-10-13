@@ -523,42 +523,8 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
     if (m_lockedSince.isValid() && m_lockedSince.elapsed() < kLockoutMs)
         return {429, {}};
     // Asking to pair needs no code: the person at this computer allows or denies it.
-    if (path == "/api/pair-request") {
-        if (method == "POST") {
-            const QString name =
-                QString::fromUtf8(QJsonDocument::fromJson(body).object().value("name").toString().toUtf8().left(64));
-            if (name.trimmed().isEmpty())
-                return {400, {}};
-            if (!m_pairingRequestId.isEmpty())
-                return {409, {}};
-            m_pairingRequestId = QString::number(QRandomGenerator::system()->generate64(), 16) +
-                                 QString::number(QRandomGenerator::system()->generate64(), 16);
-            m_pairingRequestName = name.trimmed();
-            m_pairingAnswer = PairingAnswer::Waiting;
-            m_pairingTimeout.start(60 * 1000);
-            emit pairingRequestChanged();
-            return {200, QJsonDocument(QJsonObject{{"id", m_pairingRequestId}}).toJson(QJsonDocument::Compact)};
-        }
-        if (m_pairingRequestId.isEmpty() || QUrlQuery(url).queryItemValue("id") != m_pairingRequestId)
-            return {404, {}};
-        if (m_pairingAnswer == PairingAnswer::Waiting)
-            return {200, R"({"status":"waiting"})"};
-        const bool allowed = m_pairingAnswer == PairingAnswer::Allowed;
-        const QString phoneCode = allowed ? randomCode() : QString();
-        if (allowed) {
-            // A phone allowed again replaces its old entry, so it is listed once.
-            QVariantList phones = m_pairedPhones;
-            phones.removeIf([&](const QVariant &phone) { return phone.toMap().value("name") == m_pairingRequestName; });
-            setPairedPhones(phones + QVariantList{QVariantMap{{"name", m_pairingRequestName}, {"code", phoneCode}}});
-        }
-        m_pairingTimeout.stop();
-        m_pairingRequestId.clear();
-        m_pairingRequestName.clear();
-        m_pairingAnswer = PairingAnswer::Waiting;
-        return {200, QJsonDocument(allowed ? QJsonObject{{"status", "allowed"}, {"code", phoneCode}}
-                                           : QJsonObject{{"status", "denied"}})
-                         .toJson(QJsonDocument::Compact)};
-    }
+    if (path == "/api/pair-request")
+        return answerPairRequest(method, url, body);
     if (!acceptsCode(code)) {
         if (++m_failedAttempts >= kMaxFailedAttempts) {
             m_failedAttempts = 0;
@@ -581,42 +547,64 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         }
     }
 
-    if (method == "GET" && path == "/api/playback")
-        return {200, QJsonDocument(status()).toJson(QJsonDocument::Compact)};
-    const auto libraryTrack = [this](const QString &id) {
-        for (const QVariant &value : m_library->playbackTracks()) {
-            const QVariantMap track = value.toMap();
-            if (libraryId(track) == id)
-                return track;
-        }
-        return QVariantMap();
-    };
-    if (method == "GET" && path == "/api/library") {
-        const QUrlQuery query(url);
-        const QString search = query.queryItemValue("q").trimmed();
-        const int offset = qMax(0, query.queryItemValue("offset").toInt());
-        const int limit = qBound(1, query.hasQueryItem("limit") ? query.queryItemValue("limit").toInt() : 100, 500);
-        QJsonArray page;
-        int total = 0;
-        for (const QVariant &value : m_library->playbackTracks()) {
-            const QVariantMap track = value.toMap();
-            const QString title = track.value("title").toString();
-            const QString artist = track.value("artist").toString();
-            const QString album = track.value("album").toString();
-            if (!search.isEmpty() && !title.contains(search, Qt::CaseInsensitive) &&
-                !artist.contains(search, Qt::CaseInsensitive) && !album.contains(search, Qt::CaseInsensitive))
-                continue;
-            if (total >= offset && page.size() < limit)
-                page.append(QJsonObject{{"id", libraryId(track)},
-                                        {"title", title.isEmpty() ? track.value("fileName").toString() : title},
-                                        {"artist", artist},
-                                        {"album", album},
-                                        {"durationMs", track.value("durationSeconds").toLongLong() * 1000}});
-            ++total;
-        }
-        return {200, QJsonDocument(QJsonObject{{"total", total}, {"tracks", page}}).toJson(QJsonDocument::Compact)};
+    if (method == "GET")
+        return answerGet(url);
+    if (method != "POST")
+        return {404, {}};
+    return answerPost(path, QJsonDocument::fromJson(body).object(), body, deviceName);
+}
+
+RemoteControlServer::Response RemoteControlServer::answerPairRequest(const QByteArray &method, const QUrl &url,
+                                                                     const QByteArray &body) {
+    if (method == "POST") {
+        const QString name =
+            QString::fromUtf8(QJsonDocument::fromJson(body).object().value("name").toString().toUtf8().left(64));
+        if (name.trimmed().isEmpty())
+            return {400, {}};
+        if (!m_pairingRequestId.isEmpty())
+            return {409, {}};
+        m_pairingRequestId = QString::number(QRandomGenerator::system()->generate64(), 16) +
+                             QString::number(QRandomGenerator::system()->generate64(), 16);
+        m_pairingRequestName = name.trimmed();
+        m_pairingAnswer = PairingAnswer::Waiting;
+        m_pairingTimeout.start(60 * 1000);
+        emit pairingRequestChanged();
+        return {200, QJsonDocument(QJsonObject{{"id", m_pairingRequestId}}).toJson(QJsonDocument::Compact)};
     }
-    if (streamRequest) {
+    if (m_pairingRequestId.isEmpty() || QUrlQuery(url).queryItemValue("id") != m_pairingRequestId)
+        return {404, {}};
+    if (m_pairingAnswer == PairingAnswer::Waiting)
+        return {200, R"({"status":"waiting"})"};
+    const bool allowed = m_pairingAnswer == PairingAnswer::Allowed;
+    const QString phoneCode = allowed ? randomCode() : QString();
+    if (allowed) {
+        // A phone allowed again replaces its old entry, so it is listed once.
+        QVariantList phones = m_pairedPhones;
+        phones.removeIf([&](const QVariant &phone) { return phone.toMap().value("name") == m_pairingRequestName; });
+        setPairedPhones(phones + QVariantList{QVariantMap{{"name", m_pairingRequestName}, {"code", phoneCode}}});
+    }
+    m_pairingTimeout.stop();
+    m_pairingRequestId.clear();
+    m_pairingRequestName.clear();
+    m_pairingAnswer = PairingAnswer::Waiting;
+    return {200, QJsonDocument(allowed ? QJsonObject{{"status", "allowed"}, {"code", phoneCode}}
+                                       : QJsonObject{{"status", "denied"}})
+                     .toJson(QJsonDocument::Compact)};
+}
+
+RemoteControlServer::Response RemoteControlServer::answerGet(const QUrl &url) {
+    const QByteArray path = url.path().toLatin1();
+    if (path == "/api/playback")
+        return {200, QJsonDocument(status()).toJson(QJsonDocument::Compact)};
+    if (path == "/api/library")
+        return libraryPage(QUrlQuery(url));
+    const auto image = [](const QString &filePath) -> Response {
+        QFile file(filePath);
+        if (!file.open(QIODevice::ReadOnly))
+            return {404, {}};
+        return {200, file.readAll(), file.fileName().endsWith(".png") ? "image/png" : "image/jpeg"};
+    };
+    if (path == "/api/stream") {
         const QVariantMap track = libraryTrack(QUrlQuery(url).queryItemValue("id"));
         const QString file = track.value("filePath").toString();
         if (file.isEmpty() || !QFileInfo::exists(file))
@@ -625,24 +613,17 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         response.filePath = file;
         return response;
     }
-    if (artworkRequest && QUrlQuery(url).hasQueryItem("id")) {
-        QFile file(artworkPath(libraryTrack(QUrlQuery(url).queryItemValue("id"))));
-        if (!file.open(QIODevice::ReadOnly))
-            return {404, {}};
-        return {200, file.readAll(), file.fileName().endsWith(".png") ? "image/png" : "image/jpeg"};
-    }
-    if (artworkRequest) {
+    if (path == "/api/artwork" && QUrlQuery(url).hasQueryItem("id"))
+        return image(artworkPath(libraryTrack(QUrlQuery(url).queryItemValue("id"))));
+    if (path == "/api/artwork") {
         const QString key = QUrlQuery(url).queryItemValue("key");
         QVariantList tracks = m_upNext;
         tracks.prepend(m_player->currentTrack());
         const auto track = std::find_if(tracks.cbegin(), tracks.cend(),
                                         [&](const QVariant &item) { return artworkKey(item.toMap()) == key; });
-        QFile file(track == tracks.cend() ? QString() : artworkPath(track->toMap()));
-        if (!file.open(QIODevice::ReadOnly))
-            return {404, {}};
-        return {200, file.readAll(), file.fileName().endsWith(".png") ? "image/png" : "image/jpeg"};
+        return image(track == tracks.cend() ? QString() : artworkPath(track->toMap()));
     }
-    if (method == "GET" && path == "/api/queue") {
+    if (path == "/api/queue") {
         QJsonArray tracks;
         for (const QVariant &item : m_upNext) {
             const QVariantMap track = item.toMap();
@@ -654,50 +635,26 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         }
         return {200, QJsonDocument(QJsonObject{{"tracks", tracks}}).toJson(QJsonDocument::Compact)};
     }
-    if (method == "GET" && path == "/api/likes") {
-        QSet<QString> libraryKeys;
-        for (const QVariant &track : m_library->playbackTracks())
-            libraryKeys.insert(LibraryController::matchKey(track.toMap()));
-        QSet<QString> likedKeys;
-        for (const QVariant &track :
-             m_library->tracksForPaths(QVariantList(m_favoritePaths.cbegin(), m_favoritePaths.cend())))
-            if (!track.toMap().isEmpty())
-                likedKeys.insert(LibraryController::matchKey(track.toMap()));
-        const QJsonObject likes{{"library", QJsonArray::fromStringList(libraryKeys.values())},
-                                {"liked", QJsonArray::fromStringList(likedKeys.values())},
-                                {"revision", m_likesRevision}};
-        return {200, QJsonDocument(likes).toJson(QJsonDocument::Compact)};
-    }
-    if (method == "GET" && path == "/api/listens") {
+    if (path == "/api/likes")
+        return likesSnapshot();
+    if (path == "/api/listens") {
         const qint64 since = QUrlQuery(url).queryItemValue("since").toLongLong();
         return {200,
                 QJsonDocument(QJsonObject{{"listens", m_library->listensSince(since)}}).toJson(QJsonDocument::Compact)};
     }
-    if (method == "GET" && path == "/api/playlists") {
-        QJsonArray playlists;
-        for (const QVariant &value : m_playlists) {
-            const QVariantMap playlist = value.toMap();
-            QJsonArray tracks;
-            for (const QVariant &track : m_library->tracksForPaths(playlist.value("trackPaths").toList())) {
-                const QVariantMap found = track.toMap();
-                if (!found.isEmpty())
-                    tracks.append(QJsonObject{{"title", found.value("title").toString()},
-                                              {"artist", found.value("artist").toString()}});
-            }
-            playlists.append(QJsonObject{{"name", playlist.value("name").toString()}, {"tracks", tracks}});
-        }
-        return {200, QJsonDocument(QJsonObject{{"playlists", playlists}}).toJson(QJsonDocument::Compact)};
-    }
-    if (method == "GET" && path == "/api/backup") {
+    if (path == "/api/playlists")
+        return playlistsForPhone();
+    if (path == "/api/backup") {
         QFile file(phoneBackupFilePath());
         if (!file.open(QIODevice::ReadOnly))
             return {404, {}};
         return {200, file.readAll()};
     }
-    if (method != "POST")
-        return {404, {}};
+    return {404, {}};
+}
 
-    const QJsonObject request = QJsonDocument::fromJson(body).object();
+RemoteControlServer::Response RemoteControlServer::answerPost(const QByteArray &path, const QJsonObject &request,
+                                                              const QByteArray &body, const QByteArray &deviceName) {
     if (path == "/api/playback") {
         const QString action = request.value("action").toString();
         if (action == "play")
@@ -720,155 +677,16 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         emit volumeRequested(qBound(0, request.value("percent").toInt(), 100) / 100.0);
         return {200, {}};
     }
-    if (path == "/api/phone-state") {
-        const QString title = request.value("title").toString();
-        const QString artist = request.value("artist").toString();
-        QVariantMap playback;
-        if (!title.isEmpty()) {
-            // The phone sends a song's cover once, so later check-ins about the same song keep it.
-            const QByteArray cover = QByteArray::fromBase64(request.value("artwork").toString().toLatin1());
-            const bool sameSong = m_phonePlayback.value("title") == title && m_phonePlayback.value("artist") == artist;
-            // The same song in this library, so it can be liked here.
-            QString filePath = m_phonePlayback.value("filePath").toString();
-            if (!sameSong) {
-                filePath.clear();
-                const QString key = LibraryController::matchKey({{"title", title}, {"artist", artist}});
-                for (const QVariant &value : m_library->playbackTracks()) {
-                    if (LibraryController::matchKey(value.toMap()) == key) {
-                        filePath = value.toMap().value("filePath").toString();
-                        break;
-                    }
-                }
-            }
-            const QString artwork = cover.startsWith("\xFF\xD8")
-                                        ? "data:image/jpeg;base64," + QString::fromLatin1(cover.toBase64())
-                                    : sameSong ? m_phonePlayback.value("artwork").toString()
-                                               : QString();
-            playback = {{"name", QString::fromUtf8(deviceName)},
-                        {"title", title},
-                        {"artist", artist},
-                        {"isPlaying", request.value("isPlaying").toBool()},
-                        {"positionMs", request.value("positionMs").toDouble()},
-                        {"durationMs", request.value("durationMs").toDouble()},
-                        {"volumePercent", request.value("volumePercent").toInt(-1)},
-                        {"updatedAt", QDateTime::currentMSecsSinceEpoch()},
-                        {"artwork", artwork},
-                        {"filePath", filePath}};
-        }
-        // A phone paused for a while checks in only every 30 seconds.
-        if (playback.isEmpty())
-            m_phoneTimeout.stop();
-        else
-            m_phoneTimeout.start(playback.value("isPlaying").toBool() ? 12 * 1000 : 75 * 1000);
-        if (playback != m_phonePlayback) {
-            m_phonePlayback = playback;
-            emit phonePlaybackChanged();
-        }
-        const QJsonArray commands = QJsonArray::fromStringList(std::exchange(m_phoneCommands, {}));
-        const QJsonObject reply{
-            {"ok", true},
-            {"commands", commands},
-            {"playNext", std::exchange(m_phonePlayNext, {})},
-            {"likesRevision", m_likesRevision},
-            {"needsArtwork", !playback.isEmpty() && playback.value("artwork").toString().isEmpty()}};
-        return {200, QJsonDocument(reply).toJson(QJsonDocument::Compact)};
-    }
-    if (path == "/api/handoff" && request.value("tracks").isArray()) {
-        // The phone plays the song itself when this computer doesn't have it, so it is told which happened.
-        const QJsonArray tracks = request.value("tracks").toArray();
-        const QString wanted =
-            LibraryController::matchKey(tracks.at(request.value("index").toInt()).toObject().toVariantMap());
-        const QVariantList library = m_library->playbackTracks();
-        const bool played = std::any_of(library.cbegin(), library.cend(), [&](const QVariant &track) {
-            return LibraryController::matchKey(track.toMap()) == wanted;
-        });
-        // The phone stops playing when it hands over, so its strip goes at once.
-        if (played && !m_phonePlayback.isEmpty()) {
-            m_phonePlayback.clear();
-            m_phoneTimeout.stop();
-            emit phonePlaybackChanged();
-        }
-        emit handoffRequested(tracks.toVariantList(), request.value("index").toInt(),
-                              qMax<qint64>(0, request.value("positionMs").toInteger()),
-                              request.value("playing").toBool());
-        return {200, QJsonDocument(QJsonObject{{"played", played}}).toJson(QJsonDocument::Compact)};
-    }
-    if (path == "/api/likes") {
-        if (!request.value("like").isArray() || !request.value("unlike").isArray())
-            return {400, {}};
-        const auto keys = [&](const char *name) {
-            QSet<QString> set;
-            for (const QJsonValue &key : request.value(name).toArray())
-                set.insert(key.toString());
-            return set;
-        };
-        const QSet<QString> like = keys("like");
-        const QSet<QString> unlike = keys("unlike");
-        QStringList likePaths;
-        QStringList unlikePaths;
-        for (const QVariant &value : m_library->playbackTracks()) {
-            const QVariantMap track = value.toMap();
-            const QString key = LibraryController::matchKey(track);
-            if (like.contains(key))
-                likePaths.append(track.value("filePath").toString());
-            else if (unlike.contains(key))
-                unlikePaths.append(track.value("filePath").toString());
-        }
-        emit likesChangeRequested(likePaths, unlikePaths);
-        return {200, {}};
-    }
-    if (path == "/api/listens") {
-        if (!request.value("listens").isArray())
-            return {400, {}};
-        QHash<QString, QString> pathByKey;
-        for (const QVariant &value : m_library->playbackTracks()) {
-            const QVariantMap track = value.toMap();
-            pathByKey.insert(LibraryController::matchKey(track), track.value("filePath").toString());
-        }
-        QList<QJsonObject> listens;
-        for (const QJsonValue &value : request.value("listens").toArray()) {
-            const QJsonObject listen = value.toObject();
-            // Only a month's total may be untitled: it covers songs the phone no longer has.
-            if ((listen.value("title").toString().isEmpty() && !listen.value("plays").isDouble()) ||
-                listen.value("at").toInteger() <= 0 || listen.value("ms").toInteger() <= 0)
-                continue;
-            QJsonObject entry{{"at", listen.value("at").toInteger()},
-                              {"path", pathByKey.value(LibraryController::matchKey(listen.toVariantMap()))},
-                              {"title", listen.value("title").toString()},
-                              {"artist", listen.value("artist").toString()},
-                              {"album", listen.value("album").toString()},
-                              {"genre", listen.value("genre").toString()},
-                              {"ms", listen.value("ms").toInteger()}};
-            // A skip on the phone adds listening time here too, without counting as a play.
-            if (!listen.value("counted").toBool(true))
-                entry.insert("counted", false);
-            // A month's total for a song from before the phone kept single listens.
-            if (listen.value("plays").isDouble())
-                entry.insert("plays", qMax(1, listen.value("plays").toInt()));
-            listens.append(entry);
-        }
-        return {m_library->appendPhoneListens(listens) ? 200 : 500, {}};
-    }
-    if (path == "/api/playlists") {
-        const QString name = request.value("name").toString().trimmed();
-        if (name.isEmpty() || !request.value("tracks").isArray())
-            return {400, {}};
-        QHash<QString, QString> pathByKey;
-        for (const QVariant &value : m_library->playbackTracks()) {
-            const QVariantMap track = value.toMap();
-            pathByKey.insert(LibraryController::matchKey(track), track.value("filePath").toString());
-        }
-        const QJsonArray tracks = request.value("tracks").toArray();
-        QStringList trackPaths;
-        for (const QJsonValue &track : tracks) {
-            const QString path = pathByKey.value(LibraryController::matchKey(track.toObject().toVariantMap()));
-            if (!path.isEmpty() && !trackPaths.contains(path))
-                trackPaths.append(path);
-        }
-        emit playlistReceived(name, trackPaths, tracks.size());
-        return {200, QJsonDocument(QJsonObject{{"ok", true}, {"matched", trackPaths.size()}, {"total", tracks.size()}})
-                         .toJson(QJsonDocument::Compact)};
-    }
+    if (path == "/api/phone-state")
+        return updatePhoneState(request, deviceName);
+    if (path == "/api/handoff" && request.value("tracks").isArray())
+        return startHandoff(request);
+    if (path == "/api/likes")
+        return applyPhoneLikes(request);
+    if (path == "/api/listens")
+        return savePhoneListens(request);
+    if (path == "/api/playlists")
+        return savePhonePlaylist(request);
     if (path == "/api/library/play") {
         QVariantList tracks;
         for (const QJsonValue &id : request.value("ids").toArray()) {
@@ -914,6 +732,225 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         return {200, {}};
     }
     return {404, {}};
+}
+
+RemoteControlServer::Response RemoteControlServer::libraryPage(const QUrlQuery &query) const {
+    const QString search = query.queryItemValue("q").trimmed();
+    const int offset = qMax(0, query.queryItemValue("offset").toInt());
+    const int limit = qBound(1, query.hasQueryItem("limit") ? query.queryItemValue("limit").toInt() : 100, 500);
+    QJsonArray page;
+    int total = 0;
+    for (const QVariant &value : m_library->playbackTracks()) {
+        const QVariantMap track = value.toMap();
+        const QString title = track.value("title").toString();
+        const QString artist = track.value("artist").toString();
+        const QString album = track.value("album").toString();
+        if (!search.isEmpty() && !title.contains(search, Qt::CaseInsensitive) &&
+            !artist.contains(search, Qt::CaseInsensitive) && !album.contains(search, Qt::CaseInsensitive))
+            continue;
+        if (total >= offset && page.size() < limit)
+            page.append(QJsonObject{{"id", libraryId(track)},
+                                    {"title", title.isEmpty() ? track.value("fileName").toString() : title},
+                                    {"artist", artist},
+                                    {"album", album},
+                                    {"durationMs", track.value("durationSeconds").toLongLong() * 1000}});
+        ++total;
+    }
+    return {200, QJsonDocument(QJsonObject{{"total", total}, {"tracks", page}}).toJson(QJsonDocument::Compact)};
+}
+
+RemoteControlServer::Response RemoteControlServer::likesSnapshot() const {
+    QSet<QString> libraryKeys;
+    for (const QVariant &track : m_library->playbackTracks())
+        libraryKeys.insert(LibraryController::matchKey(track.toMap()));
+    QSet<QString> likedKeys;
+    for (const QVariant &track :
+         m_library->tracksForPaths(QVariantList(m_favoritePaths.cbegin(), m_favoritePaths.cend())))
+        if (!track.toMap().isEmpty())
+            likedKeys.insert(LibraryController::matchKey(track.toMap()));
+    const QJsonObject likes{{"library", QJsonArray::fromStringList(libraryKeys.values())},
+                            {"liked", QJsonArray::fromStringList(likedKeys.values())},
+                            {"revision", m_likesRevision}};
+    return {200, QJsonDocument(likes).toJson(QJsonDocument::Compact)};
+}
+
+RemoteControlServer::Response RemoteControlServer::playlistsForPhone() const {
+    QJsonArray playlists;
+    for (const QVariant &value : m_playlists) {
+        const QVariantMap playlist = value.toMap();
+        QJsonArray tracks;
+        for (const QVariant &track : m_library->tracksForPaths(playlist.value("trackPaths").toList())) {
+            const QVariantMap found = track.toMap();
+            if (!found.isEmpty())
+                tracks.append(QJsonObject{{"title", found.value("title").toString()},
+                                          {"artist", found.value("artist").toString()}});
+        }
+        playlists.append(QJsonObject{{"name", playlist.value("name").toString()}, {"tracks", tracks}});
+    }
+    return {200, QJsonDocument(QJsonObject{{"playlists", playlists}}).toJson(QJsonDocument::Compact)};
+}
+
+RemoteControlServer::Response RemoteControlServer::updatePhoneState(const QJsonObject &request,
+                                                                    const QByteArray &deviceName) {
+    const QString title = request.value("title").toString();
+    const QString artist = request.value("artist").toString();
+    QVariantMap playback;
+    if (!title.isEmpty()) {
+        // The phone sends a song's cover once, so later check-ins about the same song keep it.
+        const QByteArray cover = QByteArray::fromBase64(request.value("artwork").toString().toLatin1());
+        const bool sameSong = m_phonePlayback.value("title") == title && m_phonePlayback.value("artist") == artist;
+        // The same song in this library, so it can be liked here.
+        QString filePath = m_phonePlayback.value("filePath").toString();
+        if (!sameSong) {
+            filePath.clear();
+            const QString key = LibraryController::matchKey({{"title", title}, {"artist", artist}});
+            for (const QVariant &value : m_library->playbackTracks()) {
+                if (LibraryController::matchKey(value.toMap()) == key) {
+                    filePath = value.toMap().value("filePath").toString();
+                    break;
+                }
+            }
+        }
+        const QString artwork = cover.startsWith("\xFF\xD8")
+                                    ? "data:image/jpeg;base64," + QString::fromLatin1(cover.toBase64())
+                                : sameSong ? m_phonePlayback.value("artwork").toString()
+                                           : QString();
+        playback = {{"name", QString::fromUtf8(deviceName)},
+                    {"title", title},
+                    {"artist", artist},
+                    {"isPlaying", request.value("isPlaying").toBool()},
+                    {"positionMs", request.value("positionMs").toDouble()},
+                    {"durationMs", request.value("durationMs").toDouble()},
+                    {"volumePercent", request.value("volumePercent").toInt(-1)},
+                    {"updatedAt", QDateTime::currentMSecsSinceEpoch()},
+                    {"artwork", artwork},
+                    {"filePath", filePath}};
+    }
+    // A phone paused for a while checks in only every 30 seconds.
+    if (playback.isEmpty())
+        m_phoneTimeout.stop();
+    else
+        m_phoneTimeout.start(playback.value("isPlaying").toBool() ? 12 * 1000 : 75 * 1000);
+    if (playback != m_phonePlayback) {
+        m_phonePlayback = playback;
+        emit phonePlaybackChanged();
+    }
+    const QJsonArray commands = QJsonArray::fromStringList(std::exchange(m_phoneCommands, {}));
+    const QJsonObject reply{{"ok", true},
+                            {"commands", commands},
+                            {"playNext", std::exchange(m_phonePlayNext, {})},
+                            {"likesRevision", m_likesRevision},
+                            {"needsArtwork", !playback.isEmpty() && playback.value("artwork").toString().isEmpty()}};
+    return {200, QJsonDocument(reply).toJson(QJsonDocument::Compact)};
+}
+
+RemoteControlServer::Response RemoteControlServer::startHandoff(const QJsonObject &request) {
+    // The phone plays the song itself when this computer doesn't have it, so it is told which happened.
+    const QJsonArray tracks = request.value("tracks").toArray();
+    const QString wanted =
+        LibraryController::matchKey(tracks.at(request.value("index").toInt()).toObject().toVariantMap());
+    const QVariantList library = m_library->playbackTracks();
+    const bool played = std::any_of(library.cbegin(), library.cend(), [&](const QVariant &track) {
+        return LibraryController::matchKey(track.toMap()) == wanted;
+    });
+    // The phone stops playing when it hands over, so its strip goes at once.
+    if (played && !m_phonePlayback.isEmpty()) {
+        m_phonePlayback.clear();
+        m_phoneTimeout.stop();
+        emit phonePlaybackChanged();
+    }
+    emit handoffRequested(tracks.toVariantList(), request.value("index").toInt(),
+                          qMax<qint64>(0, request.value("positionMs").toInteger()), request.value("playing").toBool());
+    return {200, QJsonDocument(QJsonObject{{"played", played}}).toJson(QJsonDocument::Compact)};
+}
+
+RemoteControlServer::Response RemoteControlServer::applyPhoneLikes(const QJsonObject &request) {
+    if (!request.value("like").isArray() || !request.value("unlike").isArray())
+        return {400, {}};
+    const auto keys = [&](const char *name) {
+        QSet<QString> set;
+        for (const QJsonValue &key : request.value(name).toArray())
+            set.insert(key.toString());
+        return set;
+    };
+    const QSet<QString> like = keys("like");
+    const QSet<QString> unlike = keys("unlike");
+    QStringList likePaths;
+    QStringList unlikePaths;
+    for (const QVariant &value : m_library->playbackTracks()) {
+        const QVariantMap track = value.toMap();
+        const QString key = LibraryController::matchKey(track);
+        if (like.contains(key))
+            likePaths.append(track.value("filePath").toString());
+        else if (unlike.contains(key))
+            unlikePaths.append(track.value("filePath").toString());
+    }
+    emit likesChangeRequested(likePaths, unlikePaths);
+    return {200, {}};
+}
+
+RemoteControlServer::Response RemoteControlServer::savePhoneListens(const QJsonObject &request) {
+    if (!request.value("listens").isArray())
+        return {400, {}};
+    const QHash<QString, QString> pathByKey = libraryPathsByKey();
+    QList<QJsonObject> listens;
+    for (const QJsonValue &value : request.value("listens").toArray()) {
+        const QJsonObject listen = value.toObject();
+        // Only a month's total may be untitled: it covers songs the phone no longer has.
+        if ((listen.value("title").toString().isEmpty() && !listen.value("plays").isDouble()) ||
+            listen.value("at").toInteger() <= 0 || listen.value("ms").toInteger() <= 0)
+            continue;
+        QJsonObject entry{{"at", listen.value("at").toInteger()},
+                          {"path", pathByKey.value(LibraryController::matchKey(listen.toVariantMap()))},
+                          {"title", listen.value("title").toString()},
+                          {"artist", listen.value("artist").toString()},
+                          {"album", listen.value("album").toString()},
+                          {"genre", listen.value("genre").toString()},
+                          {"ms", listen.value("ms").toInteger()}};
+        // A skip on the phone adds listening time here too, without counting as a play.
+        if (!listen.value("counted").toBool(true))
+            entry.insert("counted", false);
+        // A month's total for a song from before the phone kept single listens.
+        if (listen.value("plays").isDouble())
+            entry.insert("plays", qMax(1, listen.value("plays").toInt()));
+        listens.append(entry);
+    }
+    return {m_library->appendPhoneListens(listens) ? 200 : 500, {}};
+}
+
+RemoteControlServer::Response RemoteControlServer::savePhonePlaylist(const QJsonObject &request) {
+    const QString name = request.value("name").toString().trimmed();
+    if (name.isEmpty() || !request.value("tracks").isArray())
+        return {400, {}};
+    const QHash<QString, QString> pathByKey = libraryPathsByKey();
+    const QJsonArray tracks = request.value("tracks").toArray();
+    QStringList trackPaths;
+    for (const QJsonValue &track : tracks) {
+        const QString path = pathByKey.value(LibraryController::matchKey(track.toObject().toVariantMap()));
+        if (!path.isEmpty() && !trackPaths.contains(path))
+            trackPaths.append(path);
+    }
+    emit playlistReceived(name, trackPaths, tracks.size());
+    return {200, QJsonDocument(QJsonObject{{"ok", true}, {"matched", trackPaths.size()}, {"total", tracks.size()}})
+                     .toJson(QJsonDocument::Compact)};
+}
+
+QVariantMap RemoteControlServer::libraryTrack(const QString &id) const {
+    for (const QVariant &value : m_library->playbackTracks()) {
+        const QVariantMap track = value.toMap();
+        if (libraryId(track) == id)
+            return track;
+    }
+    return {};
+}
+
+QHash<QString, QString> RemoteControlServer::libraryPathsByKey() const {
+    QHash<QString, QString> pathByKey;
+    for (const QVariant &value : m_library->playbackTracks()) {
+        const QVariantMap track = value.toMap();
+        pathByKey.insert(LibraryController::matchKey(track), track.value("filePath").toString());
+    }
+    return pathByKey;
 }
 
 QByteArray RemoteControlServer::discoveryReply(const QByteArray &datagram, const QHostAddress &peer) const {

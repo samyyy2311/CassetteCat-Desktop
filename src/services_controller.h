@@ -103,6 +103,11 @@ class ServicesController : public QObject {
                              std::function<void()> missing);
     /// Searches TheAudioDB for \p artist and passes the artists it returns to \p handle.
     void searchAudioDb(const QString &artist, std::function<void(const QJsonArray &)> handle);
+    void searchDeezerCovers(quint64 requestToken, const QString &term, const QString &album, const QString &artist,
+                            const QVariantList &results, const QSet<QString> &seen);
+    /// Adds covers from the Cover Art Archive, found through MusicBrainz, and reports the search's results.
+    void searchArchiveCovers(quint64 requestToken, const QString &album, const QString &artist,
+                             const QVariantList &results, const QSet<QString> &seen, int retry = 0);
     void fetchArtistImageFromAudioDb(const QString &artist);
     void fetchArtistBioFromAudioDb(const QString &artist);
     void initScrobbleCredentials();

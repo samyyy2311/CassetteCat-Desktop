@@ -5,31 +5,37 @@
 <h1 align="center">CassetteCat</h1>
 
 <p align="center">
-  A desktop music player for the music you own: your own files, your Subsonic or Jellyfin server, and internet radio.<br />
-  Pairs with <a href="https://github.com/samyyy2311/CassetteCat">CassetteCat for Android</a>, so your phone becomes a remote and your music moves between the two.
+  <strong>A desktop music player for the music you own: your own files, your Subsonic or Jellyfin server, and internet radio.</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest"><img src="https://img.shields.io/github/v/release/samyyy2311/CassetteCat-Desktop?style=flat-square&color=C23B30&labelColor=1A1917&label=release" alt="Latest release" /></a>
-  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases"><img src="https://img.shields.io/github/downloads/samyyy2311/CassetteCat-Desktop/total?style=flat-square&color=C23B30&labelColor=1A1917&label=downloads" alt="Total downloads" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-C23B30?style=flat-square&labelColor=1A1917" alt="GPL-3.0-or-later license" /></a>
-  <img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-1A1917?style=flat-square" alt="Windows, macOS and Linux" />
-  <a href="https://www.qt.io"><img src="https://img.shields.io/badge/Qt%206-1A1917?style=flat-square&logo=qt&logoColor=41CD52" alt="Qt 6" /></a>
-  <a href="https://www.bestpractices.dev/projects/15328"><img src="https://www.bestpractices.dev/projects/15328/badge" alt="OpenSSF Best Practices" /></a>
-  <a href="https://app.codacy.com/gh/samyyy2311/CassetteCat-Desktop/dashboard"><img src="https://img.shields.io/codacy/grade/775f07dda4494cb98d88f1c91cd179f0?style=flat-square&labelColor=1A1917&label=codacy" alt="Codacy code quality" /></a>
+  Android app: <a href="https://github.com/samyyy2311/CassetteCat">CassetteCat for Android</a>, which pairs with this one so your phone becomes a remote
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> ·
-  <a href="docs/README.md">Docs</a> ·
-  <a href="https://cassettecat.caffeinelabs.in/desktop">Website</a> ·
-  <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="PRIVACY_POLICY.md">Privacy</a>
+  Website: <a href="https://cassettecat.caffeinelabs.in/desktop">cassettecat.caffeinelabs.in</a> · User guide: <a href="https://cassettecat.caffeinelabs.in/docs">cassettecat.caffeinelabs.in/docs</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest"><img src="https://img.shields.io/github/v/release/samyyy2311/CassetteCat-Desktop?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=&logo=git&logoColor=E55B3C" alt="Latest release" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/GPL--3.0--or--later-2A2A2A?style=flat-square&logo=gnu&logoColor=white" alt="GPL-3.0-or-later" /></a>
+  <img src="https://img.shields.io/badge/Windows_%C2%B7_macOS_%C2%B7_Linux-2A2A2A?style=flat-square" alt="Windows, macOS and Linux" />
+  <a href="https://www.qt.io"><img src="https://img.shields.io/badge/Qt_6-2A2A2A?style=flat-square&logo=qt&logoColor=41CD52" alt="Qt 6" /></a>
+  <a href="https://isocpp.org"><img src="https://img.shields.io/badge/C%2B%2B20-2A2A2A?style=flat-square&logo=cplusplus&logoColor=659AD2" alt="C++20" /></a>
+  <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases"><img src="https://img.shields.io/github/downloads/samyyy2311/CassetteCat-Desktop/total?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=downloads&logo=github&logoColor=white" alt="GitHub downloads" /></a>
+  <br />
+  <a href="https://alternativeto.net/software/cassettecat/about/"><img src="https://img.shields.io/badge/AlternativeTo-2A2A2A?style=flat-square&logo=alternativeto&logoColor=white" alt="AlternativeTo" /></a>
+  <a href="https://coderabbit.ai"><img src="https://img.shields.io/coderabbit/prs/github/samyyy2311/CassetteCat-Desktop?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=CodeRabbit&logo=coderabbit&logoColor=FF570A" alt="CodeRabbit pull request reviews" /></a>
+  <a href="https://app.codacy.com/gh/samyyy2311/CassetteCat-Desktop/dashboard"><img src="https://img.shields.io/codacy/grade/775f07dda4494cb98d88f1c91cd179f0?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=Codacy&logo=codacy&logoColor=white" alt="Codacy code quality" /></a>
+  <a href="https://www.codefactor.io/repository/github/samyyy2311/cassettecat-desktop"><img src="https://img.shields.io/codefactor/grade/github/samyyy2311/CassetteCat-Desktop?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=CodeFactor&logo=codefactor&logoColor=F44A6A" alt="CodeFactor grade" /></a>
+  <a href="https://www.bestpractices.dev/projects/15328"><img src="https://img.shields.io/cii/level/15328?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=OpenSSF&logo=linuxfoundation&logoColor=white" alt="OpenSSF Best Practices" /></a>
 </p>
 
 <p align="center">
   <img src="assets/screenshots/now-playing.png" width="88%" alt="CassetteCat's Now Playing screen with large album art" />
 </p>
+
+---
 
 ## Install
 
@@ -60,6 +66,8 @@ Linux packages come for x86_64 and ARM64; pick the one for your machine. Every r
 
 The macOS app isn't notarized by Apple yet. The first time, right-click CassetteCat in Applications and choose **Open**, or allow it under **System Settings > Privacy & Security**.
 
+---
+
 ## Screenshots
 
 <p align="center">
@@ -70,6 +78,8 @@ The macOS app isn't notarized by Apple yet. The first time, right-click Cassette
   <img src="assets/screenshots/listening-record.png" width="48%" alt="Listening Record" />
   <img src="assets/screenshots/radio.png" width="48%" alt="Internet radio" />
 </p>
+
+---
 
 ## Features
 
@@ -109,11 +119,13 @@ Pair with the Android app over your home Wi-Fi by clicking **Allow** when the ph
 - your phone can browse this computer's music and play it here or stream it;
 - likes and playlists stay in sync, both apps keep one Listening Record, and the phone keeps a daily backup here.
 
-The connection stays on your network and is encrypted. See [Using CassetteCat with your phone](docs/guide/phone-remote.md).
+The connection stays on your network and is encrypted. See [Phone and computer](https://cassettecat.caffeinelabs.in/docs/phone-and-computer) in the user guide.
 
 ### Private by default
 
 No account, no telemetry, no analytics. Your library, history and settings stay on your computer, and passwords are kept in the system's credential store. **Offline Blackout Mode** turns off every internet request with one switch. The details are in [PRIVACY_POLICY.md](PRIVACY_POLICY.md).
+
+---
 
 ## Building from source
 
@@ -127,16 +139,23 @@ ctest --test-dir build/dev --output-on-failure
 
 See [Building and testing](docs/dev/building.md) for each system's details.
 
+---
+
 ## Documentation
 
-- [User guide](docs/README.md#using-the-app): installing, every feature, the phone remote and troubleshooting
+- [User guide](https://cassettecat.caffeinelabs.in/docs): installing, every feature, the phone remote and troubleshooting
 - [Developer guide](docs/README.md#working-on-the-code): building, architecture, design and releasing
+- [Changelog](CHANGELOG.md)
 - [Privacy policy](PRIVACY_POLICY.md)
 - [Third-party notices](THIRD_PARTY_NOTICES.md)
+
+---
 
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and [AI_DISCLOSURE.md](AI_DISCLOSURE.md) for how AI assistance is used here. Report security issues privately, as described in [SECURITY.md](.github/SECURITY.md).
+
+---
 
 ## Support
 
@@ -147,13 +166,63 @@ If CassetteCat is useful to you, you can support its development:
   <a href="https://buymeacoffee.com/samyyy2311"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee" /></a>
 </p>
 
+---
+
 ## Credits
 
-**Services:** [LRCLIB](https://lrclib.net) for lyrics, [Cover Art Archive](https://coverartarchive.org) and [MusicBrainz](https://musicbrainz.org) for artwork and metadata, [Radio Browser](https://www.radio-browser.info) for stations, [Last.fm](https://www.last.fm), [ListenBrainz](https://listenbrainz.org) and [Libre.fm](https://libre.fm) for scrobbling, [Wikipedia](https://wikipedia.org) for artist biographies (CC BY-SA 4.0), [Deezer](https://deezer.com) and [TheAudioDB](https://theaudiodb.com) for artist images, and [GitHub](https://github.com) for update checks.
+### Services & Data
 
-**Libraries and design:** [Qt 6](https://www.qt.io) for the interface and playback, [TagLib](https://taglib.org) for tags and artwork, [OpenSSL](https://www.openssl.org) for the phone remote's encryption, [AutoEq](https://github.com/jaakkopasanen/AutoEq) for headphone curves, [Lucide](https://lucide.dev) and [Simple Icons](https://simpleicons.org) for icons, and [IBM Plex](https://github.com/IBM/plex) and [Space Grotesk](https://github.com/floriankarsten/space-grotesk) for type.
+- <a href="https://lrclib.net"><img src="https://img.shields.io/badge/LRCLIB-38BDF8?style=flat-square" alt="LRCLIB" /></a>
+  Synced and plain lyrics.
+- <a href="https://coverartarchive.org"><img src="https://img.shields.io/badge/Cover%20Art%20Archive-20656C?style=flat-square" alt="Cover Art Archive" /></a>
+  <a href="https://musicbrainz.org"><img src="https://img.shields.io/badge/MusicBrainz-EB743B?style=flat-square&logo=musicbrainz&logoColor=white" alt="MusicBrainz" /></a>
+  Album artwork and metadata.
+- <a href="https://www.radio-browser.info"><img src="https://img.shields.io/badge/Radio%20Browser-1C1917?style=flat-square" alt="Radio Browser" /></a>
+  Internet radio stations.
+- <a href="https://www.last.fm"><img src="https://img.shields.io/badge/Last.fm-D51007?style=flat-square&logo=lastdotfm&logoColor=white" alt="Last.fm" /></a>
+  <a href="https://listenbrainz.org"><img src="https://img.shields.io/badge/ListenBrainz-EB743B?style=flat-square&logo=listenbrainz&logoColor=white" alt="ListenBrainz" /></a>
+  <a href="https://libre.fm"><img src="https://img.shields.io/badge/Libre.fm-990000?style=flat-square&logo=gnu&logoColor=white" alt="Libre.fm" /></a>
+  Scrobbling.
+- <a href="https://wikipedia.org"><img src="https://img.shields.io/badge/Wikipedia-000000?style=flat-square&logo=wikipedia&logoColor=white" alt="Wikipedia" /></a>
+  Artist biographies (CC BY-SA 4.0).
+- <a href="https://deezer.com"><img src="https://img.shields.io/badge/Deezer-FEAA2D?style=flat-square&logo=deezer&logoColor=white" alt="Deezer" /></a>
+  <a href="https://theaudiodb.com"><img src="https://img.shields.io/badge/TheAudioDB-6599CD?style=flat-square" alt="TheAudioDB" /></a>
+  Artist images.
+- <a href="https://github.com"><img src="https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white" alt="GitHub" /></a>
+  Update checks.
 
-Code review on this project is done with the help of [CodeRabbit](https://coderabbit.ai), which supports open-source projects with free reviews. CassetteCat is also listed on [AlternativeTo](https://alternativeto.net/software/cassettecat/about/).
+### Libraries & Design
+
+- <a href="https://www.qt.io"><img src="https://img.shields.io/badge/Qt%206-41CD52?style=flat-square&logo=qt&logoColor=white" alt="Qt 6" /></a>
+  Interface and playback.
+- <a href="https://taglib.org"><img src="https://img.shields.io/badge/TagLib-1C1917?style=flat-square" alt="TagLib" /></a>
+  Reading and writing tags and artwork.
+- <a href="https://www.openssl.org"><img src="https://img.shields.io/badge/OpenSSL-721412?style=flat-square&logo=openssl&logoColor=white" alt="OpenSSL" /></a>
+  Encryption for the phone remote.
+- <a href="https://github.com/jaakkopasanen/AutoEq"><img src="https://img.shields.io/badge/AutoEq-1C1917?style=flat-square" alt="AutoEq" /></a>
+  Headphone EQ profiles by Jaakko Pasanen.
+- <a href="https://lucide.dev"><img src="https://img.shields.io/badge/Lucide-F56565?style=flat-square&logo=lucide&logoColor=white" alt="Lucide" /></a>
+  <a href="https://simpleicons.org"><img src="https://img.shields.io/badge/Simple%20Icons-111111?style=flat-square&logo=simpleicons&logoColor=white" alt="Simple Icons" /></a>
+  Icons.
+- <a href="https://github.com/IBM/plex"><img src="https://img.shields.io/badge/IBM%20Plex-0F62FE?style=flat-square&logo=ibm&logoColor=white" alt="IBM Plex" /></a>
+  <a href="https://github.com/floriankarsten/space-grotesk"><img src="https://img.shields.io/badge/Space%20Grotesk-242424?style=flat-square" alt="Space Grotesk" /></a>
+  Typefaces (OFL 1.1).
+
+---
+
+## Acknowledgements
+
+<p align="center">
+  <a href="https://coderabbit.ai">
+    <img src="assets/coderabbit_logo.svg" width="60" height="60" alt="CodeRabbit logo" />
+  </a>
+</p>
+
+<p align="center">
+  Thanks to <a href="https://coderabbit.ai">CodeRabbit</a> for free code reviews on open-source projects like this one, and to <a href="https://www.codacy.com">Codacy</a>, <a href="https://www.codefactor.io">CodeFactor</a> and <a href="https://www.mintlify.com">Mintlify</a> for their free plans for open source.
+</p>
+
+---
 
 ## License
 

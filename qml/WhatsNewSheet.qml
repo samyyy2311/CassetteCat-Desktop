@@ -12,39 +12,10 @@ AppDialog {
     contentItem: ColumnLayout {
         spacing: 16
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-
-            Image {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
-                source: "qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png"
-                fillMode: Image.PreserveAspectFit
-                smooth: true
-                mipmap: true
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-
-                Label {
-                    text: "What's New"
-                    color: textPrimary
-                    font.family: displayFont
-                    font.pixelSize: 16
-                    font.weight: Font.DemiBold
-                }
-
-                Label {
-                    Layout.fillWidth: true
-                    text: "CassetteCat " + Qt.application.version
-                    color: textSecondary
-                    font.family: bodyFont
-                    font.pixelSize: 12
-                }
-            }
+        DialogHeader {
+            imageSource: "qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png"
+            title: "What's New"
+            subtitle: "CassetteCat " + Qt.application.version
 
             TransportButton {
                 Layout.alignment: Qt.AlignTop

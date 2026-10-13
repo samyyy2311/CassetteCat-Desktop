@@ -2389,6 +2389,19 @@ ApplicationWindow {
     function getGenreGroups() { return genreGroups }
     function getFolderGroups() { return folderGroups }
 
+    // The player bar's cover and title open Now Playing, or start the library when nothing is loaded yet.
+    function dockClicked(button) {
+        if (phoneInDock) {
+            nowPlayingOpen = !nowPlayingOpen
+        } else if (button === Qt.RightButton) {
+            if (player.currentTrack.filePath) dockTrackMenu.popup()
+        } else if (player.currentTrack.filePath) {
+            nowPlayingOpen = !nowPlayingOpen
+        } else if (library.trackCount > 0) {
+            playTrack(library.firstPlayableTrack())
+        }
+    }
+
     function playTrack(track) {
         if (!track) return
         if (track.format === "STREAM") {
@@ -4226,21 +4239,7 @@ ApplicationWindow {
                             hoverEnabled: true
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: mouse => {
-                                if (phoneInDock) {
-                                    nowPlayingOpen = !nowPlayingOpen
-                                } else if (mouse.button === Qt.RightButton) {
-                                    if (player.currentTrack.filePath) {
-                                        dockTrackMenu.popup()
-                                    }
-                                } else {
-                                    if (player.currentTrack.filePath) {
-                                        nowPlayingOpen = !nowPlayingOpen
-                                    } else if (library.trackCount > 0) {
-                                        playTrack(library.firstPlayableTrack())
-                                    }
-                                }
-                            }
+                            onClicked: mouse => dockClicked(mouse.button)
                         }
                     }
 
@@ -4264,21 +4263,7 @@ ApplicationWindow {
                                 hoverEnabled: true
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: mouse => {
-                                    if (phoneInDock) {
-                                        nowPlayingOpen = !nowPlayingOpen
-                                    } else if (mouse.button === Qt.RightButton) {
-                                        if (player.currentTrack.filePath) {
-                                            dockTrackMenu.popup()
-                                        }
-                                    } else {
-                                        if (player.currentTrack.filePath) {
-                                            nowPlayingOpen = !nowPlayingOpen
-                                        } else if (library.trackCount > 0) {
-                                            playTrack(library.firstPlayableTrack())
-                                        }
-                                    }
-                                }
+                                onClicked: mouse => dockClicked(mouse.button)
                             }
                         }
 

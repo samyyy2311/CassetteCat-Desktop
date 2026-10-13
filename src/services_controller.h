@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QHash>
+#include <QJsonArray>
 #include <QList>
 #include <QNetworkAccessManager>
 #include <QObject>
@@ -8,6 +9,8 @@
 #include <QSet>
 #include <QString>
 #include <QVariantList>
+
+#include <functional>
 
 class QNetworkReply;
 class QSettings;
@@ -95,10 +98,13 @@ class ServicesController : public QObject {
     QNetworkReply *trackReply(QNetworkReply *reply);
     void publishArtistImage(const QString &artist, const QString &imageUrl);
     void downloadArtistImage(const QString &artist, const QString &imageUrl, const QString &service);
+    /// Tries \p queries on Wikipedia in turn and passes the first intro found to \p found, or calls \p missing.
+    void fetchWikipediaIntro(const QStringList &queries, int index, std::function<void(const QString &)> found,
+                             std::function<void()> missing);
+    /// Searches TheAudioDB for \p artist and passes the artists it returns to \p handle.
+    void searchAudioDb(const QString &artist, std::function<void(const QJsonArray &)> handle);
     void fetchArtistImageFromAudioDb(const QString &artist);
-    void fetchArtistBioFromWikipedia(const QString &artist, const QStringList &queries, int index);
     void fetchArtistBioFromAudioDb(const QString &artist);
-    void fetchAlbumBioFromWikipedia(const QString &album, const QStringList &queries, int index);
     void initScrobbleCredentials();
     void saveScrobbleSession(const QString &service, const QString &username, const QString &sessionKey);
     void postToScrobbleAccounts(const QMap<QString, QString> &params);

@@ -133,7 +133,9 @@ qt_add_qml_module(CassetteCat
         qml/AppGridView.qml
         qml/AppListView.qml
         qml/CardBase.qml
+        qml/ButtonBase.qml
         qml/ColorSwatch.qml
+        qml/DialogHeader.qml
         qml/EnterAnimation.qml
         qml/CategoryCard.qml
         qml/HomeSectionHeader.qml

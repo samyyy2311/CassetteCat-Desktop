@@ -7,7 +7,6 @@
 #include <QThread>
 
 #include <array>
-#include <atomic>
 #include <deque>
 #include <vector>
 
@@ -83,14 +82,11 @@ class AudioPipeline final : public QObject {
     bool m_equalizerOn = false;
     QAudioBufferOutput *m_metered = nullptr;
     QAudioDevice m_device;
-    // Written from the main thread by setPaused(), read from the audio thread in the sink's stateChanged handler.
-    std::atomic<bool> m_paused{true};
+    bool m_paused = true;
     QThread m_audioThread;
     // Lives on the audio thread, where the device is created, fed and destroyed.
     QObject m_audioContext;
     // Created, used and destroyed on the audio thread only.
     QAudioSink *m_sink = nullptr;
     Feed *m_feed = nullptr;
-    // Counts consecutive automatic recoveries from a stopped-with-error sink; only touched on the audio thread.
-    int m_recoveryAttempts = 0;
 };

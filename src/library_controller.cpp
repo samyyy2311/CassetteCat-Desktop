@@ -121,36 +121,9 @@ QStringList splitArtists(const QString &artist) {
 QString sortKey(const QString &value) {
     static const QRegularExpression leadingArticle(QStringLiteral(R"(^\s*['"\[\({#._-]*(?:the|an|a)['"\]\)}#._-]*\s+)"),
                                                    QRegularExpression::CaseInsensitiveOption);
-    QString clean = value;
-    const auto match = leadingArticle.match(clean);
-    if (match.hasMatch()) {
-        clean = clean.mid(match.capturedLength());
-    }
-    int start = 0;
-    while (start < clean.size()) {
-        const QChar ch = clean.at(start);
-        if (ch == '\'' || ch == '"' || ch == '[' || ch == '(' || ch == '{' || ch == ']' || ch == ')' || ch == '}' ||
-            ch == '#' || ch == '.' || ch == '-' || ch == '_' || ch.isSpace()) {
-            ++start;
-        } else {
-            break;
-        }
-    }
-    if (start > 0)
-        clean = clean.mid(start);
-    int end = clean.size();
-    while (end > 0) {
-        const QChar ch = clean.at(end - 1);
-        if (ch == '\'' || ch == '"' || ch == '[' || ch == '(' || ch == '{' || ch == ']' || ch == ')' || ch == '}' ||
-            ch == '#' || ch == '.' || ch == '-' || ch == '_' || ch.isSpace()) {
-            --end;
-        } else {
-            break;
-        }
-    }
-    if (end < clean.size())
-        clean = clean.left(end);
-    const QString lower = clean.toLower();
+    static const QRegularExpression edgePunctuation(QStringLiteral(R"(^[\s'"\[\](){}#._-]+|[\s'"\[\](){}#._-]+$)"),
+                                                    QRegularExpression::UseUnicodePropertiesOption);
+    const QString lower = QString(value).remove(leadingArticle).remove(edgePunctuation).toLower();
     return lower.isEmpty() ? value.toLower() : lower;
 }
 
@@ -404,7 +377,9 @@ bool LibraryController::selfCheck() {
                     QStringLiteral("E"), QStringLiteral("F")})
         return fail("splitArtists delimiters");
     if (sortKey(QStringLiteral("The Beatles")) != QStringLiteral("beatles") ||
-        sortKey(QStringLiteral("\"A\" Hero")) != QStringLiteral("hero"))
+        sortKey(QStringLiteral("\"A\" Hero")) != QStringLiteral("hero") ||
+        sortKey(QStringLiteral("(Untitled)\u00a0")) != QStringLiteral("untitled") ||
+        sortKey(QStringLiteral("---")) != QStringLiteral("---"))
         return fail("sortKey stripping");
     if (compareSortKeys(QStringLiteral("1989"), QStringLiteral("Abbey Road")) >= 0 ||
         compareSortKeys(QStringLiteral("The Beatles"), QStringLiteral("Bee Gees")) >= 0)

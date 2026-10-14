@@ -174,11 +174,16 @@ void ServicesController::submitToListenBrainz(const char *listenType, const QStr
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
     request.setRawHeader("Authorization", "Token " + m_listenBrainzToken.toUtf8());
     auto *reply = trackReply(m_net->post(request, QJsonDocument(root).toJson(QJsonDocument::Compact)));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, listenType] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, listenType, token = m_listenBrainzToken] {
         reply->deleteLater();
+        // An answer about a token that has since been replaced says nothing about the current one.
+        if (token != m_listenBrainzToken)
+            return;
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (reply->error() == QNetworkReply::NoError) {
-            setListenBrainzProblem({});
+            // Playing-now is only kept for a moment, so only a saved listen shows the problem is gone.
+            if (qstrcmp(listenType, "single") == 0)
+                setListenBrainzProblem({});
             return;
         }
         const QString reason = QJsonDocument::fromJson(reply->readAll()).object().value("error").toString();

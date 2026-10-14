@@ -551,7 +551,8 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         return answerGet(url);
     if (method != "POST")
         return {404, {}};
-    return answerPost(path, QJsonDocument::fromJson(body).object(), body, deviceName);
+    const QJsonObject request = QJsonDocument::fromJson(body).object();
+    return controlsPlayback ? answerControl(path, request) : answerSync(path, request, body, deviceName);
 }
 
 RemoteControlServer::Response RemoteControlServer::answerPairRequest(const QByteArray &method, const QUrl &url,
@@ -598,31 +599,8 @@ RemoteControlServer::Response RemoteControlServer::answerGet(const QUrl &url) {
         return {200, QJsonDocument(status()).toJson(QJsonDocument::Compact)};
     if (path == "/api/library")
         return libraryPage(QUrlQuery(url));
-    const auto image = [](const QString &filePath) -> Response {
-        QFile file(filePath);
-        if (!file.open(QIODevice::ReadOnly))
-            return {404, {}};
-        return {200, file.readAll(), file.fileName().endsWith(".png") ? "image/png" : "image/jpeg"};
-    };
-    if (path == "/api/stream") {
-        const QVariantMap track = libraryTrack(QUrlQuery(url).queryItemValue("id"));
-        const QString file = track.value("filePath").toString();
-        if (file.isEmpty() || !QFileInfo::exists(file))
-            return {404, {}};
-        Response response{200, {}, audioContentType(file)};
-        response.filePath = file;
-        return response;
-    }
-    if (path == "/api/artwork" && QUrlQuery(url).hasQueryItem("id"))
-        return image(artworkPath(libraryTrack(QUrlQuery(url).queryItemValue("id"))));
-    if (path == "/api/artwork") {
-        const QString key = QUrlQuery(url).queryItemValue("key");
-        QVariantList tracks = m_upNext;
-        tracks.prepend(m_player->currentTrack());
-        const auto track = std::find_if(tracks.cbegin(), tracks.cend(),
-                                        [&](const QVariant &item) { return artworkKey(item.toMap()) == key; });
-        return image(track == tracks.cend() ? QString() : artworkPath(track->toMap()));
-    }
+    if (path == "/api/stream" || path == "/api/artwork")
+        return answerMedia(path, QUrlQuery(url));
     if (path == "/api/queue") {
         QJsonArray tracks;
         for (const QVariant &item : m_upNext) {
@@ -653,52 +631,77 @@ RemoteControlServer::Response RemoteControlServer::answerGet(const QUrl &url) {
     return {404, {}};
 }
 
-RemoteControlServer::Response RemoteControlServer::answerPost(const QByteArray &path, const QJsonObject &request,
-                                                              const QByteArray &body, const QByteArray &deviceName) {
+RemoteControlServer::Response RemoteControlServer::answerMedia(const QByteArray &path, const QUrlQuery &query) {
+    if (path == "/api/stream") {
+        const QString file = libraryTrack(query.queryItemValue("id")).value("filePath").toString();
+        if (file.isEmpty() || !QFileInfo::exists(file))
+            return {404, {}};
+        Response response{200, {}, audioContentType(file)};
+        response.filePath = file;
+        return response;
+    }
+    QString imagePath;
+    if (query.hasQueryItem("id")) {
+        imagePath = artworkPath(libraryTrack(query.queryItemValue("id")));
+    } else {
+        const QString key = query.queryItemValue("key");
+        QVariantList tracks = m_upNext;
+        tracks.prepend(m_player->currentTrack());
+        const auto track = std::find_if(tracks.cbegin(), tracks.cend(),
+                                        [&](const QVariant &item) { return artworkKey(item.toMap()) == key; });
+        if (track != tracks.cend())
+            imagePath = artworkPath(track->toMap());
+    }
+    QFile file(imagePath);
+    if (!file.open(QIODevice::ReadOnly))
+        return {404, {}};
+    return {200, file.readAll(), file.fileName().endsWith(".png") ? "image/png" : "image/jpeg"};
+}
+
+RemoteControlServer::Response RemoteControlServer::answerControl(const QByteArray &path, const QJsonObject &request) {
     if (path == "/api/playback") {
-        const QString action = request.value("action").toString();
-        if (action == "play")
-            emit playRequested();
-        else if (action == "pause")
-            emit pauseRequested();
-        else if (action == "next")
-            emit nextRequested();
-        else if (action == "previous")
-            emit previousRequested();
-        else if (action == "toggle_shuffle")
-            emit shuffleToggleRequested();
-        else if (action == "cycle_repeat")
-            emit repeatCycleRequested();
-        else
+        static const QHash<QString, void (RemoteControlServer::*)()> actions = {
+            {"play", &RemoteControlServer::playRequested},
+            {"pause", &RemoteControlServer::pauseRequested},
+            {"next", &RemoteControlServer::nextRequested},
+            {"previous", &RemoteControlServer::previousRequested},
+            {"toggle_shuffle", &RemoteControlServer::shuffleToggleRequested},
+            {"cycle_repeat", &RemoteControlServer::repeatCycleRequested}};
+        const auto action = actions.value(request.value("action").toString());
+        if (!action)
             return {400, {}};
+        (this->*action)();
         return {200, {}};
     }
     if (path == "/api/volume" && request.contains("percent")) {
         emit volumeRequested(qBound(0, request.value("percent").toInt(), 100) / 100.0);
         return {200, {}};
     }
-    if (path == "/api/phone-state")
-        return updatePhoneState(request, deviceName);
-    if (path == "/api/handoff" && request.value("tracks").isArray())
-        return startHandoff(request);
-    if (path == "/api/likes")
-        return applyPhoneLikes(request);
-    if (path == "/api/listens")
-        return savePhoneListens(request);
-    if (path == "/api/playlists")
-        return savePhonePlaylist(request);
-    if (path == "/api/library/play") {
-        QVariantList tracks;
-        for (const QJsonValue &id : request.value("ids").toArray()) {
-            const QVariantMap track = libraryTrack(id.toString());
-            if (!track.isEmpty())
-                tracks.append(track);
-        }
-        if (tracks.isEmpty())
-            return {400, {}};
-        m_player->requestPlayback(tracks, qBound(0, request.value("index").toInt(), int(tracks.size()) - 1));
+    if (path == "/api/seek" && request.contains("positionMs")) {
+        emit seekRequested(qMax<qint64>(0, request.value("positionMs").toInteger()));
         return {200, {}};
     }
+    if (path == "/api/handoff" && request.value("tracks").isArray())
+        return startHandoff(request);
+    if (path == "/api/library/play")
+        return playFromLibrary(request);
+    return answerQueue(path, request);
+}
+
+RemoteControlServer::Response RemoteControlServer::playFromLibrary(const QJsonObject &request) {
+    QVariantList tracks;
+    for (const QJsonValue &id : request.value("ids").toArray()) {
+        const QVariantMap track = libraryTrack(id.toString());
+        if (!track.isEmpty())
+            tracks.append(track);
+    }
+    if (tracks.isEmpty())
+        return {400, {}};
+    m_player->requestPlayback(tracks, qBound(0, request.value("index").toInt(), int(tracks.size()) - 1));
+    return {200, {}};
+}
+
+RemoteControlServer::Response RemoteControlServer::answerQueue(const QByteArray &path, const QJsonObject &request) {
     if (path == "/api/queue/next") {
         const QString title = request.value("title").toString();
         if (title.isEmpty())
@@ -718,6 +721,19 @@ RemoteControlServer::Response RemoteControlServer::answerPost(const QByteArray &
         emit queueTrackRequested(request.value("index").toInt());
         return {200, {}};
     }
+    return {404, {}};
+}
+
+RemoteControlServer::Response RemoteControlServer::answerSync(const QByteArray &path, const QJsonObject &request,
+                                                              const QByteArray &body, const QByteArray &deviceName) {
+    if (path == "/api/phone-state")
+        return updatePhoneState(request, deviceName);
+    if (path == "/api/likes")
+        return applyPhoneLikes(request);
+    if (path == "/api/listens")
+        return savePhoneListens(request);
+    if (path == "/api/playlists")
+        return savePhonePlaylist(request);
     if (path == "/api/backup") {
         if (request.isEmpty())
             return {400, {}};
@@ -725,10 +741,6 @@ RemoteControlServer::Response RemoteControlServer::answerPost(const QByteArray &
             qWarning() << "Could not save the phone backup to" << phoneBackupFilePath();
             return {500, {}};
         }
-        return {200, {}};
-    }
-    if (path == "/api/seek" && request.contains("positionMs")) {
-        emit seekRequested(qMax<qint64>(0, request.value("positionMs").toInteger()));
         return {200, {}};
     }
     return {404, {}};

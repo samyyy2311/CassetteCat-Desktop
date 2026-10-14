@@ -128,7 +128,11 @@ class RemoteControlServer final : public QObject {
                      const QByteArray &body, const QHostAddress &peer, const QByteArray &deviceName = {});
     Response answerPairRequest(const QByteArray &method, const QUrl &url, const QByteArray &body);
     Response answerGet(const QUrl &url);
-    Response answerPost(const QByteArray &path, const QJsonObject &request, const QByteArray &body,
+    Response answerMedia(const QByteArray &path, const QUrlQuery &query);
+    Response answerControl(const QByteArray &path, const QJsonObject &request);
+    Response playFromLibrary(const QJsonObject &request);
+    Response answerQueue(const QByteArray &path, const QJsonObject &request);
+    Response answerSync(const QByteArray &path, const QJsonObject &request, const QByteArray &body,
                         const QByteArray &deviceName);
     Response libraryPage(const QUrlQuery &query) const;
     Response likesSnapshot() const;

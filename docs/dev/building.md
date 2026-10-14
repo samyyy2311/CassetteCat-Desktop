@@ -25,7 +25,7 @@ cmake -S . -B build/dev -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_PREFIX_PATH=/p
 cmake --build build/dev
 ```
 
-The app is `build/dev/CassetteCat` (`CassetteCat.exe` on Windows, `CassetteCat.app` on macOS).
+The app is `build/dev/CassetteCat` (`CassetteCat.exe` on Windows, `CassetteCat.app` on macOS). A Debug build runs as **CassetteCat Dev**, with its own settings and data, so it can run beside the installed app without touching your library or Listening Record.
 
 On Windows with Qt's MinGW kit installed under `C:\Qt`, the `dev` and `release` presets set the compiler, Qt and OpenSSL paths for you:
 

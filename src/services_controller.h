@@ -80,6 +80,7 @@ class ServicesController : public QObject {
     void albumBioLoaded(const QString &album, const QString &bio);
     void artistImageLoaded(const QString &artist, const QString &imageUrl);
     void listenBrainzValidationFinished(bool valid, const QString &userName, const QString &error);
+    void listenBrainzDisconnected();
     void scrobbleAccountAuthFinished(const QString &service, bool success, const QString &userName,
                                      const QString &error);
     /// Announces the result of a completed update check.
@@ -103,6 +104,8 @@ class ServicesController : public QObject {
                              std::function<void()> missing);
     /// Searches TheAudioDB for \p artist and passes the artists it returns to \p handle.
     void searchAudioDb(const QString &artist, std::function<void(const QJsonArray &)> handle);
+    void submitToListenBrainz(const char *listenType, const QString &artist, const QString &title, const QString &album,
+                              qint64 listenedAt);
     void searchDeezerCovers(quint64 requestToken, const QString &term, const QString &album, const QString &artist,
                             const QVariantList &results, const QSet<QString> &seen);
     /// Adds covers from the Cover Art Archive, found through MusicBrainz, and reports the search's results.

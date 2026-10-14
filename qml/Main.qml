@@ -479,6 +479,11 @@ ApplicationWindow {
                 appSettings.setValue("scrobble/listenbrainz_enabled", true)
             }
         }
+        function onListenBrainzDisconnected() {
+            window.scrobbleListenBrainzConnected = false
+            window.scrobbleListenBrainzUser = ""
+            window.scrobbleListenBrainzEnabled = false
+        }
         function onScrobbleAccountAuthFinished(service, success, userName, error) {
             if (!success)
                 return
@@ -4033,12 +4038,7 @@ ApplicationWindow {
                                 onStartMinimizedToTraySelected: value => window.startMinimizedToTray = value
                                 onNowPlayingNotificationsSelected: value => window.nowPlayingNotifications = value
                                 onScrobbleListenBrainzToggled: value => window.scrobbleListenBrainzEnabled = value
-                                onDisconnectListenBrainzRequested: {
-                                    services.disconnectListenBrainz()
-                                    window.scrobbleListenBrainzConnected = false
-                                    window.scrobbleListenBrainzUser = ""
-                                    window.scrobbleListenBrainzEnabled = false
-                                }
+                                onDisconnectListenBrainzRequested: services.disconnectListenBrainz()
                                 onScrobbleLibreFmToggled: value => window.scrobbleLibreFmEnabled = value
                                 onDisconnectLibreFmRequested: {
                                     services.disconnectScrobbleAccount("librefm")

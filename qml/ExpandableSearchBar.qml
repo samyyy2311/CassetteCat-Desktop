@@ -9,7 +9,9 @@ Item {
     property alias input: inputField
     property alias searchInput: inputField
     property string placeholder: "Search..."
-    property bool expanded: false
+    // Stays a full field instead of folding to an icon, for places with room for it.
+    property bool alwaysOpen: false
+    property bool expanded: alwaysOpen
     property int boxSize: 34
     property int iconSize: 16
     property int expandedWidth: 200
@@ -66,7 +68,7 @@ Item {
             id: searchIconMouseArea
             anchors.fill: parent
             anchors.margins: -4
-            visible: root.expanded
+            visible: root.expanded && !root.alwaysOpen
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: root.collapse()
@@ -123,6 +125,7 @@ Item {
         }
 
         PressDepthIconButton {
+            visible: !root.alwaysOpen || inputField.text.length > 0
             boxSize: 22
             iconSize: 12
             iconName: "x"
@@ -159,7 +162,7 @@ Item {
             root.cleared()
         }
         inputField.focus = false
-        root.expanded = false
+        root.expanded = root.alwaysOpen
     }
 
     function clear() {

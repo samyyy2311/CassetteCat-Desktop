@@ -249,7 +249,8 @@ Item {
             ExpandableSearchBar {
                 id: searchField
                 Layout.bottomMargin: 12
-                boxSize: 34
+                alwaysOpen: true
+                boxSize: 38
                 iconSize: 16
                 expandedWidth: 184
                 placeholder: "Search settings..."

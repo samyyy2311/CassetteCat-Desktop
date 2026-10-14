@@ -150,6 +150,12 @@ See [Building and testing](docs/dev/building.md) for each system's details.
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and [AI_DISCLOSURE.md](AI_DISCLOSURE.md) for how AI assistance is used here. Report security issues privately, as described in [SECURITY.md](.github/SECURITY.md).
 
+### Translations
+
+CassetteCat Desktop is English only for now. Making it translatable, so it can join the Android app on
+[Weblate](https://hosted.weblate.org/engage/cassettecat/), is tracked in
+[#56](https://github.com/samyyy2311/CassetteCat-Desktop/issues/56).
+
 ---
 
 ## Support

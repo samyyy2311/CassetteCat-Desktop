@@ -16,6 +16,11 @@ function comparable(value) {
         .trim()
 }
 
+// "Currents (Deluxe)" extends "Currents" with more words, but "Lovely" doesn't extend "Love".
+function extendsWith(whole, start) {
+    return whole.startsWith(start) && /^[\s(\[\-:/,.&]/.test(whole.slice(start.length))
+}
+
 // What a MusicBrainz match would change in a song; a field the song leaves empty counts as missing.
 // With missingNumbersOnly, year, track and disc are only filled in, since editions of an album share a name but
 // not their numbering. An album named as MusicBrainz's plus an edition, such as "(Deluxe)", is kept either way.
@@ -29,8 +34,8 @@ function tagChanges(song, tags, options) {
             if (from === to) return false
             if (missingNumbersOnly && numberFields.includes(field) && from !== "") return false
             // A title that only gains words, such as " - Remix" or " (Live)", belongs to another version of the song.
-            if (field === "title" && from !== "" && to.startsWith(from)) return false
-            return !(field === "album" && from.startsWith(to))
+            if (field === "title" && from !== "" && extendsWith(to, from)) return false
+            return !(field === "album" && extendsWith(from, to))
         })
         .map(field => ({ field: field, label: tagLabels[field], from: String(song[field] || ""), to: String(tags[field]) }))
 }

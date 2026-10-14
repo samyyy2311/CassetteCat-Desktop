@@ -210,6 +210,8 @@ QtObject {
             if (problem === "busy") {
                 root.failuresInARow += 1
                 if (root.failuresInARow >= 3) {
+                    // Continue starts again from the first song refused in this run, so none of them is missed.
+                    root.checkedCount -= root.failuresInARow - 1
                     root.running = false
                     root.problem = "MusicBrainz is busy right now. Continue in a few minutes, from where it stopped."
                     root.save()

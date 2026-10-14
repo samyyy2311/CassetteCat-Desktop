@@ -22,6 +22,8 @@ TestCase {
 
     function test_a_version_suffix_is_not_a_title_fix() {
         compare(LibraryTidy.tagChanges({ title: "Aa Jao" }, { title: "Aa Jao - Jhankar" }), [])
+        // A longer word isn't a version suffix, so it's still a correction.
+        compare(LibraryTidy.tagChanges({ title: "Love" }, { title: "Lovely" }).map(change => change.to), ["Lovely"])
     }
 
     function test_duplicates_keep_the_lossless_or_largest_copy() {

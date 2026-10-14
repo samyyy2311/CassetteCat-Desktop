@@ -4,7 +4,7 @@
 
 | Workflow | Runs on | What it does |
 | :--- | :--- | :--- |
-| `ci.yml` | Pull requests and pushes to `main` | Builds on Windows (`build`), Linux on x86_64 and ARM64 (`linux`), macOS (`macos`) and with Clang (`clang`), runs the self-checks and tests, and runs them again under AddressSanitizer and UndefinedBehaviorSanitizer (`sanitizers`) |
+| `ci.yml` | Pull requests and pushes to `main` | Builds on Windows (`build`), Linux on x86_64 and ARM64 (`linux`), macOS (`macos`, paused while the macOS app is in development) and with Clang (`clang`), runs the self-checks and tests, and runs them again under AddressSanitizer and UndefinedBehaviorSanitizer (`sanitizers`) |
 | `static-analysis.yml` | Pull requests and pushes | clang-format and clang-tidy |
 | `codeql.yml` | Pull requests, pushes and weekly | CodeQL security analysis of the C++ |
 | `dependency-review.yml` | Pull requests | Flags vulnerable or badly licensed dependency changes |
@@ -34,7 +34,7 @@
 
 The tag starts `release.yml`, which:
 
-- builds the Windows installer, portable zip and Microsoft Store package; the Linux AppImage, `.deb`, `.rpm`, `.tar.gz` and Flatpak for x86_64 and ARM64; and the universal macOS disk image;
+- builds the Windows installer, portable zip and Microsoft Store package; the Linux AppImage, `.deb`, `.rpm`, `.tar.gz` and Flatpak for x86_64 and ARM64. The universal macOS disk image is paused while the macOS app is in development;
 - checks every package, writes an SPDX SBOM and `SHA256SUMS.txt`, and creates the GitHub release with all of them;
 - updates the Windows Package Manager manifest using the `WINGET_TOKEN` secret in the `release` environment.
 

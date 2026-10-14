@@ -232,7 +232,7 @@ QVariantList PlayerController::audioOutputs() const {
     QVariantList outputs;
     QVariantMap defaultDevice;
     defaultDevice.insert(QStringLiteral("value"), QString());
-    defaultDevice.insert(QStringLiteral("label"), QStringLiteral("System Default"));
+    defaultDevice.insert(QStringLiteral("label"), tr("System Default"));
     outputs.append(defaultDevice);
 
     for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {

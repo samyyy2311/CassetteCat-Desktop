@@ -65,7 +65,7 @@ Item {
 
                                 Label {
                                     text: root.libraryModel.trackCount
-                                        ? (root.libraryModel.trackCount + " songs • " + artistCount + " artists • " + albumCount + " albums")
+                                        ? [qsTr("%n song(s)", "", root.libraryModel.trackCount), qsTr("%n artist(s)", "", artistCount), qsTr("%n album(s)", "", albumCount)].join(" • ")
                                         : qsTr("Scan a music folder to populate your library")
                                     color: silverDim
                                     font.family: monoFont
@@ -181,7 +181,7 @@ Item {
 
                                     Label {
                                         Layout.fillWidth: true
-                                        text: "Play something different from " + root.libraryModel.trackCount + " songs"
+                                        text: qsTr("Play something different from %n song(s)", "", root.libraryModel.trackCount)
                                         color: silver
                                         font.family: bodyFont
                                         font.pixelSize: 13
@@ -312,7 +312,7 @@ Item {
 
                                 HomeSectionHeader {
                                     title: qsTr("Albums in Rotation")
-                                    subtitle: albumCount + " Total albums in library"
+                                    subtitle: qsTr("%n album(s) in your library", "", albumCount)
                                     onPlayClicked: {
                                         if (albumsRotation.length > 0) root.appWindow.playTrack(albumsRotation[0].track)
                                     }
@@ -349,7 +349,7 @@ Item {
 
                                 HomeSectionHeader {
                                     title: qsTr("Artists")
-                                    subtitle: artistCount + " Total artists in library"
+                                    subtitle: qsTr("%n artist(s) in your library", "", artistCount)
                                     onPlayClicked: {
                                         if (artistsRotation.length > 0) root.appWindow.playTrack(artistsRotation[0].track)
                                     }

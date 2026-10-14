@@ -28,7 +28,7 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "System-Wide Hotkeys" }
+    SectionLabel { text: qsTr("System-Wide Hotkeys") }
 
     SettingCard {
         SettingRow {
@@ -76,7 +76,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "In-App Controls" }
+    SectionLabel { text: qsTr("In-App Controls") }
 
     SettingCard {
         Label {

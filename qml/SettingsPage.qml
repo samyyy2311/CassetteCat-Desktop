@@ -27,7 +27,7 @@ Item {
     property var inAppShortcutActions: []
     property string inAppShortcutStatus: ""
     property string sleepTimerMode: "off"
-    property string sleepTimerStatus: "Off"
+    property string sleepTimerStatus: qsTr("Off")
     property bool sleepFadeOut: true
     property bool autoplayEnabled: false
     property int crossfadeSeconds: 0
@@ -339,7 +339,7 @@ Item {
                             SectionLabel {
                                 visible: root.searchQuery.trim() !== ""
                                 text: root.searchResults.length > 0
-                                      ? root.searchResults.length + (root.searchResults.length === 1 ? " Setting Found" : " Settings Found")
+                                      ? qsTr("%n Setting(s) Found", "", root.searchResults.length)
                                       : qsTr("No Settings Found")
                             }
 
@@ -356,7 +356,7 @@ Item {
 
                                         SettingButton {
                                             text: qsTr("Open")
-                                            accessibleName: "Open " + modelData.title
+                                            accessibleName: qsTr("Open %1").arg(modelData.title)
                                             onClicked: root.openSearchResult(modelData)
                                         }
                                     }

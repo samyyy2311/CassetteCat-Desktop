@@ -33,7 +33,7 @@ Item {
             Layout.fillWidth: true
             text: {
                 if (!root.playerController.currentTrack.title && !root.playerController.currentTrack.filePath) {
-                    return "Select a track to start playback"
+                    return qsTr("Select a track to start playback")
                 }
                 let artist = root.playerController.currentTrack.artist || "Unknown Artist"
                 if (root.playerController.currentTrack.album) artist += " • " + root.playerController.currentTrack.album
@@ -78,7 +78,7 @@ Item {
 
             activeFocusOnTab: visible
             Accessible.role: Accessible.Button
-            Accessible.name: "Audio quality: " + (format.label || "")
+            Accessible.name: qsTr("Audio quality: %1").arg(format.label || "")
             Accessible.onPressAction: root.appWindow.openAudioDetails()
             Keys.onReturnPressed: root.appWindow.openAudioDetails()
             Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space

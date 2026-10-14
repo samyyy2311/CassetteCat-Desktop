@@ -432,7 +432,7 @@ Window {
                                         ? player.currentTrack.artist + " · " + player.currentTrack.album
                                         : player.currentTrack.artist
                                 }
-                                return root.tracksCount > 0 ? "Ready to play" : "Select folder"
+                                return root.tracksCount > 0 ? qsTr("Ready to play") : qsTr("Select folder")
                             }
                             color: root.textSecondary
                             font.family: root.bodyFont

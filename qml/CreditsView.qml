@@ -79,7 +79,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "About" }
+    SectionLabel { text: qsTr("About") }
 
     SettingCard {
         Repeater {
@@ -103,7 +103,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Services & Data" }
+    SectionLabel { text: qsTr("Services & Data") }
 
     SettingCard {
         Repeater {
@@ -135,7 +135,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Core Audio & Architecture" }
+    SectionLabel { text: qsTr("Core Audio & Architecture") }
 
     SettingCard {
         Repeater {
@@ -161,7 +161,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Design & Typography" }
+    SectionLabel { text: qsTr("Design & Typography") }
 
     SettingCard {
         Repeater {
@@ -186,7 +186,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Open Source License" }
+    SectionLabel { text: qsTr("Open Source License") }
 
     SettingCard {
         CreditItemRow {

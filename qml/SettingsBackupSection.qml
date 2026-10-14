@@ -5,7 +5,7 @@ import QtQuick.Layouts
 ColumnLayout {
     id: root
     property string backupStatus: ""
-    readonly property bool backupFailed: /error|fail/i.test(backupStatus)
+    property bool backupFailed: false
     property bool logsVisible: false
     property string recentLogs: ""
 
@@ -15,7 +15,7 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Settings & Library Backup" }
+    SectionLabel { text: qsTr("Settings & Library Backup") }
 
     SettingCard {
         SettingRow {
@@ -87,7 +87,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Diagnostics & Logs" }
+    SectionLabel { text: qsTr("Diagnostics & Logs") }
 
     SettingCard {
         SettingRow {

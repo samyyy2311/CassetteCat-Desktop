@@ -227,7 +227,7 @@ Rectangle {
             Layout.alignment: Qt.AlignVCenter
             Layout.preferredWidth: 60
             horizontalAlignment: Text.AlignRight
-            text: playCount + (playCount === 1 ? " play" : " plays")
+            text: qsTr("%n play(s)", "", playCount)
             color: silverDim
             font.family: monoFont
             font.pixelSize: 11

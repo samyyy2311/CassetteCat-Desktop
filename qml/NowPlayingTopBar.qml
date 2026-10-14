@@ -48,7 +48,7 @@ Item {
             Label {
                 visible: parent.syncing
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Press Space as each line starts  " + root.appWindow.lyricsTapStamps.length + " / " + parent.lines.length
+                text: qsTr("Press Space as each line starts  %1 / %2").arg(root.appWindow.lyricsTapStamps.length).arg(parent.lines.length)
                 color: root.appWindow.textSecondary
                 font.family: root.appWindow.bodyFont
                 font.pixelSize: 12
@@ -116,7 +116,7 @@ Item {
             visible: phoneRemote.controllerName !== ""
             iconName: "smartphone"
             highlighted: true
-            tooltipText: "Controlled from " + phoneRemote.controllerName + ". Click to continue on it."
+            tooltipText: qsTr("Controlled from %1. Click to continue on it.").arg(phoneRemote.controllerName)
             onClicked: phoneRemote.continueOnPhone()
         }
 

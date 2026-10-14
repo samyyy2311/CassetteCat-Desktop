@@ -10,7 +10,7 @@ ColumnLayout {
     property bool autoplayEnabled: false
     property int crossfadeSeconds: 0
     property string sleepTimerMode: "off"
-    property string sleepTimerStatus: "Off"
+    property string sleepTimerStatus: qsTr("Off")
     property bool sleepFadeOut: true
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 80
@@ -30,7 +30,7 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Audio Output" }
+    SectionLabel { text: qsTr("Audio Output") }
 
     SettingCard {
         SettingChoiceGroup {
@@ -44,7 +44,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Queue & Playback" }
+    SectionLabel { text: qsTr("Queue & Playback") }
 
     SettingCard {
         SettingRow {
@@ -88,7 +88,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Audio Protection" }
+    SectionLabel { text: qsTr("Audio Protection") }
 
     SettingCard {
         SettingRow {
@@ -127,11 +127,11 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Equalizer" }
+    SectionLabel { text: qsTr("Equalizer") }
 
     SettingsEqualizerCard {}
 
-    SectionLabel { text: "Loudness & Normalization" }
+    SectionLabel { text: qsTr("Loudness & Normalization") }
 
     SettingCard {
         SettingChoiceGroup {
@@ -148,13 +148,13 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Sleep Timer" }
+    SectionLabel { text: qsTr("Sleep Timer") }
 
     SettingCard {
         SettingChoiceGroup {
             iconName: "clock"
             title: qsTr("Sleep Timer")
-            subtitle: root.sleepTimerMode === "off" ? qsTr("Stop playback automatically after a duration or track") : ("Active countdown: " + root.sleepTimerStatus)
+            subtitle: root.sleepTimerMode === "off" ? qsTr("Stop playback automatically after a duration or track") : qsTr("Active countdown: %1").arg(root.sleepTimerStatus)
             options: [
                 { value: "off", label: qsTr("Off") },
                 { value: "15", label: qsTr("15 min") },

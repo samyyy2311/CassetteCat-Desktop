@@ -64,7 +64,7 @@ CardBase {
         }
 
         Label {
-            text: root.count + (root.count === 1 ? " track" : " tracks")
+            text: qsTr("%n track(s)", "", root.count)
             color: textSecondary
             font.family: bodyFont
             font.pixelSize: 12

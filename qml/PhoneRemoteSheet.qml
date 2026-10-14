@@ -36,9 +36,9 @@ AppDialog {
             title: qsTr("Phone Remote")
             subtitle: root.offlineBlackout ? qsTr("Paused by Offline Blackout Mode")
                 : !root.enabledSetting ? qsTr("Off")
-                : root.controlled ? "Controlled from " + root.remote.controllerName
-                : root.phoneName !== "" ? root.phoneName + " is playing"
-                : "Ready on " + root.remote.computerName
+                : root.controlled ? qsTr("Controlled from %1").arg(root.remote.controllerName)
+                : root.phoneName !== "" ? qsTr("%1 is playing").arg(root.phoneName)
+                : qsTr("Ready on %1").arg(root.remote.computerName)
 
             TransportButton {
                 Layout.alignment: Qt.AlignTop
@@ -61,15 +61,15 @@ AppDialog {
             visible: root.remoteOn && root.phoneName === ""
             text: root.remote.address === ""
                   ? qsTr("Connect this computer to Wi-Fi to use your phone as a remote.")
-                  : "On your phone, open CassetteCat on the same Wi-Fi, tap the devices button in Now Playing and choose "
-                    + root.remote.computerName + ". Then click Allow here."
+                  : qsTr("On your phone, open CassetteCat on the same Wi-Fi, tap the devices button in Now Playing and choose %1. Then click Allow here.")
+                    .arg(root.remote.computerName)
         }
 
         Body {
             visible: root.remoteOn && root.phoneName !== ""
             text: root.controlled
                   ? qsTr("Playback here follows your phone. Continue on the phone to move the music back to it.")
-                  : (root.remote.phonePlayback.title || qsTr("Music")) + " is playing on your phone. Play it here to move it to this computer."
+                  : qsTr("%1 is playing on your phone. Play it here to move it to this computer.").arg(root.remote.phonePlayback.title || qsTr("Music"))
         }
 
         // Only for networks where the phone can't find the computer by itself.
@@ -138,7 +138,7 @@ AppDialog {
 
             SettingButton {
                 visible: root.remoteOn && root.controlled
-                text: "Continue on " + root.phoneName
+                text: qsTr("Continue on %1").arg(root.phoneName)
                 primary: true
                 onClicked: {
                     root.remote.continueOnPhone()

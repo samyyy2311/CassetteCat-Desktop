@@ -162,7 +162,7 @@ AppDialog {
 
             Label {
                 Layout.fillWidth: true
-                text: root.searchResults.length + (root.searchResults.length === 1 ? " artwork found" : " artworks found")
+                text: qsTr("%n artwork(s) found", "", root.searchResults.length)
                 color: accentText
                 font.family: monoFont
                 font.pixelSize: 10

@@ -203,7 +203,7 @@ QtObject {
                 return
             if (problem === "off") {
                 root.running = false
-                root.problem = "MusicBrainz is turned off. Turn it on in Network & Services, then continue."
+                root.problem = qsTr("MusicBrainz is turned off. Turn it on in Network & Services, then continue.")
                 root.save()
                 return
             }
@@ -213,7 +213,7 @@ QtObject {
                     // Continue starts again from the first song refused in this run, so none of them is missed.
                     root.checkedCount -= root.failuresInARow - 1
                     root.running = false
-                    root.problem = "MusicBrainz is busy right now. Continue in a few minutes, from where it stopped."
+                    root.problem = qsTr("MusicBrainz is busy right now. Continue in a few minutes, from where it stopped.")
                     root.save()
                     return
                 }

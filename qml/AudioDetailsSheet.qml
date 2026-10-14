@@ -63,7 +63,7 @@ BottomSheet {
         DetailRow {
             visible: root.audioFormat.sampleRateHz > 0
             label: qsTr("Sample Rate")
-            value: root.audioFormat.sampleRateHz + " Hz (" + (root.audioFormat.sampleRateHz / 1000).toFixed(1) + " kHz)"
+            value: qsTr("%1 Hz (%2 kHz)").arg(root.audioFormat.sampleRateHz).arg((root.audioFormat.sampleRateHz / 1000).toFixed(1))
         }
 
         DetailRow {
@@ -80,7 +80,7 @@ BottomSheet {
 
         DetailRow {
             label: qsTr("Encoding")
-            value: root.audioFormat.isLossless ? "Lossless" : "Lossy Compressed"
+            value: root.audioFormat.isLossless ? qsTr("Lossless") : qsTr("Lossy Compressed")
         }
     }
 }

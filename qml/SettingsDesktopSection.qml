@@ -26,7 +26,7 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Startup & Navigation" }
+    SectionLabel { text: qsTr("Startup & Navigation") }
 
     SettingCard {
         SettingChoiceGroup {
@@ -46,7 +46,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Window & System Tray" }
+    SectionLabel { text: qsTr("Window & System Tray") }
 
     SettingCard {
         SettingRow {
@@ -76,7 +76,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Desktop Notifications" }
+    SectionLabel { text: qsTr("Desktop Notifications") }
 
     SettingCard {
         SettingRow {
@@ -96,7 +96,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Mini Player Window" }
+    SectionLabel { text: qsTr("Mini Player Window") }
 
     SettingCard {
         SettingRow {

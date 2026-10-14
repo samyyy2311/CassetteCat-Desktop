@@ -13,11 +13,11 @@ RowLayout {
     spacing: 4
 
     Accessible.role: Accessible.Link
-    Accessible.name: "See all " + count
+    Accessible.name: qsTr("See all %1").arg(count)
     Accessible.onPressAction: root.clicked()
 
     Label {
-        text: "See all " + root.count
+        text: qsTr("See all %1").arg(root.count)
         color: root.tint
         font.family: bodyFont
         font.pixelSize: 13

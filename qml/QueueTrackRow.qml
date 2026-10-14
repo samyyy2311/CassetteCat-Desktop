@@ -87,7 +87,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             visible: root.header
             text: root.entry.title || ""
-            color: root.entry.title === "NOW PLAYING" ? recordRed : silverDim
+            color: root.entry.current ? recordRed : silverDim
             font.family: monoFont
             font.pixelSize: root.compact ? 9 : 11
             font.weight: Font.Bold

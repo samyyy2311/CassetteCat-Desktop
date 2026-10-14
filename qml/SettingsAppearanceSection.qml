@@ -19,7 +19,7 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Color Scheme" }
+    SectionLabel { text: qsTr("Color Scheme") }
 
     SettingCard {
         SettingRow {
@@ -57,7 +57,7 @@ ColumnLayout {
 
     }
 
-    SectionLabel { text: "Cover Art & Backdrop" }
+    SectionLabel { text: qsTr("Cover Art & Backdrop") }
 
     SettingCard {
         SettingRow {
@@ -94,7 +94,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Time Counter" }
+    SectionLabel { text: qsTr("Time Counter") }
 
     SettingCard {
         SettingRow {

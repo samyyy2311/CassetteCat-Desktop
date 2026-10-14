@@ -224,7 +224,7 @@ ApplicationWindow {
     property string nowPlayingBackdrop: "tinted"
     property bool showRemainingTime: true
     property string sleepTimerMode: "off"
-    property string sleepTimerStatus: "Off"
+    property string sleepTimerStatus: qsTr("Off")
     property bool sleepFadeOut: true
     property int sleepTimerRemainingSeconds: 0
     property bool autoplayEnabled: false
@@ -415,7 +415,7 @@ ApplicationWindow {
             playbackHistory.slice().reverse().forEach(track => entries.push({ type: "track", track: track, title: track.title, fileName: track.fileName, filePath: track.filePath, artist: track.artist, album: track.album, duration: track.duration }))
         }
         if (player.currentTrack && player.currentTrack.filePath) {
-            entries.push({ type: "header", title: qsTr("NOW PLAYING") })
+            entries.push({ type: "header", title: qsTr("NOW PLAYING"), current: true })
             entries.push({ type: "current", track: player.currentTrack, title: player.currentTrack.title, fileName: player.currentTrack.fileName, filePath: player.currentTrack.filePath, artist: player.currentTrack.artist, album: player.currentTrack.album, duration: player.currentTrack.duration })
         }
         const queue = activePlaybackQueue()
@@ -517,22 +517,22 @@ ApplicationWindow {
             updateAvailableState = updateAvailable
             updateUrl = releaseUrl
             if (updateAvailable) {
-                updateStatusText = "Update available: v" + latestVersion
+                updateStatusText = qsTr("Update available: v%1").arg(latestVersion)
                 if (!manual && appSettings.value("updates/promptedVersion", "") !== latestVersion) {
                     updatePrompt.version = latestVersion
                     updatePrompt.open()
                 }
             } else {
-                updateStatusText = "CassetteCat is up to date (v" + Qt.application.version + ")"
+                updateStatusText = qsTr("CassetteCat is up to date (v%1)").arg(Qt.application.version)
             }
         }
         function onUpdateCheckFailed(error, manual) {
             updateChecking = false
-            updateStatusText = "Update check failed: " + error
+            updateStatusText = qsTr("Update check failed: %1").arg(error)
         }
     }
 
-    property string updateStatusText: "Current version: v" + Qt.application.version
+    property string updateStatusText: qsTr("Current version: v%1").arg(Qt.application.version)
     property bool updateChecking: false
     property bool updateAvailableState: false
     property string updateUrl: ""
@@ -547,7 +547,7 @@ ApplicationWindow {
 
     function checkForUpdates() {
         updateChecking = true
-        updateStatusText = "Checking for updates..."
+        updateStatusText = qsTr("Checking for updates...")
         services.checkForUpdates(true)
     }
 
@@ -970,7 +970,7 @@ ApplicationWindow {
             added = true
             return Object.assign({}, playlist, { trackPaths: playlist.trackPaths.concat([track.filePath]) })
         })
-        if (added) playlistStatus = "Added to playlist"
+        if (added) playlistStatus = qsTr("Added to playlist")
         return added
     }
 
@@ -1018,24 +1018,24 @@ ApplicationWindow {
     function importM3u(url) {
         const sourcePath = library.localPath(url)
         if (!sourcePath) {
-            playlistStatus = "Could not read playlist"
+            playlistStatus = qsTr("Could not read playlist")
             return
         }
         const parsedTracks = library.parseM3u(sourcePath)
         if (!parsedTracks || !parsedTracks.length) {
-            playlistStatus = "No playable tracks found in playlist"
+            playlistStatus = qsTr("No playable tracks found in playlist")
             return
         }
         const tracks = tracksForPaths(parsedTracks.map(track => track.filePath))
             .filter(track => !!track && track.format !== "STREAM")
         if (!tracks.length) {
-            playlistStatus = "No library tracks found in playlist"
+            playlistStatus = qsTr("No library tracks found in playlist")
             return
         }
         const fileName = sourcePath.replace(/\\/g, "/").split("/").pop()
-        const name = fileName.replace(/\.[^.]+$/, "") || "Imported playlist"
+        const name = fileName.replace(/\.[^.]+$/, "") || qsTr("Imported playlist")
         createPlaylist(name, tracks)
-        playlistStatus = "Imported " + tracks.length + " track" + (tracks.length === 1 ? "" : "s")
+        playlistStatus = qsTr("Imported %n track(s)", "", tracks.length)
     }
 
     function exportM3u(url) {
@@ -1045,8 +1045,8 @@ ApplicationWindow {
         const tracks = playlistTracks(playlist)
         const text = "#EXTM3U\n" + tracks.map(track => track.filePath).join("\n") + (tracks.length ? "\n" : "")
         playlistStatus = appSettings.exportTextFile(url, text)
-            ? "Exported " + tracks.length + " track" + (tracks.length === 1 ? "" : "s")
-            : "Could not export playlist"
+            ? qsTr("Exported %n track(s)", "", tracks.length)
+            : qsTr("Could not export playlist")
     }
 
     function numberMap(value) {
@@ -1273,7 +1273,7 @@ ApplicationWindow {
         if (sequence.length > 0) {
             for (const item of shortcutDefinitions.inAppActions) {
                 if (item.action !== action && inAppShortcut(item.action) === sequence) {
-                    inAppShortcutStatus = shortcut + " is already assigned to " + item.label
+                    inAppShortcutStatus = qsTr("%1 is already assigned to %2").arg(shortcut).arg(item.label)
                     return
                 }
             }
@@ -1283,7 +1283,7 @@ ApplicationWindow {
         if (shortcut === matching.defaultKey || sequence === defaultSequence) delete updated[action]
         else updated[action] = sequence
         inAppShortcutBindings = updated
-        inAppShortcutStatus = shortcut === "" ? "Shortcut cleared" : "Shortcut saved"
+        inAppShortcutStatus = shortcut === "" ? qsTr("Shortcut cleared") : qsTr("Shortcut saved")
     }
 
     // While typing, only shortcuts that a text field would not use for itself stay active.
@@ -1697,8 +1697,10 @@ ApplicationWindow {
         appSettings.sync()
     }
 
-    function setBackupStatus(message) {
-        if (settingsLoader.item) settingsLoader.item.backupStatus = message
+    function setBackupStatus(message, failed) {
+        if (!settingsLoader.item) return
+        settingsLoader.item.backupStatus = message
+        settingsLoader.item.backupFailed = !!failed
     }
 
     function toggleMiniPlayer() {
@@ -1931,8 +1933,8 @@ ApplicationWindow {
             name: station.name || "Custom Stream",
             streamUrl: station.streamUrl,
             favicon: station.favicon || "",
-            tags: station.tags || "Custom",
-            country: station.country || "Direct Stream",
+            tags: station.tags || qsTr("Custom"),
+            country: station.country || qsTr("Direct Stream"),
             language: station.language || "",
             bitrate: station.bitrate || 0
         }
@@ -2193,24 +2195,24 @@ ApplicationWindow {
 
     function getDynamicGreeting() {
         const hour = new Date().getHours()
-        if (hour >= 4 && hour < 7) return "Early dawn"
-        if (hour >= 7 && hour < 11) return "Good morning"
-        if (hour >= 11 && hour < 14) return "Midday groove"
-        if (hour >= 14 && hour < 17) return "Afternoon flow"
-        if (hour >= 17 && hour < 20) return "Good evening"
-        if (hour >= 20 && hour < 23) return "Night listening"
-        return "Midnight vibes"
+        if (hour >= 4 && hour < 7) return qsTr("Early dawn")
+        if (hour >= 7 && hour < 11) return qsTr("Good morning")
+        if (hour >= 11 && hour < 14) return qsTr("Midday groove")
+        if (hour >= 14 && hour < 17) return qsTr("Afternoon flow")
+        if (hour >= 17 && hour < 20) return qsTr("Good evening")
+        if (hour >= 20 && hour < 23) return qsTr("Night listening")
+        return qsTr("Midnight vibes")
     }
 
     function getDynamicGreetingSubtitle() {
         const hour = new Date().getHours()
-        if (hour >= 4 && hour < 7) return "Quiet hours and mellow tunes"
-        if (hour >= 7 && hour < 11) return "Start your day with high-fidelity sound"
-        if (hour >= 11 && hour < 14) return "Your midday listening session"
-        if (hour >= 14 && hour < 17) return "Focus mode and soundtrack for work"
-        if (hour >= 17 && hour < 20) return "Unwind with your favorite albums"
-        if (hour >= 20 && hour < 23) return "Evening warmth and deep cuts"
-        return "Late night tracks in rotation"
+        if (hour >= 4 && hour < 7) return qsTr("Quiet hours and mellow tunes")
+        if (hour >= 7 && hour < 11) return qsTr("Start your day with high-fidelity sound")
+        if (hour >= 11 && hour < 14) return qsTr("Your midday listening session")
+        if (hour >= 14 && hour < 17) return qsTr("Focus mode and soundtrack for work")
+        if (hour >= 17 && hour < 20) return qsTr("Unwind with your favorite albums")
+        if (hour >= 20 && hour < 23) return qsTr("Evening warmth and deep cuts")
+        return qsTr("Late night tracks in rotation")
     }
 
     readonly property string greeting: getDynamicGreeting()
@@ -2784,7 +2786,7 @@ ApplicationWindow {
         id: exportBackupDialog
         title: qsTr("Export CassetteCat Backup")
         fileMode: FileDialog.SaveFile
-        nameFilters: ["JSON files (*.json)", "All files (*.*)"]
+        nameFilters: [qsTr("JSON files (*.json)"), qsTr("All files (*.*)")]
         defaultSuffix: "json"
         onAccepted: {
             const backupData = {
@@ -2836,9 +2838,9 @@ ApplicationWindow {
             }
             const jsonText = JSON.stringify(backupData, null, 2)
             if (appSettings.exportTextFile(selectedFile, jsonText)) {
-                setBackupStatus("Backup exported successfully")
+                setBackupStatus(qsTr("Backup exported successfully"))
             } else {
-                setBackupStatus("Export failed")
+                setBackupStatus(qsTr("Export failed"), true)
             }
         }
     }
@@ -2847,7 +2849,7 @@ ApplicationWindow {
         id: importBackupDialog
         title: qsTr("Import CassetteCat Backup")
         fileMode: FileDialog.OpenFile
-        nameFilters: ["JSON files (*.json)", "All files (*.*)"]
+        nameFilters: [qsTr("JSON files (*.json)"), qsTr("All files (*.*)")]
         onAccepted: {
             const text = appSettings.readTextFile(selectedFile)
             if (text && text.trim().length > 0) {
@@ -2917,12 +2919,12 @@ ApplicationWindow {
                     if (data.seenAt !== undefined) window.seenAt = numberMap(data.seenAt)
                     reconcileLibraryMaps()
                     appSettings.sync()
-                    setBackupStatus("Backup restored successfully")
+                    setBackupStatus(qsTr("Backup restored successfully"))
                 } catch (err) {
-                    setBackupStatus("Import error: Invalid JSON file")
+                    setBackupStatus(qsTr("Import error: Invalid JSON file"), true)
                 }
             } else {
-                setBackupStatus("Failed to read backup file")
+                setBackupStatus(qsTr("Failed to read backup file"), true)
             }
         }
     }
@@ -2931,7 +2933,7 @@ ApplicationWindow {
         id: playlistImportDialog
         title: qsTr("Import M3U Playlist")
         fileMode: FileDialog.OpenFile
-        nameFilters: ["Playlist files (*.m3u *.m3u8)"]
+        nameFilters: [qsTr("Playlist files (*.m3u *.m3u8)")]
         onAccepted: importM3u(selectedFile)
     }
 
@@ -2939,7 +2941,7 @@ ApplicationWindow {
         id: playlistExportDialog
         title: qsTr("Export M3U Playlist")
         fileMode: FileDialog.SaveFile
-        nameFilters: ["Playlist files (*.m3u)"]
+        nameFilters: [qsTr("Playlist files (*.m3u)")]
         defaultSuffix: "m3u"
         onAccepted: exportM3u(selectedFile)
         onRejected: playlistPendingExport = null
@@ -3087,7 +3089,7 @@ ApplicationWindow {
                 window.sleepTimerRemainingSeconds--
                 const m = Math.floor(window.sleepTimerRemainingSeconds / 60)
                 const s = window.sleepTimerRemainingSeconds % 60
-                window.sleepTimerStatus = m + "m " + (s < 10 ? "0" : "") + s + "s"
+                window.sleepTimerStatus = qsTr("%1m %2s").arg(m).arg(String(s).padStart(2, "0"))
             }
         }
     }
@@ -3099,18 +3101,18 @@ ApplicationWindow {
             return
         }
         if (mode === "track") {
-            window.sleepTimerStatus = "End of track"
+            window.sleepTimerStatus = qsTr("End of track")
             return
         }
         const mins = parseInt(mode, 10) || 15
         window.sleepTimerRemainingSeconds = mins * 60
-        window.sleepTimerStatus = mins + "m"
+        window.sleepTimerStatus = qsTr("%1m").arg(mins)
         sleepCountdownTimer.restart()
     }
 
     function cancelSleepTimer() {
         window.sleepTimerMode = "off"
-        window.sleepTimerStatus = "Off"
+        window.sleepTimerStatus = qsTr("Off")
         window.sleepTimerRemainingSeconds = 0
         sleepCountdownTimer.stop()
     }
@@ -4374,7 +4376,7 @@ ApplicationWindow {
                             buttonSize: 38
                             iconName: "skip-back"
                             iconColor: textPrimary
-                            tooltipText: phoneInDock ? "Previous on " + phonePlayback.name : qsTr("Previous")
+                            tooltipText: phoneInDock ? qsTr("Previous on %1").arg(phonePlayback.name) : qsTr("Previous")
                             onClicked: shownPrevious()
                         }
 
@@ -4401,7 +4403,7 @@ ApplicationWindow {
                             buttonSize: 38
                             iconName: "skip-forward"
                             iconColor: textPrimary
-                            tooltipText: phoneInDock ? "Next on " + phonePlayback.name : qsTr("Next")
+                            tooltipText: phoneInDock ? qsTr("Next on %1").arg(phonePlayback.name) : qsTr("Next")
                             onClicked: shownNext()
                         }
 
@@ -4465,7 +4467,7 @@ ApplicationWindow {
                                 iconSize: 17
                                 iconName: "smartphone"
                                 tint: silverDim
-                                tooltipText: phoneInDock ? "Playing on " + phonePlayback.name : phoneRemote.controllerName !== "" ? "Controlled from " + phoneRemote.controllerName : qsTr("Phone Remote")
+                                tooltipText: phoneInDock ? qsTr("Playing on %1").arg(phonePlayback.name) : phoneRemote.controllerName !== "" ? qsTr("Controlled from %1").arg(phoneRemote.controllerName) : qsTr("Phone Remote")
                                 onClicked: phoneRemoteSheet.open()
 
                                 // Marks a connected phone without making the button look switched on.
@@ -4783,7 +4785,7 @@ ApplicationWindow {
                                 text: {
                                     const track = shownPlayer.currentTrack
                                     if (!track.title && !track.filePath) {
-                                        return "Select a track to start playback"
+                                        return qsTr("Select a track to start playback")
                                     }
                                     let a = track.artist || "Unknown Artist"
                                     if (track.album) a += " • " + track.album
@@ -5016,7 +5018,7 @@ ApplicationWindow {
 
                 Label {
                     Layout.fillWidth: true
-                    text: lyricSearchResults.length + (lyricSearchResults.length === 1 ? " version found" : " versions found")
+                    text: qsTr("%n version(s) found", "", lyricSearchResults.length)
                     color: accentText
                     font.family: monoFont
                     font.pixelSize: 10
@@ -5064,10 +5066,10 @@ ApplicationWindow {
                             Row {
                                 width: parent.width
                                 spacing: 7
-                                Label { width: parent.width - lyricType.implicitWidth - parent.spacing; text: modelData.title || "Unknown track"; color: textPrimary; font.family: displayFont; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight }
-                                Label { id: lyricType; text: modelData.syncedLyrics ? "SYNCED" : "PLAIN"; color: modelData.syncedLyrics ? recordRedHover : textSecondary; font.family: monoFont; font.pixelSize: 9; font.weight: Font.Bold }
+                                Label { width: parent.width - lyricType.implicitWidth - parent.spacing; text: modelData.title || qsTr("Unknown track"); color: textPrimary; font.family: displayFont; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight }
+                                Label { id: lyricType; text: modelData.syncedLyrics ? qsTr("SYNCED") : qsTr("PLAIN"); color: modelData.syncedLyrics ? recordRedHover : textSecondary; font.family: monoFont; font.pixelSize: 9; font.weight: Font.Bold }
                             }
-                            Label { width: parent.width; text: (modelData.artist || "Unknown artist") + (modelData.album ? " • " + modelData.album : ""); color: textSecondary; font.family: bodyFont; font.pixelSize: 11; elide: Text.ElideRight }
+                            Label { width: parent.width; text: (modelData.artist || qsTr("Unknown artist")) + (modelData.album ? " • " + modelData.album : ""); color: textSecondary; font.family: bodyFont; font.pixelSize: 11; elide: Text.ElideRight }
                             Label {
                                 width: parent.width
                                 height: 16
@@ -5142,7 +5144,7 @@ ApplicationWindow {
                 }
                 RowLayout {
                     Layout.fillWidth: true
-                    Label { Layout.fillWidth: true; text: "Timestamped LRC becomes synced lyrics."; color: silverDim; font.family: bodyFont; font.pixelSize: 11 }
+                    Label { Layout.fillWidth: true; text: qsTr("Timestamped LRC becomes synced lyrics."); color: silverDim; font.family: bodyFont; font.pixelSize: 11 }
                     Label {
                         text: qsTr("Cancel")
                         color: textSecondary
@@ -5281,7 +5283,7 @@ ApplicationWindow {
     // Asks once per version; Settings keeps showing the update after "Later".
     ConfirmPopup {
         id: pairingPrompt
-        title: "Connect " + phoneRemote.pairingRequest + "?"
+        title: qsTr("Connect %1?").arg(phoneRemote.pairingRequest)
         subtitle: qsTr("Only allow phones you own")
         message: qsTr("This phone will be able to control playback here, sync likes and playlists, and back up to this computer.")
         iconName: "smartphone"

@@ -28,12 +28,12 @@ TrayController::TrayController(const QIcon &icon, QObject *parent) : QObject(par
                           "QMenu::item:selected { background: #302D29; }"
                           "QMenu::separator { height: 1px; background: #3B3834; margin: 4px 8px; }");
 
-    auto *showAction = m_menu->addAction("Show CassetteCat");
-    auto *previousAction = m_menu->addAction("Previous");
-    m_playPauseAction = m_menu->addAction("Play");
-    auto *nextAction = m_menu->addAction("Next");
+    auto *showAction = m_menu->addAction(tr("Show CassetteCat"));
+    auto *previousAction = m_menu->addAction(tr("Previous"));
+    m_playPauseAction = m_menu->addAction(tr("Play"));
+    auto *nextAction = m_menu->addAction(tr("Next"));
     m_menu->addSeparator();
-    auto *quitAction = m_menu->addAction("Quit");
+    auto *quitAction = m_menu->addAction(tr("Quit"));
 
     connect(showAction, &QAction::triggered, this, &TrayController::showRequested);
     connect(previousAction, &QAction::triggered, this, &TrayController::previousRequested);
@@ -75,7 +75,7 @@ void TrayController::setTrack(const QString &title, const QString &artist) {
 
 void TrayController::setPlaying(bool playing) {
     if (m_playPauseAction)
-        m_playPauseAction->setText(playing ? "Pause" : "Play");
+        m_playPauseAction->setText(playing ? tr("Pause") : tr("Play"));
 }
 
 void TrayController::notifyHidden() {

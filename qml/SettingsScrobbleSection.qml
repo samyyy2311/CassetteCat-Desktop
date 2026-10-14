@@ -28,7 +28,7 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Scrobbler Services" }
+    SectionLabel { text: qsTr("Scrobbler Services") }
 
     SettingCard {
         SettingRow {
@@ -195,7 +195,7 @@ ColumnLayout {
                 }
 
                 Label {
-                    text: "Connect " + (accountDialog.isListenBrainz ? "ListenBrainz" : accountDialog.serviceName)
+                    text: qsTr("Connect %1").arg(accountDialog.isListenBrainz ? "ListenBrainz" : accountDialog.serviceName)
                     color: textPrimary
                     font.family: displayFont
                     font.pixelSize: 17
@@ -207,7 +207,7 @@ ColumnLayout {
                 Layout.fillWidth: true
                 text: accountDialog.isListenBrainz
                       ? qsTr("Paste your ListenBrainz User Token to enable scrobbling.")
-                      : "Log in with your " + accountDialog.serviceName + " account credentials."
+                      : qsTr("Log in with your %1 account credentials.").arg(accountDialog.serviceName)
                 color: textSecondary
                 font.family: displayFont
                 font.pixelSize: 12
@@ -306,9 +306,9 @@ ColumnLayout {
                     id: submitBtn
                     text: {
                         if (accountDialog.isBusy) {
-                            return accountDialog.isListenBrainz ? "Validating..." : "Logging in..."
+                            return accountDialog.isListenBrainz ? qsTr("Validating...") : qsTr("Logging in...")
                         }
-                        return accountDialog.isListenBrainz ? "Connect" : "Log In"
+                        return accountDialog.isListenBrainz ? qsTr("Connect") : qsTr("Log In")
                     }
                     primary: true
                     enabled: {
@@ -342,7 +342,7 @@ ColumnLayout {
                 if (valid) {
                     accountDialog.close()
                 } else {
-                    accountDialog.errorMessage = error.length ? error : "Invalid user token or authentication failed"
+                    accountDialog.errorMessage = error.length ? error : qsTr("Invalid user token or authentication failed")
                 }
             }
         }
@@ -353,7 +353,7 @@ ColumnLayout {
                 if (success) {
                     accountDialog.close()
                 } else {
-                    accountDialog.errorMessage = error.length ? error : "Invalid username or password"
+                    accountDialog.errorMessage = error.length ? error : qsTr("Invalid username or password")
                 }
             }
         }

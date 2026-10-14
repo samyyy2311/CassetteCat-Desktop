@@ -225,7 +225,7 @@ Item {
 
                     Label {
                         Layout.alignment: Qt.AlignHCenter
-                        text: player.currentTrack.artist ? ("Composed by " + player.currentTrack.artist) : (player.currentTrack.title ? ("Track by " + (player.currentTrack.artist || qsTr("Unknown Artist"))) : qsTr("No lyrics available"))
+                        text: player.currentTrack.artist ? qsTr("Composed by %1").arg(player.currentTrack.artist) : (player.currentTrack.title ? qsTr("Track by %1").arg(player.currentTrack.artist || qsTr("Unknown Artist")) : qsTr("No lyrics available"))
                         color: textSecondary
                         font.family: bodyFont
                         font.pixelSize: 14

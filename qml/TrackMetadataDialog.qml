@@ -53,7 +53,7 @@ Popup {
     }
 
     function placeholderFor(field, label) {
-        return batch && shared(field) === "" ? "Mixed" : label
+        return batch && shared(field) === "" ? qsTr("Mixed") : label
     }
 
     function openFor(value) {
@@ -81,8 +81,8 @@ Popup {
             if (!root.lookingUp || filePath !== root.track.filePath) return
             root.lookingUp = false
             if (problem) {
-                root.noteText = problem === "off" ? "MusicBrainz is turned off. Turn it on in Settings, under Network & Services."
-                                                  : "MusicBrainz is busy right now. Try again in a minute."
+                root.noteText = problem === "off" ? qsTr("MusicBrainz is turned off. Turn it on in Settings, under Network & Services.")
+                                                  : qsTr("MusicBrainz is busy right now. Try again in a minute.")
                 return
             }
             const inputs = { title: titleInput, artist: artistInput, album: albumInput, year: yearInput,
@@ -91,10 +91,9 @@ Popup {
             Object.keys(inputs).forEach(field => current[field] = inputs[field].text)
             const changed = LibraryTidy.tagChanges(current, tags)
             changed.forEach(change => inputs[change.field].text = change.to)
-            root.noteText = Object.keys(tags).length === 0 ? "MusicBrainz has no confident match for this song."
-                          : changed.length === 0 ? "MusicBrainz agrees with these tags."
-                          : "MusicBrainz changed the " + changed.map(change => change.label.toLowerCase()).join(", ")
-                            + ". Check them, then Save."
+            root.noteText = Object.keys(tags).length === 0 ? qsTr("MusicBrainz has no confident match for this song.")
+                          : changed.length === 0 ? qsTr("MusicBrainz agrees with these tags.")
+                          : qsTr("MusicBrainz changed: %1. Check them, then Save.").arg(changed.map(change => change.label).join(", "))
         }
     }
 
@@ -118,7 +117,7 @@ Popup {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 2
-                Label { text: root.batch ? "Edit " + root.tracks.length + " songs" : "Edit metadata"; color: textPrimary; font.family: displayFont; font.pixelSize: 20; font.weight: Font.Bold }
+                Label { text: root.batch ? qsTr("Edit %n song(s)", "", root.tracks.length) : qsTr("Edit metadata"); color: textPrimary; font.family: displayFont; font.pixelSize: 20; font.weight: Font.Bold }
                 Label {
                     Layout.fillWidth: true
                     text: root.batch ? qsTr("Only the fields you change are saved") : (root.track.fileName || "")
@@ -129,7 +128,7 @@ Popup {
                 }
             }
 
-            TransportButton { buttonSize: 32; iconName: "x"; tooltipText: "Close"; onClicked: root.close() }
+            TransportButton { buttonSize: 32; iconName: "x"; tooltipText: qsTr("Close"); onClicked: root.close() }
         }
 
         Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: borderSubtle }
@@ -155,23 +154,23 @@ Popup {
                 columnSpacing: 14
                 rowSpacing: 12
 
-                Label { visible: !root.batch; text: "Title"; color: textSecondary; font.family: bodyFont; font.pixelSize: 12; Layout.preferredWidth: 110 }
-                RefineTextInput { id: titleInput; visible: !root.batch; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: "Title" }
-                Label { text: "Artist"; color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
-                RefineTextInput { id: artistInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("artist", "Artist"); onEdited: root.markEdited("artist") }
-                Label { text: "Album"; color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
-                RefineTextInput { id: albumInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("album", "Album"); onEdited: root.markEdited("album") }
-                Label { text: "Genre"; color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
-                RefineTextInput { id: genreInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("genre", "Genre"); onEdited: root.markEdited("genre") }
-                Label { text: "Label"; color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
-                RefineTextInput { id: labelInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("label", "Label"); onEdited: root.markEdited("label") }
-                Label { text: "Year"; color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
-                RefineTextInput { id: yearInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("year", "Year"); onEdited: root.markEdited("year") }
-                Label { visible: !root.batch; text: "Track number"; color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
-                RefineTextInput { id: trackInput; visible: !root.batch; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: "Track number" }
-                Label { text: "Disc number"; color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
-                RefineTextInput { id: discInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("discNumber", "Disc number"); onEdited: root.markEdited("discNumber") }
-                Label { text: "Comment"; color: textSecondary; font.family: bodyFont; font.pixelSize: 12; Layout.columnSpan: 2 }
+                Label { visible: !root.batch; text: qsTr("Title"); color: textSecondary; font.family: bodyFont; font.pixelSize: 12; Layout.preferredWidth: 110 }
+                RefineTextInput { id: titleInput; visible: !root.batch; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: qsTr("Title") }
+                Label { text: qsTr("Artist"); color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
+                RefineTextInput { id: artistInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("artist", qsTr("Artist")); onEdited: root.markEdited("artist") }
+                Label { text: qsTr("Album"); color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
+                RefineTextInput { id: albumInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("album", qsTr("Album")); onEdited: root.markEdited("album") }
+                Label { text: qsTr("Genre"); color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
+                RefineTextInput { id: genreInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("genre", qsTr("Genre")); onEdited: root.markEdited("genre") }
+                Label { text: qsTr("Label"); color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
+                RefineTextInput { id: labelInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("label", qsTr("Label")); onEdited: root.markEdited("label") }
+                Label { text: qsTr("Year"); color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
+                RefineTextInput { id: yearInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("year", qsTr("Year")); onEdited: root.markEdited("year") }
+                Label { visible: !root.batch; text: qsTr("Track number"); color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
+                RefineTextInput { id: trackInput; visible: !root.batch; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: qsTr("Track number") }
+                Label { text: qsTr("Disc number"); color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
+                RefineTextInput { id: discInput; Layout.fillWidth: true; Layout.minimumWidth: 0; placeholder: root.placeholderFor("discNumber", qsTr("Disc number")); onEdited: root.markEdited("discNumber") }
+                Label { text: qsTr("Comment"); color: textSecondary; font.family: bodyFont; font.pixelSize: 12; Layout.columnSpan: 2 }
                 TextArea {
                     id: commentInput
                     onTextChanged: if (activeFocus) root.markEdited("comment")
@@ -190,7 +189,7 @@ Popup {
                     Layout.columnSpan: 2
                     Layout.fillWidth: true
 
-                    Label { text: "Lyrics"; color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
+                    Label { text: qsTr("Lyrics"); color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
                     Item { Layout.fillWidth: true }
                     SettingButton {
                         text: qsTr("Find with LRCLIB")
@@ -251,7 +250,7 @@ Popup {
                 }
             }
             Item { Layout.fillWidth: true }
-            SettingButton { text: "Cancel"; onClicked: root.close() }
+            SettingButton { text: qsTr("Cancel"); onClicked: root.close() }
             SettingButton {
                 text: qsTr("Save")
                 primary: true
@@ -272,7 +271,7 @@ Popup {
                             root.appWindow.clearTrackSelection()
                             root.close()
                         } else {
-                            root.errorText = (paths.length - saved) + " of " + paths.length + " files could not be saved."
+                            root.errorText = qsTr("%1 of %n file(s) could not be saved.", "", paths.length).arg(paths.length - saved)
                         }
                         return
                     }
@@ -293,7 +292,7 @@ Popup {
                         player.updateCurrentTrackMetadata(updated)
                         root.close()
                     } else {
-                        root.errorText = "Could not save metadata for this file."
+                        root.errorText = qsTr("Could not save metadata for this file.")
                     }
                 }
             }

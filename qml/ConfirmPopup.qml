@@ -5,13 +5,13 @@ import QtQuick.Layouts
 AppDialog {
     id: root
     property string title: ""
-    property string subtitle: "This cannot be undone"
+    property string subtitle: qsTr("This cannot be undone")
     property string message: ""
     property string iconName: ""
     // Gives the confirm button the warning look, for actions that remove something.
     property bool destructive: false
     property string confirmText: ""
-    property string cancelText: "Cancel"
+    property string cancelText: qsTr("Cancel")
 
     signal confirmed()
 

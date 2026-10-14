@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 Item {
     id: root
-    readonly property string countText: root.displayedStations.length + " stations"
+    readonly property string countText: qsTr("%n station(s)", "", root.displayedStations.length)
     required property var appWindow
     required property var playerController
     anchors.fill: parent
@@ -14,13 +14,13 @@ Item {
 
     readonly property bool radioUnavailable: appWindow.offlineBlackout || !appWindow.svcRadio
     readonly property string unavailableTitle: appWindow.offlineBlackout
-                                             ? "Online services are paused"
-                                             : "Radio Browser is turned off"
+                                             ? qsTr("Online services are paused")
+                                             : qsTr("Radio Browser is turned off")
     readonly property string unavailableSubtitle: appWindow.offlineBlackout && !appWindow.svcRadio
-                                                ? "Offline Blackout Mode and Radio Browser are both disabled"
+                                                ? qsTr("Offline Blackout Mode and Radio Browser are both disabled")
                                                 : (appWindow.offlineBlackout
-                                                   ? "Offline Blackout Mode prevents Radio Browser from connecting"
-                                                   : "Enable Radio Browser to discover and play live stations")
+                                                   ? qsTr("Offline Blackout Mode prevents Radio Browser from connecting")
+                                                   : qsTr("Enable Radio Browser to discover and play live stations"))
 
     readonly property var displayedStations: {
         let list = []
@@ -52,7 +52,7 @@ Item {
     function stationTags(station) {
         const tags = String(station.tags || "").split(",").map(tag => tag.trim()).filter(tag => tag.length > 0)
         if (tags.length === 0)
-            return station.country || "Internet Radio"
+            return station.country || qsTr("Internet Radio")
         return tags.slice(0, 2).map(tag => tag.charAt(0).toUpperCase() + tag.slice(1)).join(" \u2022 ")
     }
 
@@ -66,11 +66,11 @@ Item {
     function stationTrack(station) {
         return {
             title: station.name || qsTr("Live Radio Stream"),
-            artist: station.country || (station.tags ? station.tags.split(",")[0].trim() : "Internet Radio"),
-            album: station.tags || "Internet Radio Broadcast",
+            artist: station.country || (station.tags ? station.tags.split(",")[0].trim() : qsTr("Internet Radio")),
+            album: station.tags || qsTr("Internet Radio Broadcast"),
             filePath: station.streamUrl,
             format: "STREAM",
-            duration: "LIVE",
+            duration: qsTr("LIVE"),
             artworkUrl: station.favicon || ""
         }
     }
@@ -511,32 +511,32 @@ Item {
                 }
                 title: {
                     if (hasQuery && (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS" || root.appWindow.radioActiveTag === "CUSTOM") && !sourceEmpty) {
-                        return "No Matching Stations"
+                        return qsTr("No Matching Stations")
                     }
-                    if (root.appWindow.radioActiveTag === "FAVORITES") return "No Favorite Stations"
-                    if (root.appWindow.radioActiveTag === "RECENTS") return "No Recent Stations"
-                    if (root.appWindow.radioActiveTag === "CUSTOM") return "No Custom Stations"
+                    if (root.appWindow.radioActiveTag === "FAVORITES") return qsTr("No Favorite Stations")
+                    if (root.appWindow.radioActiveTag === "RECENTS") return qsTr("No Recent Stations")
+                    if (root.appWindow.radioActiveTag === "CUSTOM") return qsTr("No Custom Stations")
                     if (root.radioUnavailable) return root.unavailableTitle
-                    return "No Radio Stations Found"
+                    return qsTr("No Radio Stations Found")
                 }
                 subtitle: {
                     if (hasQuery && (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS" || root.appWindow.radioActiveTag === "CUSTOM") && !sourceEmpty) {
-                        return "No stations match \"" + root.appWindow.radioSearchQuery.trim() + "\""
+                        return qsTr("No stations match \"%1\"").arg(root.appWindow.radioSearchQuery.trim())
                     }
-                    if (root.appWindow.radioActiveTag === "FAVORITES") return "Click the heart icon on any station to bookmark it here"
-                    if (root.appWindow.radioActiveTag === "RECENTS") return "Stations you play will appear in your history"
-                    if (root.appWindow.radioActiveTag === "CUSTOM") return "Add your own direct Icecast, Shoutcast, or radio stream URLs"
+                    if (root.appWindow.radioActiveTag === "FAVORITES") return qsTr("Click the heart icon on any station to bookmark it here")
+                    if (root.appWindow.radioActiveTag === "RECENTS") return qsTr("Stations you play will appear in your history")
+                    if (root.appWindow.radioActiveTag === "CUSTOM") return qsTr("Add your own direct Icecast, Shoutcast, or radio stream URLs")
                     if (root.radioUnavailable) return root.unavailableSubtitle
-                    return "Try clearing filters or searching for another keyword"
+                    return qsTr("Try clearing filters or searching for another keyword")
                 }
                 actionLabel: {
                     if (hasQuery && (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS" || root.appWindow.radioActiveTag === "CUSTOM") && !sourceEmpty) {
-                        return "Clear Search"
+                        return qsTr("Clear Search")
                     }
-                    if (root.appWindow.radioActiveTag === "CUSTOM") return "Add Custom Station"
-                    if (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS") return "Browse All Stations"
-                    if (root.radioUnavailable) return (root.appWindow.offlineBlackout ? "Enable online services" : "Enable Radio Browser")
-                    return "Retry Connection"
+                    if (root.appWindow.radioActiveTag === "CUSTOM") return qsTr("Add Custom Station")
+                    if (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS") return qsTr("Browse All Stations")
+                    if (root.radioUnavailable) return (root.appWindow.offlineBlackout ? qsTr("Enable online services") : qsTr("Enable Radio Browser"))
+                    return qsTr("Retry Connection")
                 }
                 onActionClicked: {
                     if (hasQuery && (root.appWindow.radioActiveTag === "FAVORITES" || root.appWindow.radioActiveTag === "RECENTS" || root.appWindow.radioActiveTag === "CUSTOM") && !sourceEmpty) {

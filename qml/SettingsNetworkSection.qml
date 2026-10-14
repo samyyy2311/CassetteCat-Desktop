@@ -32,7 +32,7 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Offline Mode" }
+    SectionLabel { text: qsTr("Offline Mode") }
 
     SettingCard {
         SettingRow {
@@ -49,7 +49,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Remote Music Servers" }
+    SectionLabel { text: qsTr("Remote Music Servers") }
 
     SettingCard {
         SettingRow {
@@ -73,7 +73,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Online Metadata & Lyrics" }
+    SectionLabel { text: qsTr("Online Metadata & Lyrics") }
 
     SettingCard {
         Repeater {

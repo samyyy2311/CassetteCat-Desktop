@@ -77,7 +77,7 @@ AppDialog {
                 }
 
                 Label {
-                    text: "Step " + (root.step + 1) + " of " + root.steps.length
+                    text: qsTr("Step %1 of %2").arg(root.step + 1).arg(root.steps.length)
                     color: textSecondary
                     font.family: bodyFont
                     font.pixelSize: 12
@@ -87,14 +87,12 @@ AppDialog {
 
         Body {
             visible: root.step === 0
-            text: "A player for the music you own. It plays files from folders on this computer, works without an "
-                  + "internet connection, and pairs with the CassetteCat Android app over your Wi-Fi."
+            text: qsTr("A player for the music you own. It plays files from folders on this computer, works without an internet connection, and pairs with the CassetteCat Android app over your Wi-Fi.")
         }
 
         Body {
             visible: root.step === 1
-            text: "CassetteCat builds your library from the folders you choose, and picks up new files as you add them. "
-                  + "You can change these later in Settings > Library."
+            text: qsTr("CassetteCat builds your library from the folders you choose, and picks up new files as you add them. You can change these later in Settings > Library.")
         }
 
         SettingCard {
@@ -104,7 +102,7 @@ AppDialog {
                 iconName: "folder"
                 title: qsTr("Music Folders")
                 subtitle: library.folders.length > 0
-                          ? (library.folders.length + (library.folders.length === 1 ? " folder" : " folders") + "  •  " + library.trackCount + " songs")
+                          ? (qsTr("%n folder(s)", "", library.folders.length) + "  •  " + qsTr("%n song(s)", "", library.trackCount))
                           : qsTr("No folders yet")
 
                 SettingButton {

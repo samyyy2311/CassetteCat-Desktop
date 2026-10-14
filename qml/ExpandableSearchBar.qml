@@ -8,7 +8,7 @@ Item {
     property alias text: inputField.text
     property alias input: inputField
     property alias searchInput: inputField
-    property string placeholder: "Search..."
+    property string placeholder: qsTr("Search...")
     // Stays a full field instead of folding to an icon, for places with room for it.
     property bool alwaysOpen: false
     property bool expanded: alwaysOpen

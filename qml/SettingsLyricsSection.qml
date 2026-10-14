@@ -17,7 +17,7 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Typography & Layout" }
+    SectionLabel { text: qsTr("Typography & Layout") }
 
     SettingCard {
         SettingRow {
@@ -71,7 +71,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Local Files" }
+    SectionLabel { text: qsTr("Local Files") }
 
     SettingCard {
         SettingRow {

@@ -1,4 +1,6 @@
 #include "audio_metadata.h"
+
+#include <QCoreApplication>
 #include "image_cache.h"
 
 #include <QBuffer>
@@ -627,7 +629,7 @@ bool writeEmbeddedArtwork(const QString &filePath, const QByteArray &image, QStr
 #endif
         if (fileRef.isNull() || !fileRef.file() || !fileRef.file()->isValid()) {
             if (error)
-                *error = "This file format does not support cover art.";
+                *error = QCoreApplication::translate("AudioMetadata", "This file format does not support cover art.");
             return false;
         }
         TagLib::VariantMap picture;
@@ -637,13 +639,14 @@ bool writeEmbeddedArtwork(const QString &filePath, const QByteArray &image, QStr
         picture["description"] = TagLib::String("");
         if (!fileRef.setComplexProperties("PICTURE", {picture}) || !fileRef.save()) {
             if (error)
-                *error = "CassetteCat could not save the cover into this file.";
+                *error = QCoreApplication::translate("AudioMetadata",
+                                                     "CassetteCat could not save the cover into this file.");
             return false;
         }
         return true;
     } catch (...) {
         if (error)
-            *error = "CassetteCat could not update this file.";
+            *error = QCoreApplication::translate("AudioMetadata", "CassetteCat could not update this file.");
         return false;
     }
 }
@@ -652,7 +655,7 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
     const QString filePath = metadata.value("filePath").toString();
     if (filePath.isEmpty() || !QFileInfo::exists(filePath)) {
         if (error)
-            *error = "The audio file is unavailable.";
+            *error = QCoreApplication::translate("AudioMetadata", "The audio file is unavailable.");
         return false;
     }
 
@@ -664,7 +667,8 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
 #endif
         if (fileRef.isNull() || !fileRef.file() || !fileRef.file()->isValid() || !fileRef.tag()) {
             if (error)
-                *error = "This file format does not support editable metadata.";
+                *error = QCoreApplication::translate("AudioMetadata",
+                                                     "This file format does not support editable metadata.");
             return false;
         }
 
@@ -685,7 +689,8 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
                 value.toInt(&valid);
             if (!valid) {
                 if (error)
-                    *error = "Year, track and disc must be whole numbers.";
+                    *error =
+                        QCoreApplication::translate("AudioMetadata", "Year, track and disc must be whole numbers.");
                 return false;
             }
         }
@@ -731,13 +736,13 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
 
         if (!fileRef.file()->save()) {
             if (error)
-                *error = "CassetteCat could not save this file.";
+                *error = QCoreApplication::translate("AudioMetadata", "CassetteCat could not save this file.");
             return false;
         }
         return true;
     } catch (...) {
         if (error)
-            *error = "CassetteCat could not update this file.";
+            *error = QCoreApplication::translate("AudioMetadata", "CassetteCat could not update this file.");
         return false;
     }
 }

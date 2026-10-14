@@ -58,7 +58,7 @@ Column {
                     Item { Layout.fillWidth: true }
 
                     OverlineLabel {
-                        text: "Top " + Math.min(5, root.tracks.length)
+                        text: qsTr("Top %1").arg(Math.min(5, root.tracks.length))
                     }
                 }
 
@@ -100,7 +100,7 @@ Column {
                         }
 
                         Label {
-                            text: root.albumGroups.length + (root.albumGroups.length === 1 ? " release" : " releases")
+                            text: qsTr("%n release(s)", "", root.albumGroups.length)
                             color: root.appWindow.textSecondary
                             font.family: root.appWindow.bodyFont
                             font.pixelSize: 12
@@ -145,7 +145,7 @@ Column {
                                 cardWidth: releaseList.cardWidth
                                 cardHeight: releaseList.cardWidth + 72
                                 name: modelData.name
-                                subtitle: (modelData.year ? modelData.year + " • " : "") + modelData.count + (modelData.count === 1 ? " song" : " songs")
+                                subtitle: (modelData.year ? modelData.year + " • " : "") + qsTr("%n song(s)", "", modelData.count)
                                 count: modelData.count
                                 track: modelData.track
                                 onClicked: root.albumRequested(modelData.name, modelData.track)

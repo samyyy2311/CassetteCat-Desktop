@@ -4,7 +4,7 @@ import QtQuick.Layouts
 
 Item {
     id: root
-    readonly property string countText: !filtering && libraryModel.trackCount > 0 ? libraryModel.trackCount + " songs" : ""
+    readonly property string countText: !filtering && libraryModel.trackCount > 0 ? qsTr("%n song(s)", "", libraryModel.trackCount) : ""
 
     required property var appWindow
     required property var libraryModel
@@ -300,7 +300,7 @@ Item {
             // Match count when filtering
             Label {
                 visible: root.filtering
-                text: root.libraryModel.visibleTrackCount + (root.libraryModel.visibleTrackCount === 1 ? " track found" : " tracks found")
+                text: qsTr("%n track(s) found", "", root.libraryModel.visibleTrackCount)
                 color: silverDim
                 font.family: monoFont
                 font.pixelSize: 11
@@ -408,7 +408,7 @@ Item {
                     Layout.bottomMargin: 4
                     spacing: 8
 
-                    SectionLabel { text: "Songs" }
+                    SectionLabel { text: qsTr("Songs") }
 
                     Item { Layout.fillWidth: true }
 
@@ -479,7 +479,7 @@ Item {
                     spacing: 12
                     visible: root.recentSearches.length > 0
 
-                    SectionLabel { text: "Recent Searches" }
+                    SectionLabel { text: qsTr("Recent Searches") }
 
                     Flow {
                         Layout.fillWidth: true
@@ -498,7 +498,7 @@ Item {
                                 border.color: activeFocus ? recordRed : recentMouse.containsMouse ? borderVariant : borderSubtle
                                 activeFocusOnTab: true
                                 Accessible.role: Accessible.Button
-                                Accessible.name: "Search for " + modelData + ". Press Delete to remove it."
+                                Accessible.name: qsTr("Search for %1. Press Delete to remove it.").arg(modelData)
                                 Accessible.onPressAction: root.search(modelData)
                                 Keys.onReturnPressed: root.search(modelData)
                                 Keys.onEnterPressed: root.search(modelData)
@@ -538,7 +538,7 @@ Item {
                                         icon: "x"
                                         color: removeMouse.containsMouse ? textPrimary : silverDim
                                         Accessible.role: Accessible.Button
-                                        Accessible.name: "Remove " + modelData
+                                        Accessible.name: qsTr("Remove %1").arg(modelData)
 
                                         MouseArea {
                                             id: removeMouse

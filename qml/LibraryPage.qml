@@ -6,12 +6,12 @@ Item {
     id: root
     readonly property string countText: {
         switch (root.appWindow.libraryTab) {
-        case "artists": return root.appWindow.artists.length + " artists"
-        case "albums": return root.appWindow.albums.length + " albums"
-        case "genres": return root.appWindow.genreGroups.length + " genres"
-        case "folders": return root.appWindow.folderGroups.length + " folders"
-        case "playlists": return (root.appWindow.playlists.length + 4) + " playlists"
-        default: return root.libraryModel.trackCount + " songs"
+        case "artists": return qsTr("%n artist(s)", "", root.appWindow.artists.length)
+        case "albums": return qsTr("%n album(s)", "", root.appWindow.albums.length)
+        case "genres": return qsTr("%n genre(s)", "", root.appWindow.genreGroups.length)
+        case "folders": return qsTr("%n folder(s)", "", root.appWindow.folderGroups.length)
+        case "playlists": return qsTr("%n playlist(s)", "", root.appWindow.playlists.length + 4)
+        default: return qsTr("%n song(s)", "", root.libraryModel.trackCount)
         }
     }
     required property var appWindow
@@ -106,7 +106,7 @@ Item {
                     text: qsTr("Save Queue")
                     iconName: "list"
                     onClicked: {
-                        const defaultName = "Queue " + new Date().toLocaleDateString(Qt.locale(), "MMM d")
+                        const defaultName = qsTr("Queue %1").arg(new Date().toLocaleDateString(Qt.locale(), "MMM d"))
                         root.appWindow.saveQueueAsPlaylist(defaultName)
                     }
                 }
@@ -211,7 +211,7 @@ Item {
             spacing: 8
 
             Label {
-                text: root.selectedTrackCount + " selected"
+                text: qsTr("%n selected", "", root.selectedTrackCount)
                 color: root.appWindow.recordRed
                 font.family: root.appWindow.monoFont
                 font.pixelSize: 11
@@ -246,7 +246,7 @@ Item {
                 text: qsTr("Save Playlist")
                 iconName: "list"
                 onClicked: {
-                    root.appWindow.createPlaylist("Selection", root.appWindow.selectedTracks())
+                    root.appWindow.createPlaylist(qsTr("Selection"), root.appWindow.selectedTracks())
                     root.appWindow.clearTrackSelection()
                 }
             }
@@ -474,7 +474,7 @@ Item {
                             cardWidth: parent.width - 16
                             cardHeight: 235
                             name: modelData.name
-                            artist: modelData.track ? modelData.track.artist : "Various Artists"
+                            artist: modelData.track ? modelData.track.artist : qsTr("Various Artists")
                             count: modelData.count
                             track: modelData.track
                             onClicked: {
@@ -665,7 +665,7 @@ Item {
         modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: {
-            const name = newPlaylistInput.text.trim() || ("Playlist " + ((root.appWindow.playlists || []).length + 1))
+            const name = newPlaylistInput.text.trim() || qsTr("Playlist %1").arg((root.appWindow.playlists || []).length + 1)
             root.appWindow.createPlaylist(name, [])
             newPlaylistInput.text = ""
         }

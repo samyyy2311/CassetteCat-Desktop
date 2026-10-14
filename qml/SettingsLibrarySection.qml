@@ -24,15 +24,15 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Audio Folders" }
+    SectionLabel { text: qsTr("Audio Folders") }
 
     SettingCard {
         SettingRow {
             iconName: "folder"
             title: qsTr("Audio Folders")
             subtitle: root.libraryFolders.length > 0
-                      ? (root.libraryFolders.length + (root.libraryFolders.length === 1 ? " folder" : " folders") + "  •  " + root.trackCount + " songs")
-                      : (root.trackCount + " tracks loaded from library")
+                      ? (qsTr("%n folder(s)", "", root.libraryFolders.length) + "  •  " + qsTr("%n song(s)", "", root.trackCount))
+                      : qsTr("%n track(s) loaded from library", "", root.trackCount)
 
             SettingButton {
                 text: qsTr("Add folder")
@@ -50,7 +50,7 @@ ColumnLayout {
         SettingRow {
             iconName: "eye-off"
             title: qsTr("Excluded Folders")
-            subtitle: root.excludedFolders.length === 0 ? qsTr("No exclusions. Every subfolder is scanned") : (root.excludedFolders.length + (root.excludedFolders.length === 1 ? " folder" : " folders") + " hidden from the library")
+            subtitle: root.excludedFolders.length === 0 ? qsTr("No exclusions. Every subfolder is scanned") : qsTr("%n folder(s) hidden from the library", "", root.excludedFolders.length)
 
             SettingButton {
                 text: qsTr("Exclude folder")
@@ -64,7 +64,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Library Filtering" }
+    SectionLabel { text: qsTr("Library Filtering") }
 
     SettingCard {
         SettingRow {
@@ -79,7 +79,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Display & Sorting" }
+    SectionLabel { text: qsTr("Display & Sorting") }
 
     SettingCard {
         SettingChoiceGroup {

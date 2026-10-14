@@ -30,14 +30,14 @@ SettingRow {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             text: {
-                if (!root.options || root.options.length === 0) return "Choose"
+                if (!root.options || root.options.length === 0) return qsTr("Choose")
                 for (let i = 0; i < root.options.length; ++i) {
                     const option = root.options[i]
                     const value = (option && typeof option === "object" && "value" in option) ? option.value : option
                     if (root.selectedValue === value || (root.selectedValue !== undefined && value !== undefined && String(root.selectedValue).toLowerCase() === String(value).toLowerCase()))
                         return (option && typeof option === "object" && "label" in option) ? option.label : String(option)
                 }
-                return "Choose"
+                return qsTr("Choose")
             }
             iconName: choicePopup.visible ? "chevron-up" : "chevron-down"
             iconRight: true

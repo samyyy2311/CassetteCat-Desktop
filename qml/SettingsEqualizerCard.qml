@@ -126,7 +126,7 @@ SettingCard {
     SettingRow {
         iconName: "sliders-horizontal"
         title: qsTr("Equalizer")
-        subtitle: root.eq.enabled ? "On · " + root.eq.preset : qsTr("Shape the sound with ten bands from 31 Hz to 16 kHz")
+        subtitle: root.eq.enabled ? qsTr("On · %1").arg(root.eq.preset) : qsTr("Shape the sound with ten bands from 31 Hz to 16 kHz")
 
         SettingSwitch {
             checked: !!root.eq.enabled

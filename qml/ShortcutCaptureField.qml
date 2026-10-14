@@ -20,7 +20,7 @@ Rectangle {
     enabled: true
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
-    Accessible.name: "Keyboard shortcut " + (shortcut || qsTr("None"))
+    Accessible.name: qsTr("Keyboard shortcut %1").arg(shortcut || qsTr("None"))
 
     property string currentModifiersText: ""
 
@@ -125,9 +125,9 @@ Rectangle {
             id: shortcutText
             text: {
                 if (root.activeFocus) {
-                    return root.currentModifiersText.length > 0 ? root.currentModifiersText : "Press keys..."
+                    return root.currentModifiersText.length > 0 ? root.currentModifiersText : qsTr("Press keys...")
                 }
-                return root.shortcut.length > 0 ? root.shortcut : "None"
+                return root.shortcut.length > 0 ? root.shortcut : qsTr("None")
             }
             color: root.activeFocus
                 ? textPrimary

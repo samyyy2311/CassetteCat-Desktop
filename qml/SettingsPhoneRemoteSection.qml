@@ -20,12 +20,12 @@ ColumnLayout {
         font.pixelSize: 13
     }
 
-    SectionLabel { text: "Phone Remote" }
+    SectionLabel { text: qsTr("Phone Remote") }
 
     SettingCard {
         SettingRow {
             iconName: "smartphone"
-            title: "Control From Your Phone" + (root.offlineBlackout ? " (paused)" : "")
+            title: root.offlineBlackout ? qsTr("Control From Your Phone (paused)") : qsTr("Control From Your Phone")
             subtitle: root.offlineBlackout
                       ? qsTr("Turn off Offline Blackout Mode to use your phone as a remote")
                       : qsTr("The CassetteCat Android app on the same Wi-Fi can control playback, move music between devices and sync likes, playlists and backups")
@@ -42,12 +42,12 @@ ColumnLayout {
         SettingRow {
             visible: root.remoteOn
             iconName: "link"
-            title: phoneRemote.controllerName !== "" ? "Controlled from " + phoneRemote.controllerName
-                 : root.phoneName !== "" ? root.phoneName + " is playing"
+            title: phoneRemote.controllerName !== "" ? qsTr("Controlled from %1").arg(phoneRemote.controllerName)
+                 : root.phoneName !== "" ? qsTr("%1 is playing").arg(root.phoneName)
                  : phoneRemote.address !== "" ? qsTr("Pair a Phone") : qsTr("No Network Connection")
-            subtitle: root.phoneName !== "" ? "Connected over Wi-Fi to " + phoneRemote.computerName
+            subtitle: root.phoneName !== "" ? qsTr("Connected over Wi-Fi to %1").arg(phoneRemote.computerName)
                     : phoneRemote.address !== ""
-                      ? "In the app, tap the devices button in Now Playing and choose " + phoneRemote.computerName + ", then allow it here"
+                      ? qsTr("In the app, tap the devices button in Now Playing and choose %1, then allow it here").arg(phoneRemote.computerName)
                       : qsTr("Connect this computer to Wi-Fi to pair a phone")
         }
     }
@@ -85,7 +85,7 @@ ColumnLayout {
 
                     SettingButton {
                         text: qsTr("Remove")
-                        accessibleName: "Remove " + modelData.name
+                        accessibleName: qsTr("Remove %1").arg(modelData.name)
                         onClicked: phoneRemote.unpairPhone(modelData.code)
                     }
                 }

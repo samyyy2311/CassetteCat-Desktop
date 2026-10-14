@@ -7,7 +7,7 @@ Item {
     readonly property string countText: {
         if (root.activeTab === "songs") {
             const n = (root.viewMode === "list" ? trackList.count : trackGrid.count)
-            return n + (n === 1 ? " song" : " songs")
+            return qsTr("%n song(s)", "", n)
         }
         const count = root.displayItems.length
         return count + " " + root.activeTab
@@ -136,7 +136,7 @@ Item {
         const url = serverUrl.text.trim()
         const username = serverUser.text.trim()
         const password = serverPassword.text
-        if (!url || !username || !password) { setError("Enter server URL, username, and password."); return }
+        if (!url || !username || !password) { setError(qsTr("Enter server URL, username, and password.")); return }
         setError("")
         if (protocol === "jellyfin") { appWindow.jellyfinConnecting = true; streamingController.connectJellyfin(url, username, password, root.trustCert) }
         else { appWindow.subsonicConnecting = true; streamingController.connectSubsonic(url, username, password, root.trustCert) }
@@ -539,7 +539,7 @@ Item {
                     visible: !streamingController.remoteLibraryLoading && trackList.count === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
                     title: root.searchQuery.length > 0 ? qsTr("No Results") : qsTr("No Tracks Yet")
-                    subtitle: root.searchQuery.length > 0 ? qsTr("No tracks match your search") : "Refresh to pull your " + root.serviceName + " library"
+                    subtitle: root.searchQuery.length > 0 ? qsTr("No tracks match your search") : qsTr("Refresh to pull your %1 library").arg(root.serviceName)
                     actionLabel: root.searchQuery.length > 0 ? qsTr("Clear Search") : qsTr("Refresh Now")
                     onActionClicked: root.searchQuery.length > 0 ? (searchInput.text = "") : streamingController.refreshLibrary()
                 }
@@ -555,7 +555,7 @@ Item {
                 visible: !streamingController.remoteLibraryLoading && trackGrid.visible && trackGrid.count === 0
                 catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
                 title: root.activeTab === "playlists" ? qsTr("No Playlists") : (root.searchQuery.length > 0 ? qsTr("No Results") : qsTr("No Tracks Yet"))
-                subtitle: root.activeTab === "playlists" ? qsTr("Playlists are not available from this server") : (root.searchQuery.length > 0 ? qsTr("No tracks match your search") : "Refresh to pull your " + root.serviceName + " library")
+                subtitle: root.activeTab === "playlists" ? qsTr("Playlists are not available from this server") : (root.searchQuery.length > 0 ? qsTr("No tracks match your search") : qsTr("Refresh to pull your %1 library").arg(root.serviceName))
                 actionLabel: root.activeTab === "playlists" ? qsTr("Refresh Now") : (root.searchQuery.length > 0 ? qsTr("Clear Search") : qsTr("Refresh Now"))
                 onActionClicked: root.searchQuery.length > 0 ? (searchInput.text = "") : streamingController.refreshLibrary()
             }
@@ -615,7 +615,7 @@ Item {
                     Layout.fillWidth: true
                     spacing: 6
 
-                    Label { text: "Server Address"; color: textSecondary; font.family: monoFont; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 0.8 }
+                    Label { text: qsTr("Server Address"); color: textSecondary; font.family: monoFont; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 0.8 }
 
                     RefineTextInput {
                         id: serverUrl
@@ -631,7 +631,7 @@ Item {
                     Layout.fillWidth: true
                     spacing: 6
 
-                    Label { text: "Username"; color: textSecondary; font.family: monoFont; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 0.8 }
+                    Label { text: qsTr("Username"); color: textSecondary; font.family: monoFont; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 0.8 }
 
                     RefineTextInput {
                         id: serverUser
@@ -647,7 +647,7 @@ Item {
                     Layout.fillWidth: true
                     spacing: 6
 
-                    Label { text: "Password"; color: textSecondary; font.family: monoFont; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 0.8 }
+                    Label { text: qsTr("Password"); color: textSecondary; font.family: monoFont; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 0.8 }
 
                     RefineTextInput {
                         id: serverPassword
@@ -817,7 +817,7 @@ Item {
 
     ConfirmPopup {
         id: disconnectPopup
-        title: "Disconnect " + root.serviceName + "?"
+        title: qsTr("Disconnect %1?").arg(root.serviceName)
         subtitle: qsTr("You will need to sign in again")
         message: qsTr("Your saved login is removed and this server's songs leave your library until you connect again. Nothing is deleted from the server.")
         iconName: "log-out"

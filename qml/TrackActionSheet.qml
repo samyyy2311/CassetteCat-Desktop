@@ -218,8 +218,8 @@ BottomSheet {
                 titleText: qsTr("Go to Playlist")
                 subtitleText: {
                     if (!root.appWindow || !root.appWindow.playlists || root.appWindow.playlists.length === 0)
-                        return "No saved playlists yet"
-                    return root.appWindow.playlists.length + " playlist" + (root.appWindow.playlists.length === 1 ? "" : "s") + " available"
+                        return qsTr("No saved playlists yet")
+                    return qsTr("%n playlist(s) available", "", root.appWindow.playlists.length)
                 }
                 onClicked: {
                     root.close()

@@ -1,7 +1,8 @@
 .pragma library
 
 const tagFields = ["title", "artist", "album", "year", "trackNumber", "discNumber"]
-const tagLabels = { title: "Title", artist: "Artist", album: "Album", year: "Year", trackNumber: "Track", discNumber: "Disc" }
+const tagLabels = { title: qsTr("Title"), artist: qsTr("Artist"), album: qsTr("Album"), year: qsTr("Year"),
+                    trackNumber: qsTr("Track"), discNumber: qsTr("Disc") }
 const losslessFormats = ["FLAC", "ALAC", "WAV", "AIFF", "APE"]
 
 const numberFields = ["year", "trackNumber", "discNumber"]

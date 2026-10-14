@@ -20,12 +20,13 @@ struct Shortcut {
     const char *label;
 };
 
-constexpr Shortcut shortcutDefinitions[] = {{PlayPause, "playPause", "Play / Pause"},
-                                            {Previous, "previous", "Previous Track"},
-                                            {Next, "next", "Next Track"},
-                                            {Favorite, "favorite", "Toggle Favorite"},
-                                            {Search, "search", "Focus Search"},
-                                            {MiniPlayer, "miniPlayer", "Toggle Mini Player"}};
+constexpr Shortcut shortcutDefinitions[] = {
+    {PlayPause, "playPause", QT_TRANSLATE_NOOP("GlobalShortcutController", "Play / Pause")},
+    {Previous, "previous", QT_TRANSLATE_NOOP("GlobalShortcutController", "Previous Track")},
+    {Next, "next", QT_TRANSLATE_NOOP("GlobalShortcutController", "Next Track")},
+    {Favorite, "favorite", QT_TRANSLATE_NOOP("GlobalShortcutController", "Toggle Favorite")},
+    {Search, "search", QT_TRANSLATE_NOOP("GlobalShortcutController", "Focus Search")},
+    {MiniPlayer, "miniPlayer", QT_TRANSLATE_NOOP("GlobalShortcutController", "Toggle Mini Player")}};
 
 bool parseShortcut(const QString &text, UINT *modifiers, UINT *key) {
     QString normalized = text.trimmed();
@@ -142,9 +143,9 @@ GlobalShortcutController::GlobalShortcutController(QObject *parent) : QObject(pa
     });
     QCoreApplication::instance()->installNativeEventFilter(this);
 #ifdef Q_OS_WIN
-    setStatus("Global shortcuts are off");
+    setStatus(tr("Global shortcuts are off"));
 #else
-    setStatus("Global shortcuts are not available on this platform");
+    setStatus(tr("Global shortcuts are not available on this platform"));
 #endif
 }
 
@@ -180,7 +181,7 @@ void GlobalShortcutController::setEnabled(bool enabled) {
         return;
     if (!enabled) {
         unregisterShortcuts();
-        setStatus("Global shortcuts are off");
+        setStatus(tr("Global shortcuts are off"));
     }
 
     m_enabled = enabled;
@@ -195,7 +196,7 @@ bool GlobalShortcutController::setShortcut(const QString &action, const QString 
     UINT modifiers = 0;
     UINT key = 0;
     if (!parseShortcut(shortcut, &modifiers, &key)) {
-        setStatus("Use Ctrl or Alt with a letter, number, arrow, Space, F key, or supported punctuation");
+        setStatus(tr("Use Ctrl or Alt with a letter, number, arrow, Space, F key, or supported punctuation"));
         return false;
     }
     for (const auto &entry : shortcutDefinitions) {
@@ -206,7 +207,7 @@ bool GlobalShortcutController::setShortcut(const QString &action, const QString 
         UINT otherKey = 0;
         if (parseShortcut(m_shortcuts.value(otherAction).toString(), &otherModifiers, &otherKey) &&
             modifiers == otherModifiers && key == otherKey) {
-            setStatus("Each shortcut must use a different key combination");
+            setStatus(tr("Each shortcut must use a different key combination"));
             return false;
         }
     }
@@ -238,7 +239,7 @@ bool GlobalShortcutController::setShortcut(const QString &action, const QString 
 #else
     Q_UNUSED(action);
     Q_UNUSED(shortcut);
-    setStatus("Global shortcuts are not available on this platform");
+    setStatus(tr("Global shortcuts are not available on this platform"));
     return false;
 #endif
 }
@@ -327,33 +328,31 @@ bool GlobalShortcutController::registerShortcuts() {
         UINT key = 0;
         const QString shortcutStr = m_shortcuts.value(QString::fromLatin1(shortcut.action)).toString();
         if (!parseShortcut(shortcutStr, &modifiers, &key)) {
-            conflicts << QString::fromLatin1(shortcut.label);
+            conflicts << tr(shortcut.label);
             continue;
         }
         if (RegisterHotKey(nullptr, shortcut.id, modifiers | MOD_NOREPEAT, key)) {
             m_registeredIds.insert(shortcut.id);
             registeredCount++;
         } else {
-            conflicts << QString::fromLatin1(shortcut.label);
+            conflicts << tr(shortcut.label);
         }
     }
 
     if (registeredCount == 0) {
-        setStatus("Unavailable: another application is using these shortcuts");
+        setStatus(tr("Unavailable: another application is using these shortcuts"));
         return false;
     }
 
     if (!conflicts.isEmpty()) {
-        setStatus(QString("Active, but %1 unavailable: %2")
-                      .arg(conflicts.size() == 1 ? QStringLiteral("1 shortcut is")
-                                                 : QString::number(conflicts.size()) + " shortcuts are",
-                           conflicts.join(", ")));
+        setStatus(
+            tr("Active, but %n shortcut(s) unavailable: %1", "", int(conflicts.size())).arg(conflicts.join(", ")));
     } else {
-        setStatus("Global shortcuts are active");
+        setStatus(tr("Global shortcuts are active"));
     }
     return true;
 #else
-    setStatus("Global shortcuts are not available on this platform");
+    setStatus(tr("Global shortcuts are not available on this platform"));
     return false;
 #endif
 }

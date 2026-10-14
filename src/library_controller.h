@@ -78,6 +78,8 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE int moveToTrash(const QStringList &filePaths);
     /// Saves the image at \p artworkUrl into each file in \p filePaths; returns how many were saved.
     Q_INVOKABLE bool hasEmbeddedArtwork(const QString &filePath) const;
+    /// Counts the files without a cover inside them, in the background; the answer is missingArtworkCounted.
+    Q_INVOKABLE void countMissingArtwork(const QStringList &filePaths);
     Q_INVOKABLE int embedArtwork(const QStringList &filePaths, const QString &artworkUrl);
     Q_INVOKABLE QVariantMap firstPlayableTrack() const;
     Q_INVOKABLE QVariantList playbackTracks() const;
@@ -96,6 +98,7 @@ class LibraryController final : public QAbstractListModel {
 
   signals:
     void changed();
+    void missingArtworkCounted(int count);
     void tracksChanged();
     void visibleTracksChanged();
     /// Listens from the phone were added to the listening log.

@@ -16,12 +16,14 @@
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QPointer>
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QSet>
 #include <QSettings>
 #include <QTemporaryDir>
+#include <QThreadPool>
 #include <QTimer>
 
 #include <algorithm>
@@ -983,6 +985,18 @@ int LibraryController::moveToTrash(const QStringList &filePaths) {
 
 bool LibraryController::hasEmbeddedArtwork(const QString &filePath) const {
     return ::hasEmbeddedArtwork(filePath);
+}
+
+void LibraryController::countMissingArtwork(const QStringList &filePaths) {
+    // Opening every file of a large library takes seconds, which would freeze the window.
+    QThreadPool::globalInstance()->start([self = QPointer(this), filePaths] {
+        const auto missing = std::count_if(filePaths.cbegin(), filePaths.cend(),
+                                           [](const QString &path) { return !::hasEmbeddedArtwork(path); });
+        QMetaObject::invokeMethod(qApp, [self, missing] {
+            if (self)
+                emit self->missingArtworkCounted(int(missing));
+        });
+    });
 }
 
 int LibraryController::embedArtwork(const QStringList &filePaths, const QString &artworkUrl) {

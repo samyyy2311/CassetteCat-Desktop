@@ -930,7 +930,8 @@ ApplicationWindow {
         const tracks = availableTracks().filter(track => track && track.format !== "STREAM" && !track.remoteId)
         return {
             total: tracks.length,
-            noFolderArtwork: tracks.filter(track => !track.artworkUrl).length,
+            // Songs without a cover file; whether the files hold one is counted separately, in the background.
+            withoutCoverFile: tracks.filter(track => !track.artworkUrl).map(track => track.filePath),
             metadataGaps: tracks.filter(track => !track.title || !track.artist || !track.album).length,
             duplicateMetadata: LibraryTidy.duplicateGroups(tracks).reduce((total, group) => total + group.length - 1, 0)
         }

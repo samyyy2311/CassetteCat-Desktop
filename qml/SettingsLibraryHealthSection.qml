@@ -11,6 +11,8 @@ ColumnLayout {
     // "overview", "tags" or "duplicates"
     property string view: "overview"
     property var health: ({})
+    // Songs without a cover in a file or beside it; -1 while still counting.
+    property int missingCovers: -1
     property var duplicates: []
     // Copies ticked for the Recycle Bin, by file path.
     property var removals: ({})
@@ -31,6 +33,13 @@ ColumnLayout {
 
     function refresh() {
         health = appWindow.libraryHealth()
+        missingCovers = -1
+        library.countMissingArtwork(health.withoutCoverFile)
+    }
+
+    Connections {
+        target: library
+        function onMissingArtworkCounted(count) { root.missingCovers = count }
     }
 
     function reviewDuplicates() {
@@ -102,7 +111,7 @@ ColumnLayout {
             subtitle: root.tagScan.running
                       ? "Checking " + root.tagScan.checkedCount + " of " + root.tagScan.songPaths.length + " songs with MusicBrainz"
                       : (root.health.metadataGaps || 0) + " missing a title, artist or album  •  "
-                        + (root.health.noFolderArtwork || 0) + " without a cover"
+                        + (root.missingCovers < 0 ? "checking covers" : root.missingCovers + " without a cover")
 
             SettingButton {
                 text: root.tagScan.running || root.tagScan.paused || root.tagScan.hasResults ? "View" : "Fix Tags"

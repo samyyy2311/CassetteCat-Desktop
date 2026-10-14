@@ -43,11 +43,7 @@
   <a href="https://apps.microsoft.com/detail/9NXNRR95X3K0"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from the Microsoft Store" height="52" /></a>
 </p>
 
-On Windows 10 and 11, the Microsoft Store version updates itself. It's also on the Windows Package Manager:
-
-```powershell
-winget install CassetteCat
-```
+On Windows 10 and 11, the Microsoft Store version updates itself.
 
 Everything else is on the [latest release](https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest) page:
 

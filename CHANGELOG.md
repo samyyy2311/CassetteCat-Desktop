@@ -4,6 +4,30 @@ All notable changes to CassetteCat Desktop are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.0] - 2026-10-15
+
+### Added
+* Library Health in Settings. Fix Tags checks every song, or the ones you select, with MusicBrainz in the background, and lists the song details and album covers it would fix. Nothing changes until you review the lists and click Apply.
+* Library Health also finds duplicate songs, keeps the best copy, and moves the copies you pick to the Recycle Bin.
+* Fill from MusicBrainz in the tag editor, and Edit Metadata in every song's right-click menu.
+* Covers you pick are also saved into the music files, so File Explorer and other players show them. A switch under the cover search turns this off.
+* Search in Settings, in the title bar or with Ctrl+F.
+* Disconnect in the Phone Remote window, so the phone and the computer each play their own music. They stay paired.
+
+### Changed
+* Liking a Subsonic or Jellyfin song likes it on the server too.
+* System Default follows Windows' default output, and a chosen output that's unplugged plays on the default until it's back.
+* Network & Services calls the Cover Art Archive switch MusicBrainz, since it also looks up song details.
+* Scrobbling settings say why ListenBrainz refused your listens, such as an email address that isn't verified yet.
+* The macOS app is in development, so this release doesn't include it.
+
+### Fixed
+* Previous goes back to the song you heard after turning shuffle off, Play Next keeps its place, and Autoplay no longer turns shuffle off.
+* No more silence after resuming when the audio output dropped while paused, such as after moving music to the phone.
+* Maximizing works with the mini player open, the window corners are square while maximized, and hovered covers aren't cut off on artist pages and in search.
+
+---
+
 ## [0.9.0] - 2026-10-09
 
 ### Added

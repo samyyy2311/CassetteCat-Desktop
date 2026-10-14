@@ -6,7 +6,7 @@ import "LyricsText.js" as LyricsText
 
 Window {
     id: root
-    title: "CassetteCat MiniPlayer"
+    title: qsTr("CassetteCat MiniPlayer")
     color: "transparent"
     transientParent: null
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint | (alwaysOnTop ? Qt.WindowStaysOnTopHint : 0)
@@ -251,7 +251,7 @@ Window {
                             onClicked: root.toggleAlwaysOnTop()
                         }
                         AppToolTip {
-                            text: root.alwaysOnTop ? "Unpin from top" : "Keep on top"
+                            text: root.alwaysOnTop ? qsTr("Unpin from top") : qsTr("Keep on top")
                             visibleTarget: pinHover.containsMouse
                             delay: 350
                         }
@@ -278,7 +278,7 @@ Window {
                             onClicked: root.showMinimized()
                         }
                         AppToolTip {
-                            text: "Minimize"
+                            text: qsTr("Minimize")
                             visibleTarget: minHover.containsMouse
                             delay: 350
                         }
@@ -305,7 +305,7 @@ Window {
                             onClicked: root.restoreRequested()
                         }
                         AppToolTip {
-                            text: "Restore full player"
+                            text: qsTr("Restore full player")
                             visibleTarget: expHover.containsMouse
                             delay: 350
                         }
@@ -332,7 +332,7 @@ Window {
                             onClicked: root.closeRequested()
                         }
                         AppToolTip {
-                            text: "Close miniplayer"
+                            text: qsTr("Close miniplayer")
                             visibleTarget: closeHover.containsMouse
                             delay: 350
                         }
@@ -396,7 +396,7 @@ Window {
                         }
 
                         AppToolTip {
-                            text: "Switch to artwork mode"
+                            text: qsTr("Switch to artwork mode")
                             visibleTarget: coverHoverM.containsMouse
                             delay: 350
                         }
@@ -415,7 +415,7 @@ Window {
                             horizontalAlignment: Text.AlignLeft
                             text: (player.currentTrack && player.currentTrack.title)
                                 ? player.currentTrack.title
-                                : (root.tracksCount > 0 ? "CassetteCat" : "Library Empty")
+                                : (root.tracksCount > 0 ? "CassetteCat" : qsTr("Library Empty"))
                             color: root.textPrimary
                             font.family: root.displayFont
                             font.pixelSize: 14
@@ -532,7 +532,7 @@ Window {
 
                         AppToolTip {
                             targetItem: compactTimeMouse
-                            text: root.showRemainingTime ? "Switch to duration" : "Switch to remaining time"
+                            text: root.showRemainingTime ? qsTr("Switch to duration") : qsTr("Switch to remaining time")
                             visibleTarget: compactTimeMouse.containsMouse
                             delay: 350
                         }
@@ -559,7 +559,7 @@ Window {
                             filled: false
                             iconName: player.volume <= 0.001 ? "volume-x" : (player.volume < 0.5 ? "volume-1" : "volume-2")
                             iconColor: root.textSecondary
-                            tooltipText: "Volume"
+                            tooltipText: qsTr("Volume")
                             onClicked: root.volumePillVisible = true
                         }
 
@@ -570,7 +570,7 @@ Window {
                             iconName: "heart"
                             readonly property bool isFav: !!(player.currentTrack && root.isFavorite(player.currentTrack.filePath))
                             iconColor: isFav ? root.recordRed : root.textSecondary
-                            tooltipText: isFav ? "Remove from favorites" : "Add to favorites"
+                            tooltipText: isFav ? qsTr("Remove from favorites") : qsTr("Add to favorites")
                             onClicked: if (player.currentTrack && player.currentTrack.filePath) root.toggleFavorite(player.currentTrack.filePath)
                         }
                     }
@@ -602,7 +602,7 @@ Window {
                             buttonSize: 28
                             iconName: "shuffle"
                             accented: player.shuffleEnabled
-                            tooltipText: player.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
+                            tooltipText: player.shuffleEnabled ? qsTr("Shuffle On") : qsTr("Shuffle Off")
                             onClicked: root.toggleShuffle()
                         }
 
@@ -610,7 +610,7 @@ Window {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 30
                             iconName: "skip-back"
-                            tooltipText: "Previous"
+                            tooltipText: qsTr("Previous")
                             onClicked: root.playPrevious()
                         }
 
@@ -619,7 +619,7 @@ Window {
                             buttonSize: 36
                             iconName: (player.isPlaying || root.playerVisuallyPlaying) ? "pause" : "play"
                             accented: true
-                            tooltipText: (player.isPlaying || root.playerVisuallyPlaying) ? "Pause" : "Play"
+                            tooltipText: (player.isPlaying || root.playerVisuallyPlaying) ? qsTr("Pause") : qsTr("Play")
                             onClicked: player.togglePlay()
                         }
 
@@ -627,7 +627,7 @@ Window {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 30
                             iconName: "skip-forward"
-                            tooltipText: "Next"
+                            tooltipText: qsTr("Next")
                             onClicked: root.playNext()
                         }
 
@@ -636,7 +636,7 @@ Window {
                             buttonSize: 28
                             iconName: root.repeatMode === 2 ? "repeat-1" : "repeat"
                             accented: root.repeatMode > 0
-                            tooltipText: root.repeatMode === 2 ? "Repeat Track" : (root.repeatMode === 1 ? "Repeat All" : "Repeat Off")
+                            tooltipText: root.repeatMode === 2 ? qsTr("Repeat Track") : (root.repeatMode === 1 ? qsTr("Repeat All") : qsTr("Repeat Off"))
                             onClicked: root.toggleRepeat()
                         }
                     }
@@ -653,7 +653,7 @@ Window {
                             filled: false
                             iconName: "quote"
                             iconColor: root.mode === "lyrics" ? root.recordRed : root.textSecondary
-                            tooltipText: "Lyrics"
+                            tooltipText: qsTr("Lyrics")
                             onClicked: root.mode = (root.mode === "lyrics" ? "compact" : "lyrics")
                         }
 
@@ -663,7 +663,7 @@ Window {
                             filled: false
                             iconName: "list"
                             iconColor: root.mode === "queue" ? root.recordRed : root.textSecondary
-                            tooltipText: "Queue"
+                            tooltipText: qsTr("Queue")
                             onClicked: root.mode = (root.mode === "queue" ? "compact" : "queue")
                         }
                     }

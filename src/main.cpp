@@ -23,6 +23,8 @@
 #include <QUrl>
 #include <QVariantList>
 #include <QThread>
+#include <QLocale>
+#include <QTranslator>
 #include <cstring>
 #include <iostream>
 #include <optional>
@@ -412,6 +414,10 @@ int main(int argc, char *argv[]) {
     QCoreApplication::setApplicationName(kApplicationName);
     QCoreApplication::setApplicationVersion(QStringLiteral(CASSETTECAT_VERSION));
     initializeDebugLog();
+    // English is written in the code; other languages, and English plural forms, come from the translation files.
+    QTranslator translator;
+    if (translator.load(QLocale(), QStringLiteral("cassettecat"), QStringLiteral("_"), QStringLiteral(":/i18n")))
+        QCoreApplication::installTranslator(&translator);
 #ifdef Q_OS_WIN
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     registerWindowsAppIdentity();

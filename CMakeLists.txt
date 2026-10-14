@@ -5,7 +5,7 @@ set(CASSETTECAT_PACKAGE_VERSION "${PROJECT_VERSION}" CACHE STRING "Version used 
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-find_package(Qt6 6.10 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Concurrent QuickEffects Network Widgets)
+find_package(Qt6 6.10 REQUIRED COMPONENTS Quick QuickControls2 Multimedia Concurrent QuickEffects Network Widgets LinguistTools)
 # Makes the phone remote's TLS certificate.
 find_package(OpenSSL 3 REQUIRED COMPONENTS Crypto)
 if(UNIX AND NOT APPLE)
@@ -310,6 +310,19 @@ qt_add_qml_module(CassetteCat
         fonts/silkscreen_bold.ttf
         fonts/vt323_regular.ttf
         fonts/monocraft.ttf
+)
+
+# Translations come from Weblate as translations/cassettecat_<language>.ts. cassettecat_en.ts lists every string for
+# Weblate and holds the English plural forms. `cmake --build <dir> --target update_translations` refreshes the files
+# from the code.
+# The changelog is bundled for the What's New sheet, but it isn't code to scan for strings.
+set_property(TARGET CassetteCat APPEND PROPERTY QT_EXCLUDE_SOURCES_FROM_TRANSLATION CHANGELOG.md)
+file(GLOB CASSETTECAT_TS_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/translations/cassettecat_*.ts")
+qt_add_translations(CassetteCat
+    SOURCE_TARGETS CassetteCat
+    TS_FILES ${CASSETTECAT_TS_FILES}
+    RESOURCE_PREFIX /i18n
+    LUPDATE_OPTIONS -no-obsolete -locations none
 )
 
 include(CTest)

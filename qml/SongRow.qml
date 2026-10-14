@@ -122,7 +122,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
-                text: root.track ? (TrackTitles.title(root.track) || root.track.fileName || "Untitled Track") : ""
+                text: root.track ? (TrackTitles.title(root.track) || root.track.fileName || qsTr("Untitled Track")) : ""
                 color: isCurrent ? activeTextColor : defaultTextColor
                 font.family: displayFont
                 font.pixelSize: 14

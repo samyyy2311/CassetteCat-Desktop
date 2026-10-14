@@ -20,7 +20,7 @@ Rectangle {
     enabled: true
     activeFocusOnTab: true
     Accessible.role: Accessible.Button
-    Accessible.name: "Keyboard shortcut " + (shortcut || "None")
+    Accessible.name: "Keyboard shortcut " + (shortcut || qsTr("None"))
 
     property string currentModifiersText: ""
 

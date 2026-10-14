@@ -66,7 +66,7 @@ Item {
                                 Label {
                                     text: root.libraryModel.trackCount
                                         ? (root.libraryModel.trackCount + " songs • " + artistCount + " artists • " + albumCount + " albums")
-                                        : "Scan a music folder to populate your library"
+                                        : qsTr("Scan a music folder to populate your library")
                                     color: silverDim
                                     font.family: monoFont
                                     font.pixelSize: 11
@@ -165,13 +165,13 @@ Item {
                                     spacing: 4
 
                                     OverlineLabel {
-                                        text: "Shuffle"
+                                        text: qsTr("Shuffle")
                                         color: textPrimary
                                     }
 
                                     Label {
                                         Layout.fillWidth: true
-                                        text: "Your whole library, in a new order"
+                                        text: qsTr("Your whole library, in a new order")
                                         color: "#FFFFFF"
                                         font.family: displayFont
                                         font.pixelSize: 22
@@ -191,7 +191,7 @@ Item {
 
                                 TransportButton {
                                     id: heroShuffleBtn
-                                    Accessible.name: "Shuffle library"
+                                    Accessible.name: qsTr("Shuffle library")
                                     anchors.right: parent.right
                                     anchors.rightMargin: 24
                                     anchors.verticalCenter: parent.verticalCenter
@@ -218,8 +218,8 @@ Item {
                                 spacing: 16
 
                                 HomeSectionHeader {
-                                    title: "Start here"
-                                    subtitle: "Handpicked from your library"
+                                    title: qsTr("Start here")
+                                    subtitle: qsTr("Handpicked from your library")
                                     onPlayClicked: {
                                         if (quickPicks.length > 0) root.appWindow.playTrack(quickPicks[0])
                                     }
@@ -254,8 +254,8 @@ Item {
                                 spacing: 16
 
                                 HomeSectionHeader {
-                                    title: "Heavy Rotation"
-                                    subtitle: "Your most played tracks"
+                                    title: qsTr("Heavy Rotation")
+                                    subtitle: qsTr("Your most played tracks")
                                     onPlayClicked: {
                                         if (heavyRotation.length > 0) root.appWindow.playTrack(heavyRotation[0])
                                     }
@@ -281,24 +281,24 @@ Item {
                             }
 
                             HomeTrackShelf {
-                                title: "Recently Played"
-                                subtitle: "Continue where you left off"
+                                title: qsTr("Recently Played")
+                                subtitle: qsTr("Continue where you left off")
                                 tracks: recentlyPlayed
                                 onTrackSelected: track => root.appWindow.playTrack(track)
                                 onShuffleSelected: root.appWindow.shufflePlayback(recentlyPlayed)
                             }
 
                             HomeTrackShelf {
-                                title: "Recently Added"
-                                subtitle: "New to your library"
+                                title: qsTr("Recently Added")
+                                subtitle: qsTr("New to your library")
                                 tracks: recentlyAdded
                                 onTrackSelected: track => root.appWindow.playTrack(track)
                                 onShuffleSelected: root.appWindow.shufflePlayback(recentlyAdded)
                             }
 
                             HomeTrackShelf {
-                                title: "Forgotten Favorites"
-                                subtitle: "Liked tracks waiting for another spin"
+                                title: qsTr("Forgotten Favorites")
+                                subtitle: qsTr("Liked tracks waiting for another spin")
                                 tracks: forgottenFavs
                                 onTrackSelected: track => root.appWindow.playTrack(track)
                                 onShuffleSelected: root.appWindow.shufflePlayback(forgottenFavs)
@@ -311,7 +311,7 @@ Item {
                                 spacing: 16
 
                                 HomeSectionHeader {
-                                    title: "Albums in Rotation"
+                                    title: qsTr("Albums in Rotation")
                                     subtitle: albumCount + " Total albums in library"
                                     onPlayClicked: {
                                         if (albumsRotation.length > 0) root.appWindow.playTrack(albumsRotation[0].track)
@@ -348,7 +348,7 @@ Item {
                                 spacing: 16
 
                                 HomeSectionHeader {
-                                    title: "Artists"
+                                    title: qsTr("Artists")
                                     subtitle: artistCount + " Total artists in library"
                                     onPlayClicked: {
                                         if (artistsRotation.length > 0) root.appWindow.playTrack(artistsRotation[0].track)

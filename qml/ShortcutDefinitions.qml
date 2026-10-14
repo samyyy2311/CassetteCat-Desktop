@@ -2,19 +2,19 @@ import QtQml
 
 QtObject {
     readonly property var inAppActions: [
-        { action: "toggleMiniPlayer", label: "Toggle Mini Player", defaultKey: "Ctrl+M", icon: "pip" },
-        { action: "toggleSidebar", label: "Toggle Sidebar", defaultKey: "Ctrl+B", icon: "panel-left" },
-        { action: "search", label: "Search This Page", defaultKey: "Ctrl+F", icon: "search" },
-        { action: "quickSwitcher", label: "Open Search", defaultKey: "Ctrl+K", icon: "command" },
-        { action: "closePlayerView", label: "Close Player View", defaultKey: "Escape", icon: "chevron-down" },
-        { action: "playPause", label: "Play / Pause", defaultKey: "Space", icon: "play" },
-        { action: "volumeUp", label: "Volume Up", defaultKey: "Ctrl+Up", icon: "volume-2" },
-        { action: "volumeDown", label: "Volume Down", defaultKey: "Ctrl+Down", icon: "volume-1" },
-        { action: "seekForward", label: "Seek Forward (5s)", defaultKey: "Ctrl+Right", icon: "fast-forward" },
-        { action: "seekBackward", label: "Seek Backward (5s)", defaultKey: "Ctrl+Left", icon: "rewind" },
-        { action: "nowPlayingNext", label: "Next Track (Player View)", defaultKey: "Right", icon: "skip-forward" },
-        { action: "nowPlayingPrevious", label: "Previous Track (Player View)", defaultKey: "Left", icon: "skip-back" },
-        { action: "mute", label: "Mute", defaultKey: "M", icon: "volume-x" }
+        { action: "toggleMiniPlayer", label: qsTr("Toggle Mini Player"), defaultKey: "Ctrl+M", icon: "pip" },
+        { action: "toggleSidebar", label: qsTr("Toggle Sidebar"), defaultKey: "Ctrl+B", icon: "panel-left" },
+        { action: "search", label: qsTr("Search This Page"), defaultKey: "Ctrl+F", icon: "search" },
+        { action: "quickSwitcher", label: qsTr("Open Search"), defaultKey: "Ctrl+K", icon: "command" },
+        { action: "closePlayerView", label: qsTr("Close Player View"), defaultKey: "Escape", icon: "chevron-down" },
+        { action: "playPause", label: qsTr("Play / Pause"), defaultKey: "Space", icon: "play" },
+        { action: "volumeUp", label: qsTr("Volume Up"), defaultKey: "Ctrl+Up", icon: "volume-2" },
+        { action: "volumeDown", label: qsTr("Volume Down"), defaultKey: "Ctrl+Down", icon: "volume-1" },
+        { action: "seekForward", label: qsTr("Seek Forward (5s)"), defaultKey: "Ctrl+Right", icon: "fast-forward" },
+        { action: "seekBackward", label: qsTr("Seek Backward (5s)"), defaultKey: "Ctrl+Left", icon: "rewind" },
+        { action: "nowPlayingNext", label: qsTr("Next Track (Player View)"), defaultKey: "Right", icon: "skip-forward" },
+        { action: "nowPlayingPrevious", label: qsTr("Previous Track (Player View)"), defaultKey: "Left", icon: "skip-back" },
+        { action: "mute", label: qsTr("Mute"), defaultKey: "M", icon: "volume-x" }
     ]
 
     function defaultKey(action) {

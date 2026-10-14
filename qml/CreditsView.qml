@@ -84,9 +84,9 @@ ColumnLayout {
     SettingCard {
         Repeater {
             model: [
-                { title: "CassetteCat " + Qt.application.version, subtitle: "Made by CaffeineLabs (cassettecat.caffeinelabs.in)", icon: "info", url: "https://cassettecat.caffeinelabs.in" },
-                { title: "What's New", subtitle: "Changes in this version", icon: "list" },
-                { title: "Privacy Policy", subtitle: "What stays on your computer and what each online service receives", icon: "shield", url: "https://cassettecat.caffeinelabs.in/privacy.html" }
+                { title: "CassetteCat " + Qt.application.version, subtitle: qsTr("Made by CaffeineLabs (cassettecat.caffeinelabs.in)"), icon: "info", url: "https://cassettecat.caffeinelabs.in" },
+                { title: qsTr("What's New"), subtitle: qsTr("Changes in this version"), icon: "list" },
+                { title: qsTr("Privacy Policy"), subtitle: qsTr("What stays on your computer and what each online service receives"), icon: "shield", url: "https://cassettecat.caffeinelabs.in/privacy.html" }
             ]
 
             delegate: ColumnLayout {
@@ -108,17 +108,17 @@ ColumnLayout {
     SettingCard {
         Repeater {
             model: [
-                { title: "LRCLIB", subtitle: "Synchronized and plain lyrics (lrclib.net)", icon: "lrclib", preserveColor: true, url: "https://lrclib.net" },
-                { title: "Deezer", subtitle: "Artist portraits and high-res imagery (deezer.com)", icon: "deezer", preserveColor: true, url: "https://deezer.com" },
-                { title: "TheAudioDB", subtitle: "Fallback artist images and biographies (theaudiodb.com)", icon: "theaudiodb", preserveColor: true, url: "https://theaudiodb.com" },
-                { title: "Radio Browser", subtitle: "Community-run internet radio station directory (radio-browser.info)", icon: "radio", preserveColor: false, url: "https://radio-browser.info" },
-                { title: "Wikipedia & Wikimedia", subtitle: "Artist biographies and album background (CC BY-SA 4.0)", icon: "wikipedia", preserveColor: true, url: "https://wikipedia.org" },
-                { title: "MusicBrainz", subtitle: "Open music encyclopedia and metadata references", icon: "musicbrainz", preserveColor: true, url: "https://musicbrainz.org" },
-                { title: "Cover Art Archive", subtitle: "Archival CD and vinyl cover scans (Internet Archive & MusicBrainz)", icon: "archive", preserveColor: true, url: "https://coverartarchive.org" },
-                { title: "ListenBrainz", subtitle: "Open scrobbling platform and CC0 listening data", icon: "listenbrainz", preserveColor: true, url: "https://listenbrainz.org" },
-                { title: "Libre.fm", subtitle: "Free software music scrobbling network (GNU FM)", icon: "librefm", preserveColor: true, url: "https://libre.fm" },
-                { title: "Last.fm", subtitle: "Scrobbling through the Last.fm API (last.fm)", icon: "lastfm", preserveColor: true, url: "https://www.last.fm" },
-                { title: "GitHub", subtitle: "Release update checks (github.com)", icon: "github", preserveColor: true, url: "https://github.com" }
+                { title: "LRCLIB", subtitle: qsTr("Synchronized and plain lyrics (lrclib.net)"), icon: "lrclib", preserveColor: true, url: "https://lrclib.net" },
+                { title: "Deezer", subtitle: qsTr("Artist portraits and high-res imagery (deezer.com)"), icon: "deezer", preserveColor: true, url: "https://deezer.com" },
+                { title: "TheAudioDB", subtitle: qsTr("Fallback artist images and biographies (theaudiodb.com)"), icon: "theaudiodb", preserveColor: true, url: "https://theaudiodb.com" },
+                { title: "Radio Browser", subtitle: qsTr("Community-run internet radio station directory (radio-browser.info)"), icon: "radio", preserveColor: false, url: "https://radio-browser.info" },
+                { title: qsTr("Wikipedia & Wikimedia"), subtitle: qsTr("Artist biographies and album background (CC BY-SA 4.0)"), icon: "wikipedia", preserveColor: true, url: "https://wikipedia.org" },
+                { title: "MusicBrainz", subtitle: qsTr("Open music encyclopedia and metadata references"), icon: "musicbrainz", preserveColor: true, url: "https://musicbrainz.org" },
+                { title: "Cover Art Archive", subtitle: qsTr("Archival CD and vinyl cover scans (Internet Archive & MusicBrainz)"), icon: "archive", preserveColor: true, url: "https://coverartarchive.org" },
+                { title: "ListenBrainz", subtitle: qsTr("Open scrobbling platform and CC0 listening data"), icon: "listenbrainz", preserveColor: true, url: "https://listenbrainz.org" },
+                { title: "Libre.fm", subtitle: qsTr("Free software music scrobbling network (GNU FM)"), icon: "librefm", preserveColor: true, url: "https://libre.fm" },
+                { title: "Last.fm", subtitle: qsTr("Scrobbling through the Last.fm API (last.fm)"), icon: "lastfm", preserveColor: true, url: "https://www.last.fm" },
+                { title: "GitHub", subtitle: qsTr("Release update checks (github.com)"), icon: "github", preserveColor: true, url: "https://github.com" }
             ].filter(service => service.icon !== "lastfm" || services.lastFmAvailable())
 
             delegate: ColumnLayout {
@@ -140,11 +140,11 @@ ColumnLayout {
     SettingCard {
         Repeater {
             model: [
-                { title: "AutoEq", subtitle: "Headphone correction curves for the equalizer, by Jaakko Pasanen", icon: "autoeq", preserveColor: true, url: "https://github.com/jaakkopasanen/AutoEq" },
-                { title: "Qt Multimedia", subtitle: "Hardware audio playback, streaming, and audio sinks", icon: "music", preserveColor: false, url: "https://doc.qt.io/qt-6/qtmultimedia-index.html" },
-                { title: "Qt Network", subtitle: "High-performance HTTP/REST client for lyrics and data sync", icon: "globe", preserveColor: false, url: "https://doc.qt.io/qt-6/qtnetwork-index.html" },
-                { title: "TagLib", subtitle: "Audio metadata and embedded ID3/MP4/FLAC tag parser", icon: "disc", preserveColor: false, url: "https://taglib.org" },
-                { title: "DWM Windows Frameless", subtitle: "Hardware-accelerated Windows Desktop Window Manager composition", icon: "shield", preserveColor: false, url: "https://learn.microsoft.com/en-us/windows/win32/dwm/dwm-overview" }
+                { title: "AutoEq", subtitle: qsTr("Headphone correction curves for the equalizer, by Jaakko Pasanen"), icon: "autoeq", preserveColor: true, url: "https://github.com/jaakkopasanen/AutoEq" },
+                { title: qsTr("Qt Multimedia"), subtitle: qsTr("Hardware audio playback, streaming, and audio sinks"), icon: "music", preserveColor: false, url: "https://doc.qt.io/qt-6/qtmultimedia-index.html" },
+                { title: qsTr("Qt Network"), subtitle: qsTr("High-performance HTTP/REST client for lyrics and data sync"), icon: "globe", preserveColor: false, url: "https://doc.qt.io/qt-6/qtnetwork-index.html" },
+                { title: "TagLib", subtitle: qsTr("Audio metadata and embedded ID3/MP4/FLAC tag parser"), icon: "disc", preserveColor: false, url: "https://taglib.org" },
+                { title: qsTr("DWM Windows Frameless"), subtitle: qsTr("Hardware-accelerated Windows Desktop Window Manager composition"), icon: "shield", preserveColor: false, url: "https://learn.microsoft.com/en-us/windows/win32/dwm/dwm-overview" }
             ]
 
             delegate: ColumnLayout {
@@ -166,10 +166,10 @@ ColumnLayout {
     SettingCard {
         Repeater {
             model: [
-                { title: "Lucide Icons", subtitle: "App logo & open-source iconography (lucide.dev, ISC License)", icon: "lucide", preserveColor: true, url: "https://lucide.dev" },
-                { title: "Simple Icons", subtitle: "Authentic brand SVG icons (simpleicons.org, CC0 1.0)", icon: "simpleicons", preserveColor: true, url: "https://simpleicons.org" },
-                { title: "IBM Plex (Sans & Mono)", subtitle: "Designed by Mike Abbink and Bold Monday for IBM (OFL 1.1)", icon: "ibm", preserveColor: true, url: "https://github.com/IBM/plex" },
-                { title: "Space Grotesk", subtitle: "Proportional monospace display typeface by Florian Karsten (OFL 1.1)", icon: "quote", preserveColor: false, url: "https://github.com/floriankarsten/space-grotesk" }
+                { title: qsTr("Lucide Icons"), subtitle: qsTr("App logo & open-source iconography (lucide.dev, ISC License)"), icon: "lucide", preserveColor: true, url: "https://lucide.dev" },
+                { title: qsTr("Simple Icons"), subtitle: qsTr("Authentic brand SVG icons (simpleicons.org, CC0 1.0)"), icon: "simpleicons", preserveColor: true, url: "https://simpleicons.org" },
+                { title: qsTr("IBM Plex (Sans & Mono)"), subtitle: qsTr("Designed by Mike Abbink and Bold Monday for IBM (OFL 1.1)"), icon: "ibm", preserveColor: true, url: "https://github.com/IBM/plex" },
+                { title: qsTr("Space Grotesk"), subtitle: qsTr("Proportional monospace display typeface by Florian Karsten (OFL 1.1)"), icon: "quote", preserveColor: false, url: "https://github.com/floriankarsten/space-grotesk" }
             ]
 
             delegate: ColumnLayout {
@@ -191,8 +191,8 @@ ColumnLayout {
     SettingCard {
         CreditItemRow {
             itemData: ({
-                title: "GNU General Public License v3.0",
-                subtitle: "View source code and contribute on GitHub",
+                title: qsTr("GNU General Public License v3.0"),
+                subtitle: qsTr("View source code and contribute on GitHub"),
                 icon: "gpl",
                 preserveColor: true,
                 url: "https://github.com/samyyy2311/CassetteCat-Desktop"

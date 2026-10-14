@@ -70,7 +70,7 @@ ColumnLayout {
         spacing: 10
 
         SettingButton {
-            text: "Back"
+            text: qsTr("Back")
             iconName: "chevron-left"
             onClicked: {
                 root.refresh()
@@ -107,14 +107,14 @@ ColumnLayout {
         SettingRow {
             iconName: "musicbrainz"
             preserveIconColor: true
-            title: "Song Details & Covers"
+            title: qsTr("Song Details & Covers")
             subtitle: root.tagScan.running
                       ? "Checking " + root.tagScan.checkedCount + " of " + root.tagScan.songPaths.length + " songs with MusicBrainz"
                       : (root.health.metadataGaps || 0) + " missing a title, artist or album  •  "
                         + (root.missingCovers < 0 ? "checking covers" : root.missingCovers + " without a cover")
 
             SettingButton {
-                text: root.tagScan.running || root.tagScan.paused || root.tagScan.hasResults ? "View" : "Fix Tags"
+                text: root.tagScan.running || root.tagScan.paused || root.tagScan.hasResults ? qsTr("View") : qsTr("Fix Tags")
                 onClicked: {
                     if (!root.tagScan.running && !root.tagScan.paused && !root.tagScan.hasResults)
                         root.tagScan.startLibrary(root.appWindow.availableTracks())
@@ -125,13 +125,13 @@ ColumnLayout {
 
         SettingRow {
             iconName: "list-music"
-            title: "Duplicates"
+            title: qsTr("Duplicates")
             subtitle: (root.health.duplicateMetadata || 0) > 0
                       ? root.plural(root.health.duplicateMetadata, "extra copy", "extra copies") + " of songs you already have"
-                      : "No duplicate songs found"
+                      : qsTr("No duplicate songs found")
 
             SettingButton {
-                text: "Review"
+                text: qsTr("Review")
                 enabled: (root.health.duplicateMetadata || 0) > 0
                 onClicked: root.reviewDuplicates()
             }
@@ -147,29 +147,29 @@ ColumnLayout {
             title: root.tagScan.running
                    ? "Checking " + root.tagScan.checkedCount + " of " + root.tagScan.songPaths.length + " songs"
                    : root.tagScan.paused ? "Paused at " + root.tagScan.checkedCount + " of " + root.tagScan.songPaths.length + " songs"
-                   : "Check finished"
+                   : qsTr("Check finished")
             subtitle: root.tagScan.problem
-                      || (root.tagScan.running ? "You can leave this page. The check keeps going, about a song a second."
-                          : root.tagScan.hasResults ? "Turn off anything that looks wrong, then apply."
-                          : root.tagScan.songPaths.length === 0 ? "Every song in your library has been checked already."
-                          : "MusicBrainz agrees with these songs, or has no confident match for them.")
+                      || (root.tagScan.running ? qsTr("You can leave this page. The check keeps going, about a song a second.")
+                          : root.tagScan.hasResults ? qsTr("Turn off anything that looks wrong, then apply.")
+                          : root.tagScan.songPaths.length === 0 ? qsTr("Every song in your library has been checked already.")
+                          : qsTr("MusicBrainz agrees with these songs, or has no confident match for them."))
 
             SettingButton {
                 visible: root.tagScan.running
-                text: "Stop"
+                text: qsTr("Stop")
                 onClicked: root.tagScan.stop()
             }
 
             SettingButton {
                 visible: root.tagScan.paused
-                text: "Continue"
+                text: qsTr("Continue")
                 onClicked: root.tagScan.resume()
             }
 
             SettingButton {
                 // Starting over drops unapplied results, so it's only offered once there are none.
                 visible: !root.tagScan.running && !root.tagScan.paused && !root.tagScan.hasResults
-                text: "Check All Again"
+                text: qsTr("Check All Again")
                 onClicked: root.tagScan.checkAllAgain(root.appWindow.availableTracks())
             }
         }
@@ -177,7 +177,7 @@ ColumnLayout {
 
     SectionLabel {
         visible: root.view === "tags" && root.tagScan.details.length > 0
-        text: "Song Details"
+        text: qsTr("Song Details")
     }
 
     SettingCard {
@@ -185,10 +185,10 @@ ColumnLayout {
 
         SettingRow {
             title: root.plural(root.tagScan.details.length, "song", "songs") + " with new details"
-            subtitle: "Titles, artists and albums that differ from MusicBrainz, and years or track numbers that are missing."
+            subtitle: qsTr("Titles, artists and albums that differ from MusicBrainz, and years or track numbers that are missing.")
 
             SettingButton {
-                text: root.tagScan.acceptedDetails > 0 ? "Turn All Off" : "Turn All On"
+                text: root.tagScan.acceptedDetails > 0 ? qsTr("Turn All Off") : qsTr("Turn All On")
                 onClicked: root.tagScan.setAllDetailsSkipped(root.tagScan.acceptedDetails > 0)
             }
         }
@@ -198,7 +198,7 @@ ColumnLayout {
 
             SettingRow {
                 required property var modelData
-                title: modelData.song.title + "  •  " + (modelData.song.artist || "Unknown Artist")
+                title: modelData.song.title + "  •  " + (modelData.song.artist || qsTr("Unknown Artist"))
                 subtitle: root.changesText(modelData.changes)
 
                 SettingSwitch {
@@ -212,7 +212,7 @@ ColumnLayout {
 
     SectionLabel {
         visible: root.view === "tags" && root.tagScan.covers.length > 0
-        text: "Album Covers"
+        text: qsTr("Album Covers")
     }
 
     SettingCard {
@@ -220,10 +220,10 @@ ColumnLayout {
 
         SettingRow {
             title: root.plural(root.tagScan.covers.length, "album", "albums") + " without a cover"
-            subtitle: "Each cover is saved into the album's songs that don't have one."
+            subtitle: qsTr("Each cover is saved into the album's songs that don't have one.")
 
             SettingButton {
-                text: root.tagScan.acceptedCovers > 0 ? "Turn All Off" : "Turn All On"
+                text: root.tagScan.acceptedCovers > 0 ? qsTr("Turn All Off") : qsTr("Turn All On")
                 onClicked: root.tagScan.setAllCoversSkipped(root.tagScan.acceptedCovers > 0)
             }
         }
@@ -260,7 +260,7 @@ ColumnLayout {
 
                     Label {
                         Layout.fillWidth: true
-                        text: coverRow.modelData.album + "  •  " + (coverRow.modelData.artist || "Unknown Artist")
+                        text: coverRow.modelData.album + "  •  " + (coverRow.modelData.artist || qsTr("Unknown Artist"))
                         color: textPrimary
                         font.family: displayFont
                         font.pixelSize: 14
@@ -294,7 +294,7 @@ ColumnLayout {
         SettingRow {
             iconName: "list-music"
             title: root.plural(root.duplicates.length, "song with copies", "songs with copies")
-            subtitle: "The best copy of each song is kept: lossless first, then the largest file. Turn on any other copy to remove it."
+            subtitle: qsTr("The best copy of each song is kept: lossless first, then the largest file. Turn on any other copy to remove it.")
         }
 
         Repeater {
@@ -312,7 +312,7 @@ ColumnLayout {
                     SettingRow {
                         required property var modelData
                         required property int index
-                        title: (index === 0 ? "Keep: " : "") + modelData.title + "  •  " + (modelData.artist || "Unknown Artist")
+                        title: (index === 0 ? "Keep: " : "") + modelData.title + "  •  " + (modelData.artist || qsTr("Unknown Artist"))
                         subtitle: [modelData.format, root.sizeText(modelData.fileSize), modelData.filePath].filter(part => !!part).join("  •  ")
 
                         SettingSwitch {
@@ -329,10 +329,10 @@ ColumnLayout {
     ConfirmPopup {
         id: recycleConfirm
         title: "Move " + root.plural(root.removalPaths.length, "song", "songs") + " to the Recycle Bin?"
-        subtitle: "You can restore them from the Recycle Bin"
-        message: "The files leave your music folders and your CassetteCat library. The copies you keep stay as they are."
+        subtitle: qsTr("You can restore them from the Recycle Bin")
+        message: qsTr("The files leave your music folders and your CassetteCat library. The copies you keep stay as they are.")
         iconName: "list-music"
-        confirmText: "Move to Recycle Bin"
+        confirmText: qsTr("Move to Recycle Bin")
         destructive: true
         onConfirmed: {
             library.moveToTrash(root.removalPaths)

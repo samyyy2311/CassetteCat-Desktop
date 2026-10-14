@@ -16,7 +16,7 @@ Column {
             || (group.count === 1 && (group.track.title || "").toLowerCase() === group.name.toLowerCase())
         const singles = albumGroups.filter(isSingle)
         const albums = albumGroups.filter(group => !isSingle(group))
-        return [{ title: "Albums", releases: albums }, { title: "Singles & EPs", releases: singles }]
+        return [{ title: qsTr("Albums"), releases: albums }, { title: qsTr("Singles & EPs"), releases: singles }]
             .filter(section => section.releases.length > 0)
     }
 
@@ -47,7 +47,7 @@ Column {
                     Layout.fillWidth: true
 
                     Label {
-                        text: "Popular Tracks"
+                        text: qsTr("Popular Tracks")
                         color: "#FFFFFF"
                         font.family: root.appWindow.displayFont
                         font.pixelSize: 21
@@ -91,7 +91,7 @@ Column {
                         spacing: 1
 
                         Label {
-                            text: "Discography"
+                            text: qsTr("Discography")
                             color: "#FFFFFF"
                             font.family: root.appWindow.displayFont
                             font.pixelSize: 21

@@ -199,7 +199,7 @@ Item {
                     iconSize: 14
                     iconName: "play"
                     tint: root.appWindow.textPrimary
-                    tooltipText: "Play playlist"
+                    tooltipText: qsTr("Play playlist")
                     enabled: playlistRow.modelData.tracks.length > 0
                     onClicked: {
                         if (playlistRow.modelData.isSmart) {
@@ -216,7 +216,7 @@ Item {
                     iconSize: 14
                     iconName: "external-link"
                     tint: root.appWindow.silverDim
-                    tooltipText: "Export M3U"
+                    tooltipText: qsTr("Export M3U")
                     onClicked: root.appWindow.requestPlaylistExport(playlistRow.modelData)
                 }
 
@@ -226,7 +226,7 @@ Item {
                     iconSize: 14
                     iconName: "x"
                     tint: root.appWindow.silverDim
-                    tooltipText: "Delete playlist"
+                    tooltipText: qsTr("Delete playlist")
                     onClicked: root.appWindow.deletePlaylist(playlistRow.modelData.id)
                 }
             }
@@ -249,9 +249,9 @@ Item {
         anchors.fill: parent
         visible: root.allPlaylists.length === 0
         catImage: "qrc:/qt/qml/CassetteCat/assets/02-black-cat-cassette.png"
-        title: "No Playlists Found"
+        title: qsTr("No Playlists Found")
         subtitle: "No playlists match \"" + root.appWindow.libSearchQuery + "\""
-        actionLabel: "Clear Search"
+        actionLabel: qsTr("Clear Search")
         onActionClicked: root.appWindow.libSearchQuery = ""
     }
 }

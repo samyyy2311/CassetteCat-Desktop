@@ -45,7 +45,7 @@ CardBase {
 
         Label {
             Layout.fillWidth: true
-            text: TrackTitles.artist(root.track) || "Unknown Artist"
+            text: TrackTitles.artist(root.track) || qsTr("Unknown Artist")
             color: textSecondary
             font.family: bodyFont
             font.pixelSize: 11

@@ -68,7 +68,7 @@ Item {
                 Label {
                     anchors.centerIn: parent
                     visible: !miniPlayer.queueEntries || miniPlayer.queueEntries.length === 0
-                    text: "Queue is empty"
+                    text: qsTr("Queue is empty")
                     color: miniPlayer.silverDim
                     font.family: miniPlayer.displayFont
                     font.pixelSize: 11

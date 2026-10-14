@@ -221,7 +221,7 @@ Item {
 
             AppToolTip {
                 targetItem: timeMouse
-                text: root.showRemainingTime ? "Switch to duration" : "Switch to remaining time"
+                text: root.showRemainingTime ? qsTr("Switch to duration") : qsTr("Switch to remaining time")
                 visibleTarget: timeMouse.containsMouse
             }
         }

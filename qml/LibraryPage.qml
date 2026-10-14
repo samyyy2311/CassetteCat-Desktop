@@ -51,12 +51,12 @@ Item {
 
             PageTabs {
                 tabs: [
-                    { id: "songs", label: "Songs" },
-                    { id: "artists", label: "Artists" },
-                    { id: "albums", label: "Albums" },
-                    { id: "genres", label: "Genres" },
-                    { id: "folders", label: "Folders" },
-                    { id: "playlists", label: "Playlists" }
+                    { id: "songs", label: qsTr("Songs") },
+                    { id: "artists", label: qsTr("Artists") },
+                    { id: "albums", label: qsTr("Albums") },
+                    { id: "genres", label: qsTr("Genres") },
+                    { id: "folders", label: qsTr("Folders") },
+                    { id: "playlists", label: qsTr("Playlists") }
                 ]
                 current: root.appWindow.libraryTab
                 onSelected: id => root.appWindow.libraryTab = id
@@ -75,11 +75,11 @@ Item {
                     model: [
                         {
                             id: "ALL",
-                            label: "ALL"
+                            label: qsTr("ALL")
                         },
                         {
                             id: "FAVORITES",
-                            label: "♥ FAVORITES"
+                            label: qsTr("♥ FAVORITES")
                         },
                     ]
 
@@ -97,13 +97,13 @@ Item {
                 visible: root.appWindow.libraryTab === "playlists"
 
                 SettingButton {
-                    text: "New Playlist"
+                    text: qsTr("New Playlist")
                     iconName: "plus"
                     onClicked: createPlaylistDialog.open()
                 }
 
                 SettingButton {
-                    text: "Save Queue"
+                    text: qsTr("Save Queue")
                     iconName: "list"
                     onClicked: {
                         const defaultName = "Queue " + new Date().toLocaleDateString(Qt.locale(), "MMM d")
@@ -112,7 +112,7 @@ Item {
                 }
 
                 SettingButton {
-                    text: "Import M3U"
+                    text: qsTr("Import M3U")
                     iconName: "folder"
                     onClicked: root.appWindow.requestPlaylistImport()
                 }
@@ -124,7 +124,7 @@ Item {
                 iconSize: 16
                 iconName: root.appWindow.libraryViewMode === "grid" ? "grid-2x2" : "list"
                 tint: textPrimary
-                tooltipText: root.appWindow.libraryViewMode === "grid" ? "Detailed Grid View (Click for List)" : "List View (Click for Grid)"
+                tooltipText: root.appWindow.libraryViewMode === "grid" ? qsTr("Detailed Grid View (Click for List)") : qsTr("List View (Click for Grid)")
                 onClicked: root.appWindow.libraryViewMode = (root.appWindow.libraryViewMode === "grid" ? "list" : "grid")
             }
 
@@ -133,7 +133,7 @@ Item {
                 iconSize: 16
                 iconName: "play"
                 tint: recordRedHover
-                tooltipText: "Play library"
+                tooltipText: qsTr("Play library")
                 onClicked: {
                     const tracks = root.appWindow.playbackTracks()
                     if (tracks.length) root.appWindow.startPlayback(tracks, 0, false)
@@ -145,7 +145,7 @@ Item {
                 iconSize: 16
                 iconName: "shuffle"
                 tint: textPrimary
-                tooltipText: "Shuffle library"
+                tooltipText: qsTr("Shuffle library")
                 onClicked: {
                     root.appWindow.shufflePlayback(root.appWindow.availableTracks())
                 }
@@ -157,7 +157,7 @@ Item {
                 boxSize: 34
                 iconSize: 16
                 expandedWidth: 175
-                placeholder: root.appWindow.libraryTab === "playlists" ? "Search playlists..." : "Search library..."
+                placeholder: root.appWindow.libraryTab === "playlists" ? qsTr("Search playlists...") : qsTr("Search library...")
                 text: root.appWindow.libSearchQuery
                 onTextChanged: root.appWindow.libSearchQuery = text
                 onCleared: root.appWindow.libSearchQuery = ""
@@ -169,7 +169,7 @@ Item {
                 iconSize: 16
                 iconName: "sliders-horizontal"
                 tint: textPrimary
-                tooltipText: "Refine & Sort"
+                tooltipText: qsTr("Refine & Sort")
                 highlighted: {
                     if (root.appWindow.refineSheetOpen)
                         return true;
@@ -194,7 +194,7 @@ Item {
                 iconSize: 16
                 iconName: "info"
                 tint: textPrimary
-                tooltipText: "Library health"
+                tooltipText: qsTr("Library health")
                 onClicked: {
                     root.appWindow.settingsSection = "health"
                     root.appWindow.page = "settings"
@@ -219,31 +219,31 @@ Item {
             }
 
             SettingButton {
-                text: "Queue"
+                text: qsTr("Queue")
                 iconName: "list"
                 onClicked: root.appWindow.addSelectedTracksToQueue()
             }
 
             SettingButton {
-                text: "Favorite"
+                text: qsTr("Favorite")
                 iconName: "heart"
                 onClicked: root.appWindow.favoriteSelectedTracks()
             }
 
             SettingButton {
-                text: "Edit Tags"
+                text: qsTr("Edit Tags")
                 iconName: "pencil"
                 onClicked: root.appWindow.openBatchMetadataEditor()
             }
 
             SettingButton {
-                text: "Fix Tags"
+                text: qsTr("Fix Tags")
                 iconName: "search"
                 onClicked: root.appWindow.fixTags(root.appWindow.selectedTracks())
             }
 
             SettingButton {
-                text: "Save Playlist"
+                text: qsTr("Save Playlist")
                 iconName: "list"
                 onClicked: {
                     root.appWindow.createPlaylist("Selection", root.appWindow.selectedTracks())
@@ -252,7 +252,7 @@ Item {
             }
 
             SettingButton {
-                text: "Clear"
+                text: qsTr("Clear")
                 iconName: "x"
                 onClicked: root.appWindow.clearTrackSelection()
             }
@@ -344,9 +344,9 @@ Item {
                     anchors.fill: parent
                     visible: root.libraryModel.visibleTrackCount === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
-                    title: "No Songs Found"
-                    subtitle: "Try resetting format filters or changing search keywords"
-                    actionLabel: "Reset Filters"
+                    title: qsTr("No Songs Found")
+                    subtitle: qsTr("Try resetting format filters or changing search keywords")
+                    actionLabel: qsTr("Reset Filters")
                     onActionClicked: {
                         root.appWindow.songFilterMode = "ALL";
                         root.appWindow.libSearchQuery = "";
@@ -416,9 +416,9 @@ Item {
                     anchors.fill: parent
                     visible: parent.curArtists.length === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/04-gray-dancing-headphones.png"
-                    title: "No Artists Found"
-                    subtitle: "No artists match your current search query"
-                    actionLabel: "Clear Search"
+                    title: qsTr("No Artists Found")
+                    subtitle: qsTr("No artists match your current search query")
+                    actionLabel: qsTr("Clear Search")
                     onActionClicked: root.appWindow.libSearchQuery = ""
                 }
             }
@@ -488,9 +488,9 @@ Item {
                     anchors.fill: parent
                     visible: parent.curAlbums.length === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/02-black-cat-cassette.png"
-                    title: "No Albums Found"
-                    subtitle: "No albums match your current search query"
-                    actionLabel: "Clear Search"
+                    title: qsTr("No Albums Found")
+                    subtitle: qsTr("No albums match your current search query")
+                    actionLabel: qsTr("Clear Search")
                     onActionClicked: root.appWindow.libSearchQuery = ""
                 }
             }
@@ -552,9 +552,9 @@ Item {
                     anchors.fill: parent
                     visible: parent.curGenres.length === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/03-cream-cassette-hug.png"
-                    title: "No Genres Found"
-                    subtitle: "No audio genres matched your search"
-                    actionLabel: "Clear Search"
+                    title: qsTr("No Genres Found")
+                    subtitle: qsTr("No audio genres matched your search")
+                    actionLabel: qsTr("Clear Search")
                     onActionClicked: root.appWindow.libSearchQuery = ""
                 }
             }
@@ -614,9 +614,9 @@ Item {
                     anchors.fill: parent
                     visible: parent.curFolders.length === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/03-cream-cassette-hug.png"
-                    title: "No Folders Found"
-                    subtitle: "No audio folders matched your search"
-                    actionLabel: "Clear Search"
+                    title: qsTr("No Folders Found")
+                    subtitle: qsTr("No audio folders matched your search")
+                    actionLabel: qsTr("Clear Search")
                     onActionClicked: root.appWindow.libSearchQuery = ""
                 }
             }
@@ -661,7 +661,7 @@ Item {
 
     Dialog {
         id: createPlaylistDialog
-        title: "New Playlist"
+        title: qsTr("New Playlist")
         modal: true
         standardButtons: Dialog.Ok | Dialog.Cancel
         onAccepted: {
@@ -677,7 +677,7 @@ Item {
         contentItem: ColumnLayout {
             spacing: 12
             Label {
-                text: "Enter a name for your new playlist:"
+                text: qsTr("Enter a name for your new playlist:")
                 color: root.appWindow.textSecondary
                 font.family: root.appWindow.bodyFont
                 font.pixelSize: 12
@@ -725,7 +725,7 @@ Item {
 
             Label {
                 anchors.centerIn: parent
-                text: "Drop a music folder to scan"
+                text: qsTr("Drop a music folder to scan")
                 color: textPrimary
                 font.family: displayFont
                 font.pixelSize: 18

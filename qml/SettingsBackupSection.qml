@@ -20,20 +20,20 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "refresh-cw"
-            title: "Configuration Backup"
+            title: qsTr("Configuration Backup")
             subtitle: root.backupStatus.length > 0
                       ? root.backupStatus
-                      : "Export settings, favorites, saved queues, and filters as a JSON file"
+                      : qsTr("Export settings, favorites, saved queues, and filters as a JSON file")
 
             SettingButton {
-                text: "Export"
+                text: qsTr("Export")
                 iconName: "refresh-cw"
                 primary: true
                 onClicked: root.exportBackupRequested()
             }
 
             SettingButton {
-                text: "Import"
+                text: qsTr("Import")
                 iconName: "arrow-down"
                 onClicked: root.importBackupRequested()
             }
@@ -79,7 +79,7 @@ ColumnLayout {
             Layout.topMargin: 10
             Layout.bottomMargin: 4
             wrapMode: Text.WordWrap
-            text: "Importing a backup applies its saved settings and library state immediately. Passwords, secrets, and server authentication tokens are never exported."
+            text: qsTr("Importing a backup applies its saved settings and library state immediately. Passwords, secrets, and server authentication tokens are never exported.")
             color: silverDim
             font.family: bodyFont
             font.pixelSize: 11
@@ -92,11 +92,11 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "archive"
-            title: "Application Logs"
+            title: qsTr("Application Logs")
             subtitle: appSettings.getLogFilePath()
 
             SettingButton {
-                text: root.logsVisible ? "Hide Logs" : "Logs"
+                text: root.logsVisible ? qsTr("Hide Logs") : qsTr("Logs")
                 iconName: "list"
                 onClicked: {
                     root.logsVisible = !root.logsVisible
@@ -107,18 +107,18 @@ ColumnLayout {
             }
 
             SettingButton {
-                text: "Open"
+                text: qsTr("Open")
                 iconName: "external-link"
                 onClicked: appSettings.openLogFile()
             }
 
             SettingButton {
-                text: "Copy"
+                text: qsTr("Copy")
                 onClicked: appSettings.copyToClipboard(appSettings.readRecentLogs(200))
             }
 
             SettingButton {
-                text: "Clear"
+                text: qsTr("Clear")
                 iconName: "x"
                 destructive: true
                 onClicked: {

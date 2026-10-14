@@ -215,7 +215,7 @@ Item {
 
                     Label {
                         Layout.alignment: Qt.AlignHCenter
-                        text: "Instrumental"
+                        text: qsTr("Instrumental")
                         color: textPrimary
                         font.family: displayFont
                         font.pixelSize: 28
@@ -225,7 +225,7 @@ Item {
 
                     Label {
                         Layout.alignment: Qt.AlignHCenter
-                        text: player.currentTrack.artist ? ("Composed by " + player.currentTrack.artist) : (player.currentTrack.title ? ("Track by " + (player.currentTrack.artist || "Unknown Artist")) : "No lyrics available")
+                        text: player.currentTrack.artist ? ("Composed by " + player.currentTrack.artist) : (player.currentTrack.title ? ("Track by " + (player.currentTrack.artist || qsTr("Unknown Artist"))) : qsTr("No lyrics available"))
                         color: textSecondary
                         font.family: bodyFont
                         font.pixelSize: 14
@@ -264,7 +264,7 @@ Item {
                             }
 
                             Label {
-                                text: "Choose lyrics"
+                                text: qsTr("Choose lyrics")
                                 color: textPrimary
                                 font.family: displayFont
                                 font.pixelSize: 13
@@ -304,7 +304,7 @@ Item {
                             }
 
                             Label {
-                                text: "Album Art"
+                                text: qsTr("Album Art")
                                 color: textPrimary
                                 font.family: displayFont
                                 font.pixelSize: 13

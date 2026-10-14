@@ -65,7 +65,7 @@ Item {
 
     function stationTrack(station) {
         return {
-            title: station.name || "Live Radio Stream",
+            title: station.name || qsTr("Live Radio Stream"),
             artist: station.country || (station.tags ? station.tags.split(",")[0].trim() : "Internet Radio"),
             album: station.tags || "Internet Radio Broadcast",
             filePath: station.streamUrl,
@@ -109,10 +109,10 @@ Item {
 
                 PageTabs {
                     tabs: [
-                        { id: "ALL", label: "All Stations" },
-                        { id: "FAVORITES", label: "Favorites" },
-                        { id: "RECENTS", label: "Recents" },
-                        { id: "CUSTOM", label: "Custom" }
+                        { id: "ALL", label: qsTr("All Stations") },
+                        { id: "FAVORITES", label: qsTr("Favorites") },
+                        { id: "RECENTS", label: qsTr("Recents") },
+                        { id: "CUSTOM", label: qsTr("Custom") }
                     ]
                     current: root.currentTab
                     onSelected: id => {
@@ -137,7 +137,7 @@ Item {
                     boxSize: 34
                     iconSize: 16
                     expandedWidth: 175
-                    placeholder: "Search live stations..."
+                    placeholder: qsTr("Search live stations...")
                     text: root.appWindow.radioSearchQuery
                     onTextChanged: root.appWindow.radioSearchQuery = text
                     onSubmitted: {
@@ -158,7 +158,7 @@ Item {
                     iconSize: 16
                     iconName: "plus"
                     tint: textPrimary
-                    tooltipText: "Add a stream URL"
+                    tooltipText: qsTr("Add a stream URL")
                     onClicked: customStationPopup.open()
                 }
 
@@ -174,7 +174,7 @@ Item {
                     iconSize: 16
                     iconName: root.appWindow.radioViewMode === "grid" ? "grid-2x2" : "list"
                     tint: textPrimary
-                    tooltipText: root.appWindow.radioViewMode === "grid" ? "Detailed Grid View (Click for List)" : "List View (Click for Grid)"
+                    tooltipText: root.appWindow.radioViewMode === "grid" ? qsTr("Detailed Grid View (Click for List)") : qsTr("List View (Click for Grid)")
                     onClicked: root.appWindow.radioViewMode = (root.appWindow.radioViewMode === "grid" ? "list" : "grid")
                 }
 
@@ -184,7 +184,7 @@ Item {
                     iconName: "refresh-cw"
                     enabled: !root.radioUnavailable && root.appWindow.radioActiveTag !== "FAVORITES" && root.appWindow.radioActiveTag !== "RECENTS" && root.appWindow.radioActiveTag !== "CUSTOM"
                     tint: textPrimary
-                    tooltipText: "Refresh stations"
+                    tooltipText: qsTr("Refresh stations")
                     onClicked: root.appWindow.refreshRadio()
                 }
 
@@ -195,7 +195,7 @@ Item {
                     enabled: !root.radioUnavailable && root.appWindow.radioActiveTag !== "FAVORITES" && root.appWindow.radioActiveTag !== "RECENTS" && root.appWindow.radioActiveTag !== "CUSTOM"
                     tint: textPrimary
                     highlighted: root.appWindow.radioIsCustomized || root.appWindow.radioRefineOpen
-                    tooltipText: "Filter and sort stations"
+                    tooltipText: qsTr("Filter and sort stations")
                     onClicked: root.appWindow.radioRefineOpen = !root.appWindow.radioRefineOpen
                 }
             }
@@ -304,7 +304,7 @@ Item {
                                     Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd } }
                                     Behavior on scale { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingBounce } }
 
-                                    tooltipText: isPlaying ? "Pause station" : "Play station"
+                                    tooltipText: isPlaying ? qsTr("Pause station") : qsTr("Play station")
                                     onClicked: root.toggleStation(modelData)
                                 }
 
@@ -318,7 +318,7 @@ Item {
                                     tint: root.appWindow.isRadioFavorite(modelData.streamUrl) ? recordRed : textPrimary
                                     accented: root.appWindow.isRadioFavorite(modelData.streamUrl)
                                     opacity: (cardMouse.containsMouse || root.appWindow.isRadioFavorite(modelData.streamUrl)) ? 1.0 : 0.0
-                                    tooltipText: root.appWindow.isRadioFavorite(modelData.streamUrl) ? "Remove from Favorites" : "Add to Favorites"
+                                    tooltipText: root.appWindow.isRadioFavorite(modelData.streamUrl) ? qsTr("Remove from Favorites") : qsTr("Add to Favorites")
                                     onClicked: root.appWindow.toggleRadioFavorite(modelData)
                                 }
 
@@ -332,7 +332,7 @@ Item {
                                     tint: silverDim
                                     visible: root.appWindow.isRadioCustom(modelData.streamUrl)
                                     opacity: cardMouse.containsMouse ? 1.0 : 0.0
-                                    tooltipText: "Delete Station"
+                                    tooltipText: qsTr("Delete Station")
                                     onClicked: root.appWindow.removeCustomRadioStation(modelData.streamUrl)
                                 }
                             }
@@ -346,7 +346,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 0
                                 Layout.minimumWidth: 0
-                                text: modelData.name || "Live Station"
+                                text: modelData.name || qsTr("Live Station")
                                 color: isCurrent ? recordRed : (cardMouse.containsMouse ? recordRedHover : textPrimary)
                                 font.family: displayFont
                                 font.pixelSize: 13
@@ -434,7 +434,7 @@ Item {
                                 Layout.fillWidth: true
                                 Layout.preferredWidth: 0
                                 Layout.minimumWidth: 0
-                                text: modelData.name || "Live Station"
+                                text: modelData.name || qsTr("Live Station")
                                 color: isCurrent ? recordRed : (rowMouse.containsMouse ? recordRedHover : textPrimary)
                                 font.family: displayFont
                                 font.pixelSize: 13
@@ -466,7 +466,7 @@ Item {
                             buttonSize: 32
                             iconName: isPlaying ? "pause" : "play"
                             accented: isCurrent
-                            tooltipText: isPlaying ? "Pause station" : "Play station"
+                            tooltipText: isPlaying ? qsTr("Pause station") : qsTr("Play station")
                             onClicked: root.toggleStation(modelData)
                         }
 
@@ -476,7 +476,7 @@ Item {
                             iconName: "heart"
                             tint: root.appWindow.isRadioFavorite(modelData.streamUrl) ? recordRed : textPrimary
                             accented: root.appWindow.isRadioFavorite(modelData.streamUrl)
-                            tooltipText: root.appWindow.isRadioFavorite(modelData.streamUrl) ? "Remove from Favorites" : "Add to Favorites"
+                            tooltipText: root.appWindow.isRadioFavorite(modelData.streamUrl) ? qsTr("Remove from Favorites") : qsTr("Add to Favorites")
                             onClicked: root.appWindow.toggleRadioFavorite(modelData)
                         }
 
@@ -486,7 +486,7 @@ Item {
                             iconSize: 14
                             iconName: "x"
                             tint: silverDim
-                            tooltipText: "Delete Station"
+                            tooltipText: qsTr("Delete Station")
                             onClicked: root.appWindow.removeCustomRadioStation(modelData.streamUrl)
                         }
                     }
@@ -571,7 +571,7 @@ Item {
             spacing: 14
 
             Label {
-                text: "Add Custom Station"
+                text: qsTr("Add Custom Station")
                 font.family: displayFont
                 font.pixelSize: 16
                 font.weight: Font.Bold
@@ -583,7 +583,7 @@ Item {
                 spacing: 4
 
                 Label {
-                    text: "Station Name *"
+                    text: qsTr("Station Name *")
                     font.family: bodyFont
                     font.pixelSize: 11
                     color: textSecondary
@@ -592,7 +592,7 @@ Item {
                 RefineTextInput {
                     id: customNameInput
                     Layout.fillWidth: true
-                    placeholder: "e.g. Radio Paradise"
+                    placeholder: qsTr("e.g. Radio Paradise")
                 }
             }
 
@@ -601,7 +601,7 @@ Item {
                 spacing: 4
 
                 Label {
-                    text: "Stream URL (HTTP / HTTPS) *"
+                    text: qsTr("Stream URL (HTTP / HTTPS) *")
                     font.family: bodyFont
                     font.pixelSize: 11
                     color: textSecondary
@@ -615,7 +615,7 @@ Item {
 
                 Label {
                     visible: customUrlInput.text.trim().length > 0 && !customStationPopup.isUrlValid
-                    text: "Must be a valid HTTP or HTTPS stream URL"
+                    text: qsTr("Must be a valid HTTP or HTTPS stream URL")
                     font.family: bodyFont
                     font.pixelSize: 11
                     color: root.appWindow.recordRed
@@ -627,7 +627,7 @@ Item {
                 spacing: 4
 
                 Label {
-                    text: "Genre / Tags (Optional)"
+                    text: qsTr("Genre / Tags (Optional)")
                     font.family: bodyFont
                     font.pixelSize: 11
                     color: textSecondary
@@ -636,7 +636,7 @@ Item {
                 RefineTextInput {
                     id: customTagsInput
                     Layout.fillWidth: true
-                    placeholder: "e.g. eclectic, rock, indie"
+                    placeholder: qsTr("e.g. eclectic, rock, indie")
                 }
             }
 
@@ -645,7 +645,7 @@ Item {
                 spacing: 4
 
                 Label {
-                    text: "Favicon / Logo URL (Optional)"
+                    text: qsTr("Favicon / Logo URL (Optional)")
                     font.family: bodyFont
                     font.pixelSize: 11
                     color: textSecondary
@@ -666,12 +666,12 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 SettingButton {
-                    text: "Cancel"
+                    text: qsTr("Cancel")
                     onClicked: customStationPopup.close()
                 }
 
                 SettingButton {
-                    text: "Add Station"
+                    text: qsTr("Add Station")
                     primary: true
                     enabled: customNameInput.text.trim().length > 0 && customStationPopup.isUrlValid
                     onClicked: {

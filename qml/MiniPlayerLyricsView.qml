@@ -158,7 +158,7 @@ Item {
 
                         Label {
                             Layout.alignment: Qt.AlignHCenter
-                            text: root.miniPlayer.playerController.currentTrack && root.miniPlayer.playerController.currentTrack.filePath ? "No Lyrics Available" : "Instrumental"
+                            text: root.miniPlayer.playerController.currentTrack && root.miniPlayer.playerController.currentTrack.filePath ? qsTr("No Lyrics Available") : qsTr("Instrumental")
                             color: root.miniPlayer.silverDim
                             font.family: root.miniPlayer.displayFont
                             font.pixelSize: 13

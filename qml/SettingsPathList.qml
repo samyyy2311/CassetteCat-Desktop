@@ -49,7 +49,7 @@ ColumnLayout {
                 }
 
                 SettingButton {
-                    text: "Remove"
+                    text: qsTr("Remove")
                     destructive: true
                     onClicked: root.removeRequested(modelData)
                 }

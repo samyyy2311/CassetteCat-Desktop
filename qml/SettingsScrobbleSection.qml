@@ -38,9 +38,9 @@ ColumnLayout {
             title: root.listenBrainzConnected
                    ? ("ListenBrainz (@" + root.listenBrainzUser + ")")
                    : "ListenBrainz"
-            subtitle: !root.listenBrainzConnected ? "Connect your ListenBrainz profile using a User Token"
+            subtitle: !root.listenBrainzConnected ? qsTr("Connect your ListenBrainz profile using a User Token")
                       : services.listenBrainzProblem !== "" ? services.listenBrainzProblem
-                      : "Open music database run by the MetaBrainz Foundation"
+                      : qsTr("Open music database run by the MetaBrainz Foundation")
 
             RowLayout {
                 spacing: 10
@@ -54,14 +54,14 @@ ColumnLayout {
 
                 SettingButton {
                     visible: root.listenBrainzConnected
-                    text: "Disconnect"
+                    text: qsTr("Disconnect")
                     destructive: true
                     onClicked: root.disconnectListenBrainzRequested()
                 }
 
                 SettingButton {
                     visible: !root.listenBrainzConnected
-                    text: "Connect"
+                    text: qsTr("Connect")
                     primary: true
                     iconName: "plug"
                     enabled: !root.offlineBlackout
@@ -80,8 +80,8 @@ ColumnLayout {
                    ? ("Libre.fm (@" + root.libreFmUser + ")")
                    : "Libre.fm"
             subtitle: root.libreFmConnected
-                      ? "Free software music scrobbling powered by GNU FM"
-                      : "Log in with your Libre.fm username and password"
+                      ? qsTr("Free software music scrobbling powered by GNU FM")
+                      : qsTr("Log in with your Libre.fm username and password")
 
             RowLayout {
                 spacing: 10
@@ -95,14 +95,14 @@ ColumnLayout {
 
                 SettingButton {
                     visible: root.libreFmConnected
-                    text: "Disconnect"
+                    text: qsTr("Disconnect")
                     destructive: true
                     onClicked: root.disconnectLibreFmRequested()
                 }
 
                 SettingButton {
                     visible: !root.libreFmConnected
-                    text: "Connect"
+                    text: qsTr("Connect")
                     primary: true
                     iconName: "plug"
                     enabled: !root.offlineBlackout
@@ -123,8 +123,8 @@ ColumnLayout {
                    ? ("Last.fm (@" + root.lastFmUser + ")")
                    : "Last.fm"
             subtitle: root.lastFmConnected
-                      ? "Scrobbles what you play to your Last.fm profile"
-                      : "Log in with your Last.fm username and password"
+                      ? qsTr("Scrobbles what you play to your Last.fm profile")
+                      : qsTr("Log in with your Last.fm username and password")
 
             RowLayout {
                 spacing: 10
@@ -138,14 +138,14 @@ ColumnLayout {
 
                 SettingButton {
                     visible: root.lastFmConnected
-                    text: "Disconnect"
+                    text: qsTr("Disconnect")
                     destructive: true
                     onClicked: root.disconnectLastFmRequested()
                 }
 
                 SettingButton {
                     visible: !root.lastFmConnected
-                    text: "Connect"
+                    text: qsTr("Connect")
                     primary: true
                     iconName: "plug"
                     enabled: !root.offlineBlackout
@@ -206,7 +206,7 @@ ColumnLayout {
             Label {
                 Layout.fillWidth: true
                 text: accountDialog.isListenBrainz
-                      ? "Paste your ListenBrainz User Token to enable scrobbling."
+                      ? qsTr("Paste your ListenBrainz User Token to enable scrobbling.")
                       : "Log in with your " + accountDialog.serviceName + " account credentials."
                 color: textSecondary
                 font.family: displayFont
@@ -222,7 +222,7 @@ ColumnLayout {
                 RefineTextInput {
                     id: lbTokenInput
                     Layout.fillWidth: true
-                    placeholder: "User Token"
+                    placeholder: qsTr("User Token")
                     enabled: !accountDialog.isBusy
                     onSubmitted: submitBtn.clicked()
                 }
@@ -239,7 +239,7 @@ ColumnLayout {
                     }
 
                     Label {
-                        text: "Get user token from ListenBrainz website"
+                        text: qsTr("Get user token from ListenBrainz website")
                         color: accentText
                         font.family: displayFont
                         font.pixelSize: 11
@@ -264,7 +264,7 @@ ColumnLayout {
                 RefineTextInput {
                     id: libreUserInput
                     Layout.fillWidth: true
-                    placeholder: "Username"
+                    placeholder: qsTr("Username")
                     enabled: !accountDialog.isBusy
                     onSubmitted: librePassInput.forceActiveFocus()
                 }
@@ -272,7 +272,7 @@ ColumnLayout {
                 RefineTextInput {
                     id: librePassInput
                     Layout.fillWidth: true
-                    placeholder: "Password"
+                    placeholder: qsTr("Password")
                     isPassword: true
                     enabled: !accountDialog.isBusy
                     onSubmitted: submitBtn.clicked()
@@ -297,7 +297,7 @@ ColumnLayout {
                 Item { Layout.fillWidth: true }
 
                 SettingButton {
-                    text: "Cancel"
+                    text: qsTr("Cancel")
                     enabled: !accountDialog.isBusy
                     onClicked: accountDialog.close()
                 }

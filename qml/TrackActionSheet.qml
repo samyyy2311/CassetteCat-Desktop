@@ -128,7 +128,7 @@ BottomSheet {
 
             Label {
                 Layout.fillWidth: true
-                text: root.track ? (root.track.title || root.track.fileName || "Unknown Track") : "No Track"
+                text: root.track ? (root.track.title || root.track.fileName || qsTr("Unknown Track")) : qsTr("No Track")
                 color: root.appWindow.textPrimary
                 font.family: root.appWindow.displayFont
                 font.pixelSize: 15
@@ -138,7 +138,7 @@ BottomSheet {
 
             Label {
                 Layout.fillWidth: true
-                text: root.track ? (root.track.artist || "Unknown Artist") : ""
+                text: root.track ? (root.track.artist || qsTr("Unknown Artist")) : ""
                 color: root.appWindow.textSecondary
                 font.family: root.appWindow.bodyFont
                 font.pixelSize: 12
@@ -148,10 +148,10 @@ BottomSheet {
 
         TransportButton {
             Layout.alignment: Qt.AlignVCenter
-            Accessible.name: "Close"
+            Accessible.name: qsTr("Close")
             buttonSize: 32
             iconName: "x"
-            tooltipText: "Close"
+            tooltipText: qsTr("Close")
             onClicked: root.close()
         }
     }
@@ -180,10 +180,10 @@ BottomSheet {
 
             ActionItem {
                 iconName: "music"
-                titleText: "Go to Artist"
+                titleText: qsTr("Go to Artist")
                 readonly property string mainArtist: root.track && root.track.artist
                     ? (library.artistNames(root.track.artist)[0] || root.track.artist) : ""
-                subtitleText: mainArtist || "Unknown Artist"
+                subtitleText: mainArtist || qsTr("Unknown Artist")
                 visible: mainArtist.length > 0
                 onClicked: {
                     root.close()
@@ -193,8 +193,8 @@ BottomSheet {
 
             ActionItem {
                 iconName: "disc"
-                titleText: "Go to Album"
-                subtitleText: root.track ? (root.track.album || "Unknown Album") : ""
+                titleText: qsTr("Go to Album")
+                subtitleText: root.track ? (root.track.album || qsTr("Unknown Album")) : ""
                 visible: !!(root.track && root.track.album)
                 onClicked: {
                     root.close()
@@ -204,8 +204,8 @@ BottomSheet {
 
             ActionItem {
                 iconName: "search"
-                titleText: "Search Cover Art"
-                subtitleText: "Find and apply high-resolution artwork"
+                titleText: qsTr("Search Cover Art")
+                subtitleText: qsTr("Find and apply high-resolution artwork")
                 visible: !!(root.track && (root.track.album || root.track.title))
                 onClicked: {
                     root.close()
@@ -215,7 +215,7 @@ BottomSheet {
 
             ActionItem {
                 iconName: "list-music"
-                titleText: "Go to Playlist"
+                titleText: qsTr("Go to Playlist")
                 subtitleText: {
                     if (!root.appWindow || !root.appWindow.playlists || root.appWindow.playlists.length === 0)
                         return "No saved playlists yet"
@@ -229,8 +229,8 @@ BottomSheet {
 
             ActionItem {
                 iconName: "pencil"
-                titleText: "Edit Metadata"
-                subtitleText: "Edit tags, year, lyrics and album info"
+                titleText: qsTr("Edit Metadata")
+                subtitleText: qsTr("Edit tags, year, lyrics and album info")
                 onClicked: {
                     root.close()
                     root.openMetadataEditor(root.track)
@@ -239,8 +239,8 @@ BottomSheet {
 
             ActionItem {
                 iconName: "list"
-                titleText: "Play Next"
-                subtitleText: "Queue immediately after current song"
+                titleText: qsTr("Play Next")
+                subtitleText: qsTr("Queue immediately after current song")
                 onClicked: {
                     root.close()
                     if (root.appWindow) root.appWindow.insertTrackNext(root.track)
@@ -249,8 +249,8 @@ BottomSheet {
 
             ActionItem {
                 iconName: "list-music"
-                titleText: "Add to Queue"
-                subtitleText: "Append to playback queue"
+                titleText: qsTr("Add to Queue")
+                subtitleText: qsTr("Append to playback queue")
                 onClicked: {
                     root.close()
                     if (root.appWindow) root.appWindow.appendToQueue(root.track)
@@ -260,8 +260,8 @@ BottomSheet {
             ActionItem {
                 iconName: "heart"
                 iconColor: root.isTrackFavorite ? root.appWindow.recordRed : root.appWindow.textPrimary
-                titleText: root.isTrackFavorite ? "Remove from Favorites" : "Add to Favorites"
-                subtitleText: root.isTrackFavorite ? "Saved in your Favorites" : "Save track to Favorites"
+                titleText: root.isTrackFavorite ? qsTr("Remove from Favorites") : qsTr("Add to Favorites")
+                subtitleText: root.isTrackFavorite ? qsTr("Saved in your Favorites") : qsTr("Save track to Favorites")
                 onClicked: {
                     if (root.appWindow && root.track && root.track.filePath)
                         root.appWindow.toggleFavorite(root.track.filePath)
@@ -270,7 +270,7 @@ BottomSheet {
 
             ActionItem {
                 iconName: "folder"
-                titleText: "Show in Folder"
+                titleText: qsTr("Show in Folder")
                 subtitleText: root.track ? (root.track.filePath || "") : ""
                 visible: !!(root.track && root.track.filePath && !String(root.track.filePath).startsWith("http"))
                 onClicked: {
@@ -281,8 +281,8 @@ BottomSheet {
 
             ActionItem {
                 iconName: "info"
-                titleText: "Copy Title"
-                subtitleText: "Copy track title to clipboard"
+                titleText: qsTr("Copy Title")
+                subtitleText: qsTr("Copy track title to clipboard")
                 onClicked: {
                     root.close()
                     if (root.track) appSettings.copyToClipboard(root.track.title || root.track.fileName || "")

@@ -315,11 +315,11 @@ Item {
 
             PageTabs {
                 tabs: [
-                    { id: "songs", label: "Songs" },
-                    { id: "artists", label: "Artists" },
-                    { id: "albums", label: "Albums" },
-                    { id: "genres", label: "Genres" },
-                    { id: "playlists", label: "Playlists" }
+                    { id: "songs", label: qsTr("Songs") },
+                    { id: "artists", label: qsTr("Artists") },
+                    { id: "albums", label: qsTr("Albums") },
+                    { id: "genres", label: qsTr("Genres") },
+                    { id: "playlists", label: qsTr("Playlists") }
                 ]
                 current: root.activeTab
                 onSelected: id => {
@@ -336,8 +336,8 @@ Item {
 
                 Repeater {
                     model: [
-                        { id: "ALL", label: "ALL" },
-                        { id: "FAVORITES", label: "♥ FAVORITES" }
+                        { id: "ALL", label: qsTr("ALL") },
+                        { id: "FAVORITES", label: qsTr("♥ FAVORITES") }
                     ]
 
                     FilterChip {
@@ -355,7 +355,7 @@ Item {
                 iconSize: 16
                 iconName: root.viewMode === "grid" ? "grid-2x2" : "list"
                 tint: textPrimary
-                tooltipText: root.viewMode === "grid" ? "Detailed Grid View (Click for List)" : "List View (Click for Grid)"
+                tooltipText: root.viewMode === "grid" ? qsTr("Detailed Grid View (Click for List)") : qsTr("List View (Click for Grid)")
                 onClicked: root.viewMode = (root.viewMode === "list" ? "grid" : "list")
             }
 
@@ -364,7 +364,7 @@ Item {
                 iconSize: 16
                 iconName: "play"
                 tint: recordRedHover
-                tooltipText: "Play All"
+                tooltipText: qsTr("Play All")
                 onClicked: {
                     const t = root.playbackSelection()
                     if (t.length) appWindow.startPlayback(t, 0, false)
@@ -376,7 +376,7 @@ Item {
                 iconSize: 16
                 iconName: "shuffle"
                 tint: textPrimary
-                tooltipText: "Shuffle"
+                tooltipText: qsTr("Shuffle")
                 onClicked: appWindow.shufflePlayback(root.playbackSelection())
             }
 
@@ -385,7 +385,7 @@ Item {
                 boxSize: 34
                 iconSize: 16
                 expandedWidth: 175
-                placeholder: "Search..."
+                placeholder: qsTr("Search...")
                 onTextChanged: root.searchQuery = text
                 onCleared: root.searchQuery = ""
             }
@@ -396,8 +396,8 @@ Item {
                 iconName: "sliders-horizontal"
                 tint: textPrimary
                 highlighted: root.filterOpen || root.formatFilter !== "ALL"
-                tooltipText: "Refine & Sort"
-                Accessible.name: "Refine and sort"
+                tooltipText: qsTr("Refine & Sort")
+                Accessible.name: qsTr("Refine and sort")
                 onClicked: root.filterOpen = !root.filterOpen
             }
 
@@ -406,7 +406,7 @@ Item {
                 iconSize: 16
                 iconName: "refresh-cw"
                 tint: textPrimary
-                tooltipText: "Refresh library"
+                tooltipText: qsTr("Refresh library")
                 onClicked: streamingController.refreshLibrary()
             }
 
@@ -415,7 +415,7 @@ Item {
                 iconSize: 16
                 iconName: "log-out"
                 tint: textSecondary
-                tooltipText: "Disconnect server"
+                tooltipText: qsTr("Disconnect server")
                 onClicked: disconnectPopup.open()
             }
         }
@@ -538,9 +538,9 @@ Item {
                     anchors.fill: parent
                     visible: !streamingController.remoteLibraryLoading && trackList.count === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
-                    title: root.searchQuery.length > 0 ? "No Results" : "No Tracks Yet"
-                    subtitle: root.searchQuery.length > 0 ? "No tracks match your search" : "Refresh to pull your " + root.serviceName + " library"
-                    actionLabel: root.searchQuery.length > 0 ? "Clear Search" : "Refresh Now"
+                    title: root.searchQuery.length > 0 ? qsTr("No Results") : qsTr("No Tracks Yet")
+                    subtitle: root.searchQuery.length > 0 ? qsTr("No tracks match your search") : "Refresh to pull your " + root.serviceName + " library"
+                    actionLabel: root.searchQuery.length > 0 ? qsTr("Clear Search") : qsTr("Refresh Now")
                     onActionClicked: root.searchQuery.length > 0 ? (searchInput.text = "") : streamingController.refreshLibrary()
                 }
             }
@@ -554,9 +554,9 @@ Item {
                 anchors.fill: parent
                 visible: !streamingController.remoteLibraryLoading && trackGrid.visible && trackGrid.count === 0
                 catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
-                title: root.activeTab === "playlists" ? "No Playlists" : (root.searchQuery.length > 0 ? "No Results" : "No Tracks Yet")
-                subtitle: root.activeTab === "playlists" ? "Playlists are not available from this server" : (root.searchQuery.length > 0 ? "No tracks match your search" : "Refresh to pull your " + root.serviceName + " library")
-                actionLabel: root.activeTab === "playlists" ? "Refresh Now" : (root.searchQuery.length > 0 ? "Clear Search" : "Refresh Now")
+                title: root.activeTab === "playlists" ? qsTr("No Playlists") : (root.searchQuery.length > 0 ? qsTr("No Results") : qsTr("No Tracks Yet"))
+                subtitle: root.activeTab === "playlists" ? qsTr("Playlists are not available from this server") : (root.searchQuery.length > 0 ? qsTr("No tracks match your search") : "Refresh to pull your " + root.serviceName + " library")
+                actionLabel: root.activeTab === "playlists" ? qsTr("Refresh Now") : (root.searchQuery.length > 0 ? qsTr("Clear Search") : qsTr("Refresh Now"))
                 onActionClicked: root.searchQuery.length > 0 ? (searchInput.text = "") : streamingController.refreshLibrary()
             }
         }
@@ -591,7 +591,7 @@ Item {
                         }
 
                         Label {
-                            text: "Connect your server"
+                            text: qsTr("Connect your server")
                             color: textPrimary
                             font.family: displayFont
                             font.pixelSize: 18
@@ -621,7 +621,7 @@ Item {
                         id: serverUrl
                         Layout.fillWidth: true
                         placeholder: root.urlPlaceholder
-                        accessibleName: "Server address"
+                        accessibleName: qsTr("Server address")
                         text: { const s = root.streamingController.serverConfigSnapshot(); return s[root.protocol + "/url"] || "" }
                         onSubmitted: serverUser.forceActiveFocus()
                     }
@@ -636,8 +636,8 @@ Item {
                     RefineTextInput {
                         id: serverUser
                         Layout.fillWidth: true
-                        placeholder: "Your username"
-                        accessibleName: "Username"
+                        placeholder: qsTr("Your username")
+                        accessibleName: qsTr("Username")
                         text: { const s = root.streamingController.serverConfigSnapshot(); return s[root.protocol + "/username"] || "" }
                         onSubmitted: serverPassword.forceActiveFocus()
                     }
@@ -652,8 +652,8 @@ Item {
                     RefineTextInput {
                         id: serverPassword
                         Layout.fillWidth: true
-                        placeholder: "Your password"
-                        accessibleName: "Password"
+                        placeholder: qsTr("Your password")
+                        accessibleName: qsTr("Password")
                         echoMode: TextInput.Password
                         isPassword: true
                         onSubmitted: root.doConnect()
@@ -667,7 +667,7 @@ Item {
                     SettingSwitch {
                         id: trustCertSwitch
                         checked: root.trustCert
-                        Accessible.name: "Trust self-signed certificate"
+                        Accessible.name: qsTr("Trust self-signed certificate")
                         onToggled: val => {
                             root.trustCert = val
                             appSettings.setValue("stream/" + root.protocol + "TrustCert", val)
@@ -679,7 +679,7 @@ Item {
                         spacing: 1
 
                         Label {
-                            text: "Trust self-signed certificate"
+                            text: qsTr("Trust self-signed certificate")
                             color: textPrimary
                             font.family: bodyFont
                             font.pixelSize: 13
@@ -688,7 +688,7 @@ Item {
 
                         Label {
                             Layout.fillWidth: true
-                            text: "Allow connecting to servers with self-signed or private CA certificates"
+                            text: qsTr("Allow connecting to servers with self-signed or private CA certificates")
                             color: textSecondary
                             font.family: bodyFont
                             font.pixelSize: 11
@@ -717,7 +717,7 @@ Item {
 
                         Label {
                             Layout.fillWidth: true
-                            text: "Enter this code in the Jellyfin app"
+                            text: qsTr("Enter this code in the Jellyfin app")
                             color: textPrimary
                             font.family: bodyFont
                             font.pixelSize: 12
@@ -735,7 +735,7 @@ Item {
 
                         SettingButton {
                             Layout.alignment: Qt.AlignHCenter
-                            text: "Cancel"
+                            text: qsTr("Cancel")
                             onClicked: root.streamingController.cancelJellyfinQuickConnect()
                         }
                     }
@@ -749,9 +749,9 @@ Item {
                         Layout.preferredWidth: 124
                         Layout.preferredHeight: 40
                         Layout.alignment: Qt.AlignLeft
-                        text: root.connecting ? "Connecting…" : "Connect"
+                        text: root.connecting ? qsTr("Connecting…") : qsTr("Connect")
                         iconName: root.connecting ? "rotate-ccw" : "plug"
-                        accessibleName: "Connect to server"
+                        accessibleName: qsTr("Connect to server")
                         onClicked: root.doConnect()
                     }
 
@@ -759,9 +759,9 @@ Item {
                         visible: root.protocol === "jellyfin" && !root.quickConnecting
                         Layout.preferredWidth: 142
                         Layout.preferredHeight: 40
-                        text: "Quick Connect"
+                        text: qsTr("Quick Connect")
                         iconName: "key-round"
-                        accessibleName: "Connect with Jellyfin Quick Connect"
+                        accessibleName: qsTr("Connect with Jellyfin Quick Connect")
                         onClicked: {
                             root.streamingController.startJellyfinQuickConnect(serverUrl.text, root.trustCert)
                         }
@@ -772,7 +772,7 @@ Item {
                     LucideIcon { Layout.preferredWidth: 13; Layout.preferredHeight: 13; icon: "shield"; color: silverDim }
 
                     Label {
-                        text: "Stored securely in Windows Credential Locker"
+                        text: qsTr("Stored securely in Windows Credential Locker")
                         color: silverDim
                         font.family: bodyFont
                         font.pixelSize: 11
@@ -818,10 +818,10 @@ Item {
     ConfirmPopup {
         id: disconnectPopup
         title: "Disconnect " + root.serviceName + "?"
-        subtitle: "You will need to sign in again"
-        message: "Your saved login is removed and this server's songs leave your library until you connect again. Nothing is deleted from the server."
+        subtitle: qsTr("You will need to sign in again")
+        message: qsTr("Your saved login is removed and this server's songs leave your library until you connect again. Nothing is deleted from the server.")
         iconName: "log-out"
-        confirmText: "Disconnect"
+        confirmText: qsTr("Disconnect")
         destructive: true
         onConfirmed: streamingController.disconnectServer(root.protocol)
     }

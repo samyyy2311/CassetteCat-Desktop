@@ -121,7 +121,7 @@ Popup {
                 Label { text: root.batch ? "Edit " + root.tracks.length + " songs" : "Edit metadata"; color: textPrimary; font.family: displayFont; font.pixelSize: 20; font.weight: Font.Bold }
                 Label {
                     Layout.fillWidth: true
-                    text: root.batch ? "Only the fields you change are saved" : (root.track.fileName || "")
+                    text: root.batch ? qsTr("Only the fields you change are saved") : (root.track.fileName || "")
                     color: textSecondary
                     font.family: bodyFont
                     font.pixelSize: 12
@@ -193,7 +193,7 @@ Popup {
                     Label { text: "Lyrics"; color: textSecondary; font.family: bodyFont; font.pixelSize: 12 }
                     Item { Layout.fillWidth: true }
                     SettingButton {
-                        text: "Find with LRCLIB"
+                        text: qsTr("Find with LRCLIB")
                         iconName: "search"
                         onClicked: root.appWindow.openLyricsSearch(function(lyrics) { lyricsInput.text = lyrics })
                     }
@@ -232,14 +232,14 @@ Popup {
             Layout.margins: 20
             SettingButton {
                 visible: !root.batch
-                text: "Change cover art"
+                text: qsTr("Change cover art")
                 iconName: "disc"
                 onClicked: root.appWindow.openCoverSearch(albumInput.text, artistInput.text, root.track.filePath)
             }
             SettingButton {
                 visible: !root.batch
                 enabled: !root.lookingUp
-                text: root.lookingUp ? "Looking up..." : "Fill from MusicBrainz"
+                text: root.lookingUp ? qsTr("Looking up...") : qsTr("Fill from MusicBrainz")
                 iconName: "search"
                 onClicked: {
                     root.lookingUp = true
@@ -253,7 +253,7 @@ Popup {
             Item { Layout.fillWidth: true }
             SettingButton { text: "Cancel"; onClicked: root.close() }
             SettingButton {
-                text: "Save"
+                text: qsTr("Save")
                 primary: true
                 onClicked: {
                     if (root.batch) {

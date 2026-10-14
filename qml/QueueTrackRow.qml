@@ -147,8 +147,8 @@ Item {
                 Label {
                     Layout.fillWidth: true
                     text: root.compact
-                        ? (root.entry.artist || "Unknown Artist")
-                        : ((root.entry.artist || "Unknown Artist") + " • " + (root.entry.album || "Unknown Album"))
+                        ? (root.entry.artist || qsTr("Unknown Artist"))
+                        : ((root.entry.artist || qsTr("Unknown Artist")) + " • " + (root.entry.album || qsTr("Unknown Album")))
                     color: textSecondary
                     font.family: bodyFont
                     font.pixelSize: root.compact ? 9 : 11
@@ -172,7 +172,7 @@ Item {
                 boxSize: root.compact ? 24 : 28
                 iconSize: root.compact ? 13 : 15
                 iconName: "arrow-up"
-                tooltipText: "Play next"
+                tooltipText: qsTr("Play next")
                 onClicked: root.playNextRequested(root.track)
             }
             PressDepthIconButton {
@@ -183,7 +183,7 @@ Item {
                 boxSize: root.compact ? 24 : 28
                 iconSize: root.compact ? 13 : 15
                 iconName: "x"
-                tooltipText: "Remove from queue"
+                tooltipText: qsTr("Remove from queue")
                 onClicked: root.trackRemovalRequested(root.track)
             }
             Item {

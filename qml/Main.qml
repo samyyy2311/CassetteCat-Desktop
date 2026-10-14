@@ -19,12 +19,12 @@ ApplicationWindow {
     flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint
 
     readonly property var accentPresets: [
-        { id: "recordRed", label: "Red", base: "#C23B30", hover: "#D64337" },
-        { id: "amber", label: "Amber", base: "#F59E0B", hover: "#FBBF24" },
-        { id: "cyan", label: "Cyan", base: "#06B6D4", hover: "#22D3EE" },
-        { id: "emerald", label: "Green", base: "#10B981", hover: "#34D399" },
-        { id: "magenta", label: "Pink", base: "#EC4899", hover: "#F472B6" },
-        { id: "silver", label: "Mono", base: "#C4C4C0", hover: "#E5E5E3" }
+        { id: "recordRed", label: qsTr("Red"), base: "#C23B30", hover: "#D64337" },
+        { id: "amber", label: qsTr("Amber"), base: "#F59E0B", hover: "#FBBF24" },
+        { id: "cyan", label: qsTr("Cyan"), base: "#06B6D4", hover: "#22D3EE" },
+        { id: "emerald", label: qsTr("Green"), base: "#10B981", hover: "#34D399" },
+        { id: "magenta", label: qsTr("Pink"), base: "#EC4899", hover: "#F472B6" },
+        { id: "silver", label: qsTr("Mono"), base: "#C4C4C0", hover: "#E5E5E3" }
     ]
     property string accentName: "recordRed"
     property string customAccentColor: accentPresets[0].base
@@ -411,18 +411,18 @@ ApplicationWindow {
         queueRevision
         const entries = []
         if (playbackHistory.length) {
-            entries.push({ type: "header", title: "HISTORY" })
+            entries.push({ type: "header", title: qsTr("HISTORY") })
             playbackHistory.slice().reverse().forEach(track => entries.push({ type: "track", track: track, title: track.title, fileName: track.fileName, filePath: track.filePath, artist: track.artist, album: track.album, duration: track.duration }))
         }
         if (player.currentTrack && player.currentTrack.filePath) {
-            entries.push({ type: "header", title: "NOW PLAYING" })
+            entries.push({ type: "header", title: qsTr("NOW PLAYING") })
             entries.push({ type: "current", track: player.currentTrack, title: player.currentTrack.title, fileName: player.currentTrack.fileName, filePath: player.currentTrack.filePath, artist: player.currentTrack.artist, album: player.currentTrack.album, duration: player.currentTrack.duration })
         }
         const queue = activePlaybackQueue()
         const currentIndex = currentQueueIndex()
         const upcoming = currentIndex >= 0 ? queue.slice(currentIndex + 1) : queue
         if (upcoming.length) {
-            entries.push({ type: "header", title: "UP NEXT" })
+            entries.push({ type: "header", title: qsTr("UP NEXT") })
             const baseOffset = currentIndex >= 0 ? currentIndex + 1 : 0
             upcoming.forEach((track, idx) => entries.push({
                 type: "track",
@@ -2765,13 +2765,13 @@ ApplicationWindow {
 
     FolderDialog {
         id: folderDialog
-        title: "Choose your music folder"
+        title: qsTr("Choose your music folder")
         onAccepted: library.loadFolder(selectedFolder)
     }
 
     FolderDialog {
         id: excludeFolderDialog
-        title: "Select Folder to Exclude"
+        title: qsTr("Select Folder to Exclude")
         onAccepted: {
             const clean = library.localPath(selectedFolder)
             if (clean && !excludedFolders.includes(clean)) {
@@ -2782,7 +2782,7 @@ ApplicationWindow {
 
     FileDialog {
         id: exportBackupDialog
-        title: "Export CassetteCat Backup"
+        title: qsTr("Export CassetteCat Backup")
         fileMode: FileDialog.SaveFile
         nameFilters: ["JSON files (*.json)", "All files (*.*)"]
         defaultSuffix: "json"
@@ -2845,7 +2845,7 @@ ApplicationWindow {
 
     FileDialog {
         id: importBackupDialog
-        title: "Import CassetteCat Backup"
+        title: qsTr("Import CassetteCat Backup")
         fileMode: FileDialog.OpenFile
         nameFilters: ["JSON files (*.json)", "All files (*.*)"]
         onAccepted: {
@@ -2929,7 +2929,7 @@ ApplicationWindow {
 
     FileDialog {
         id: playlistImportDialog
-        title: "Import M3U Playlist"
+        title: qsTr("Import M3U Playlist")
         fileMode: FileDialog.OpenFile
         nameFilters: ["Playlist files (*.m3u *.m3u8)"]
         onAccepted: importM3u(selectedFile)
@@ -2937,7 +2937,7 @@ ApplicationWindow {
 
     FileDialog {
         id: playlistExportDialog
-        title: "Export M3U Playlist"
+        title: qsTr("Export M3U Playlist")
         fileMode: FileDialog.SaveFile
         nameFilters: ["Playlist files (*.m3u)"]
         defaultSuffix: "m3u"
@@ -3334,7 +3334,7 @@ ApplicationWindow {
                 anchors.rightMargin: 16
 
                 Label {
-                    text: page === "home" ? "Home" : page === "library" ? "Library" : page === "radio" ? "Radio" : page === "search" ? "Search" : page === "stats" ? "Listening Record" : page === "jellyfin" ? "Jellyfin" : page === "subsonic" ? "Subsonic" : "Settings"
+                    text: page === "home" ? qsTr("Home") : page === "library" ? qsTr("Library") : page === "radio" ? qsTr("Radio") : page === "search" ? qsTr("Search") : page === "stats" ? qsTr("Listening Record") : page === "jellyfin" ? "Jellyfin" : page === "subsonic" ? "Subsonic" : qsTr("Settings")
                     color: textPrimary
                     font.family: displayFont
                     font.pixelSize: 22
@@ -3364,7 +3364,7 @@ ApplicationWindow {
                     boxSize: 34
                     iconSize: 16
                     expandedWidth: 260
-                    placeholder: "Search settings..."
+                    placeholder: qsTr("Search settings...")
                     onTextChanged: window.settingsSearchQuery = text
                     onCleared: window.settingsSearchQuery = ""
                     onVisibleChanged: if (!visible) collapse()
@@ -3387,7 +3387,7 @@ ApplicationWindow {
                 iconSize: 17
                 iconName: "chevron-left"
                 tint: textPrimary
-                tooltipText: "Back"
+                tooltipText: qsTr("Back")
                 onClicked: closeCatalogDetail()
             }
 
@@ -3421,7 +3421,7 @@ ApplicationWindow {
                     width: 48
                     height: 60
                     Accessible.role: Accessible.Button
-                    Accessible.name: "Minimize"
+                    Accessible.name: qsTr("Minimize")
                     Accessible.onPressAction: window.showMinimized()
                     color: minBtnMouse.containsMouse ? surfaceElevated : "transparent"
 
@@ -3450,7 +3450,7 @@ ApplicationWindow {
                     enabled: !window.nowPlayingOpen
                     color: hovered ? surfaceElevated : "transparent"
                     Accessible.role: Accessible.Button
-                    Accessible.name: window.visibility === Window.Maximized ? "Restore" : "Maximize"
+                    Accessible.name: window.visibility === Window.Maximized ? qsTr("Restore") : qsTr("Maximize")
                     Accessible.onPressAction: toggleMaximize()
                     Component.onCompleted: windowFrame.setMaximizeButton(maxBtn)
 
@@ -3510,7 +3510,7 @@ ApplicationWindow {
                     width: 48
                     height: 60
                     Accessible.role: Accessible.Button
-                    Accessible.name: "Close"
+                    Accessible.name: qsTr("Close")
                     Accessible.onPressAction: window.close()
                     color: closeBtnMouse.containsMouse ? recordRed : "transparent"
 
@@ -3627,13 +3627,13 @@ ApplicationWindow {
                     anchors.right: parent.right
                     spacing: 4
 
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "home"; iconName: "house"; label: "Home"; accessHintsVisible: window.accessHintsVisible; accessKey: "H" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "library"; iconName: "music"; label: "Library"; accessHintsVisible: window.accessHintsVisible; accessKey: "L" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "home"; iconName: "house"; label: qsTr("Home"); accessHintsVisible: window.accessHintsVisible; accessKey: "H" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "library"; iconName: "music"; label: qsTr("Library"); accessHintsVisible: window.accessHintsVisible; accessKey: "L" }
                     NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "jellyfin"; iconName: "jellyfin"; label: "Jellyfin"; preserveIconColor: true; accessHintsVisible: window.accessHintsVisible; accessKey: "J" }
                     NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "subsonic"; iconName: "subsonic"; label: "Subsonic"; preserveIconColor: true; accessHintsVisible: window.accessHintsVisible; accessKey: "U" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "radio"; iconName: "radio"; label: "Radio"; accessHintsVisible: window.accessHintsVisible; accessKey: "R" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "search"; iconName: "search"; label: "Search"; accessHintsVisible: window.accessHintsVisible; accessKey: "S" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "stats"; iconName: "clock"; label: "Listening Record"; accessHintsVisible: window.accessHintsVisible; accessKey: "I" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "radio"; iconName: "radio"; label: qsTr("Radio"); accessHintsVisible: window.accessHintsVisible; accessKey: "R" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "search"; iconName: "search"; label: qsTr("Search"); accessHintsVisible: window.accessHintsVisible; accessKey: "S" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "stats"; iconName: "clock"; label: qsTr("Listening Record"); accessHintsVisible: window.accessHintsVisible; accessKey: "I" }
                 }
 
                 Column {
@@ -3655,7 +3655,7 @@ ApplicationWindow {
 
                     Item { width: 1; height: 2 }
 
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "settings"; iconName: "settings"; label: "Settings"; accessHintsVisible: window.accessHintsVisible; accessKey: "T" }
+                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "settings"; iconName: "settings"; label: qsTr("Settings"); accessHintsVisible: window.accessHintsVisible; accessKey: "T" }
 
                     Item {
                         id: bottomToggleItem
@@ -3690,7 +3690,7 @@ ApplicationWindow {
                                 anchors.left: parent.left
                                 anchors.leftMargin: 46
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: "Collapse"
+                                text: qsTr("Collapse")
                                 color: toggleMouse.containsMouse ? textPrimary : textSecondary
                                 font.family: displayFont
                                 font.pixelSize: 13
@@ -4166,7 +4166,7 @@ ApplicationWindow {
 
                     Label {
                         anchors.centerIn: parent
-                        text: "Add to queue"
+                        text: qsTr("Add to queue")
                         color: accentText
                         font.family: monoFont
                         font.pixelSize: 11
@@ -4266,7 +4266,7 @@ ApplicationWindow {
                         Label {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
-                            text: phoneInDock ? phonePlayback.title : (player.currentTrack.title || (library.trackCount > 0 ? "CassetteCat Audio" : "Library Empty"))
+                            text: phoneInDock ? phonePlayback.title : (player.currentTrack.title || (library.trackCount > 0 ? qsTr("CassetteCat Audio") : qsTr("Library Empty")))
                             color: textPrimary
                             font.family: displayFont
                             font.pixelSize: 14
@@ -4289,7 +4289,7 @@ ApplicationWindow {
                             leftPadding: phoneInDock ? 18 : 0
                             text: phoneInDock
                                   ? phonePlayback.artist || phonePlayback.name
-                                  : player.currentTrack.artist || (library.trackCount > 0 ? "Pick a track to start playback" : "Choose a music folder to begin")
+                                  : player.currentTrack.artist || (library.trackCount > 0 ? qsTr("Pick a track to start playback") : qsTr("Choose a music folder to begin"))
                             color: !phoneInDock && dockArtistMouse.containsMouse && player.currentTrack.artist ? textPrimary : textSecondary
 
                             LucideIcon {
@@ -4335,7 +4335,7 @@ ApplicationWindow {
                         iconName: "heart"
                         visible: !!likePath
                         tint: isFavorite(likePath) ? recordRed : silverDim
-                        tooltipText: isFavorite(likePath) ? "Remove from Favorites" : "Add to Favorites"
+                        tooltipText: isFavorite(likePath) ? qsTr("Remove from Favorites") : qsTr("Add to Favorites")
                         onClicked: toggleFavorite(likePath)
                     }
                 }
@@ -4355,7 +4355,7 @@ ApplicationWindow {
                             visible: phoneInDock
                             iconName: "laptop"
                             iconColor: textPrimary
-                            tooltipText: "Play Here"
+                            tooltipText: qsTr("Play Here")
                             onClicked: phoneRemote.sendToPhone("handoff")
                         }
 
@@ -4365,7 +4365,7 @@ ApplicationWindow {
                             iconName: "shuffle"
                             visible: !phoneInDock
                             accented: player.shuffleEnabled
-                            tooltipText: player.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
+                            tooltipText: player.shuffleEnabled ? qsTr("Shuffle On") : qsTr("Shuffle Off")
                             onClicked: toggleQueueShuffle()
                         }
 
@@ -4374,7 +4374,7 @@ ApplicationWindow {
                             buttonSize: 38
                             iconName: "skip-back"
                             iconColor: textPrimary
-                            tooltipText: phoneInDock ? "Previous on " + phonePlayback.name : "Previous"
+                            tooltipText: phoneInDock ? "Previous on " + phonePlayback.name : qsTr("Previous")
                             onClicked: shownPrevious()
                         }
 
@@ -4384,7 +4384,7 @@ ApplicationWindow {
                             iconName: shownPlaying ? "pause" : "play"
                             accented: true
                             iconColor: recordRed
-                            tooltipText: (shownPlaying ? "Pause" : "Play") + (phoneInDock ? " on " + phonePlayback.name : "")
+                            tooltipText: (shownPlaying ? qsTr("Pause") : qsTr("Play")) + (phoneInDock ? " on " + phonePlayback.name : "")
                             onClicked: {
                                 if (phoneInDock) {
                                     phonePlayer.togglePlay()
@@ -4401,7 +4401,7 @@ ApplicationWindow {
                             buttonSize: 38
                             iconName: "skip-forward"
                             iconColor: textPrimary
-                            tooltipText: phoneInDock ? "Next on " + phonePlayback.name : "Next"
+                            tooltipText: phoneInDock ? "Next on " + phonePlayback.name : qsTr("Next")
                             onClicked: shownNext()
                         }
 
@@ -4412,7 +4412,7 @@ ApplicationWindow {
                             visible: !phoneInDock
                             accented: repeatMode > 0
                             iconColor: repeatMode > 0 ? recordRed : textPrimary
-                            tooltipText: repeatMode === 2 ? "Repeat Track" : (repeatMode === 1 ? "Repeat All" : "Repeat Off")
+                            tooltipText: repeatMode === 2 ? qsTr("Repeat Track") : (repeatMode === 1 ? qsTr("Repeat All") : qsTr("Repeat Off"))
                             onClicked: toggleRepeat()
                         }
 
@@ -4465,7 +4465,7 @@ ApplicationWindow {
                                 iconSize: 17
                                 iconName: "smartphone"
                                 tint: silverDim
-                                tooltipText: phoneInDock ? "Playing on " + phonePlayback.name : phoneRemote.controllerName !== "" ? "Controlled from " + phoneRemote.controllerName : "Phone Remote"
+                                tooltipText: phoneInDock ? "Playing on " + phonePlayback.name : phoneRemote.controllerName !== "" ? "Controlled from " + phoneRemote.controllerName : qsTr("Phone Remote")
                                 onClicked: phoneRemoteSheet.open()
 
                                 // Marks a connected phone without making the button look switched on.
@@ -4491,7 +4491,7 @@ ApplicationWindow {
                                 iconName: "quote"
                                 tint: (nowPlayingOpen && nowPlayingMode === "lyrics") ? recordRed : silverDim
                                 highlighted: nowPlayingOpen && nowPlayingMode === "lyrics"
-                                tooltipText: (nowPlayingOpen && nowPlayingMode === "lyrics") ? "Hide Lyrics" : "Lyrics"
+                                tooltipText: (nowPlayingOpen && nowPlayingMode === "lyrics") ? qsTr("Hide Lyrics") : qsTr("Lyrics")
                                 onClicked: {
                                     if (nowPlayingOpen && nowPlayingMode === "lyrics") {
                                         nowPlayingOpen = false
@@ -4511,7 +4511,7 @@ ApplicationWindow {
                                 iconName: "list"
                                 tint: (nowPlayingOpen && nowPlayingMode === "queue") ? recordRed : silverDim
                                 highlighted: nowPlayingOpen && nowPlayingMode === "queue"
-                                tooltipText: (nowPlayingOpen && nowPlayingMode === "queue") ? "Hide Queue" : "Queue"
+                                tooltipText: (nowPlayingOpen && nowPlayingMode === "queue") ? qsTr("Hide Queue") : qsTr("Queue")
                                 onClicked: {
                                     if (nowPlayingOpen && nowPlayingMode === "queue") {
                                         nowPlayingOpen = false
@@ -4530,7 +4530,7 @@ ApplicationWindow {
                                 iconSize: 17
                                 iconName: "pip"
                                 tint: silverDim
-                                tooltipText: "Mini Player (Ctrl+M)"
+                                tooltipText: qsTr("Mini Player (Ctrl+M)")
                                 onClicked: toggleMiniPlayer()
                             }
 
@@ -4543,7 +4543,7 @@ ApplicationWindow {
                                 iconName: nowPlayingOpen ? "chevron-down" : "audio-lines"
                                 tint: nowPlayingOpen ? recordRed : silverDim
                                 highlighted: nowPlayingOpen
-                                tooltipText: nowPlayingOpen ? "Collapse Now Playing" : "Now Playing Deck"
+                                tooltipText: nowPlayingOpen ? qsTr("Collapse Now Playing") : qsTr("Now Playing Deck")
                                 onClicked: nowPlayingOpen = !nowPlayingOpen
                             }
                         }
@@ -4768,7 +4768,7 @@ ApplicationWindow {
 
                             Label {
                                 Layout.fillWidth: true
-                                text: shownPlayer.currentTrack.title || "No Track Selected"
+                                text: shownPlayer.currentTrack.title || qsTr("No Track Selected")
                                 color: "#FFFFFF"
                                 font.family: displayFont
                                 font.pixelSize: 17
@@ -4812,7 +4812,7 @@ ApplicationWindow {
                             spacing: 10
 
                             TransportButton {
-                                Accessible.name: "Shuffle"
+                                Accessible.name: qsTr("Shuffle")
                                 buttonSize: 32
                                 iconName: "shuffle"
                                 visible: !phoneInDock
@@ -4823,7 +4823,7 @@ ApplicationWindow {
                             Item { Layout.fillWidth: true }
 
                             TransportButton {
-                                Accessible.name: "Previous track"
+                                Accessible.name: qsTr("Previous track")
                                 buttonSize: 38
                                 iconName: "skip-back"
                                 iconColor: textPrimary
@@ -4831,7 +4831,7 @@ ApplicationWindow {
                             }
 
                             TransportButton {
-                                Accessible.name: shownPlaying ? "Pause" : "Play"
+                                Accessible.name: shownPlaying ? qsTr("Pause") : qsTr("Play")
                                 buttonSize: 48
                                 iconName: shownPlaying ? "pause" : "play"
                                 accented: true
@@ -4840,7 +4840,7 @@ ApplicationWindow {
                             }
 
                             TransportButton {
-                                Accessible.name: "Next track"
+                                Accessible.name: qsTr("Next track")
                                 buttonSize: 38
                                 iconName: "skip-forward"
                                 iconColor: textPrimary
@@ -4850,7 +4850,7 @@ ApplicationWindow {
                             Item { Layout.fillWidth: true }
 
                             TransportButton {
-                                Accessible.name: "Repeat"
+                                Accessible.name: qsTr("Repeat")
                                 visible: !phoneInDock
                                 buttonSize: 32
                                 iconName: repeatMode === 2 ? "repeat-1" : "repeat"
@@ -4951,7 +4951,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     spacing: 2
                     Label {
-                        text: lyricSearchLoading ? "Searching LRCLIB…" : "Choose lyrics"
+                        text: lyricSearchLoading ? qsTr("Searching LRCLIB…") : qsTr("Choose lyrics")
                         color: textPrimary
                         font.family: displayFont
                         font.pixelSize: 18
@@ -4969,7 +4969,7 @@ ApplicationWindow {
                 }
                 Label {
                     visible: !lyricCustomEditorOpen
-                    text: "Add custom"
+                    text: qsTr("Add custom")
                     color: accentText
                     font.family: displayFont
                     font.pixelSize: 12
@@ -4977,7 +4977,7 @@ ApplicationWindow {
                     MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = true }
                 }
                 TransportButton {
-                    Accessible.name: "Close lyrics search"
+                    Accessible.name: qsTr("Close lyrics search")
                     buttonSize: 30
                     iconName: "x"
                     onClicked: lyricSearchOpen = false
@@ -4993,13 +4993,13 @@ ApplicationWindow {
 
                 RefineTextInput {
                     Layout.fillWidth: true
-                    placeholder: "Track title"
+                    placeholder: qsTr("Track title")
                     text: lyricSearchQuery
                     onEdited: lyricSearchQuery = text
                     onSubmitted: searchLyricsOnline()
                 }
                 TransportButton {
-                    Accessible.name: "Search lyrics online"
+                    Accessible.name: qsTr("Search lyrics online")
                     buttonSize: 36
                     iconName: "search"
                     accented: true
@@ -5023,7 +5023,7 @@ ApplicationWindow {
                     font.weight: Font.Bold
                 }
                 Label {
-                    text: "Choose the closest match"
+                    text: qsTr("Choose the closest match")
                     color: silverDim
                     font.family: bodyFont
                     font.pixelSize: 10
@@ -5104,7 +5104,7 @@ ApplicationWindow {
                 visible: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length === 0
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
-                text: "No lyrics found\nTry the track title, or add custom lyrics"
+                text: qsTr("No lyrics found\nTry the track title, or add custom lyrics")
                 color: textSecondary
                 font.family: bodyFont
                 font.pixelSize: 14
@@ -5131,7 +5131,7 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     text: lyricCustomText
-                    placeholderText: "Paste synchronized LRC or plain lyrics…"
+                    placeholderText: qsTr("Paste synchronized LRC or plain lyrics…")
                     wrapMode: TextArea.Wrap
                     color: textPrimary
                     font.family: monoFont
@@ -5144,14 +5144,14 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     Label { Layout.fillWidth: true; text: "Timestamped LRC becomes synced lyrics."; color: silverDim; font.family: bodyFont; font.pixelSize: 11 }
                     Label {
-                        text: "Cancel"
+                        text: qsTr("Cancel")
                         color: textSecondary
                         font.family: displayFont
                         font.pixelSize: 13
                         MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = false }
                     }
                     Label {
-                        text: "Save & apply"
+                        text: qsTr("Save & apply")
                         color: lyricCustomText.trim().length ? recordRedHover : silverDim
                         font.family: displayFont
                         font.pixelSize: 13
@@ -5282,11 +5282,11 @@ ApplicationWindow {
     ConfirmPopup {
         id: pairingPrompt
         title: "Connect " + phoneRemote.pairingRequest + "?"
-        subtitle: "Only allow phones you own"
-        message: "This phone will be able to control playback here, sync likes and playlists, and back up to this computer."
+        subtitle: qsTr("Only allow phones you own")
+        message: qsTr("This phone will be able to control playback here, sync likes and playlists, and back up to this computer.")
         iconName: "smartphone"
-        confirmText: "Allow"
-        cancelText: "Deny"
+        confirmText: qsTr("Allow")
+        cancelText: qsTr("Deny")
         onConfirmed: phoneRemote.answerPairing(true)
         onClosed: phoneRemote.answerPairing(false)
     }
@@ -5302,12 +5302,12 @@ ApplicationWindow {
     ConfirmPopup {
         id: updatePrompt
         property string version: ""
-        title: "Update available"
+        title: qsTr("Update available")
         subtitle: "CassetteCat v" + version
-        message: "A new version is ready to download. Your library, playlists and settings stay as they are."
+        message: qsTr("A new version is ready to download. Your library, playlists and settings stay as they are.")
         iconName: "arrow-down"
-        confirmText: "Download"
-        cancelText: "Later"
+        confirmText: qsTr("Download")
+        cancelText: qsTr("Later")
         onConfirmed: downloadUpdate()
         onClosed: appSettings.setValue("updates/promptedVersion", version)
     }

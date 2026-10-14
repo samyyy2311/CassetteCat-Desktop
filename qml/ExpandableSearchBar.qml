@@ -76,7 +76,7 @@ Item {
 
         AppToolTip {
             targetItem: searchIconMouseArea
-            text: "Close search"
+            text: qsTr("Close search")
             visibleTarget: searchIconMouseArea.containsMouse
         }
     }
@@ -130,7 +130,7 @@ Item {
             iconSize: 12
             iconName: "x"
             tint: root.placeholderColor
-            tooltipText: inputField.text.length > 0 ? "Clear search" : "Close search"
+            tooltipText: inputField.text.length > 0 ? qsTr("Clear search") : qsTr("Close search")
             Accessible.name: tooltipText
             onClicked: root.collapse()
         }

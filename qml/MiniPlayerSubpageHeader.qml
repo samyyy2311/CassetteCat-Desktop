@@ -131,7 +131,7 @@ Item {
                     onClicked: root.miniPlayer.toggleAlwaysOnTop()
                 }
                 AppToolTip {
-                    text: root.miniPlayer.alwaysOnTop ? "Unpin from top" : "Keep on top"
+                    text: root.miniPlayer.alwaysOnTop ? qsTr("Unpin from top") : qsTr("Keep on top")
                     visibleTarget: subPinH.containsMouse
                     delay: 350
                 }
@@ -158,7 +158,7 @@ Item {
                     onClicked: root.miniPlayer.showMinimized()
                 }
                 AppToolTip {
-                    text: "Minimize"
+                    text: qsTr("Minimize")
                     visibleTarget: subMinH.containsMouse
                     delay: 350
                 }
@@ -185,7 +185,7 @@ Item {
                     onClicked: root.miniPlayer.mode = "compact"
                 }
                 AppToolTip {
-                    text: "Compact mode"
+                    text: qsTr("Compact mode")
                     visibleTarget: subPopH.containsMouse
                     delay: 350
                 }
@@ -212,7 +212,7 @@ Item {
                     onClicked: root.miniPlayer.restoreRequested()
                 }
                 AppToolTip {
-                    text: "Restore full player"
+                    text: qsTr("Restore full player")
                     visibleTarget: subExpH.containsMouse
                     delay: 350
                 }
@@ -239,7 +239,7 @@ Item {
                     onClicked: root.miniPlayer.closeRequested()
                 }
                 AppToolTip {
-                    text: "Close miniplayer"
+                    text: qsTr("Close miniplayer")
                     visibleTarget: subCloseH.containsMouse
                     delay: 350
                 }

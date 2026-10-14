@@ -27,7 +27,7 @@ AppDialog {
         spacing: 14
 
         Label {
-            text: "Custom Accent Colour"
+            text: qsTr("Custom Accent Colour")
             color: textPrimary
             font.family: displayFont
             font.pixelSize: 17
@@ -35,7 +35,7 @@ AppDialog {
         }
 
         Label {
-            text: "Pick a color swatch or enter a hex code"
+            text: qsTr("Pick a color swatch or enter a hex code")
             color: textSecondary
             font.family: bodyFont
             font.pixelSize: 12
@@ -63,7 +63,7 @@ AppDialog {
         }
 
         Label {
-            text: "PRESET PALETTE"
+            text: qsTr("PRESET PALETTE")
             color: silverDim
             font.family: monoFont
             font.pixelSize: 10
@@ -108,12 +108,12 @@ AppDialog {
             Item { Layout.fillWidth: true }
 
             SettingButton {
-                text: "Cancel"
+                text: qsTr("Cancel")
                 onClicked: root.close()
             }
 
             SettingButton {
-                text: "Apply"
+                text: qsTr("Apply")
                 primary: true
                 onClicked: {
                     const hex = root.normalizeHex(hexInput.text)

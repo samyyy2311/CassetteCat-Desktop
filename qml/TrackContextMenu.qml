@@ -59,68 +59,68 @@ Menu {
     }
 
     TrackMenuItem {
-        text: "Play Next"
+        text: qsTr("Play Next")
         icon.name: "list"
         onTriggered: if (root.appWindow) root.appWindow.insertTrackNext(root.track)
     }
 
     TrackMenuItem {
-        text: "Play Next on Phone"
+        text: qsTr("Play Next on Phone")
         icon.name: "smartphone"
         visible: phoneRemote.phonePlayback.title !== undefined && !!(root.track && root.track.title) && root.track.format !== "STREAM"
         onTriggered: phoneRemote.playNextOnPhone(root.track.title, root.track.artist || "")
     }
 
     TrackMenuItem {
-        text: "Add to Queue"
+        text: qsTr("Add to Queue")
         icon.name: "list"
         onTriggered: if (root.appWindow) root.appWindow.appendToQueue(root.track)
     }
 
     TrackMenuItem {
         text: root.appWindow && root.track && root.appWindow.isFavorite(root.track.filePath)
-            ? "Remove Favorite" : "Add to Favorites"
+            ? qsTr("Remove Favorite") : qsTr("Add to Favorites")
         icon.name: "heart"
         onTriggered: if (root.appWindow && root.track) root.appWindow.toggleFavorite(root.track.filePath)
     }
 
     TrackMenuItem {
-        text: "Go to Artist"
+        text: qsTr("Go to Artist")
         icon.name: "music"
         visible: !!(root.track && root.track.artist)
         onTriggered: if (root.appWindow && root.track) root.appWindow.openCatalogDetail("artist", root.track.artist, root.track)
     }
 
     TrackMenuItem {
-        text: "Go to Album"
+        text: qsTr("Go to Album")
         icon.name: "disc"
         visible: !!(root.track && root.track.album)
         onTriggered: if (root.appWindow && root.track) root.appWindow.openCatalogDetail("album", root.track.album, root.track)
     }
 
     TrackMenuItem {
-        text: "Search Cover Art"
+        text: qsTr("Search Cover Art")
         icon.name: "disc"
         visible: !!(root.track && (root.track.album || root.track.title))
         onTriggered: if (root.appWindow && root.track) root.appWindow.openCoverSearch(root.track.album || root.track.title, root.track.artist || "", root.track.filePath || "")
     }
 
     TrackMenuItem {
-        text: "Edit Metadata"
+        text: qsTr("Edit Metadata")
         icon.name: "pencil"
         visible: !!(root.track && root.track.filePath && !root.track.remoteId && !String(root.track.filePath).startsWith("http"))
         onTriggered: if (root.appWindow && root.track) root.appWindow.openTrackMetadataEditor(root.track)
     }
 
     TrackMenuItem {
-        text: "Show in Folder"
+        text: qsTr("Show in Folder")
         icon.name: "folder"
         visible: !!(root.track && root.track.filePath && !String(root.track.filePath).startsWith("http"))
         onTriggered: if (root.track && root.track.filePath) appSettings.showInFolder(root.track.filePath)
     }
 
     TrackMenuItem {
-        text: "Copy Title"
+        text: qsTr("Copy Title")
         icon.name: "info"
         onTriggered: if (root.track) appSettings.copyToClipboard(root.track.title || root.track.fileName || "")
     }

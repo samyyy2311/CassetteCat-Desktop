@@ -42,8 +42,8 @@ BottomSheet {
         spacing: 4
 
         Label {
-            text: root.audioFormat.isHiRes ? "Hi-Res Lossless Audio"
-                : (root.audioFormat.isLossless ? "Lossless Audio" : "Audio Quality")
+            text: root.audioFormat.isHiRes ? qsTr("Hi-Res Lossless Audio")
+                : (root.audioFormat.isLossless ? qsTr("Lossless Audio") : qsTr("Audio Quality"))
             color: root.appWindow.textPrimary
             font.family: root.appWindow.displayFont
             font.pixelSize: 16
@@ -58,28 +58,28 @@ BottomSheet {
             font.pixelSize: 13
         }
 
-        DetailRow { label: "Format"; value: root.audioFormat.codecName || "" }
+        DetailRow { label: qsTr("Format"); value: root.audioFormat.codecName || "" }
 
         DetailRow {
             visible: root.audioFormat.sampleRateHz > 0
-            label: "Sample Rate"
+            label: qsTr("Sample Rate")
             value: root.audioFormat.sampleRateHz + " Hz (" + (root.audioFormat.sampleRateHz / 1000).toFixed(1) + " kHz)"
         }
 
         DetailRow {
             visible: root.audioFormat.bitDepth > 0
-            label: "Bit Depth"
+            label: qsTr("Bit Depth")
             value: root.audioFormat.bitDepth + "-bit"
         }
 
         DetailRow {
             visible: root.audioFormat.bitrateKbps > 0
-            label: "Bitrate"
+            label: qsTr("Bitrate")
             value: root.audioFormat.bitrateKbps + " kbps"
         }
 
         DetailRow {
-            label: "Encoding"
+            label: qsTr("Encoding")
             value: root.audioFormat.isLossless ? "Lossless" : "Lossy Compressed"
         }
     }

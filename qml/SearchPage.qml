@@ -205,7 +205,7 @@ Item {
                     Text {
                         anchors.fill: parent
                         visible: !pageSearchInput.text && !pageSearchInput.activeFocus
-                        text: "Search songs, artists, albums, or audio formats..."
+                        text: qsTr("Search songs, artists, albums, or audio formats...")
                         color: silverDim
                         font.family: displayFont
                         font.pixelSize: 14
@@ -226,7 +226,7 @@ Item {
                     Label {
                         id: shortcutLabel
                         anchors.centerIn: parent
-                        text: "Ctrl + F"
+                        text: qsTr("Ctrl + F")
                         color: silverDim
                         font.family: monoFont
                         font.pixelSize: 10
@@ -277,10 +277,10 @@ Item {
 
                 Repeater {
                     model: [
-                        { id: "ALL", label: "All Formats", icon: "disc" },
-                        { id: "FLAC", label: "Lossless (FLAC)", icon: "audio-lines" },
+                        { id: "ALL", label: qsTr("All Formats"), icon: "disc" },
+                        { id: "FLAC", label: qsTr("Lossless (FLAC)"), icon: "audio-lines" },
                         { id: "MP3", label: "MP3", icon: "music" },
-                        { id: "AAC", label: "AAC / M4A", icon: "list-music" }
+                        { id: "AAC", label: qsTr("AAC / M4A"), icon: "list-music" }
                     ]
 
                     FilterChip {
@@ -313,7 +313,7 @@ Item {
                 iconSize: 14
                 iconName: "rotate-ccw"
                 tint: recordRedHover
-                tooltipText: "Reset Search & Filters"
+                tooltipText: qsTr("Reset Search & Filters")
                 onClicked: {
                     pageSearchInput.text = ""
                     root.appWindow.searchQuery = ""
@@ -349,7 +349,7 @@ Item {
 
                 SectionLabel {
                     visible: root.matchingArtists.length > 0
-                    text: "Artists"
+                    text: qsTr("Artists")
                 }
 
                 AppListView {
@@ -376,7 +376,7 @@ Item {
 
                 SectionLabel {
                     visible: root.matchingAlbums.length > 0
-                    text: "Albums"
+                    text: qsTr("Albums")
                 }
 
                 AppListView {
@@ -413,7 +413,7 @@ Item {
                     Item { Layout.fillWidth: true }
 
                     SettingButton {
-                        text: "Shuffle"
+                        text: qsTr("Shuffle")
                         onClicked: {
                             root.rememberSearch()
                             root.appWindow.shufflePlayback(root.libraryModel.visibleTracks())
@@ -421,7 +421,7 @@ Item {
                     }
 
                     SettingButton {
-                        text: "Play"
+                        text: qsTr("Play")
                         primary: true
                         onClicked: {
                             root.rememberSearch()
@@ -446,9 +446,9 @@ Item {
                 anchors.centerIn: parent
                 visible: root.libraryModel.visibleTrackCount === 0
                 catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
-                title: "No matching tracks"
-                subtitle: "Try a different search or clear the format filter"
-                actionLabel: "Clear Search"
+                title: qsTr("No matching tracks")
+                subtitle: qsTr("Try a different search or clear the format filter")
+                actionLabel: qsTr("Clear Search")
                 onActionClicked: {
                     pageSearchInput.text = ""
                     root.appWindow.searchQuery = ""
@@ -564,7 +564,7 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         SectionLabel {
-                            text: "Recent Listens"
+                            text: qsTr("Recent Listens")
                         }
                     }
 
@@ -597,7 +597,7 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         SectionLabel {
-                            text: "Explore Genres"
+                            text: qsTr("Explore Genres")
                         }
                     }
 
@@ -632,7 +632,7 @@ Item {
                     RowLayout {
                         Layout.fillWidth: true
                         SectionLabel {
-                            text: "Popular Artists"
+                            text: qsTr("Popular Artists")
                         }
                     }
 
@@ -664,9 +664,9 @@ Item {
                     Layout.preferredHeight: 300
                     visible: root.libraryModel.trackCount === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
-                    title: "No Music in Library"
-                    subtitle: "Choose a music folder in Settings to start exploring"
-                    actionLabel: "Open Settings"
+                    title: qsTr("No Music in Library")
+                    subtitle: qsTr("Choose a music folder in Settings to start exploring")
+                    actionLabel: qsTr("Open Settings")
                     onActionClicked: root.appWindow.page = "settings"
                 }
             }

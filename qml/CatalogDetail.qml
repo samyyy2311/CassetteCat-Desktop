@@ -233,7 +233,7 @@ Rectangle {
                             iconSize: 15
                             iconName: "disc"
                             tint: root.appWindow.textPrimary
-                            tooltipText: "Change cover art"
+                            tooltipText: qsTr("Change cover art")
                             onClicked: root.appWindow.openCoverSearch(root.title, root.heroTrack.artist || "", root.heroTrack.filePath || "")
                         }
                     }
@@ -245,7 +245,7 @@ Rectangle {
                         spacing: 6
 
                         OverlineLabel {
-                            text: root.artistDetail ? "Artist" : (root.albumDetail ? "Album" : root.mode)
+                            text: root.artistDetail ? qsTr("Artist") : (root.albumDetail ? qsTr("Album") : root.mode)
                         }
 
                         Label {
@@ -309,7 +309,7 @@ Rectangle {
                         OverlineLabel {
                             Layout.fillWidth: true
                             visible: root.featuredDetail && root.detailBio.length > 0
-                            text: root.artistDetail ? "About this artist" : "About this album"
+                            text: root.artistDetail ? qsTr("About this artist") : qsTr("About this album")
                         }
 
                         Text {
@@ -327,14 +327,14 @@ Rectangle {
 
                         Label {
                             visible: bioText.visible && (bioText.truncated || root.bioExpanded)
-                            text: root.bioExpanded ? "Less" : "More"
+                            text: root.bioExpanded ? qsTr("Less") : qsTr("More")
                             color: bioToggleMouse.containsMouse ? "#FFFFFF" : root.appWindow.textPrimary
                             font.family: root.appWindow.bodyFont
                             font.pixelSize: 13
                             font.weight: Font.DemiBold
                             font.underline: bioToggleMouse.containsMouse
                             Accessible.role: Accessible.Button
-                            Accessible.name: root.bioExpanded ? "Show less" : "Show more"
+                            Accessible.name: root.bioExpanded ? qsTr("Show less") : qsTr("Show more")
                             Accessible.onPressAction: root.bioExpanded = !root.bioExpanded
 
                             MouseArea {
@@ -356,7 +356,7 @@ Rectangle {
                                 buttonSize: 42
                                 iconName: (player.isPlaying && root.tracks.some(t => t.filePath === player.currentTrack.filePath)) ? "pause" : "play"
                                 accented: true
-                                tooltipText: "Play All"
+                                tooltipText: qsTr("Play All")
                                 onClicked: {
                                     if (root.tracks.length && root.appWindow) {
                                         if (player.isPlaying && root.tracks.some(t => t.filePath === player.currentTrack.filePath)) {
@@ -373,7 +373,7 @@ Rectangle {
                                 buttonSize: 36
                                 iconName: "shuffle"
                                 accented: player.shuffleEnabled
-                                tooltipText: "Shuffle"
+                                tooltipText: qsTr("Shuffle")
                                 onClicked: {
                                     if (root.tracks.length && root.appWindow) {
                                         root.appWindow.shufflePlayback(root.tracks)
@@ -390,7 +390,7 @@ Rectangle {
                                 iconSize: 16
                                 iconName: "heart"
                                 tint: allFavorite ? root.appWindow.recordRed : root.appWindow.silverDim
-                                tooltipText: allFavorite ? "Remove songs from favorites" : "Favorite all songs"
+                                tooltipText: allFavorite ? qsTr("Remove songs from favorites") : qsTr("Favorite all songs")
                                 onClicked: root.appWindow.setFavorites(root.tracks.map(track => track.filePath), !allFavorite)
                             }
                         }

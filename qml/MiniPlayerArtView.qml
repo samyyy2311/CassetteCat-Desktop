@@ -111,7 +111,7 @@ Item {
                         onClicked: root.miniPlayer.toggleAlwaysOnTop()
                     }
                     AppToolTip {
-                        text: root.miniPlayer.alwaysOnTop ? "Unpin from top" : "Keep on top"
+                        text: root.miniPlayer.alwaysOnTop ? qsTr("Unpin from top") : qsTr("Keep on top")
                         visibleTarget: artPinH.containsMouse
                         delay: 350
                     }
@@ -138,7 +138,7 @@ Item {
                         onClicked: root.miniPlayer.showMinimized()
                     }
                     AppToolTip {
-                        text: "Minimize"
+                        text: qsTr("Minimize")
                         visibleTarget: artMinH.containsMouse
                         delay: 350
                     }
@@ -165,7 +165,7 @@ Item {
                         onClicked: root.miniPlayer.mode = "compact"
                     }
                     AppToolTip {
-                        text: "Compact mode"
+                        text: qsTr("Compact mode")
                         visibleTarget: artPopH.containsMouse
                         delay: 350
                     }
@@ -192,7 +192,7 @@ Item {
                         onClicked: root.miniPlayer.restoreRequested()
                     }
                     AppToolTip {
-                        text: "Restore full player"
+                        text: qsTr("Restore full player")
                         visibleTarget: artExpandH.containsMouse
                         delay: 350
                     }
@@ -219,7 +219,7 @@ Item {
                         onClicked: root.miniPlayer.closeRequested()
                     }
                     AppToolTip {
-                        text: "Close miniplayer"
+                        text: qsTr("Close miniplayer")
                         visibleTarget: artCloseH.containsMouse
                         delay: 350
                     }
@@ -358,7 +358,7 @@ Item {
                             filled: false
                             iconName: root.miniPlayer.playerController.volume <= 0.001 ? "volume-x" : (root.miniPlayer.playerController.volume < 0.5 ? "volume-1" : "volume-2")
                             iconColor: root.miniPlayer.textSecondary
-                            tooltipText: "Volume"
+                            tooltipText: qsTr("Volume")
                             onClicked: root.miniPlayer.volumePillVisible = true
                         }
 
@@ -369,7 +369,7 @@ Item {
                             iconName: "heart"
                             readonly property bool isFav: !!(root.miniPlayer.playerController.currentTrack && root.miniPlayer.isFavorite(root.miniPlayer.playerController.currentTrack.filePath))
                             iconColor: isFav ? root.miniPlayer.recordRed : root.miniPlayer.textSecondary
-                            tooltipText: isFav ? "Remove from favorites" : "Add to favorites"
+                            tooltipText: isFav ? qsTr("Remove from favorites") : qsTr("Add to favorites")
                             onClicked: if (root.miniPlayer.playerController.currentTrack && root.miniPlayer.playerController.currentTrack.filePath) root.miniPlayer.toggleFavorite(root.miniPlayer.playerController.currentTrack.filePath)
                         }
                     }
@@ -400,7 +400,7 @@ Item {
                             buttonSize: 28
                             iconName: "shuffle"
                             accented: root.miniPlayer.playerController.shuffleEnabled
-                            tooltipText: root.miniPlayer.playerController.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
+                            tooltipText: root.miniPlayer.playerController.shuffleEnabled ? qsTr("Shuffle On") : qsTr("Shuffle Off")
                             onClicked: root.miniPlayer.toggleShuffle()
                         }
 
@@ -408,7 +408,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 30
                             iconName: "skip-back"
-                            tooltipText: "Previous"
+                            tooltipText: qsTr("Previous")
                             onClicked: root.miniPlayer.playPrevious()
                         }
 
@@ -417,7 +417,7 @@ Item {
                             buttonSize: 36
                             iconName: (root.miniPlayer.playerController.isPlaying || root.miniPlayer.playerVisuallyPlaying) ? "pause" : "play"
                             accented: true
-                            tooltipText: (root.miniPlayer.playerController.isPlaying || root.miniPlayer.playerVisuallyPlaying) ? "Pause" : "Play"
+                            tooltipText: (root.miniPlayer.playerController.isPlaying || root.miniPlayer.playerVisuallyPlaying) ? qsTr("Pause") : qsTr("Play")
                             onClicked: root.miniPlayer.playerController.togglePlay()
                         }
 
@@ -425,7 +425,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             buttonSize: 30
                             iconName: "skip-forward"
-                            tooltipText: "Next"
+                            tooltipText: qsTr("Next")
                             onClicked: root.miniPlayer.playNext()
                         }
 
@@ -434,7 +434,7 @@ Item {
                             buttonSize: 28
                             iconName: root.miniPlayer.repeatMode === 2 ? "repeat-1" : "repeat"
                             accented: root.miniPlayer.repeatMode > 0
-                            tooltipText: root.miniPlayer.repeatMode === 2 ? "Repeat Track" : (root.miniPlayer.repeatMode === 1 ? "Repeat All" : "Repeat Off")
+                            tooltipText: root.miniPlayer.repeatMode === 2 ? qsTr("Repeat Track") : (root.miniPlayer.repeatMode === 1 ? qsTr("Repeat All") : qsTr("Repeat Off"))
                             onClicked: root.miniPlayer.toggleRepeat()
                         }
                     }
@@ -450,7 +450,7 @@ Item {
                             filled: false
                             iconName: "quote"
                             iconColor: root.miniPlayer.mode === "lyrics" ? root.miniPlayer.recordRed : root.miniPlayer.textSecondary
-                            tooltipText: "Lyrics"
+                            tooltipText: qsTr("Lyrics")
                             onClicked: root.miniPlayer.mode = "lyrics"
                         }
 
@@ -460,7 +460,7 @@ Item {
                             filled: false
                             iconName: "list"
                             iconColor: root.miniPlayer.mode === "queue" ? root.miniPlayer.recordRed : root.miniPlayer.textSecondary
-                            tooltipText: "Queue"
+                            tooltipText: qsTr("Queue")
                             onClicked: root.miniPlayer.mode = "queue"
                         }
                     }

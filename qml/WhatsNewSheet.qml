@@ -14,15 +14,15 @@ AppDialog {
 
         DialogHeader {
             imageSource: "qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png"
-            title: "What's New"
+            title: qsTr("What's New")
             subtitle: "CassetteCat " + Qt.application.version
 
             TransportButton {
                 Layout.alignment: Qt.AlignTop
-                Accessible.name: "Close"
+                Accessible.name: qsTr("Close")
                 buttonSize: 32
                 iconName: "x"
-                tooltipText: "Close"
+                tooltipText: qsTr("Close")
                 onClicked: root.close()
             }
         }

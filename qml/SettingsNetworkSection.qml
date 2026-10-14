@@ -37,10 +37,10 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "shield"
-            title: "Offline Blackout Mode"
+            title: qsTr("Offline Blackout Mode")
             subtitle: root.offlineBlackout
-                      ? "All network connections, metadata lookups, and remote streams are disabled"
-                      : "Completely disable all internet lookups and remote telemetry"
+                      ? qsTr("All network connections, metadata lookups, and remote streams are disabled")
+                      : qsTr("Completely disable all internet lookups and remote telemetry")
 
             SettingSwitch {
                 checked: root.offlineBlackout
@@ -54,8 +54,8 @@ ColumnLayout {
     SettingCard {
         SettingRow {
             iconName: "globe"
-            title: "Streaming Server Integration"
-            subtitle: "Configure credentials, stream audio catalogs, and manage server synchronization"
+            title: qsTr("Streaming Server Integration")
+            subtitle: qsTr("Configure credentials, stream audio catalogs, and manage server synchronization")
 
             SettingButton {
                 text: "Jellyfin"
@@ -78,13 +78,13 @@ ColumnLayout {
     SettingCard {
         Repeater {
             model: [
-                { id: "lrclib", title: "LrcLib Lyrics", subtitle: "Synced lyrics when none are found locally", icon: "lrclib", preserveColor: true, on: root.svcLrclib },
-                { id: "radio", title: "Radio Browser", subtitle: "Internet radio station discovery and streaming", icon: "radio", preserveColor: false, on: root.svcRadio },
-                { id: "deezer", title: "Deezer Artwork", subtitle: "High-resolution artist portraits and imagery", icon: "deezer", preserveColor: true, on: root.svcDeezer },
-                { id: "audiodb", title: "TheAudioDB", subtitle: "Artist imagery and biography metadata fallback", icon: "theaudiodb", preserveColor: true, on: root.svcAudiodb },
-                { id: "wiki", title: "Wikipedia", subtitle: "Artist biographies and summaries", icon: "wikipedia", preserveColor: true, on: root.svcWiki },
-                { id: "archive", title: "MusicBrainz", subtitle: "Song details and album covers from MusicBrainz and the Cover Art Archive", icon: "archive", preserveColor: true, on: root.svcArchive },
-                { id: "discord", title: "Discord Status", subtitle: "Show the song you are playing on your Discord profile", icon: "discord", preserveColor: true, on: root.svcDiscord }
+                { id: "lrclib", title: qsTr("LrcLib Lyrics"), subtitle: qsTr("Synced lyrics when none are found locally"), icon: "lrclib", preserveColor: true, on: root.svcLrclib },
+                { id: "radio", title: "Radio Browser", subtitle: qsTr("Internet radio station discovery and streaming"), icon: "radio", preserveColor: false, on: root.svcRadio },
+                { id: "deezer", title: qsTr("Deezer Artwork"), subtitle: qsTr("High-resolution artist portraits and imagery"), icon: "deezer", preserveColor: true, on: root.svcDeezer },
+                { id: "audiodb", title: "TheAudioDB", subtitle: qsTr("Artist imagery and biography metadata fallback"), icon: "theaudiodb", preserveColor: true, on: root.svcAudiodb },
+                { id: "wiki", title: "Wikipedia", subtitle: qsTr("Artist biographies and summaries"), icon: "wikipedia", preserveColor: true, on: root.svcWiki },
+                { id: "archive", title: "MusicBrainz", subtitle: qsTr("Song details and album covers from MusicBrainz and the Cover Art Archive"), icon: "archive", preserveColor: true, on: root.svcArchive },
+                { id: "discord", title: qsTr("Discord Status"), subtitle: qsTr("Show the song you are playing on your Discord profile"), icon: "discord", preserveColor: true, on: root.svcDiscord }
             ]
             delegate: ColumnLayout {
                 Layout.fillWidth: true

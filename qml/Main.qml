@@ -501,15 +501,6 @@ ApplicationWindow {
             if (filePath) {
                 library.setCustomArtwork(filePath, artworkPath)
             }
-            if (window.embedCoversInFiles) {
-                // The cover applies to the whole album, so every local song of it gets it in its file.
-                const sameText = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase()
-                const paths = availableTracks()
-                    .filter(track => !track.remoteId && (track.filePath === filePath
-                            || (album && sameText(track.album, album) && (!artist || sameText(track.artist, artist)))))
-                    .map(track => track.filePath)
-                library.embedArtwork(paths, artworkPath)
-            }
             if (player.currentTrack) {
                 const trackAlbum = player.currentTrack.album || ""
                 const trackArtist = player.currentTrack.artist || ""

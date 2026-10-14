@@ -79,8 +79,9 @@ class ServicesController : public QObject {
     void lyricsFetched(const QString &title, const QString &artist, const QString &lyrics, const QString &provider);
     void lyricsSearchResultsReady(const QVariantList &results);
     void coverSearchResultsReady(const QVariantList &results);
-    /// \p tags is empty without a confident match; \p reached is false when MusicBrainz couldn't be asked.
-    void musicBrainzTagsReady(const QString &filePath, const QVariantMap &tags, bool reached);
+    /// \p tags is empty without a confident match. \p problem is "off" when MusicBrainz is turned off or the app is
+    /// offline, and "busy" when it kept refusing.
+    void musicBrainzTagsReady(const QString &filePath, const QVariantMap &tags, const QString &problem);
     void coverSearchFailed(const QString &error);
     void coverApplied(const QString &album, const QString &artist, const QString &artworkPath, const QString &filePath);
     void radioStationsLoaded(const QVariantList &stations);
@@ -119,6 +120,7 @@ class ServicesController : public QObject {
     static QVariantMap musicBrainzTagsFrom(const QJsonObject &search, const QVariantMap &track);
     /// How long to wait before the next MusicBrainz request, which allows one a second.
     int nextMusicBrainzSlotMs();
+    void requestMusicBrainzTags(const QNetworkRequest &request, const QVariantMap &track, int attempt);
     void searchDeezerCovers(quint64 requestToken, const QString &term, const QString &album, const QString &artist,
                             const QVariantList &results, const QSet<QString> &seen);
     /// Adds covers from the Cover Art Archive, found through MusicBrainz, and reports the search's results.

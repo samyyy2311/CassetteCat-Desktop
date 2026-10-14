@@ -77,11 +77,12 @@ Popup {
 
     Connections {
         target: services
-        function onMusicBrainzTagsReady(filePath, tags, reached) {
+        function onMusicBrainzTagsReady(filePath, tags, problem) {
             if (!root.lookingUp || filePath !== root.track.filePath) return
             root.lookingUp = false
-            if (!reached) {
-                root.noteText = "Couldn't reach MusicBrainz. Check that it's on in Settings, under Network."
+            if (problem) {
+                root.noteText = problem === "off" ? "MusicBrainz is turned off. Turn it on in Settings, under Network & Services."
+                                                  : "MusicBrainz is busy right now. Try again in a minute."
                 return
             }
             const inputs = { title: titleInput, artist: artistInput, album: albumInput, year: yearInput,

@@ -46,6 +46,15 @@ AppDialog {
             root.applyingCover = false
         }
         function onCoverApplied(album, artist, artworkPath, filePath) {
+            if (root.applyingCover && root.appWindow.embedCoversInFiles) {
+                // A chosen cover is the whole album's, so every local song of it gets it in its file.
+                const sameText = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase()
+                const paths = root.appWindow.availableTracks()
+                    .filter(track => !track.remoteId && (track.filePath === filePath
+                            || (album && sameText(track.album, album) && (!artist || sameText(track.artist, artist)))))
+                    .map(track => track.filePath)
+                library.embedArtwork(paths, artworkPath)
+            }
             root.applyingCover = false
             root.close()
         }

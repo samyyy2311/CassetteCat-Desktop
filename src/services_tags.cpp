@@ -46,7 +46,8 @@ int ServicesController::nextMusicBrainzSlotMs() {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
     m_nextMusicBrainzRequestMs = qMax(now, m_nextMusicBrainzRequestMs);
     const int delayMs = int(m_nextMusicBrainzRequestMs - now);
-    m_nextMusicBrainzRequestMs += 1000;
+    // MusicBrainz allows one request a second on average; a little more keeps clear of its limit.
+    m_nextMusicBrainzRequestMs += 1100;
     return delayMs;
 }
 
@@ -108,8 +109,12 @@ QVariantMap ServicesController::musicBrainzTagsFrom(const QJsonObject &search, c
 void ServicesController::findMusicBrainzTags(const QVariantMap &track) {
     const QString filePath = track.value("filePath").toString();
     const QString title = track.value("title").toString().trimmed();
-    if (!onlineEnabled() || !serviceEnabled("archive") || title.isEmpty()) {
-        emit musicBrainzTagsReady(filePath, {}, false);
+    if (title.isEmpty()) {
+        emit musicBrainzTagsReady(filePath, {}, {});
+        return;
+    }
+    if (!onlineEnabled() || !serviceEnabled("archive")) {
+        emit musicBrainzTagsReady(filePath, {}, QStringLiteral("off"));
         return;
     }
     QString query = QStringLiteral("recording:") + quotedTerm(title);
@@ -122,19 +127,35 @@ void ServicesController::findMusicBrainzTags(const QVariantMap &track) {
     request.setTransferTimeout(services::detail::requestTimeoutMs);
     request.setHeader(QNetworkRequest::UserAgentHeader,
                       "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
-    QTimer::singleShot(nextMusicBrainzSlotMs(), this, [this, request, track, filePath] {
+    requestMusicBrainzTags(request, track, 0);
+}
+
+void ServicesController::requestMusicBrainzTags(const QNetworkRequest &request, const QVariantMap &track, int attempt) {
+    const QString filePath = track.value("filePath").toString();
+    QTimer::singleShot(nextMusicBrainzSlotMs(), this, [this, request, track, filePath, attempt] {
         if (!onlineEnabled()) {
-            emit musicBrainzTagsReady(filePath, {}, false);
+            emit musicBrainzTagsReady(filePath, {}, QStringLiteral("off"));
             return;
         }
         auto *reply = trackReply(m_net->get(request));
-        connect(reply, &QNetworkReply::finished, this, [this, reply, track, filePath] {
+        connect(reply, &QNetworkReply::finished, this, [this, reply, request, track, filePath, attempt] {
             reply->deleteLater();
-            const bool reached = reply->error() == QNetworkReply::NoError;
-            const QVariantMap tags =
-                reached ? musicBrainzTagsFrom(QJsonDocument::fromJson(reply->readAll()).object(), track)
-                        : QVariantMap();
-            emit musicBrainzTagsReady(filePath, tags, reached);
+            if (reply->error() == QNetworkReply::NoError) {
+                emit musicBrainzTagsReady(
+                    filePath, musicBrainzTagsFrom(QJsonDocument::fromJson(reply->readAll()).object(), track), {});
+                return;
+            }
+            // MusicBrainz answers 503 when it's busy or asked too often, so it gets a few more tries, further apart.
+            if (attempt < 3) {
+                QTimer::singleShot(2000 * (attempt + 1), this, [this, request, track, attempt] {
+                    requestMusicBrainzTags(request, track, attempt + 1);
+                });
+                return;
+            }
+            qWarning().noquote() << "[MUSICBRAINZ] lookup failed status="
+                                 << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()
+                                 << reply->errorString();
+            emit musicBrainzTagsReady(filePath, {}, QStringLiteral("busy"));
         });
     });
 }

@@ -15,17 +15,18 @@ ColumnLayout {
     // Copies ticked for the Recycle Bin, by file path.
     property var removals: ({})
     readonly property var removalPaths: Object.keys(removals).filter(path => removals[path])
+    readonly property int acceptedCount: tagScan.acceptedDetails + tagScan.acceptedCovers
 
     Layout.fillWidth: true
     spacing: 16
 
-    // Coming back while a check is running, or has results, shows it.
+    // Coming back while a check is running, paused or has results, shows it.
     onVisibleChanged: if (visible) showCurrent()
     Component.onCompleted: if (visible) showCurrent()
 
     function showCurrent() {
         refresh()
-        view = tagScan.running || tagScan.suggestions.length > 0 ? "tags" : "overview"
+        view = tagScan.running || tagScan.paused || tagScan.hasResults ? "tags" : "overview"
     }
 
     function refresh() {
@@ -40,15 +41,16 @@ ColumnLayout {
         view = "duplicates"
     }
 
+    function plural(count, one, many) {
+        return count + " " + (count === 1 ? one : many)
+    }
+
     function sizeText(bytes) {
         return (Number(bytes || 0) / 1048576).toFixed(1) + " MB"
     }
 
-    function changesText(item) {
-        const lines = item.changes.map(change => change.label + ":  " + (change.from || "(empty)") + "  →  " + change.to)
-        if (item.addsCover) lines.push("Cover:  adds the album's cover")
-        return lines.join("
-")
+    function changesText(changes) {
+        return changes.map(change => change.label + ":  " + (change.from || "(empty)") + "  →  " + change.to).join("\n")
     }
 
     SectionLabel { text: "Library Health" }
@@ -70,16 +72,10 @@ ColumnLayout {
         Item { Layout.fillWidth: true }
 
         SettingButton {
-            visible: root.view === "tags" && root.tagScan.suggestions.length > 0
-            text: root.tagScan.acceptedCount > 0 ? "Turn All Off" : "Turn All On"
-            onClicked: root.tagScan.setAllSkipped(root.tagScan.acceptedCount > 0)
-        }
-
-        SettingButton {
             visible: root.view === "tags"
             primary: true
-            enabled: !root.tagScan.running && root.tagScan.acceptedCount > 0
-            text: "Apply to " + root.tagScan.acceptedCount + (root.tagScan.acceptedCount === 1 ? " Song" : " Songs")
+            enabled: !root.tagScan.running && root.acceptedCount > 0
+            text: "Apply " + root.plural(root.acceptedCount, "Change", "Changes")
             onClicked: {
                 root.tagScan.apply()
                 root.refresh()
@@ -102,16 +98,16 @@ ColumnLayout {
         SettingRow {
             iconName: "musicbrainz"
             preserveIconColor: true
-            title: "Song Details"
+            title: "Song Details & Covers"
             subtitle: root.tagScan.running
                       ? "Checking " + root.tagScan.checkedCount + " of " + root.tagScan.songs.length + " songs with MusicBrainz"
                       : (root.health.metadataGaps || 0) + " missing a title, artist or album  •  "
                         + (root.health.noFolderArtwork || 0) + " without a cover"
 
             SettingButton {
-                text: root.tagScan.running || root.tagScan.suggestions.length > 0 ? "View" : "Fix Tags"
+                text: root.tagScan.running || root.tagScan.paused || root.tagScan.hasResults ? "View" : "Fix Tags"
                 onClicked: {
-                    if (!root.tagScan.running && root.tagScan.suggestions.length === 0)
+                    if (!root.tagScan.running && !root.tagScan.paused && !root.tagScan.hasResults)
                         root.tagScan.start(root.appWindow.availableTracks())
                     root.view = "tags"
                 }
@@ -122,7 +118,7 @@ ColumnLayout {
             iconName: "list-music"
             title: "Duplicates"
             subtitle: (root.health.duplicateMetadata || 0) > 0
-                      ? root.health.duplicateMetadata + " extra copies of songs you already have"
+                      ? root.plural(root.health.duplicateMetadata, "extra copy", "extra copies") + " of songs you already have"
                       : "No duplicate songs found"
 
             SettingButton {
@@ -141,12 +137,11 @@ ColumnLayout {
             preserveIconColor: true
             title: root.tagScan.running
                    ? "Checking " + root.tagScan.checkedCount + " of " + root.tagScan.songs.length + " songs"
-                   : root.tagScan.suggestions.length + (root.tagScan.suggestions.length === 1 ? " song to fix" : " songs to fix")
+                   : root.tagScan.paused ? "Paused at " + root.tagScan.checkedCount + " of " + root.tagScan.songs.length + " songs"
+                   : "Check finished"
             subtitle: root.tagScan.problem
                       || (root.tagScan.running ? "You can leave this page. The check keeps going, about a song a second."
-                          : root.tagScan.suggestions.length > 0
-                            ? root.tagScan.summary() + "
-Turn off any song that looks wrong, then apply."
+                          : root.tagScan.hasResults ? "Turn off anything that looks wrong, then apply."
                           : "MusicBrainz agrees with these songs, or has no confident match for them.")
 
             SettingButton {
@@ -154,20 +149,123 @@ Turn off any song that looks wrong, then apply."
                 text: "Stop"
                 onClicked: root.tagScan.stop()
             }
+
+            SettingButton {
+                visible: root.tagScan.paused
+                text: "Continue"
+                onClicked: root.tagScan.resume()
+            }
+        }
+    }
+
+    SectionLabel {
+        visible: root.view === "tags" && root.tagScan.details.length > 0
+        text: "Song Details"
+    }
+
+    SettingCard {
+        visible: root.view === "tags" && root.tagScan.details.length > 0
+
+        SettingRow {
+            title: root.plural(root.tagScan.details.length, "song", "songs") + " with new details"
+            subtitle: "Titles, artists and albums that differ from MusicBrainz, and years or track numbers that are missing."
+
+            SettingButton {
+                text: root.tagScan.acceptedDetails > 0 ? "Turn All Off" : "Turn All On"
+                onClicked: root.tagScan.setAllDetailsSkipped(root.tagScan.acceptedDetails > 0)
+            }
         }
 
         Repeater {
-            model: root.tagScan.suggestions
+            model: root.tagScan.details
 
             SettingRow {
                 required property var modelData
                 title: modelData.song.title + "  •  " + (modelData.song.artist || "Unknown Artist")
-                subtitle: root.changesText(modelData)
+                subtitle: root.changesText(modelData.changes)
 
                 SettingSwitch {
-                    Accessible.name: "Apply to " + modelData.song.title
-                    checked: !root.tagScan.skipped[modelData.song.filePath]
-                    onToggled: value => root.tagScan.setSkipped(modelData.song.filePath, !value)
+                    Accessible.name: "Apply new details to " + modelData.song.title
+                    checked: !root.tagScan.skippedDetails[modelData.song.filePath]
+                    onToggled: value => root.tagScan.setDetailSkipped(modelData.song.filePath, !value)
+                }
+            }
+        }
+    }
+
+    SectionLabel {
+        visible: root.view === "tags" && root.tagScan.covers.length > 0
+        text: "Album Covers"
+    }
+
+    SettingCard {
+        visible: root.view === "tags" && root.tagScan.covers.length > 0
+
+        SettingRow {
+            title: root.plural(root.tagScan.covers.length, "album", "albums") + " without a cover"
+            subtitle: "Each cover is saved into the album's songs that don't have one."
+
+            SettingButton {
+                text: root.tagScan.acceptedCovers > 0 ? "Turn All Off" : "Turn All On"
+                onClicked: root.tagScan.setAllCoversSkipped(root.tagScan.acceptedCovers > 0)
+            }
+        }
+
+        Repeater {
+            model: root.tagScan.covers
+
+            RowLayout {
+                id: coverRow
+                required property var modelData
+                Layout.fillWidth: true
+                Layout.minimumHeight: 64
+                spacing: 16
+
+                Rectangle {
+                    Layout.preferredWidth: 48
+                    Layout.preferredHeight: 48
+                    radius: 6
+                    color: surfaceInput
+                    clip: true
+
+                    Image {
+                        anchors.fill: parent
+                        source: "https://coverartarchive.org/release/" + coverRow.modelData.releaseId + "/front-250"
+                        sourceSize: Qt.size(96, 96)
+                        fillMode: Image.PreserveAspectCrop
+                        asynchronous: true
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 3
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: coverRow.modelData.album + "  •  " + (coverRow.modelData.artist || "Unknown Artist")
+                        color: textPrimary
+                        font.family: displayFont
+                        font.pixelSize: 14
+                        font.weight: Font.DemiBold
+                        elide: Text.ElideRight
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: root.plural(coverRow.modelData.songs.length, "song", "songs") + ": "
+                              + coverRow.modelData.songs.map(song => song.title).join(", ")
+                        color: textSecondary
+                        font.family: bodyFont
+                        font.pixelSize: 12
+                        elide: Text.ElideRight
+                    }
+                }
+
+                SettingSwitch {
+                    Accessible.name: "Add the cover for " + coverRow.modelData.album
+                    checked: !root.tagScan.skippedCovers[coverRow.modelData.releaseId]
+                    onToggled: value => root.tagScan.setCoverSkipped(coverRow.modelData.releaseId, !value)
                 }
             }
         }
@@ -178,7 +276,7 @@ Turn off any song that looks wrong, then apply."
 
         SettingRow {
             iconName: "list-music"
-            title: root.duplicates.length + (root.duplicates.length === 1 ? " song with copies" : " songs with copies")
+            title: root.plural(root.duplicates.length, "song with copies", "songs with copies")
             subtitle: "The best copy of each song is kept: lossless first, then the largest file. Turn on any other copy to remove it."
         }
 
@@ -213,7 +311,7 @@ Turn off any song that looks wrong, then apply."
 
     ConfirmPopup {
         id: recycleConfirm
-        title: "Move " + root.removalPaths.length + (root.removalPaths.length === 1 ? " song" : " songs") + " to the Recycle Bin?"
+        title: "Move " + root.plural(root.removalPaths.length, "song", "songs") + " to the Recycle Bin?"
         subtitle: "You can restore them from the Recycle Bin"
         message: "The files leave your music folders and your CassetteCat library. The copies you keep stay as they are."
         iconName: "list-music"

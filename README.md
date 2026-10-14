@@ -154,9 +154,8 @@ privately, as described in [SECURITY.md](.github/SECURITY.md).
 
 ### Translations
 
-CassetteCat Desktop is English only for now. Making it translatable, so it can join the Android app on
-[Weblate](https://hosted.weblate.org/engage/cassettecat/), is tracked in
-[#56](https://github.com/samyyy2311/CassetteCat-Desktop/issues/56).
+The desktop app is English only for now. Making it translatable, so it can join the Android app on
+[Weblate](https://hosted.weblate.org/engage/cassettecat/), is tracked in [#56](https://github.com/samyyy2311/CassetteCat-Desktop/issues/56).
 
 ---
 
@@ -164,12 +163,8 @@ CassetteCat Desktop is English only for now. Making it translatable, so it can j
 
 CassetteCat is free, with no ads and no tracking. If it's useful to you, you can support its development:
 
-<p align="center">
-  <a href="https://ko-fi.com/samyyy2311"><img src="https://img.shields.io/badge/Ko--fi-2A2A2A?style=flat-square&logo=kofi&logoColor=FF5E5B" alt="Support on Ko-fi" /></a>
-  <a href="https://buymeacoffee.com/samyyy2311"><img src="https://img.shields.io/badge/Buy_Me_a_Coffee-2A2A2A?style=flat-square&logo=buymeacoffee&logoColor=FFDD00" alt="Buy Me a Coffee" /></a>
-</p>
-
-Starring the repository, reporting bugs and translating help too.
+[![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-2A2A2A?style=flat-square&logo=kofi&logoColor=FF5E5B)](https://ko-fi.com/samyyy2311)
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy_Me_a_Coffee-2A2A2A?style=flat-square&logo=buymeacoffee&logoColor=FFDD00)](https://buymeacoffee.com/samyyy2311)
 
 ---
 

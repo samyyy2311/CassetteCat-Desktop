@@ -83,7 +83,7 @@ ColumnLayout {
                 { id: "deezer", title: "Deezer Artwork", subtitle: "High-resolution artist portraits and imagery", icon: "deezer", preserveColor: true, on: root.svcDeezer },
                 { id: "audiodb", title: "TheAudioDB", subtitle: "Artist imagery and biography metadata fallback", icon: "theaudiodb", preserveColor: true, on: root.svcAudiodb },
                 { id: "wiki", title: "Wikipedia", subtitle: "Artist biographies and summaries", icon: "wikipedia", preserveColor: true, on: root.svcWiki },
-                { id: "archive", title: "Cover Art Archive", subtitle: "Community-sourced album covers from MusicBrainz", icon: "archive", preserveColor: true, on: root.svcArchive },
+                { id: "archive", title: "MusicBrainz", subtitle: "Song details and album covers from MusicBrainz and the Cover Art Archive", icon: "archive", preserveColor: true, on: root.svcArchive },
                 { id: "discord", title: "Discord Status", subtitle: "Show the song you are playing on your Discord profile", icon: "discord", preserveColor: true, on: root.svcDiscord }
             ]
             delegate: ColumnLayout {

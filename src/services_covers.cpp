@@ -201,14 +201,9 @@ void ServicesController::searchArchiveCovers(quint64 requestToken, const QString
         return;
     }
 
-    // MusicBrainz allows one request a second.
-    static qint64 s_lastMbRequestMs = 0;
-    const qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - s_lastMbRequestMs;
-    const int delayMs = (elapsed < 1000) ? static_cast<int>(1000 - elapsed) : 0;
-    QTimer::singleShot(delayMs, this, [this, requestToken, album, artist, results, seen, retry]() {
+    QTimer::singleShot(nextMusicBrainzSlotMs(), this, [this, requestToken, album, artist, results, seen, retry]() {
         if (!onlineEnabled() || requestToken != m_coverRequestToken)
             return;
-        s_lastMbRequestMs = QDateTime::currentMSecsSinceEpoch();
 
         QUrl mbUrl("https://musicbrainz.org/ws/2/release");
         QUrlQuery mbQuery;

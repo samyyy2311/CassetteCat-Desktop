@@ -54,6 +54,7 @@ qt_add_executable(CassetteCat
     src/services_artist.cpp
     src/services_scrobble.cpp
     src/services_covers.cpp
+    src/services_tags.cpp
     src/credential_vault.h
     src/credential_vault.cpp
     src/discord_presence.h

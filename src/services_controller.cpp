@@ -105,6 +105,34 @@ bool ServicesController::selfCheck() {
     if (!services.m_pendingReplies.isEmpty())
         return false;
 
+    // A 3:20 song: the 4:00 live recording is skipped, and the original 1999 album beats a later compilation.
+    const QJsonObject search = QJsonDocument::fromJson(R"json({"recordings": [
+        {"score": 100, "title": "Song (Live)", "length": 240000, "artist-credit": [{"name": "Band"}],
+         "releases": [{"title": "Live", "status": "Official", "media": [{"position": 1, "track": [{"number": "1"}]}]}]},
+        {"score": 98, "title": "Song", "length": 201000,
+         "artist-credit": [{"name": "Band", "joinphrase": " feat. "}, {"name": "Singer"}],
+         "releases": [
+            {"title": "Greatest Hits", "status": "Official", "date": "2005",
+             "release-group": {"primary-type": "Album", "secondary-types": ["Compilation"]},
+             "media": [{"position": 1, "track": [{"number": "12"}]}]},
+            {"title": "First Album", "status": "Official", "date": "1999-03-01",
+             "release-group": {"primary-type": "Album"},
+             "media": [{"position": 2, "track": [{"number": "4"}]}]}]}]})json")
+                                   .object();
+    const QVariantMap expected{{"title", "Song"},        {"artist", "Band feat. Singer"},
+                               {"album", "First Album"}, {"year", 1999},
+                               {"trackNumber", 4},       {"discNumber", 2}};
+    if (musicBrainzTagsFrom(search, {{"durationSeconds", 200}}) != expected ||
+        musicBrainzTagsFrom(search, {{"durationSeconds", 200}, {"album", "greatest hits"}}).value("album") !=
+            QStringLiteral("Greatest Hits") ||
+        !musicBrainzTagsFrom(search, {{"durationSeconds", 150}}).isEmpty() ||
+        // With only a compilation to go on, the album is left alone.
+        musicBrainzTagsFrom(search, {{"durationSeconds", 240}}) !=
+            QVariantMap{{"title", "Song (Live)"}, {"artist", "Band"}}) {
+        qWarning() << "Services self-check failed: MusicBrainz tags";
+        return false;
+    }
+
     return compareVersions("0.6.1", "0.6.0") > 0 && compareVersions("0.6.0", "0.6.0") == 0 &&
            compareVersions("0.5.1", "0.6.0") < 0 && compareVersions("v1.0.0", "0.9.9") > 0;
 }

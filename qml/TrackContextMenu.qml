@@ -108,7 +108,7 @@ Menu {
     TrackMenuItem {
         text: "Edit Metadata"
         icon.name: "pencil"
-        visible: !!(root.track && root.track.filePath && !String(root.track.filePath).startsWith("http"))
+        visible: !!(root.track && root.track.filePath && !root.track.remoteId && !String(root.track.filePath).startsWith("http"))
         onTriggered: if (root.appWindow && root.track) root.appWindow.openTrackMetadataEditor(root.track)
     }
 

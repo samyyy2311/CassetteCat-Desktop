@@ -131,7 +131,7 @@ class RemoteControlServer final : public QObject {
     Response respond(const QByteArray &method, const QByteArray &target, const QByteArray &authorization,
                      const QByteArray &body, const QHostAddress &peer, const QByteArray &deviceName = {});
     Response answerPairRequest(const QByteArray &method, const QUrl &url, const QByteArray &body);
-    Response answerGet(const QUrl &url);
+    Response answerGet(const QUrl &url, const QByteArray &deviceName);
     Response answerMedia(const QByteArray &path, const QUrlQuery &query);
     Response answerControl(const QByteArray &path, const QJsonObject &request);
     Response playFromLibrary(const QJsonObject &request);
@@ -151,9 +151,10 @@ class RemoteControlServer final : public QObject {
     QHash<QString, QString> libraryPathsByKey() const;
     /// Answers a phone looking for computers on the network, or returns empty for anything else.
     QByteArray discoveryReply(const QByteArray &datagram, const QHostAddress &peer) const;
-    QJsonObject status();
+    QJsonObject status(const QByteArray &deviceName);
     /// Whether a disconnect is waiting for the phone; it is handed over once.
-    bool takeDisconnectRequest();
+    bool takeDisconnectRequest(const QByteArray &deviceName);
+    bool disconnectRequestedFor(const QByteArray &deviceName) const;
     /// Emits addressChanged when the address a phone should use differs from the one last shown.
     void checkAddress();
 
@@ -179,6 +180,7 @@ class RemoteControlServer final : public QObject {
     // Long enough for a paused phone's slowest check-in, and no longer, so a phone connecting again later isn't sent
     // away.
     QDeadlineTimer m_disconnectPhoneUntil{0};
+    QString m_disconnectPhoneName;
     bool m_syncRequested = false;
     QVariantMap m_phonePlayback;
     QStringList m_phoneCommands;

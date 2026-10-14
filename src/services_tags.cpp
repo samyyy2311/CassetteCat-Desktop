@@ -155,7 +155,8 @@ void ServicesController::findMusicBrainzTags(const QVariantMap &track) {
 void ServicesController::requestMusicBrainzTags(const QNetworkRequest &request, const QVariantMap &track, int attempt) {
     const QString filePath = track.value("filePath").toString();
     QTimer::singleShot(nextMusicBrainzSlotMs(), this, [this, request, track, filePath, attempt] {
-        if (!onlineEnabled()) {
+        // A retry can come after MusicBrainz or going online was turned off.
+        if (!onlineEnabled() || !serviceEnabled("archive")) {
             emit musicBrainzTagsReady(filePath, {}, QStringLiteral("off"));
             return;
         }
@@ -167,16 +168,22 @@ void ServicesController::requestMusicBrainzTags(const QNetworkRequest &request, 
                     filePath, musicBrainzTagsFrom(QJsonDocument::fromJson(reply->readAll()).object(), track), {});
                 return;
             }
-            // MusicBrainz answers 503 when it's busy or asked too often, so it gets a few more tries, further apart.
+            const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+            // Any other answer means this song can't be looked up, so the check moves on without it.
+            if (status != 0 && status != 503) {
+                qWarning().noquote() << "[MUSICBRAINZ] lookup refused status=" << status << reply->errorString();
+                emit musicBrainzTagsReady(filePath, {}, {});
+                return;
+            }
+            // MusicBrainz answers 503 when it's busy or asked too often, and no answer means the network dropped, so
+            // either gets a few more tries, further apart.
             if (attempt < 3) {
                 QTimer::singleShot(2000 * (attempt + 1), this, [this, request, track, attempt] {
                     requestMusicBrainzTags(request, track, attempt + 1);
                 });
                 return;
             }
-            qWarning().noquote() << "[MUSICBRAINZ] lookup failed status="
-                                 << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()
-                                 << reply->errorString();
+            qWarning().noquote() << "[MUSICBRAINZ] lookup failed status=" << status << reply->errorString();
             emit musicBrainzTagsReady(filePath, {}, QStringLiteral("busy"));
         });
     });

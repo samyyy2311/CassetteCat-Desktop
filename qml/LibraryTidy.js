@@ -18,7 +18,7 @@ function comparable(value) {
 
 // "Currents (Deluxe)" extends "Currents" with more words, but "Lovely" doesn't extend "Love".
 function extendsWith(whole, start) {
-    return whole.startsWith(start) && /^[\s(\[\-:/,.&]/.test(whole.slice(start.length))
+    return whole.length > start.length && whole.startsWith(start) && " ([-:/,.&".includes(whole.charAt(start.length))
 }
 
 // What a MusicBrainz match would change in a song; a field the song leaves empty counts as missing.
@@ -49,8 +49,9 @@ function duplicateGroups(songs) {
         const key = parts.join("\u001f")
         groups[key] = (groups[key] || []).concat([song])
     })
-    const quality = song => (losslessFormats.includes(String(song.format || "").toUpperCase()) ? 1e15 : 0) + Number(song.fileSize || 0)
+    const lossless = song => losslessFormats.includes(String(song.format || "").toUpperCase()) ? 1 : 0
+    const size = song => Number(song.fileSize || 0)
     return Object.keys(groups)
         .filter(key => groups[key].length > 1)
-        .map(key => groups[key].slice().sort((a, b) => quality(b) - quality(a)))
+        .map(key => groups[key].slice().sort((a, b) => lossless(b) - lossless(a) || size(b) - size(a)))
 }

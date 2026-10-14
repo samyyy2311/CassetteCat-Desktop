@@ -57,5 +57,4 @@ reviews:
         inline ${{ }} in run steps. `id-token: write` is a permission, not a hard-coded token.
     - path: "**/*.md"
       instructions: >-
-        Plain, direct language for people using or contributing to the app. No marketing tone, emoji headings or
-        badges beyond the existing ones.
+        Plain, direct language for people using or contributing to the app. No marketing tone or emoji headings.

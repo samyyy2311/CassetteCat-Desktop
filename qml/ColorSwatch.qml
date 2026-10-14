@@ -37,7 +37,8 @@ Column {
             width: 16
             height: 16
             icon: root.icon
-            color: textPrimary
+            // The custom colour can be pale, so the icon turns dark to stay visible on it.
+            color: root.color.hslLightness > 0.6 ? surfaceCard : textPrimary
         }
 
         MouseArea {

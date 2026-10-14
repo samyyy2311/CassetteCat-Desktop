@@ -148,7 +148,9 @@ See [Building and testing](docs/dev/building.md) for each system's details.
 
 ## Contributing
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and [AI_DISCLOSURE.md](AI_DISCLOSURE.md) for how AI assistance is used here. Report security issues privately, as described in [SECURITY.md](.github/SECURITY.md).
+Bug reports, ideas and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull
+request, and [AI_DISCLOSURE.md](AI_DISCLOSURE.md) for how AI assistance is used here. Report security issues
+privately, as described in [SECURITY.md](.github/SECURITY.md).
 
 ### Translations
 
@@ -160,12 +162,14 @@ CassetteCat Desktop is English only for now. Making it translatable, so it can j
 
 ## Support
 
-If CassetteCat is useful to you, you can support its development:
+CassetteCat is free, with no ads and no tracking. If it's useful to you, you can support its development:
 
 <p align="center">
-  <a href="https://ko-fi.com/samyyy2311"><img src="https://img.shields.io/badge/Ko--fi-FF5E5B?style=flat-square&logo=kofi&logoColor=white" alt="Ko-fi" /></a>
-  <a href="https://buymeacoffee.com/samyyy2311"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=flat-square&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee" /></a>
+  <a href="https://ko-fi.com/samyyy2311"><img src="https://img.shields.io/badge/Ko--fi-2A2A2A?style=flat-square&logo=kofi&logoColor=FF5E5B" alt="Support on Ko-fi" /></a>
+  <a href="https://buymeacoffee.com/samyyy2311"><img src="https://img.shields.io/badge/Buy_Me_a_Coffee-2A2A2A?style=flat-square&logo=buymeacoffee&logoColor=FFDD00" alt="Buy Me a Coffee" /></a>
 </p>
+
+Starring the repository, reporting bugs and translating help too.
 
 ---
 

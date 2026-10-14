@@ -12,6 +12,14 @@ TestCase {
                 ["title:A-Team>The A Team", "year:>2011"])
     }
 
+    function test_cosmetic_and_edition_differences_are_not_changes() {
+        const song = { title: "'Cause I'm a Man", artist: "Tame Impala", album: "Miss Anthropocene (Rave Edition)", year: 2020, trackNumber: 3 }
+        const tags = { title: "\u2019Cause I\u2019m a Man", artist: "tame  impala", album: "Miss Anthropocene", year: 2024, trackNumber: 2 }
+        compare(LibraryTidy.tagChanges(song, tags, { missingNumbersOnly: true }), [])
+        // Asked about one song on purpose, numbers are still corrected.
+        compare(LibraryTidy.tagChanges(song, tags).map(change => change.field), ["year", "trackNumber"])
+    }
+
     function test_duplicates_keep_the_lossless_or_largest_copy() {
         const songs = [
             { filePath: "a.mp3", title: "Song", artist: "Band", album: "LP", format: "MP3", fileSize: 9000000 },

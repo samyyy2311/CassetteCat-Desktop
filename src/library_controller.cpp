@@ -554,8 +554,9 @@ bool LibraryController::selfCheck() {
     // A cover saved into the file leaves its tags alone.
     const QString coverPath = tagDir.filePath("cover.png");
     QImage(4, 4, QImage::Format_RGB32).save(coverPath);
-    if (tagged.embedArtwork({wavPath}, QUrl::fromLocalFile(coverPath).toString()) != 1 ||
-        readTrackInfo(wavPath).title != "Keep")
+    if (tagged.hasEmbeddedArtwork(wavPath) ||
+        tagged.embedArtwork({wavPath}, QUrl::fromLocalFile(coverPath).toString()) != 1 ||
+        readTrackInfo(wavPath).title != "Keep" || !tagged.hasEmbeddedArtwork(wavPath))
         return fail("cover saved into the file");
 
     LibraryController mixLibrary;
@@ -978,6 +979,10 @@ int LibraryController::moveToTrash(const QStringList &filePaths) {
     if (moved > 0)
         publishTrackChanges();
     return moved;
+}
+
+bool LibraryController::hasEmbeddedArtwork(const QString &filePath) const {
+    return ::hasEmbeddedArtwork(filePath);
 }
 
 int LibraryController::embedArtwork(const QStringList &filePaths, const QString &artworkUrl) {

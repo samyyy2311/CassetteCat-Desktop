@@ -605,6 +605,19 @@ TrackInfo readTrackInfo(const QString &filePath) {
     return info;
 }
 
+bool hasEmbeddedArtwork(const QString &filePath) {
+    try {
+#ifdef _WIN32
+        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
+#else
+        TagLib::FileRef fileRef(filePath.toUtf8().constData());
+#endif
+        return !fileRef.isNull() && !fileRef.complexProperties("PICTURE").isEmpty();
+    } catch (...) {
+        return false;
+    }
+}
+
 bool writeEmbeddedArtwork(const QString &filePath, const QByteArray &image, QString *error) {
     try {
 #ifdef _WIN32

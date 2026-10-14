@@ -77,6 +77,7 @@ class LibraryController final : public QAbstractListModel {
     /// Moves the files to the system trash and drops them from the library; returns how many were moved.
     Q_INVOKABLE int moveToTrash(const QStringList &filePaths);
     /// Saves the image at \p artworkUrl into each file in \p filePaths; returns how many were saved.
+    Q_INVOKABLE bool hasEmbeddedArtwork(const QString &filePath) const;
     Q_INVOKABLE int embedArtwork(const QStringList &filePaths, const QString &artworkUrl);
     Q_INVOKABLE QVariantMap firstPlayableTrack() const;
     Q_INVOKABLE QVariantList playbackTracks() const;

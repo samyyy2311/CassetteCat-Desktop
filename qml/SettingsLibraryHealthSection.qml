@@ -45,12 +45,56 @@ ColumnLayout {
     }
 
     function changesText(item) {
-        const parts = item.changes.map(change => change.label + ": " + (change.from || "empty") + " → " + change.to)
-        if (item.addsCover) parts.push("Adds a cover")
-        return parts.join("  •  ")
+        const lines = item.changes.map(change => change.label + ":  " + (change.from || "(empty)") + "  →  " + change.to)
+        if (item.addsCover) lines.push("Cover:  adds the album's cover")
+        return lines.join("
+")
     }
 
     SectionLabel { text: "Library Health" }
+
+    RowLayout {
+        visible: root.view !== "overview"
+        Layout.fillWidth: true
+        spacing: 10
+
+        SettingButton {
+            text: "Back"
+            iconName: "chevron-left"
+            onClicked: {
+                root.refresh()
+                root.view = "overview"
+            }
+        }
+
+        Item { Layout.fillWidth: true }
+
+        SettingButton {
+            visible: root.view === "tags" && root.tagScan.suggestions.length > 0
+            text: root.tagScan.acceptedCount > 0 ? "Turn All Off" : "Turn All On"
+            onClicked: root.tagScan.setAllSkipped(root.tagScan.acceptedCount > 0)
+        }
+
+        SettingButton {
+            visible: root.view === "tags"
+            primary: true
+            enabled: !root.tagScan.running && root.tagScan.acceptedCount > 0
+            text: "Apply to " + root.tagScan.acceptedCount + (root.tagScan.acceptedCount === 1 ? " Song" : " Songs")
+            onClicked: {
+                root.tagScan.apply()
+                root.refresh()
+                root.view = "overview"
+            }
+        }
+
+        SettingButton {
+            visible: root.view === "duplicates"
+            destructive: true
+            enabled: root.removalPaths.length > 0
+            text: "Move " + root.removalPaths.length + " to Recycle Bin"
+            onClicked: recycleConfirm.open()
+        }
+    }
 
     SettingCard {
         visible: root.view === "overview"
@@ -100,7 +144,9 @@ ColumnLayout {
                    : root.tagScan.suggestions.length + (root.tagScan.suggestions.length === 1 ? " song to fix" : " songs to fix")
             subtitle: root.tagScan.problem
                       || (root.tagScan.running ? "You can leave this page. The check keeps going, about a song a second."
-                          : root.tagScan.suggestions.length > 0 ? "Turn off anything that looks wrong, then apply."
+                          : root.tagScan.suggestions.length > 0
+                            ? root.tagScan.summary() + "
+Turn off any song that looks wrong, then apply."
                           : "MusicBrainz agrees with these songs, or has no confident match for them.")
 
             SettingButton {
@@ -162,42 +208,6 @@ ColumnLayout {
                     }
                 }
             }
-        }
-    }
-
-    RowLayout {
-        visible: root.view !== "overview"
-        Layout.fillWidth: true
-        spacing: 10
-
-        SettingButton {
-            text: "Back"
-            onClicked: {
-                root.refresh()
-                root.view = "overview"
-            }
-        }
-
-        Item { Layout.fillWidth: true }
-
-        SettingButton {
-            visible: root.view === "tags"
-            primary: true
-            enabled: !root.tagScan.running && root.tagScan.acceptedCount > 0
-            text: "Apply to " + root.tagScan.acceptedCount + (root.tagScan.acceptedCount === 1 ? " Song" : " Songs")
-            onClicked: {
-                root.tagScan.apply()
-                root.refresh()
-                root.view = "overview"
-            }
-        }
-
-        SettingButton {
-            visible: root.view === "duplicates"
-            destructive: true
-            enabled: root.removalPaths.length > 0
-            text: "Move " + root.removalPaths.length + " to Recycle Bin"
-            onClicked: recycleConfirm.open()
         }
     }
 

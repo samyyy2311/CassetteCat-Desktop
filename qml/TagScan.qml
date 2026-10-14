@@ -35,6 +35,24 @@ QtObject {
         skipped = Object.assign({}, skipped, { [filePath]: skip })
     }
 
+    function setAllSkipped(skip) {
+        const next = {}
+        if (skip) suggestions.forEach(item => next[item.song.filePath] = true)
+        skipped = next
+    }
+
+    // How many suggestions touch each kind of detail, for the summary above the list.
+    function summary() {
+        const counts = {}
+        suggestions.forEach(item => {
+            item.changes.forEach(change => counts[change.label] = (counts[change.label] || 0) + 1)
+            if (item.addsCover) counts.Cover = (counts.Cover || 0) + 1
+        })
+        const names = { Title: "titles", Artist: "artists", Album: "albums", Year: "years", Track: "track numbers",
+                        Disc: "disc numbers", Cover: "covers" }
+        return Object.keys(names).filter(key => counts[key]).map(key => counts[key] + " " + names[key]).join("  •  ")
+    }
+
     function lookUpNext() {
         if (!running) return
         if (checkedCount >= songs.length) {
@@ -78,8 +96,8 @@ QtObject {
                 return
             }
             const song = root.songs[root.checkedCount]
-            const changes = LibraryTidy.tagChanges(song, tags)
-            const addsCover = !song.artworkUrl && !!tags.releaseId
+            const changes = LibraryTidy.tagChanges(song, tags, { missingNumbersOnly: true })
+            const addsCover = !!tags.releaseId && !song.artworkUrl && !library.hasEmbeddedArtwork(song.filePath)
             if (changes.length > 0 || addsCover)
                 root.suggestions = root.suggestions.concat([{ song: song, tags: tags, changes: changes, addsCover: addsCover }])
             root.checkedCount += 1

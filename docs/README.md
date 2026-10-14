@@ -2,15 +2,7 @@
 
 ## Using the app
 
-Start with **Getting started** if you're new.
-
-- [Getting started](guide/getting-started.md): installing on Windows, macOS and Linux, the first-run setup, and finding your way around.
-- [Library and playlists](guide/library-and-playlists.md): music folders, browsing and search, editing tags and covers, playlists and your Listening Record.
-- [Playback and sound](guide/playback-and-sound.md): Now Playing, the queue, crossfade, ReplayGain, the equalizer, the sleep timer, lyrics, the mini player and keyboard shortcuts.
-- [Streaming, radio and online services](guide/streaming-and-radio.md): Subsonic, Navidrome and Jellyfin, internet radio, scrobbling, Discord status and Offline Blackout Mode.
-- [Using CassetteCat with your phone](guide/phone-remote.md): pairing with the Android app, remote control, moving music between devices, and what stays in sync.
-- [Settings, backups and privacy](guide/settings-and-privacy.md): the window and tray, updates, backups, logs, and what stays on your computer.
-- [Troubleshooting](guide/troubleshooting.md): fixes for common problems, and how to report a bug.
+The user guide for both CassetteCat apps is at [cassettecat.caffeinelabs.in/docs](https://cassettecat.caffeinelabs.in/docs). It covers installing, every feature, using the app with your phone, and troubleshooting.
 
 ## Working on the code
 
@@ -21,5 +13,7 @@ Read **Building and testing** first.
 - [Design](../DESIGN.md): colours, type, components and motion.
 - [CI and releasing](dev/releasing.md): the workflows, and how to publish a release.
 - [Phone remote protocol](https://github.com/samyyy2311/CassetteCat/blob/main/docs/dev/desktop-remote-protocol.md): the HTTPS API the Android app uses, documented in the Android repository.
+
+The developer guides are also on the website, under [Developers](https://cassettecat.caffeinelabs.in/docs/developers).
 
 See also [CONTRIBUTING.md](../CONTRIBUTING.md) and [SECURITY.md](../.github/SECURITY.md).

@@ -232,7 +232,7 @@ ApplicationWindow {
     property int maxVolumePercent: 80
     property string replayGainMode: "off"
     property bool preferLocalLyrics: true
-    property bool embedCoversInFiles: false
+    property bool embedCoversInFiles: true
     property string lyricsAlignment: "left"
     property string lyricsActiveStyle: "white"
     property bool offlineBlackout: false
@@ -669,7 +669,7 @@ ApplicationWindow {
         lyricsAlignment = appSettings.value("lyrics/alignment", "left")
         lyricsActiveStyle = appSettings.value("lyrics/activeStyle", "white")
         preferLocalLyrics = appSettings.value("lyrics/preferLocal", true)
-        embedCoversInFiles = appSettings.value("covers/embedInFiles", false)
+        embedCoversInFiles = appSettings.value("covers/embedInFiles", true)
         offlineBlackout = appSettings.value("network/offlineBlackout", false)
         svcLrclib = appSettings.value("services/lrclib", true)
         svcRadio = appSettings.value("services/radio", true)

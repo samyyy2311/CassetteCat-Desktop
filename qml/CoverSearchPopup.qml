@@ -125,6 +125,29 @@ AppDialog {
             Layout.fillWidth: true
             Layout.leftMargin: 20
             Layout.rightMargin: 20
+            Layout.bottomMargin: 12
+            spacing: 10
+
+            Label {
+                Layout.fillWidth: true
+                text: "Also save the cover into the music files, so other apps show it"
+                color: textSecondary
+                font.family: bodyFont
+                font.pixelSize: 12
+                wrapMode: Text.Wrap
+            }
+
+            SettingSwitch {
+                Accessible.name: "Also save the cover into the music files"
+                checked: root.appWindow.embedCoversInFiles
+                onToggled: value => root.appWindow.embedCoversInFiles = value
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
             Layout.bottomMargin: 8
             visible: !root.searchLoading && root.searchResults.length > 0
 
@@ -144,20 +167,6 @@ AppDialog {
                 font.pixelSize: 10
             }
 
-            Item { Layout.fillWidth: true }
-
-            Label {
-                text: "Also save into the music files"
-                color: textSecondary
-                font.family: bodyFont
-                font.pixelSize: 11
-            }
-
-            SettingSwitch {
-                Accessible.name: "Also save into the music files"
-                checked: root.appWindow.embedCoversInFiles
-                onToggled: value => root.appWindow.embedCoversInFiles = value
-            }
         }
 
         Item {

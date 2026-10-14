@@ -43,11 +43,7 @@
   <a href="https://apps.microsoft.com/detail/9NXNRR95X3K0"><img src="https://get.microsoft.com/images/en-us%20dark.svg" alt="Get it from the Microsoft Store" height="52" /></a>
 </p>
 
-On Windows 10 and 11, the Microsoft Store version updates itself. It's also on the Windows Package Manager:
-
-```powershell
-winget install CassetteCat
-```
+On Windows 10 and 11, the Microsoft Store version updates itself.
 
 Everything else is on the [latest release](https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest) page:
 
@@ -153,6 +149,12 @@ See [Building and testing](docs/dev/building.md) for each system's details.
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and [AI_DISCLOSURE.md](AI_DISCLOSURE.md) for how AI assistance is used here. Report security issues privately, as described in [SECURITY.md](.github/SECURITY.md).
+
+### Translations
+
+CassetteCat Desktop is English only for now. Making it translatable, so it can join the Android app on
+[Weblate](https://hosted.weblate.org/engage/cassettecat/), is tracked in
+[#56](https://github.com/samyyy2311/CassetteCat-Desktop/issues/56).
 
 ---
 

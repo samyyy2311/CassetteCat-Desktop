@@ -93,6 +93,8 @@ QVariantMap ServicesController::musicBrainzTagsFrom(const QJsonObject &search, c
         return tags;
     const QJsonObject medium = release[QStringLiteral("media")].toArray().first().toObject();
     tags.insert("album", release[QStringLiteral("title")].toString());
+    if (const QString releaseId = release[QStringLiteral("id")].toString(); !releaseId.isEmpty())
+        tags.insert("releaseId", releaseId);
     if (const int year = release[QStringLiteral("date")].toString().left(4).toInt(); year > 0)
         tags.insert("year", year);
     const QJsonObject entry = medium[QStringLiteral("track")].toArray().first().toObject();

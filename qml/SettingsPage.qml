@@ -70,8 +70,12 @@ Item {
     property bool updateAvailable: false
     property string updateUrl: ""
 
+    property var appWindow
+    property var tagScan
+
     readonly property var categories: [
         { id: "library", label: "Music Library", icon: "library" },
+        { id: "health", label: "Library Health", icon: "list-music" },
         { id: "appearance", label: "Appearance", icon: "sliders-horizontal" },
         { id: "playback", label: "Playback & Audio", icon: "play" },
         { id: "shortcuts", label: "Keyboard Shortcuts", icon: "keyboard" },
@@ -87,6 +91,7 @@ Item {
     readonly property real activeSectionHeight: {
         switch (currentSection) {
             case "library": return secLibrary.implicitHeight
+            case "health": return secHealth.implicitHeight
             case "appearance": return secAppearance.implicitHeight
             case "playback": return secPlayback.implicitHeight
             case "shortcuts": return secShortcuts.implicitHeight
@@ -292,6 +297,14 @@ Item {
                                 onSongSortSelected: value => root.songSortSelected(value)
                                 onTrackDensitySelected: value => root.trackDensitySelected(value)
                                 onShowFormatBadgesSelected: value => root.showFormatBadgesSelected(value)
+                            }
+
+                            SettingsLibraryHealthSection {
+                                id: secHealth
+                                visible: root.currentSection === "health"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
+                                appWindow: root.appWindow
+                                tagScan: root.tagScan
                             }
 
                             SettingsAppearanceSection {

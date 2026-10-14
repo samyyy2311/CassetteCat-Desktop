@@ -20,7 +20,6 @@ Item {
     property alias searchBox: libSearchBar
     property alias searchInput: libSearchBar.searchInput
     readonly property int selectedTrackCount: Object.keys(root.appWindow.selectedTrackPaths || {}).length
-    property var health: ({})
 
     // The page is unloaded while hidden, so each view's scroll position is kept on the window.
     readonly property var scrollViews: ({ songsGrid: songsGridView, songsList: songsListView, artists: artistGrid,
@@ -197,8 +196,8 @@ Item {
                 tint: textPrimary
                 tooltipText: "Library health"
                 onClicked: {
-                    root.health = root.appWindow.libraryHealth()
-                    healthDialog.open()
+                    root.appWindow.settingsSection = "health"
+                    root.appWindow.page = "settings"
                 }
             }
         }
@@ -235,6 +234,12 @@ Item {
                 text: "Edit Tags"
                 iconName: "pencil"
                 onClicked: root.appWindow.openBatchMetadataEditor()
+            }
+
+            SettingButton {
+                text: "Fix Tags"
+                iconName: "search"
+                onClicked: root.appWindow.fixTags(root.appWindow.selectedTracks())
             }
 
             SettingButton {
@@ -651,25 +656,6 @@ Item {
                 else
                     libAutoScroller.start(mouse.x, mouse.y);
             }
-        }
-    }
-
-    Dialog {
-        id: healthDialog
-        // A fixed width; sizing to the wrapping label made the width depend on itself.
-        width: 360 + leftPadding + rightPadding
-        title: "Library health"
-        modal: true
-        standardButtons: Dialog.Ok
-        onOpened: root.health = root.appWindow.libraryHealth()
-
-        contentItem: ColumnLayout {
-            spacing: 10
-            Label { text: "This check uses the tracks currently indexed by CassetteCat."; color: root.appWindow.textSecondary; wrapMode: Text.WordWrap; Layout.preferredWidth: 360 }
-            Label { text: (root.health.total || 0) + " tracks indexed"; color: root.appWindow.textPrimary }
-            Label { text: (root.health.noFolderArtwork || 0) + " without folder artwork"; color: root.appWindow.textSecondary }
-            Label { text: (root.health.metadataGaps || 0) + " with missing title, artist, or album"; color: root.appWindow.textSecondary }
-            Label { text: (root.health.duplicateMetadata || 0) + " duplicate metadata entries"; color: root.appWindow.textSecondary }
         }
     }
 

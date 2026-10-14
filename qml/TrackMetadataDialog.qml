@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "LibraryTidy.js" as LibraryTidy
 
 Popup {
     id: root
@@ -85,14 +86,13 @@ Popup {
             }
             const inputs = { title: titleInput, artist: artistInput, album: albumInput, year: yearInput,
                              trackNumber: trackInput, discNumber: discInput }
-            const labels = { title: "title", artist: "artist", album: "album", year: "year",
-                             trackNumber: "track number", discNumber: "disc number" }
-            const changed = Object.keys(inputs).filter(field => tags[field] !== undefined
-                                                         && String(tags[field]) !== inputs[field].text)
-            changed.forEach(field => inputs[field].text = String(tags[field]))
+            const current = {}
+            Object.keys(inputs).forEach(field => current[field] = inputs[field].text)
+            const changed = LibraryTidy.tagChanges(current, tags)
+            changed.forEach(change => inputs[change.field].text = change.to)
             root.noteText = Object.keys(tags).length === 0 ? "MusicBrainz has no confident match for this song."
                           : changed.length === 0 ? "MusicBrainz agrees with these tags."
-                          : "MusicBrainz changed the " + changed.map(field => labels[field]).join(", ")
+                          : "MusicBrainz changed the " + changed.map(change => change.label.toLowerCase()).join(", ")
                             + ". Check them, then Save."
         }
     }

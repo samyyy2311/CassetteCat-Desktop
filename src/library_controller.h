@@ -72,6 +72,10 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE QVariantMap updateTrackMetadata(const QVariantMap &metadata);
     /// Applies the same tag \p changes to every file in \p filePaths; returns how many were saved.
     Q_INVOKABLE int updateTracksMetadata(const QStringList &filePaths, const QVariantMap &changes);
+    /// Writes each map's fields into the file its filePath names; returns how many were saved.
+    Q_INVOKABLE int updateEachTrackMetadata(const QVariantList &tracks);
+    /// Moves the files to the system trash and drops them from the library; returns how many were moved.
+    Q_INVOKABLE int moveToTrash(const QStringList &filePaths);
     /// Saves the image at \p artworkUrl into each file in \p filePaths; returns how many were saved.
     Q_INVOKABLE int embedArtwork(const QStringList &filePaths, const QString &artworkUrl);
     Q_INVOKABLE QVariantMap firstPlayableTrack() const;

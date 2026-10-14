@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import "LyricsText.js" as LyricsText
 import "QueueOrder.js" as QueueOrder
+import "LibraryTidy.js" as LibraryTidy
 
 ApplicationWindow {
     id: window
@@ -934,18 +935,20 @@ ApplicationWindow {
     }
 
     function libraryHealth() {
-        const tracks = availableTracks().filter(track => track && track.format !== "STREAM")
-        const keys = {}
-        tracks.forEach(track => {
-            const key = [track.title, track.artist, track.album].map(value => String(value || "").trim().toLowerCase()).join("\u001f")
-            keys[key] = (keys[key] || 0) + 1
-        })
+        const tracks = availableTracks().filter(track => track && track.format !== "STREAM" && !track.remoteId)
         return {
             total: tracks.length,
             noFolderArtwork: tracks.filter(track => !track.artworkUrl).length,
             metadataGaps: tracks.filter(track => !track.title || !track.artist || !track.album).length,
-            duplicateMetadata: Object.keys(keys).filter(key => key && keys[key] > 1).reduce((total, key) => total + keys[key] - 1, 0)
+            duplicateMetadata: LibraryTidy.duplicateGroups(tracks).reduce((total, group) => total + group.length - 1, 0)
         }
+    }
+
+    function fixTags(songs) {
+        libraryTagScan.start(songs)
+        clearTrackSelection()
+        settingsSection = "health"
+        page = "settings"
     }
 
     function deletePlaylist(id) {
@@ -3903,6 +3906,8 @@ ApplicationWindow {
                             SettingsPage {
                                 id: settingsRoot
                                 anchors.fill: parent
+                                appWindow: window
+                                tagScan: libraryTagScan
                                 currentSection: window.settingsSection
                                 trackCount: library.trackCount
                                 libraryFolders: library.folders
@@ -5250,6 +5255,10 @@ ApplicationWindow {
             refreshRadio()
         }
         onClosed: radioRefineOpen = false
+    }
+
+    TagScan {
+        id: libraryTagScan
     }
 
     CoverSearchPopup {

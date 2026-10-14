@@ -947,6 +947,39 @@ int LibraryController::updateTracksMetadata(const QStringList &filePaths, const 
     return updated;
 }
 
+int LibraryController::updateEachTrackMetadata(const QVariantList &tracks) {
+    int updated = 0;
+    for (const QVariant &value : tracks) {
+        const QVariantMap metadata = value.toMap();
+        QString error;
+        if (!writeTrackInfo(metadata, &error)) {
+            qWarning().noquote() << "METADATA_UPDATE_FAILED:" << metadata.value("filePath").toString() << error;
+            continue;
+        }
+        refreshTrack(metadata.value("filePath").toString());
+        ++updated;
+    }
+    if (updated > 0)
+        publishTrackChanges();
+    return updated;
+}
+
+int LibraryController::moveToTrash(const QStringList &filePaths) {
+    int moved = 0;
+    for (const QString &filePath : filePaths) {
+        if (!QFile::moveToTrash(filePath)) {
+            qWarning().noquote() << "TRASH_FAILED:" << filePath;
+            continue;
+        }
+        m_tracks.removeIf(
+            [&](const QVariant &track) { return track.toMap().value("filePath").toString() == filePath; });
+        ++moved;
+    }
+    if (moved > 0)
+        publishTrackChanges();
+    return moved;
+}
+
 int LibraryController::embedArtwork(const QStringList &filePaths, const QString &artworkUrl) {
     QFile file(QUrl(artworkUrl).toLocalFile());
     if (!file.open(QIODevice::ReadOnly)) {

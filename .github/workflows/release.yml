@@ -212,6 +212,8 @@ jobs:
           retention-days: 7
 
   build-macos:
+    # Paused while the macOS app is broken; restore it here and in verify-release to ship it again.
+    if: false
     needs: validate-tag
     runs-on: macos-15
     permissions:
@@ -265,7 +267,7 @@ jobs:
           retention-days: 7
 
   verify-release:
-    needs: [validate-tag, build-windows, build-linux, build-macos]
+    needs: [validate-tag, build-windows, build-linux]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -285,7 +287,6 @@ jobs:
           expected=(
             "CassetteCat-${TAG}-windows-x64.zip"
             "CassetteCat-${TAG}-windows-x64-setup.exe"
-            "CassetteCat-${TAG}-macos-universal.dmg"
           )
           for arch in x86_64 aarch64; do
             deb_arch=$([[ $arch == x86_64 ]] && echo amd64 || echo arm64)

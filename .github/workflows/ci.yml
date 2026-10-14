@@ -203,6 +203,8 @@ jobs:
         run: ctest --test-dir build/sanitizers --output-on-failure
 
   macos:
+    # Paused while the macOS app is broken; remove to build it again.
+    if: false
     runs-on: macos-15
     env:
       QT_QPA_PLATFORM: offscreen

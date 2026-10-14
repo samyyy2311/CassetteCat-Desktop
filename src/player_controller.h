@@ -77,7 +77,7 @@ class PlayerController final : public QObject {
     Q_INVOKABLE void setReplayGainMode(const QString &mode);
     /// Applies and saves equalizer \p settings; missing or out-of-range values fall back to flat.
     Q_INVOKABLE void setEqualizer(const QVariantMap &settings);
-    Q_INVOKABLE bool setAudioDevice(const QString &id);
+    Q_INVOKABLE void setAudioDevice(const QString &id);
     Q_INVOKABLE void restoreTrack(const QVariantMap &track, qint64 positionMs = 0);
     Q_INVOKABLE bool playTrack(const QVariantMap &track);
     Q_INVOKABLE void togglePlay();
@@ -126,6 +126,7 @@ class PlayerController final : public QObject {
     void setPlaying(bool playing);
     /// Applies ReplayGain and the configured ceiling to the audio output.
     void applyEffectiveVolume();
+    void applyAudioDevice();
     /// The base volume with ReplayGain and the configured ceiling applied.
     float effectiveVolume() const;
     /// Wires \p player's signals; only the current player's signals are acted on.
@@ -136,6 +137,8 @@ class PlayerController final : public QObject {
     // Both players decode into this; it mixes, equalizes and plays them on the chosen device.
     AudioPipeline *m_pipeline = nullptr;
     QMediaDevices *m_mediaDevices = nullptr;
+    // Empty follows the system default.
+    QByteArray m_chosenDeviceId;
     bool m_meterEnabled = false;
     QVariantMap m_equalizer;
     QMediaPlayer *m_player = nullptr;

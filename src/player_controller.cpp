@@ -52,8 +52,8 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     }
     applyEffectiveVolume();
     connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged, this, [this] {
+        applyAudioDevice();
         emit audioOutputsChanged();
-        emit audioDeviceChanged();
     });
 
     m_fadingPlayer = new QMediaPlayer(this);
@@ -143,6 +143,7 @@ void PlayerController::connectPlayer(QMediaPlayer *player) {
             if (m_pendingRestorePositionMs > 0) {
                 const qint64 targetPos = m_pendingRestorePositionMs;
                 m_pendingRestorePositionMs = 0;
+                m_pipeline->clear(m_player->audioBufferOutput());
                 m_player->setPosition(targetPos);
                 m_position = targetPos;
                 emit positionChanged();
@@ -244,27 +245,22 @@ QVariantList PlayerController::audioOutputs() const {
 }
 
 QString PlayerController::audioDeviceId() const {
-    const QByteArray currentId = m_pipeline->device().id();
-    if (currentId.isEmpty() || currentId == QMediaDevices::defaultAudioOutput().id()) {
-        return QString();
-    }
-    return QString::fromLatin1(currentId.toHex());
+    return m_pipeline->device().id() == m_chosenDeviceId ? QString::fromLatin1(m_chosenDeviceId.toHex()) : QString();
 }
 
-bool PlayerController::setAudioDevice(const QString &id) {
-    if (id.isEmpty()) {
-        m_pipeline->setDevice(QMediaDevices::defaultAudioOutput());
-        emit audioDeviceChanged();
-        return true;
-    }
-    for (const QAudioDevice &device : QMediaDevices::audioOutputs()) {
-        if (QString::fromLatin1(device.id().toHex()) != id)
-            continue;
-        m_pipeline->setDevice(device);
-        emit audioDeviceChanged();
-        return true;
-    }
-    return false;
+void PlayerController::setAudioDevice(const QString &id) {
+    m_chosenDeviceId = QByteArray::fromHex(id.toLatin1());
+    applyAudioDevice();
+}
+
+void PlayerController::applyAudioDevice() {
+    // A chosen device that is unplugged plays on the system default until it comes back.
+    QAudioDevice device = QMediaDevices::defaultAudioOutput();
+    for (const QAudioDevice &output : QMediaDevices::audioOutputs())
+        if (output.id() == m_chosenDeviceId)
+            device = output;
+    m_pipeline->setDevice(device);
+    emit audioDeviceChanged();
 }
 QString PlayerController::error() const {
     return m_error;

@@ -25,6 +25,7 @@
 #include <QThread>
 #include <cstring>
 #include <iostream>
+#include <optional>
 #include <string>
 
 #include <QFontDatabase>
@@ -208,6 +209,96 @@ void writeDebugLog(QtMsgType, const QMessageLogContext &, const QString &message
     }
 }
 
+struct Fonts {
+    QString display = "Space Grotesk";
+    QString body = "IBM Plex Sans";
+    QString mono = "IBM Plex Mono";
+};
+
+Fonts loadBundledFonts() {
+    Fonts fonts;
+    const struct FontEntry {
+        QString path;
+        QString *targetFamily;
+    } fontEntries[] = {{":/qt/qml/CassetteCat/fonts/space_grotesk_variable.ttf", &fonts.display},
+                       {":/qt/qml/CassetteCat/fonts/ibm_plex_sans_variable.ttf", &fonts.body},
+                       {":/qt/qml/CassetteCat/fonts/ibm_plex_mono_regular.ttf", &fonts.mono},
+                       {":/qt/qml/CassetteCat/fonts/ibm_plex_mono_semibold.ttf", nullptr}};
+
+    for (const auto &entry : fontEntries) {
+        int id = QFontDatabase::addApplicationFont(entry.path);
+        if (id >= 0) {
+            const QStringList families = QFontDatabase::applicationFontFamilies(id);
+            if (!families.isEmpty() && entry.targetFamily) {
+                *entry.targetFamily = families.first();
+            }
+            qWarning().noquote() << "FONT_LOAD:" << entry.path << "id=" << id << "families=" << families;
+        } else {
+            qWarning().noquote() << "FONT_LOAD_FAIL:" << entry.path;
+        }
+    }
+    return fonts;
+}
+
+/// Runs the self-check named by \p flag and returns its exit code, or nothing for any other argument.
+std::optional<int> runSelfCheck(const char *flag) {
+    if (std::strcmp(flag, "--single-instance-self-check") == 0) {
+        return singleInstanceSelfCheck() ? 0 : 1;
+    }
+
+    if (std::strcmp(flag, "--library-self-check") == 0) {
+        return (scanSelfCheck() && LibraryController::selfCheck()) ? 0 : 1;
+    }
+
+    if (std::strcmp(flag, "--services-self-check") == 0) {
+        return ServicesController::selfCheck() ? 0 : 1;
+    }
+
+    if (std::strcmp(flag, "--player-self-check") == 0) {
+        return PlayerController::selfCheck() ? 0 : 1;
+    }
+
+    if (std::strcmp(flag, "--streaming-self-check") == 0) {
+        return streaming::runSelfChecks() ? 0 : 1;
+    }
+
+    if (std::strcmp(flag, "--vault-self-check") == 0) {
+        return streaming::runSelfChecks(true) ? 0 : 1;
+    }
+
+    if (std::strcmp(flag, "--self-check") == 0) {
+        bool passed = true;
+        const auto check = [&passed](bool result, const char *name) {
+            if (result)
+                return;
+            qCritical().noquote() << "Self-check failed:" << name;
+            passed = false;
+        };
+        check(scanSelfCheck(), "library scan");
+        check(SettingsController::selfCheck(), "settings");
+        check(LibraryController::selfCheck(), "library controller");
+        check(streaming::runSelfChecks(), "streaming");
+        check(GlobalShortcutController::selfCheck(), "global shortcuts");
+        check(ServicesController::selfCheck(), "services");
+        check(PlayerController::selfCheck(), "player");
+        check(MprisController::selfCheck(), "mpris");
+        check(DiscordPresence::selfCheck(), "discord presence");
+        check(RemoteControlServer::selfCheck(), "remote control");
+        QSize labelSize;
+        const QString bundledLabel = QStringLiteral("0.5/qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png");
+        check(!CoverImageProvider().requestImage(bundledLabel, &labelSize, QSize(0, 0)).isNull(), "bundled cover");
+        check(singleInstanceSelfCheck(), "single instance");
+        return passed ? 0 : 1;
+    }
+    return std::nullopt;
+}
+
+QIcon bundledAppIcon() {
+    QIcon icon;
+    for (const int size : {16, 24, 32, 48, 64, 128, 256})
+        icon.addFile(":/qt/qml/CassetteCat/assets/cassettecat_icon.png", QSize(size, size));
+    return icon;
+}
 } // namespace
 
 #ifdef Q_OS_WIN
@@ -218,7 +309,7 @@ static void setupWindowsFrameless(QQuickWindow *window) {
     if (!hwnd)
         return;
 
-    // Enable immersive dark mode for title bar and window frame on Windows 10/11
+    // Windows 10 before 20H1 only knows the older attribute number.
     BOOL darkMode = TRUE;
     DwmSetWindowAttribute(hwnd, 19 /* DWMWA_USE_IMMERSIVE_DARK_MODE_BEFORE_20H1 */, &darkMode, sizeof(darkMode));
     DwmSetWindowAttribute(hwnd, 20 /* DWMWA_USE_IMMERSIVE_DARK_MODE */, &darkMode, sizeof(darkMode));
@@ -227,7 +318,7 @@ static void setupWindowsFrameless(QQuickWindow *window) {
     MARGINS margins = {1, 1, 1, 1};
     DwmExtendFrameIntoClientArea(hwnd, &margins);
 
-    // Blend window border seamlessly with the app surface background (#0E0D0C) on Windows 11
+    // Matching the app background (#0E0D0C) keeps Windows 11 from drawing a light line around the window.
     COLORREF borderColor = RGB(14, 13, 12);
     DwmSetWindowAttribute(hwnd, 34 /* DWMWA_BORDER_COLOR */, &borderColor, sizeof(borderColor));
 
@@ -272,7 +363,31 @@ static void registerWindowsAppIdentity() {
 
 #endif
 
-/// Initializes the application, runs optional self-checks, and starts the UI.
+static void showMainWindow(QQuickWindow *window, bool startMinimized, SmtcController &smtc, const QIcon &icon) {
+#ifdef Q_OS_WIN
+    window->setIcon(icon);
+    if (startMinimized) {
+        window->create();
+        setupWindowsFrameless(window);
+        smtc.initialize(static_cast<quintptr>(window->winId()));
+    } else {
+        window->setVisible(true);
+        setupWindowsFrameless(window);
+        smtc.initialize(static_cast<quintptr>(window->winId()));
+        activateWindow(window);
+    }
+#else
+    if (startMinimized) {
+        window->create();
+    } else {
+        window->setVisible(true);
+    }
+#ifdef Q_OS_MACOS
+    smtc.initialize(0);
+#endif
+#endif
+}
+
 int main(int argc, char *argv[]) {
     qInstallMessageHandler(writeDebugLog);
 
@@ -286,8 +401,6 @@ int main(int argc, char *argv[]) {
     SetCurrentProcessExplicitAppUserModelID(kAppUserModelId);
 #endif
 
-    // Ensure display swap interval is synchronized with monitor VSync (supports high refresh 144Hz, 240Hz, 360Hz,
-    // 540Hz)
     QSurfaceFormat surfaceFormat = QSurfaceFormat::defaultFormat();
     surfaceFormat.setSwapInterval(1);
     QSurfaceFormat::setDefaultFormat(surfaceFormat);
@@ -304,78 +417,11 @@ int main(int argc, char *argv[]) {
     registerWindowsAppIdentity();
 #endif
 
-    if (argc == 2 && std::strcmp(argv[1], "--single-instance-self-check") == 0) {
-        return singleInstanceSelfCheck() ? 0 : 1;
-    }
+    const Fonts fonts = loadBundledFonts();
 
-    QString displayFontFamily = "Space Grotesk";
-    QString bodyFontFamily = "IBM Plex Sans";
-    QString monoFontFamily = "IBM Plex Mono";
-
-    const struct FontEntry {
-        QString path;
-        QString *targetFamily;
-    } fontEntries[] = {{":/qt/qml/CassetteCat/fonts/space_grotesk_variable.ttf", &displayFontFamily},
-                       {":/qt/qml/CassetteCat/fonts/ibm_plex_sans_variable.ttf", &bodyFontFamily},
-                       {":/qt/qml/CassetteCat/fonts/ibm_plex_mono_regular.ttf", &monoFontFamily},
-                       {":/qt/qml/CassetteCat/fonts/ibm_plex_mono_semibold.ttf", nullptr}};
-
-    for (const auto &entry : fontEntries) {
-        int id = QFontDatabase::addApplicationFont(entry.path);
-        if (id >= 0) {
-            const QStringList families = QFontDatabase::applicationFontFamilies(id);
-            if (!families.isEmpty() && entry.targetFamily) {
-                *entry.targetFamily = families.first();
-            }
-            qWarning().noquote() << "FONT_LOAD:" << entry.path << "id=" << id << "families=" << families;
-        } else {
-            qWarning().noquote() << "FONT_LOAD_FAIL:" << entry.path;
-        }
-    }
-
-    if (argc == 2 && std::strcmp(argv[1], "--library-self-check") == 0) {
-        return (scanSelfCheck() && LibraryController::selfCheck()) ? 0 : 1;
-    }
-
-    if (argc == 2 && std::strcmp(argv[1], "--services-self-check") == 0) {
-        return ServicesController::selfCheck() ? 0 : 1;
-    }
-
-    if (argc == 2 && std::strcmp(argv[1], "--player-self-check") == 0) {
-        return PlayerController::selfCheck() ? 0 : 1;
-    }
-
-    if (argc == 2 && std::strcmp(argv[1], "--streaming-self-check") == 0) {
-        return streaming::runSelfChecks() ? 0 : 1;
-    }
-
-    if (argc == 2 && std::strcmp(argv[1], "--vault-self-check") == 0) {
-        return streaming::runSelfChecks(true) ? 0 : 1;
-    }
-
-    if (argc == 2 && std::strcmp(argv[1], "--self-check") == 0) {
-        bool passed = true;
-        const auto check = [&passed](bool result, const char *name) {
-            if (result)
-                return;
-            qCritical().noquote() << "Self-check failed:" << name;
-            passed = false;
-        };
-        check(scanSelfCheck(), "library scan");
-        check(SettingsController::selfCheck(), "settings");
-        check(LibraryController::selfCheck(), "library controller");
-        check(streaming::runSelfChecks(), "streaming");
-        check(GlobalShortcutController::selfCheck(), "global shortcuts");
-        check(ServicesController::selfCheck(), "services");
-        check(PlayerController::selfCheck(), "player");
-        check(MprisController::selfCheck(), "mpris");
-        check(DiscordPresence::selfCheck(), "discord presence");
-        check(RemoteControlServer::selfCheck(), "remote control");
-        QSize labelSize;
-        const QString bundledLabel = QStringLiteral("0.5/qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png");
-        check(!CoverImageProvider().requestImage(bundledLabel, &labelSize, QSize(0, 0)).isNull(), "bundled cover");
-        check(singleInstanceSelfCheck(), "single instance");
-        return passed ? 0 : 1;
+    if (argc == 2) {
+        if (const std::optional<int> result = runSelfCheck(argv[1]))
+            return *result;
     }
 
     QString openPath;
@@ -418,17 +464,10 @@ int main(int argc, char *argv[]) {
 
     QQuickWindow *mainWindow = nullptr;
 
-    QIcon appIcon;
-    appIcon.addFile(":/qt/qml/CassetteCat/assets/cassettecat_icon.png", QSize(16, 16));
-    appIcon.addFile(":/qt/qml/CassetteCat/assets/cassettecat_icon.png", QSize(24, 24));
-    appIcon.addFile(":/qt/qml/CassetteCat/assets/cassettecat_icon.png", QSize(32, 32));
-    appIcon.addFile(":/qt/qml/CassetteCat/assets/cassettecat_icon.png", QSize(48, 48));
-    appIcon.addFile(":/qt/qml/CassetteCat/assets/cassettecat_icon.png", QSize(64, 64));
-    appIcon.addFile(":/qt/qml/CassetteCat/assets/cassettecat_icon.png", QSize(128, 128));
-    appIcon.addFile(":/qt/qml/CassetteCat/assets/cassettecat_icon.png", QSize(256, 256));
+    const QIcon appIcon = bundledAppIcon();
     app.setWindowIcon(appIcon);
 
-    QFont defaultFont(displayFontFamily);
+    QFont defaultFont(fonts.display);
     defaultFont.setStyleHint(QFont::SansSerif);
     app.setFont(defaultFont);
 
@@ -506,10 +545,12 @@ int main(int argc, char *argv[]) {
     };
     QObject::connect(&instanceServer, &QLocalServer::newConnection, &app, processInstanceConnections);
     processInstanceConnections();
+    // Declared before the engine so it outlives the QML that binds to it while the app quits.
+    WindowFrame windowFrame;
     QQmlApplicationEngine engine;
-    engine.rootContext()->setContextProperty("displayFontFamily", displayFontFamily);
-    engine.rootContext()->setContextProperty("bodyFontFamily", bodyFontFamily);
-    engine.rootContext()->setContextProperty("monoFontFamily", monoFontFamily);
+    engine.rootContext()->setContextProperty("displayFontFamily", fonts.display);
+    engine.rootContext()->setContextProperty("bodyFontFamily", fonts.body);
+    engine.rootContext()->setContextProperty("monoFontFamily", fonts.mono);
     engine.rootContext()->setContextProperty("library", &library);
     engine.rootContext()->setContextProperty("streaming", &streaming);
     engine.rootContext()->setContextProperty("player", &player);
@@ -517,7 +558,6 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("appSettings", &appSettings);
     engine.rootContext()->setContextProperty("installedFromStore", installedFromStore());
     engine.rootContext()->setContextProperty("smtc", &smtc);
-    WindowFrame windowFrame;
     engine.rootContext()->setContextProperty("windowFrame", &windowFrame);
     engine.rootContext()->setContextProperty("mpris", &mpris);
     engine.rootContext()->setContextProperty("discord", &discord);
@@ -556,30 +596,10 @@ int main(int argc, char *argv[]) {
             quickWin->setPersistentGraphics(false);
             quickWin->setPersistentSceneGraph(false);
             mainWindow = quickWin;
-            const bool startMinimized =
-                appSettings.value(QStringLiteral("ui/startMinimizedToTray"), false).toBool() && tray.available();
-#ifdef Q_OS_WIN
-            quickWin->setIcon(appIcon);
-            if (startMinimized) {
-                quickWin->create();
-                setupWindowsFrameless(quickWin);
-                smtc.initialize(static_cast<quintptr>(quickWin->winId()));
-            } else {
-                quickWin->setVisible(true);
-                setupWindowsFrameless(quickWin);
-                smtc.initialize(static_cast<quintptr>(quickWin->winId()));
-                activateWindow(quickWin);
-            }
-#else
-            if (startMinimized) {
-                quickWin->create();
-            } else {
-                quickWin->setVisible(true);
-            }
-#ifdef Q_OS_MACOS
-            smtc.initialize(0);
-#endif
-#endif
+            showMainWindow(quickWin,
+                           appSettings.value(QStringLiteral("ui/startMinimizedToTray"), false).toBool() &&
+                               tray.available(),
+                           smtc, appIcon);
             break;
         }
     }

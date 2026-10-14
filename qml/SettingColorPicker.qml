@@ -18,6 +18,8 @@ AppDialog {
     }
 
     maxWidth: 380
+    // Typing replaces the field's binding, so each opening starts again from the current color.
+    onAboutToShow: hexInput.text = currentColor
     padding: 22
 
     ColumnLayout {

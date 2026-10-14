@@ -2,6 +2,7 @@
 
 #include <QByteArray>
 #include <QElapsedTimer>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QObject>
@@ -17,6 +18,8 @@ class LibraryController;
 class PlayerController;
 class QHostAddress;
 class QTcpSocket;
+class QUrl;
+class QUrlQuery;
 
 /// Lets the Android app control playback over the local network. It speaks the same HTTP API as the
 /// CassetteCat hardware player, plus a bearer pairing code, so the phone reuses its device client.
@@ -123,6 +126,25 @@ class RemoteControlServer final : public QObject {
     void streamFile(QTcpSocket *socket, const Response &response, const QByteArray &range);
     Response respond(const QByteArray &method, const QByteArray &target, const QByteArray &authorization,
                      const QByteArray &body, const QHostAddress &peer, const QByteArray &deviceName = {});
+    Response answerPairRequest(const QByteArray &method, const QUrl &url, const QByteArray &body);
+    Response answerGet(const QUrl &url);
+    Response answerMedia(const QByteArray &path, const QUrlQuery &query);
+    Response answerControl(const QByteArray &path, const QJsonObject &request);
+    Response playFromLibrary(const QJsonObject &request);
+    Response answerQueue(const QByteArray &path, const QJsonObject &request);
+    Response answerSync(const QByteArray &path, const QJsonObject &request, const QByteArray &body,
+                        const QByteArray &deviceName);
+    Response libraryPage(const QUrlQuery &query) const;
+    Response likesSnapshot() const;
+    Response playlistsForPhone() const;
+    Response updatePhoneState(const QJsonObject &request, const QByteArray &deviceName);
+    Response startHandoff(const QJsonObject &request);
+    Response applyPhoneLikes(const QJsonObject &request);
+    Response savePhoneListens(const QJsonObject &request);
+    Response savePhonePlaylist(const QJsonObject &request);
+    QVariantMap libraryTrack(const QString &id) const;
+    /// Library file paths by LibraryController::matchKey, for matching songs the phone sends.
+    QHash<QString, QString> libraryPathsByKey() const;
     /// Answers a phone looking for computers on the network, or returns empty for anything else.
     QByteArray discoveryReply(const QByteArray &datagram, const QHostAddress &peer) const;
     QJsonObject status();

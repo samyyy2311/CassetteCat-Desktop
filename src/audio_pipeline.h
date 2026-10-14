@@ -70,6 +70,8 @@ class AudioPipeline final : public QObject {
 
     void append(QAudioBufferOutput *output, const QAudioBuffer &buffer);
     void restartSink();
+    /// Runs on the audio thread.
+    void openSink(const QAudioDevice &device, bool paused);
     /// Mixes \p frames frames into \p out; the mutex must be held.
     void mix(float *out, qint64 frames);
 

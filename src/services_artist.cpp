@@ -26,8 +26,10 @@ void ServicesController::fetchArtistBio(const QString &artist) {
     if (artistName.isEmpty())
         return;
     if (serviceEnabled("wiki")) {
-        fetchArtistBioFromWikipedia(
-            artistName, {artistName + " (band)", artistName + " (musician)", artistName + " (singer)", artistName}, 0);
+        fetchWikipediaIntro(
+            {artistName + " (band)", artistName + " (musician)", artistName + " (singer)", artistName}, 0,
+            [this, artistName](const QString &bio) { emit artistBioLoaded(artistName, bio); },
+            [this, artistName] { fetchArtistBioFromAudioDb(artistName); });
     } else if (serviceEnabled("audiodb")) {
         fetchArtistBioFromAudioDb(artistName);
     }
@@ -112,12 +114,17 @@ void ServicesController::fetchAlbumBio(const QString &album, const QString &arti
     const QStringList queries = artistName.isEmpty()
                                     ? QStringList{albumName + " (album)"}
                                     : QStringList{albumName + " (" + artistName + " album)", albumName + " (album)"};
-    fetchAlbumBioFromWikipedia(albumName, queries, 0);
+    fetchWikipediaIntro(
+        queries, 0, [this, albumName](const QString &bio) { emit albumBioLoaded(albumName, bio); }, [] {});
 }
 
-void ServicesController::fetchAlbumBioFromWikipedia(const QString &album, const QStringList &queries, int index) {
-    if (!onlineEnabled() || !serviceEnabled("wiki") || index >= queries.size())
+void ServicesController::fetchWikipediaIntro(const QStringList &queries, int index,
+                                             std::function<void(const QString &)> found,
+                                             std::function<void()> missing) {
+    if (!onlineEnabled() || !serviceEnabled("wiki") || index >= queries.size()) {
+        missing();
         return;
+    }
 
     QUrl url("https://en.wikipedia.org/w/api.php");
     QUrlQuery q;
@@ -135,22 +142,24 @@ void ServicesController::fetchAlbumBioFromWikipedia(const QString &album, const 
     request.setHeader(QNetworkRequest::UserAgentHeader,
                       "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
     auto *reply = trackReply(m_net->get(request));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, album, queries, index]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, queries, index, found, missing]() {
         reply->deleteLater();
-        if (!onlineEnabled() || !serviceEnabled("wiki"))
+        if (!onlineEnabled() || !serviceEnabled("wiki")) {
+            missing();
             return;
+        }
         if (reply->error() == QNetworkReply::NoError) {
             const auto pages =
                 QJsonDocument::fromJson(reply->readAll()).object().value("query").toObject().value("pages").toObject();
             for (const auto &key : pages.keys()) {
                 const QString extract = pages.value(key).toObject().value("extract").toString().trimmed();
                 if (!extract.isEmpty()) {
-                    emit albumBioLoaded(album, extract);
+                    found(extract);
                     return;
                 }
             }
         }
-        fetchAlbumBioFromWikipedia(album, queries, index + 1);
+        fetchWikipediaIntro(queries, index + 1, found, missing);
     });
 }
 
@@ -188,7 +197,7 @@ void ServicesController::downloadArtistImage(const QString &artist, const QStrin
     });
 }
 
-void ServicesController::fetchArtistImageFromAudioDb(const QString &artist) {
+void ServicesController::searchAudioDb(const QString &artist, std::function<void(const QJsonArray &)> handle) {
     if (!onlineEnabled() || !serviceEnabled("audiodb"))
         return;
     QUrl url("https://www.theaudiodb.com/api/v1/json/123/search.php");
@@ -199,13 +208,16 @@ void ServicesController::fetchArtistImageFromAudioDb(const QString &artist) {
     QNetworkRequest request(url);
     request.setTransferTimeout(services::detail::requestTimeoutMs);
     auto *reply = trackReply(m_net->get(request));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, artist]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, handle]() {
         reply->deleteLater();
-        if (!onlineEnabled() || !serviceEnabled("audiodb"))
+        if (!onlineEnabled() || !serviceEnabled("audiodb") || reply->error() != QNetworkReply::NoError)
             return;
-        if (reply->error() != QNetworkReply::NoError)
-            return;
-        const auto artists = QJsonDocument::fromJson(reply->readAll()).object().value("artists").toArray();
+        handle(QJsonDocument::fromJson(reply->readAll()).object().value("artists").toArray());
+    });
+}
+
+void ServicesController::fetchArtistImageFromAudioDb(const QString &artist) {
+    searchAudioDb(artist, [this, artist](const QJsonArray &artists) {
         const QString key = canonicalArtistName(artist);
         for (const auto &value : artists) {
             const auto entry = value.toObject();
@@ -221,73 +233,8 @@ void ServicesController::fetchArtistImageFromAudioDb(const QString &artist) {
     });
 }
 
-void ServicesController::fetchArtistBioFromWikipedia(const QString &artist, const QStringList &queries, int index) {
-    if (!onlineEnabled() || !serviceEnabled("wiki")) {
-        fetchArtistBioFromAudioDb(artist);
-        return;
-    }
-    if (index >= queries.size()) {
-        fetchArtistBioFromAudioDb(artist);
-        return;
-    }
-
-    QUrl url("https://en.wikipedia.org/w/api.php");
-    QUrlQuery q;
-    q.addQueryItem("action", "query");
-    q.addQueryItem("format", "json");
-    q.addQueryItem("prop", "extracts");
-    q.addQueryItem("exintro", "true");
-    q.addQueryItem("explaintext", "true");
-    q.addQueryItem("redirects", "true");
-    q.addQueryItem("titles", queries.at(index));
-    url.setQuery(q);
-
-    QNetworkRequest req(url);
-    req.setTransferTimeout(services::detail::requestTimeoutMs);
-    req.setHeader(QNetworkRequest::UserAgentHeader, "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
-
-    auto *reply = trackReply(m_net->get(req));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, artist, queries, index]() {
-        reply->deleteLater();
-        if (!onlineEnabled() || !serviceEnabled("wiki")) {
-            fetchArtistBioFromAudioDb(artist);
-            return;
-        }
-        if (reply->error() == QNetworkReply::NoError) {
-            const auto doc = QJsonDocument::fromJson(reply->readAll());
-            const auto query = doc.object().value("query").toObject();
-            const auto pages = query.value("pages").toObject();
-            for (const auto &key : pages.keys()) {
-                const auto page = pages.value(key).toObject();
-                const QString extract = page.value("extract").toString().trimmed();
-                if (!extract.isEmpty()) {
-                    emit artistBioLoaded(artist, extract);
-                    return;
-                }
-            }
-        }
-        fetchArtistBioFromWikipedia(artist, queries, index + 1);
-    });
-}
-
 void ServicesController::fetchArtistBioFromAudioDb(const QString &artist) {
-    if (!onlineEnabled() || !serviceEnabled("audiodb"))
-        return;
-    QUrl url("https://www.theaudiodb.com/api/v1/json/123/search.php");
-    QUrlQuery q;
-    q.addQueryItem("s", artist);
-    url.setQuery(q);
-
-    QNetworkRequest request(url);
-    request.setTransferTimeout(services::detail::requestTimeoutMs);
-    auto *reply = trackReply(m_net->get(request));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, artist]() {
-        reply->deleteLater();
-        if (!onlineEnabled() || !serviceEnabled("audiodb"))
-            return;
-        if (reply->error() != QNetworkReply::NoError)
-            return;
-        const auto artists = QJsonDocument::fromJson(reply->readAll()).object().value("artists").toArray();
+    searchAudioDb(artist, [this, artist](const QJsonArray &artists) {
         const QString biography =
             artists.isEmpty() ? QString() : artists.first().toObject().value("strBiographyEN").toString().trimmed();
         if (!biography.isEmpty())

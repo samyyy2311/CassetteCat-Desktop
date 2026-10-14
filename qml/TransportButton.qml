@@ -1,6 +1,6 @@
 import QtQuick
 
-Item {
+ButtonBase {
     id: root
     property string iconName: "play"
     property int buttonSize: 36
@@ -11,26 +11,9 @@ Item {
     readonly property color recordRedHover: accentHover
     property color iconColor: accented ? root.accentColor : textPrimary
     property bool filled: true
-    property string tooltipText: ""
-    signal clicked()
 
     implicitWidth: root.buttonSize
     implicitHeight: root.buttonSize
-
-    readonly property bool isPressed: mouseArea.pressed
-    readonly property bool isHovered: mouseArea.containsMouse || (root.activeFocus && !root.mouseFocused)
-    property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
-
-    Accessible.role: Accessible.Button
-    Accessible.name: root.tooltipText
-    Accessible.onPressAction: root.clicked()
-    activeFocusOnTab: root.opacity > 0
-    Keys.onReturnPressed: root.clicked()
-    Keys.onEnterPressed: root.clicked()
-    // A focused button takes Space before a window's play/pause shortcut does.
-    Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space
-    Keys.onSpacePressed: event => { if (!event.isAutoRepeat) root.clicked() }
 
     Rectangle {
         id: cap
@@ -67,23 +50,5 @@ Item {
                 ? root.recordRedHover
                 : (root.isHovered ? textPrimary : root.iconColor)
         }
-    }
-
-    MouseArea {
-        id: mouseArea
-        anchors.fill: parent
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onPressed: {
-            root.mouseFocused = true
-            root.forceActiveFocus()
-        }
-        onClicked: root.clicked()
-    }
-
-    AppToolTip {
-        targetItem: mouseArea
-        text: root.tooltipText
-        visibleTarget: mouseArea.containsMouse && root.tooltipText.length > 0
     }
 }

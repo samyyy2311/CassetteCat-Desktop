@@ -4,6 +4,7 @@ import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtQuick.Effects
 import "LyricsText.js" as LyricsText
+import "QueueOrder.js" as QueueOrder
 
 ApplicationWindow {
     id: window
@@ -993,9 +994,7 @@ ApplicationWindow {
         const insertAt = currentIdx >= 0 ? currentIdx + 1 : 0
         const filtered = playbackQueue.filter(candidate => trackIdentity(candidate) !== trackIdentity(track))
         playbackQueue = filtered.slice(0, insertAt).concat([track]).concat(filtered.slice(insertAt))
-        if (!originalPlaybackQueue.some(candidate => trackIdentity(candidate) === trackIdentity(track))) {
-            originalPlaybackQueue = originalPlaybackQueue.concat([track])
-        }
+        originalPlaybackQueue = QueueOrder.withNext(originalPlaybackQueue, player.currentTrack, track, trackIdentity)
         queueRevision++
         return true
     }
@@ -1639,7 +1638,6 @@ ApplicationWindow {
             "ui/nowPlayingNotifications": nowPlayingNotifications,
             "player/resumeQueueOnLaunch": resumeQueueOnLaunch,
             "player/nowPlayingMode": nowPlayingMode,
-            "player/audioDeviceId": player.audioDeviceId,
             "ui/closeToTray": closeToTray,
             "ui/startMinimizedToTray": startMinimizedToTray,
             "ui/defaultLaunchPage": defaultLaunchPage,
@@ -2390,6 +2388,19 @@ ApplicationWindow {
     function getGenreGroups() { return genreGroups }
     function getFolderGroups() { return folderGroups }
 
+    // The player bar's cover and title open Now Playing, or start the library when nothing is loaded yet.
+    function dockClicked(button) {
+        if (phoneInDock) {
+            nowPlayingOpen = !nowPlayingOpen
+        } else if (button === Qt.RightButton) {
+            if (player.currentTrack.filePath) dockTrackMenu.popup()
+        } else if (player.currentTrack.filePath) {
+            nowPlayingOpen = !nowPlayingOpen
+        } else if (library.trackCount > 0) {
+            playTrack(library.firstPlayableTrack())
+        }
+    }
+
     function playTrack(track) {
         if (!track) return
         if (track.format === "STREAM") {
@@ -2582,9 +2593,10 @@ ApplicationWindow {
             const shuffled = queue.slice(0, currentIndex + 1).concat(shuffledTracks(queue.slice(currentIndex + 1)))
             if (radioQueue) radioPlaybackQueue = shuffled
             else playbackQueue = shuffled
+        } else if (radioQueue) {
+            radioPlaybackQueue = QueueOrder.unshuffled(queue, currentIndex, originalRadioPlaybackQueue, trackIdentity)
         } else {
-            if (radioQueue) radioPlaybackQueue = originalRadioPlaybackQueue.length ? originalRadioPlaybackQueue.slice() : queue.slice()
-            else playbackQueue = originalPlaybackQueue.length ? originalPlaybackQueue.slice() : queue.slice()
+            playbackQueue = QueueOrder.unshuffled(queue, currentIndex, originalPlaybackQueue, trackIdentity)
         }
         queueRevision++
     }
@@ -2608,7 +2620,7 @@ ApplicationWindow {
     function continueWithSimilar() {
         const recent = activePlaybackQueue().concat(playbackHistory).map(track => track.filePath)
         const similar = library.similarTracks(player.currentTrack, recent, 25)
-        if (similar.length) startPlayback(similar, 0)
+        if (similar.length) startPlayback(similar, 0, player.shuffleEnabled)
         else shuffleAll()
     }
 
@@ -3969,7 +3981,8 @@ ApplicationWindow {
                                 onInAppShortcutSelected: (action, shortcut) => window.setInAppShortcut(action, shortcut)
                                 onMiniPlayerAlwaysOnTopSelected: value => window.miniPlayerAlwaysOnTop = value
                                 onAudioDeviceSelected: value => {
-                                    if (player.setAudioDevice(value)) appSettings.setValue("player/audioDeviceId", player.audioDeviceId)
+                                    player.setAudioDevice(value)
+                                    appSettings.setValue("player/audioDeviceId", value)
                                 }
                                 onLyricsFontSizeSelected: value => window.lyricsFontSize = value
                                 onDefaultLaunchPageSelected: value => window.defaultLaunchPage = value
@@ -4226,21 +4239,7 @@ ApplicationWindow {
                             hoverEnabled: true
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: mouse => {
-                                if (phoneInDock) {
-                                    nowPlayingOpen = !nowPlayingOpen
-                                } else if (mouse.button === Qt.RightButton) {
-                                    if (player.currentTrack.filePath) {
-                                        dockTrackMenu.popup()
-                                    }
-                                } else {
-                                    if (player.currentTrack.filePath) {
-                                        nowPlayingOpen = !nowPlayingOpen
-                                    } else if (library.trackCount > 0) {
-                                        playTrack(library.firstPlayableTrack())
-                                    }
-                                }
-                            }
+                            onClicked: mouse => dockClicked(mouse.button)
                         }
                     }
 
@@ -4264,21 +4263,7 @@ ApplicationWindow {
                                 hoverEnabled: true
                                 acceptedButtons: Qt.LeftButton | Qt.RightButton
                                 cursorShape: Qt.PointingHandCursor
-                                onClicked: mouse => {
-                                    if (phoneInDock) {
-                                        nowPlayingOpen = !nowPlayingOpen
-                                    } else if (mouse.button === Qt.RightButton) {
-                                        if (player.currentTrack.filePath) {
-                                            dockTrackMenu.popup()
-                                        }
-                                    } else {
-                                        if (player.currentTrack.filePath) {
-                                            nowPlayingOpen = !nowPlayingOpen
-                                        } else if (library.trackCount > 0) {
-                                            playTrack(library.firstPlayableTrack())
-                                        }
-                                    }
-                                }
+                                onClicked: mouse => dockClicked(mouse.button)
                             }
                         }
 

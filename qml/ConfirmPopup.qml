@@ -20,46 +20,10 @@ AppDialog {
     contentItem: ColumnLayout {
         spacing: 16
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-
-            Rectangle {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
-                radius: 18
-                color: "transparent"
-                border.width: 1
-                border.color: recordRed
-
-                LucideIcon {
-                    anchors.centerIn: parent
-                    width: 18
-                    height: 18
-                    icon: root.iconName
-                    color: recordRed
-                }
-            }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                spacing: 2
-
-                Label {
-                    text: root.title
-                    color: textPrimary
-                    font.family: displayFont
-                    font.pixelSize: 16
-                    font.weight: Font.Bold
-                }
-
-                Label {
-                    text: root.subtitle
-                    color: silverDim
-                    font.family: monoFont
-                    font.pixelSize: 11
-                }
-            }
+        DialogHeader {
+            iconName: root.iconName
+            title: root.title
+            subtitle: root.subtitle
         }
 
         Label {

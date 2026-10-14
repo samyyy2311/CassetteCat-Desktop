@@ -36,90 +36,22 @@ ColumnLayout {
 
             Repeater {
                 model: accentPresets
-                delegate: Column {
-                    spacing: 6
-
-                    Rectangle {
-                        width: 36
-                        height: 36
-                        radius: 18
-                        color: modelData.base
-                        border.width: root.accentName === modelData.id ? 2.5 : 1
-                        border.color: root.accentName === modelData.id ? textPrimary : borderSubtle
-                        scale: swatchMouse.pressed ? 0.92 : (swatchMouse.containsMouse ? 1.08 : 1.0)
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-                        Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
-
-                        LucideIcon {
-                            visible: root.accentName === modelData.id
-                            anchors.centerIn: parent
-                            width: 16
-                            height: 16
-                            icon: "check"
-                            color: "#FFFFFF"
-                        }
-
-                        MouseArea {
-                            id: swatchMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.accentSelected(modelData.id)
-                        }
-                    }
-
-                    Label {
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: modelData.label
-                        color: root.accentName === modelData.id ? textPrimary : textSecondary
-                        font.family: displayFont
-                        font.pixelSize: 10
-                        font.weight: root.accentName === modelData.id ? Font.Bold : Font.Medium
-                    }
+                delegate: ColorSwatch {
+                    required property var modelData
+                    color: modelData.base
+                    label: modelData.label
+                    selected: root.accentName === modelData.id
+                    icon: selected ? "check" : ""
+                    onClicked: root.accentSelected(modelData.id)
                 }
             }
 
-            Column {
-                spacing: 6
-
-                Rectangle {
-                    width: 36
-                    height: 36
-                    radius: 18
-                    color: root.accentName === "custom" ? root.customAccentColor : surfaceElevated
-                    border.width: root.accentName === "custom" ? 2.5 : 1
-                    border.color: root.accentName === "custom" ? textPrimary : borderSubtle
-                    scale: customMouse.pressed ? 0.92 : (customMouse.containsMouse ? 1.08 : 1.0)
-
-                    Behavior on color { ColorAnimation { duration: 120 } }
-                    Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
-
-                    LucideIcon {
-                        anchors.centerIn: parent
-                        width: 16
-                        height: 16
-                        icon: root.accentName === "custom" ? "check" : "sliders-horizontal"
-                        color: "#FFFFFF"
-                    }
-
-                    MouseArea {
-                        id: customMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: colorPicker.open()
-                    }
-                }
-
-                Label {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Custom"
-                    color: root.accentName === "custom" ? textPrimary : textSecondary
-                    font.family: displayFont
-                    font.pixelSize: 10
-                    font.weight: Font.Medium
-                }
+            ColorSwatch {
+                color: selected ? root.customAccentColor : surfaceElevated
+                label: "Custom"
+                selected: root.accentName === "custom"
+                icon: selected ? "check" : "sliders-horizontal"
+                onClicked: colorPicker.open()
             }
         }
 

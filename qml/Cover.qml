@@ -83,16 +83,6 @@ Item {
     readonly property bool currentTrackPlaying: player.isPlaying && root.track && player.currentTrack
                                               && root.track.filePath === player.currentTrack.filePath
 
-    function coverColor(value) {
-        const colors = [
-            "#221E1B", "#1C1F26", "#241820", "#18221D", "#201B24", "#241F18"
-        ]
-        let hash = 0
-        const str = value || "CassetteCat"
-        for (let i = 0; i < str.length; ++i) hash = (hash * 31 + str.charCodeAt(i)) >>> 0
-        return colors[hash % colors.length]
-    }
-
     onArtworkSourceChanged: {
         applyArtworkSource()
     }

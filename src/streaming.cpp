@@ -492,6 +492,7 @@ void StreamingController::setServerFavorite(const QString &filePath, bool favori
         request.setTransferTimeout(streaming::detail::requestTimeoutMs);
         QNetworkReply *reply = trackReply(m_net->get(request));
         connect(reply, &QNetworkReply::finished, this, [=, this] {
+            reply->deleteLater();
             const QJsonObject response = parseSubsonicBody(reply->readAll());
             if (response.contains("_error") || reply->error() != QNetworkReply::NoError) {
                 emit serverFavoriteFailed(filePath);
@@ -516,6 +517,7 @@ void StreamingController::setServerFavorite(const QString &filePath, bool favori
         QNetworkReply *reply =
             favorite ? trackReply(m_net->post(request, QByteArray())) : trackReply(m_net->deleteResource(request));
         connect(reply, &QNetworkReply::finished, this, [=, this] {
+            reply->deleteLater();
             if (reply->error() != QNetworkReply::NoError) {
                 emit serverFavoriteFailed(filePath);
             }

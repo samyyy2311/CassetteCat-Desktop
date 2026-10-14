@@ -66,8 +66,10 @@ QVariantMap ServicesController::musicBrainzTagsFrom(const QJsonObject &search, c
             firstRecording = recording;
         for (const QJsonValue &releaseValue : recording[QStringLiteral("releases")].toArray()) {
             const QJsonObject release = releaseValue.toObject();
-            if (namedRelease.isEmpty() && !album.isEmpty() &&
-                release[QStringLiteral("title")].toString().compare(album, Qt::CaseInsensitive) == 0) {
+            // Of the releases with the file's album name, the earliest is the original rather than a reissue.
+            if (!album.isEmpty() &&
+                release[QStringLiteral("title")].toString().compare(album, Qt::CaseInsensitive) == 0 &&
+                (namedRelease.isEmpty() || sortableDate(release) < sortableDate(namedRelease))) {
                 namedRecording = recording;
                 namedRelease = release;
             }

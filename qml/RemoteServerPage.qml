@@ -165,14 +165,6 @@ Item {
         return fmt === formatFilter
     }
 
-    function matchesSearch(track) {
-        if (searchQuery.length === 0) return true
-        const q = searchQuery.toLowerCase()
-        return (track.title || "").toLowerCase().includes(q)
-            || (track.artist || "").toLowerCase().includes(q)
-            || (track.album || "").toLowerCase().includes(q)
-    }
-
     function collectTracks() {
         const tracks = []
         for (let i = 0; i < trackModel.rowCount(); i++) {

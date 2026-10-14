@@ -115,6 +115,9 @@ bool ServicesController::selfCheck() {
             {"title": "Greatest Hits", "status": "Official", "date": "2005",
              "release-group": {"primary-type": "Album", "secondary-types": ["Compilation"]},
              "media": [{"position": 1, "track": [{"number": "12"}]}]},
+            {"title": "First Album", "status": "Official", "date": "2020",
+             "release-group": {"primary-type": "Album"},
+             "media": [{"position": 1, "track": [{"number": "4"}]}]},
             {"title": "First Album", "status": "Official", "date": "1999-03-01",
              "release-group": {"primary-type": "Album"},
              "media": [{"position": 2, "track": [{"number": "4"}]}]}]}]})json")
@@ -126,6 +129,8 @@ bool ServicesController::selfCheck() {
         musicBrainzTagsFrom(search, {{"durationSeconds", 200}, {"album", "greatest hits"}}).value("album") !=
             QStringLiteral("Greatest Hits") ||
         !musicBrainzTagsFrom(search, {{"durationSeconds", 150}}).isEmpty() ||
+        // A file already naming the album still gets the original's year, not a reissue's.
+        musicBrainzTagsFrom(search, {{"durationSeconds", 200}, {"album", "first album"}}).value("year") != 1999 ||
         // With only a compilation to go on, the album is left alone.
         musicBrainzTagsFrom(search, {{"durationSeconds", 240}}) !=
             QVariantMap{{"title", "Song (Live)"}, {"artist", "Band"}}) {

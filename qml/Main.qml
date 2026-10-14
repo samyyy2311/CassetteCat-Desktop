@@ -922,17 +922,6 @@ ApplicationWindow {
         clearTrackSelection()
     }
 
-    function createSmartPlaylist(name, tracks) {
-        const paths = [...new Set((tracks || []).map(track => track.filePath).filter(path => !!path))]
-        if (!paths.length) return false
-        const existing = playlists.find(playlist => playlist.name === name)
-        playlists = existing
-            ? playlists.map(playlist => playlist.id === existing.id ? Object.assign({}, playlist, { trackPaths: paths }) : playlist)
-            : playlists.concat([{ id: Date.now().toString(36), name: name, trackPaths: paths }])
-        playlistStatus = name + " updated"
-        return true
-    }
-
     function libraryHealth() {
         const tracks = availableTracks().filter(track => track && track.format !== "STREAM")
         const keys = {}
@@ -1848,6 +1837,7 @@ ApplicationWindow {
             favs[norm] = true
         }
         favoriteTracks = favs
+        syncServerFavorite(filePath, !!favs[norm])
     }
 
     function setFavorites(filePaths, favorite) {
@@ -1858,6 +1848,12 @@ ApplicationWindow {
             else delete favs[normalizedPlaylistPath(filePath)]
         }
         favoriteTracks = favs
+        filePaths.forEach(filePath => syncServerFavorite(filePath, favorite))
+    }
+
+    // A like on a server's song goes to the server too, as it does from the phone.
+    function syncServerFavorite(filePath, favorite) {
+        if (filePath.startsWith("subsonic:") || filePath.startsWith("jellyfin:")) streaming.setServerFavorite(filePath, favorite)
     }
 
     function isFavorite(filePath) {
@@ -2315,14 +2311,6 @@ ApplicationWindow {
         folderGroups = []
     }
 
-    function getArtistGroups() { return artists }
-
-    function getAlbumGroups() { return albums }
-
-    function minimizeWindow() {
-        window.showMinimized()
-    }
-
     function filterCatalogDetailTracks(mode, title, heroTrack) {
         if (mode === "playlist") return playlistTracks(title)
         const trackPool = (heroTrack && heroTrack.remoteId) ? playbackTracks() : availableTracks()
@@ -2385,8 +2373,6 @@ ApplicationWindow {
         }
         catalogDetailOpen = false
     }
-    function getGenreGroups() { return genreGroups }
-    function getFolderGroups() { return folderGroups }
 
     // The player bar's cover and title open Now Playing, or start the library when nothing is loaded yet.
     function dockClicked(button) {

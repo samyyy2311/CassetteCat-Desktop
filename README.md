@@ -19,7 +19,7 @@
 <p align="center">
   <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases/latest"><img src="https://img.shields.io/github/v/release/samyyy2311/CassetteCat-Desktop?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=&logo=git&logoColor=E55B3C" alt="Latest release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/GPL--3.0--or--later-2A2A2A?style=flat-square&logo=gnu&logoColor=white" alt="GPL-3.0-or-later" /></a>
-  <img src="https://img.shields.io/badge/Windows_%C2%B7_macOS_%C2%B7_Linux-2A2A2A?style=flat-square" alt="Windows, macOS and Linux" />
+  <img src="https://img.shields.io/badge/Windows_%C2%B7_Linux-2A2A2A?style=flat-square" alt="Windows and Linux" />
   <a href="https://www.qt.io"><img src="https://img.shields.io/badge/Qt_6-2A2A2A?style=flat-square&logo=qt&logoColor=41CD52" alt="Qt 6" /></a>
   <a href="https://isocpp.org"><img src="https://img.shields.io/badge/C%2B%2B20-2A2A2A?style=flat-square&logo=cplusplus&logoColor=659AD2" alt="C++20" /></a>
   <a href="https://github.com/samyyy2311/CassetteCat-Desktop/releases"><img src="https://img.shields.io/github/downloads/samyyy2311/CassetteCat-Desktop/total?style=flat-square&color=2A2A2A&labelColor=2A2A2A&label=downloads&logo=github&logoColor=white" alt="GitHub downloads" /></a>
@@ -55,7 +55,6 @@ Everything else is on the [latest release](https://github.com/samyyy2311/Cassett
 | :--- | :--- | :--- |
 | Windows | `setup.exe` | Installer, with optional "Open with" entries for audio files |
 | Windows | `.zip` | Portable. Run `CassetteCat\bin\CassetteCat.exe` |
-| macOS 13+ | `.dmg` | One app for Apple silicon and Intel. Drag it to Applications |
 | Linux | `.AppImage` | Runs on most distributions. Make it executable and run it |
 | Linux | `.flatpak` | `flatpak install --user <file>` |
 | Linux | `.deb` | Debian, Ubuntu, Linux Mint, Pop!_OS |
@@ -64,7 +63,7 @@ Everything else is on the [latest release](https://github.com/samyyy2311/Cassett
 
 Linux packages come for x86_64 and ARM64; pick the one for your machine. Every release lists `SHA256SUMS.txt` for checking your download.
 
-The macOS app isn't notarized by Apple yet. The first time, right-click CassetteCat in Applications and choose **Open**, or allow it under **System Settings > Privacy & Security**.
+A macOS app is in development. It isn't ready to use yet, so releases don't include it for now.
 
 ---
 

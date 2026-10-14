@@ -204,7 +204,7 @@ Item {
 
     function openSearchResult(result) {
         pendingRow = result.row
-        searchField.text = ""
+        searchField.collapse()
         if (currentSection === result.section) Qt.callLater(scrollToPendingRow)
         else chooseSection(result.section)
     }
@@ -246,13 +246,15 @@ Item {
             anchors.topMargin: 14
             spacing: 0
 
-            RefineTextInput {
+            ExpandableSearchBar {
                 id: searchField
-                Layout.fillWidth: true
-                Layout.maximumWidth: 420
-                Layout.bottomMargin: 14
-                placeholder: "Search settings"
+                Layout.bottomMargin: 12
+                boxSize: 34
+                iconSize: 16
+                expandedWidth: 184
+                placeholder: "Search settings..."
                 onTextChanged: root.searchQuery = text
+                onCleared: root.searchQuery = ""
             }
 
             Item {

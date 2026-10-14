@@ -1603,6 +1603,7 @@ ApplicationWindow {
 
     function persistBeforeExit() {
         finishHistoryTracking()
+        libraryTagScan.save()
         persistPlayerState()
         if (window.visibility !== Window.Maximized) {
             if (window.width > 400) appSettings.setValue("window/width", window.width)

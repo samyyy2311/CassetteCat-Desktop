@@ -100,7 +100,7 @@ ColumnLayout {
             preserveIconColor: true
             title: "Song Details & Covers"
             subtitle: root.tagScan.running
-                      ? "Checking " + root.tagScan.checkedCount + " of " + root.tagScan.songs.length + " songs with MusicBrainz"
+                      ? "Checking " + root.tagScan.checkedCount + " of " + root.tagScan.songPaths.length + " songs with MusicBrainz"
                       : (root.health.metadataGaps || 0) + " missing a title, artist or album  •  "
                         + (root.health.noFolderArtwork || 0) + " without a cover"
 
@@ -108,7 +108,7 @@ ColumnLayout {
                 text: root.tagScan.running || root.tagScan.paused || root.tagScan.hasResults ? "View" : "Fix Tags"
                 onClicked: {
                     if (!root.tagScan.running && !root.tagScan.paused && !root.tagScan.hasResults)
-                        root.tagScan.start(root.appWindow.availableTracks())
+                        root.tagScan.startLibrary(root.appWindow.availableTracks())
                     root.view = "tags"
                 }
             }
@@ -136,12 +136,13 @@ ColumnLayout {
             iconName: "musicbrainz"
             preserveIconColor: true
             title: root.tagScan.running
-                   ? "Checking " + root.tagScan.checkedCount + " of " + root.tagScan.songs.length + " songs"
-                   : root.tagScan.paused ? "Paused at " + root.tagScan.checkedCount + " of " + root.tagScan.songs.length + " songs"
+                   ? "Checking " + root.tagScan.checkedCount + " of " + root.tagScan.songPaths.length + " songs"
+                   : root.tagScan.paused ? "Paused at " + root.tagScan.checkedCount + " of " + root.tagScan.songPaths.length + " songs"
                    : "Check finished"
             subtitle: root.tagScan.problem
                       || (root.tagScan.running ? "You can leave this page. The check keeps going, about a song a second."
                           : root.tagScan.hasResults ? "Turn off anything that looks wrong, then apply."
+                          : root.tagScan.songPaths.length === 0 ? "Every song in your library has been checked already."
                           : "MusicBrainz agrees with these songs, or has no confident match for them.")
 
             SettingButton {
@@ -154,6 +155,13 @@ ColumnLayout {
                 visible: root.tagScan.paused
                 text: "Continue"
                 onClicked: root.tagScan.resume()
+            }
+
+            SettingButton {
+                // Starting over drops unapplied results, so it's only offered once there are none.
+                visible: !root.tagScan.running && !root.tagScan.paused && !root.tagScan.hasResults
+                text: "Check All Again"
+                onClicked: root.tagScan.checkAllAgain(root.appWindow.availableTracks())
             }
         }
     }

@@ -1310,7 +1310,8 @@ ApplicationWindow {
         const radioPage = radioPageLoader.item
         const jellyfinPage = jellyfinPageLoader.item
         const subsonicPage = subsonicPageLoader.item
-        if (contains(libraryPage ? libraryPage.searchBox : null) || contains(searchPage ? searchPage.searchBox : null) || contains(radioPage ? radioPage.searchBox : null) || contains(jellyfinPage ? jellyfinPage.searchBox : null) || contains(subsonicPage ? subsonicPage.searchBox : null)) return
+        if (contains(libraryPage ? libraryPage.searchBox : null) || contains(searchPage ? searchPage.searchBox : null) || contains(radioPage ? radioPage.searchBox : null) || contains(jellyfinPage ? jellyfinPage.searchBox : null) || contains(subsonicPage ? subsonicPage.searchBox : null) || contains(settingsSearchBar)) return
+        settingsSearchBar.input.focus = false
         if (libraryPage) {
             libraryPage.searchInput.focus = false
             if (!libraryPage.appWindow.libSearchQuery.length && libraryPage.searchBox) libraryPage.searchBox.collapse()
@@ -1749,7 +1750,7 @@ ApplicationWindow {
             catalogDetailOpen = false
             const loaders = { library: libraryPageLoader, radio: radioPageLoader, jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader, stats: listeningRecordPageLoader }
             const pageItem = !nowPlayingOpen && loaders[page] ? loaders[page].item : null
-            const box = pageItem ? pageItem.searchBox : null
+            const box = pageItem ? pageItem.searchBox : !nowPlayingOpen && page === "settings" ? settingsSearchBar : null
             if (box && box.visible && box.enabled) box.expand()
             else openSearchPage()
         }

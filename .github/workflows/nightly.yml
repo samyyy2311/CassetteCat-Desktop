@@ -104,7 +104,9 @@ jobs:
         run: |
           NIGHTLY_DATE=$(date -u +%Y%m%d)
           NIGHTLY_SHA_SHORT=${NIGHTLY_SHA:0:7}
-          cmake --install build/nightly --component runtime --prefix dist/CassetteCat
+          prefix="$PWD/dist/CassetteCat"
+          mkdir -p "$prefix"
+          cmake --install build/nightly --component runtime --prefix "$prefix"
           tar -czf "CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-x64.tar.gz" -C dist CassetteCat
           cpack --config build/nightly/CPackConfig.cmake -G DEB
           cpack --config build/nightly/CPackConfig.cmake -G RPM

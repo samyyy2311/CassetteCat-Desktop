@@ -38,9 +38,9 @@ ColumnLayout {
             title: root.listenBrainzConnected
                    ? ("ListenBrainz (@" + root.listenBrainzUser + ")")
                    : "ListenBrainz"
-            subtitle: root.listenBrainzConnected
-                      ? "Open music database run by the MetaBrainz Foundation"
-                      : "Connect your ListenBrainz profile using a User Token"
+            subtitle: !root.listenBrainzConnected ? "Connect your ListenBrainz profile using a User Token"
+                      : services.listenBrainzProblem !== "" ? services.listenBrainzProblem
+                      : "Open music database run by the MetaBrainz Foundation"
 
             RowLayout {
                 spacing: 10

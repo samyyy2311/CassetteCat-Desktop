@@ -128,6 +128,7 @@ void ServicesController::saveListenBrainzSession(const QString &token, const QSt
     m_listenBrainzToken = value;
     SettingsController::setGlobalValue("scrobble/listenbrainz_user", userName.trimmed());
     SettingsController::setGlobalValue("scrobble/listenbrainz_enabled", true);
+    setListenBrainzProblem({});
 }
 
 void ServicesController::disconnectListenBrainz() {
@@ -138,7 +139,18 @@ void ServicesController::disconnectListenBrainz() {
     SettingsController::setGlobalValue("scrobble_secure/listenbrainz_token", QVariant());
     SettingsController::setGlobalValue("scrobble/listenbrainz_user", QString());
     SettingsController::setGlobalValue("scrobble/listenbrainz_enabled", false);
-    emit listenBrainzDisconnected();
+    setListenBrainzProblem({});
+}
+
+QString ServicesController::listenBrainzProblem() const {
+    return m_listenBrainzProblem;
+}
+
+void ServicesController::setListenBrainzProblem(const QString &problem) {
+    if (m_listenBrainzProblem == problem)
+        return;
+    m_listenBrainzProblem = problem;
+    emit listenBrainzProblemChanged();
 }
 
 void ServicesController::submitToListenBrainz(const char *listenType, const QString &artist, const QString &title,
@@ -160,14 +172,18 @@ void ServicesController::submitToListenBrainz(const char *listenType, const QStr
     auto *reply = trackReply(m_net->post(request, QJsonDocument(root).toJson(QJsonDocument::Compact)));
     connect(reply, &QNetworkReply::finished, this, [this, reply, listenType] {
         reply->deleteLater();
-        if (reply->error() == QNetworkReply::NoError)
-            return;
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (reply->error() == QNetworkReply::NoError) {
+            setListenBrainzProblem({});
+            return;
+        }
         const QString reason = QJsonDocument::fromJson(reply->readAll()).object().value("error").toString();
         qWarning().noquote() << "[SCROBBLE] ListenBrainz refused" << listenType << "status=" << status << reason;
-        // A rejected token never starts working again, so Settings goes back to asking for one.
-        if (status == 401)
-            disconnectListenBrainz();
+        // Without an answer it was the network, which sorts itself out; an answer says what the person must fix,
+        // such as verifying their email, so its first sentence goes to Settings.
+        if (status != 0)
+            setListenBrainzProblem(reason.isEmpty() ? QStringLiteral("ListenBrainz didn't accept your listens.")
+                                                    : reason.section(QStringLiteral(". "), 0, 0) + '.');
     });
 }
 

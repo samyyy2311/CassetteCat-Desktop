@@ -2141,8 +2141,8 @@ ApplicationWindow {
         metadataDialog.openForMany(selectedTracks())
     }
 
-    function openTrackMetadataEditor() {
-        if (player.currentTrack && player.currentTrack.filePath) metadataDialog.openFor(player.currentTrack)
+    function openTrackMetadataEditor(track) {
+        if (track && track.filePath) metadataDialog.openFor(track)
     }
 
     function openAudioDetails() {

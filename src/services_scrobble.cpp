@@ -3,6 +3,7 @@
 #include "app_settings.h"
 #include "credential_vault.h"
 
+#include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDebug>
@@ -161,6 +162,9 @@ void ServicesController::submitToListenBrainz(const char *listenType, const QStr
     QJsonObject trackMeta{{"artist_name", artist}, {"track_name", title}};
     if (!album.isEmpty())
         trackMeta.insert("release_name", album);
+    trackMeta.insert("additional_info",
+                     QJsonObject{{"submission_client", "CassetteCat Desktop"},
+                                 {"submission_client_version", QCoreApplication::applicationVersion()}});
     QJsonObject listen{{"track_metadata", trackMeta}};
     if (listenedAt > 0)
         listen.insert("listened_at", listenedAt);

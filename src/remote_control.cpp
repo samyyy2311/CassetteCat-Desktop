@@ -275,6 +275,22 @@ void RemoteControlServer::continueOnPhone() {
         m_handoffToPhone = true;
 }
 
+void RemoteControlServer::disconnectPhone() {
+    m_disconnectPhoneUntil.setRemainingTime(75 * 1000);
+    m_controllerName.clear();
+    m_controllerTimeout.stop();
+    m_phonePlayback.clear();
+    m_phoneTimeout.stop();
+    emit controllerChanged();
+    emit phonePlaybackChanged();
+}
+
+bool RemoteControlServer::takeDisconnectRequest() {
+    const bool requested = !m_disconnectPhoneUntil.hasExpired();
+    m_disconnectPhoneUntil = QDeadlineTimer(0);
+    return requested;
+}
+
 QVariantMap RemoteControlServer::phonePlayback() const {
     return m_phonePlayback;
 }
@@ -538,7 +554,8 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
     const bool controlsPlayback = path == "/api/playback" || path == "/api/volume" || path == "/api/seek" ||
                                   path.startsWith("/api/queue") || path == "/api/library/play" ||
                                   path == "/api/handoff";
-    if (controlsPlayback && !deviceName.isEmpty()) {
+    // The poll that carries a disconnect request doesn't name the phone again.
+    if (controlsPlayback && !deviceName.isEmpty() && m_disconnectPhoneUntil.hasExpired()) {
         const QString name = QString::fromUtf8(deviceName);
         m_controllerTimeout.start();
         if (m_controllerName != name) {
@@ -838,6 +855,11 @@ RemoteControlServer::Response RemoteControlServer::updatePhoneState(const QJsonO
                     {"artwork", artwork},
                     {"filePath", filePath}};
     }
+    QStringList commands = std::exchange(m_phoneCommands, {});
+    if (takeDisconnectRequest()) {
+        playback.clear();
+        commands = {"disconnect"};
+    }
     // A phone paused for a while checks in only every 30 seconds.
     if (playback.isEmpty())
         m_phoneTimeout.stop();
@@ -847,9 +869,8 @@ RemoteControlServer::Response RemoteControlServer::updatePhoneState(const QJsonO
         m_phonePlayback = playback;
         emit phonePlaybackChanged();
     }
-    const QJsonArray commands = QJsonArray::fromStringList(std::exchange(m_phoneCommands, {}));
     const QJsonObject reply{{"ok", true},
-                            {"commands", commands},
+                            {"commands", QJsonArray::fromStringList(commands)},
                             {"playNext", std::exchange(m_phonePlayNext, {})},
                             {"likesRevision", m_likesRevision},
                             {"needsArtwork", !playback.isEmpty() && playback.value("artwork").toString().isEmpty()}};
@@ -988,6 +1009,7 @@ QJsonObject RemoteControlServer::status() {
         {"deviceName", computerName()},
         // Reported once, so the phone takes over a single time.
         {"handoffRequested", std::exchange(m_handoffToPhone, false)},
+        {"disconnectRequested", takeDisconnectRequest()},
         {"syncRequested", std::exchange(m_syncRequested, false)},
     };
 }
@@ -1100,6 +1122,15 @@ bool RemoteControlServer::selfCheck() {
         remote.phonePlayback().value("artwork") == "data:image/jpeg;base64,/9j/AA==" &&
         remote.phonePlayback().value("positionMs").toInt() == 5000 &&
         checkIn(R"({"title":"Next","artist":"Ann"})").value("needsArtwork").toBool();
+    remote.disconnectPhone();
+    const bool disconnectsOnce =
+        remote.phonePlayback().isEmpty() &&
+        checkIn(R"({"title":"Next","isPlaying":true})").value("commands") == QJsonArray{"disconnect"} &&
+        remote.phonePlayback().isEmpty() &&
+        !QJsonDocument::fromJson(remote.respond("GET", "/api/playback", auth, {}, lan).body)
+             .object()
+             .value("disconnectRequested")
+             .toBool();
     const bool rejectsUnknownAction =
         remote.respond("POST", "/api/playback", auth, R"({"action":"reset"})", lan).status == 400;
     const bool keysByTitleAndArtist =
@@ -1300,8 +1331,8 @@ bool RemoteControlServer::selfCheck() {
 
     const bool ok = rejectsPublicPeer && rejectsWrongCode && reportsStatus && routesNext && clampsVolume &&
                     rejectsUnknownAction && relaysToPhone && asksForCover && keepsPhoneCover && acceptsHandoff &&
-                    namesController && handsBackOnce && codeInQueryOnlyForArtwork && servesQueue && servesHttp &&
-                    answersDiscovery && locksOutGuessing && rejectsInvalidBackup && keepsPreviousBackup &&
+                    namesController && handsBackOnce && disconnectsOnce && codeInQueryOnlyForArtwork && servesQueue &&
+                    servesHttp && answersDiscovery && locksOutGuessing && rejectsInvalidBackup && keepsPreviousBackup &&
                     routesPlayNext && relaysPlayNextOnce && refusesUnpairedUploadEarly && keysByTitleAndArtist &&
                     syncsLikes && copiesPlaylists && rejectsBadListens && asksBeforePairing &&
                     keepsAllowedUntilCollected && givesCodeOnceAllowed && unpairsOnePhone && turnsAwayDenied &&

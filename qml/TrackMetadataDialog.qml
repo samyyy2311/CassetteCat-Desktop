@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import "LibraryTidy.js" as LibraryTidy
 
 Popup {
     id: root
@@ -12,6 +13,8 @@ Popup {
     property var edited: ({})
     required property var appWindow
     property string errorText: ""
+    property string noteText: ""
+    property bool lookingUp: false
 
     parent: Overlay.overlay
     modal: true
@@ -57,6 +60,8 @@ Popup {
         tracks = []
         track = value || ({})
         errorText = ""
+        noteText = ""
+        lookingUp = false
         titleInput.text = track.title || ""
         artistInput.text = track.artist || ""
         albumInput.text = track.album || ""
@@ -68,6 +73,29 @@ Popup {
         commentInput.text = track.comment || ""
         lyricsInput.text = track.lyrics || ""
         open()
+    }
+
+    Connections {
+        target: services
+        function onMusicBrainzTagsReady(filePath, tags, problem) {
+            if (!root.lookingUp || filePath !== root.track.filePath) return
+            root.lookingUp = false
+            if (problem) {
+                root.noteText = problem === "off" ? "MusicBrainz is turned off. Turn it on in Settings, under Network & Services."
+                                                  : "MusicBrainz is busy right now. Try again in a minute."
+                return
+            }
+            const inputs = { title: titleInput, artist: artistInput, album: albumInput, year: yearInput,
+                             trackNumber: trackInput, discNumber: discInput }
+            const current = {}
+            Object.keys(inputs).forEach(field => current[field] = inputs[field].text)
+            const changed = LibraryTidy.tagChanges(current, tags)
+            changed.forEach(change => inputs[change.field].text = change.to)
+            root.noteText = Object.keys(tags).length === 0 ? "MusicBrainz has no confident match for this song."
+                          : changed.length === 0 ? "MusicBrainz agrees with these tags."
+                          : "MusicBrainz changed the " + changed.map(change => change.label.toLowerCase()).join(", ")
+                            + ". Check them, then Save."
+        }
     }
 
     background: Rectangle {
@@ -191,9 +219,9 @@ Popup {
             Layout.leftMargin: 24
             Layout.rightMargin: 24
             Layout.topMargin: 8
-            visible: root.errorText.length > 0
-            text: root.errorText
-            color: accentText
+            visible: text.length > 0
+            text: root.errorText || root.noteText
+            color: root.errorText ? accentText : textSecondary
             font.family: bodyFont
             font.pixelSize: 12
             wrapMode: Text.Wrap
@@ -207,6 +235,20 @@ Popup {
                 text: "Change cover art"
                 iconName: "disc"
                 onClicked: root.appWindow.openCoverSearch(albumInput.text, artistInput.text, root.track.filePath)
+            }
+            SettingButton {
+                visible: !root.batch
+                enabled: !root.lookingUp
+                text: root.lookingUp ? "Looking up..." : "Fill from MusicBrainz"
+                iconName: "search"
+                onClicked: {
+                    root.lookingUp = true
+                    root.noteText = ""
+                    // The fields as they are now, so a corrected title or artist finds the right song.
+                    services.findMusicBrainzTags({ filePath: root.track.filePath, title: titleInput.text,
+                                                   artist: artistInput.text, album: albumInput.text,
+                                                   durationSeconds: root.track.durationSeconds })
+                }
             }
             Item { Layout.fillWidth: true }
             SettingButton { text: "Cancel"; onClicked: root.close() }

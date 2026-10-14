@@ -72,6 +72,15 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE QVariantMap updateTrackMetadata(const QVariantMap &metadata);
     /// Applies the same tag \p changes to every file in \p filePaths; returns how many were saved.
     Q_INVOKABLE int updateTracksMetadata(const QStringList &filePaths, const QVariantMap &changes);
+    /// Writes each map's fields into the file its filePath names; returns how many were saved.
+    Q_INVOKABLE int updateEachTrackMetadata(const QVariantList &tracks);
+    /// Moves the files to the system trash and drops them from the library; returns how many were moved.
+    Q_INVOKABLE int moveToTrash(const QStringList &filePaths);
+    /// Saves the image at \p artworkUrl into each file in \p filePaths; returns how many were saved.
+    Q_INVOKABLE bool hasEmbeddedArtwork(const QString &filePath) const;
+    /// Counts the files without a cover inside them, in the background; the answer is missingArtworkCounted.
+    Q_INVOKABLE void countMissingArtwork(const QStringList &filePaths);
+    Q_INVOKABLE int embedArtwork(const QStringList &filePaths, const QString &artworkUrl);
     Q_INVOKABLE QVariantMap firstPlayableTrack() const;
     Q_INVOKABLE QVariantList playbackTracks() const;
     /// Up to \p limit available tracks most like \p seed by genre, artist and era, skipping \p excludePaths.
@@ -89,6 +98,7 @@ class LibraryController final : public QAbstractListModel {
 
   signals:
     void changed();
+    void missingArtworkCounted(int count);
     void tracksChanged();
     void visibleTracksChanged();
     /// Listens from the phone were added to the listening log.

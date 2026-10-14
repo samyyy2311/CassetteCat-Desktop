@@ -10,12 +10,13 @@ Rectangle {
     radius: 13
     color: root.checked
         ? (mouseArea.containsMouse ? recordRedHover : recordRed)
-        : (mouseArea.containsMouse ? surfaceCardHover : surfaceCard)
+        : (mouseArea.containsMouse ? surfaceCardHover : surfaceElevated)
     opacity: root.enabled ? 1.0 : 0.4
-    border.width: root.activeFocus ? 2 : 0
+    // Off, the track keeps an outline so it doesn't disappear into the card behind it.
+    border.width: root.activeFocus ? 2 : (root.checked ? 0 : 1)
     border.color: root.activeFocus
         ? recordRedHover
-        : "transparent"
+        : borderVariant
 
     activeFocusOnTab: true
     Accessible.role: Accessible.CheckBox

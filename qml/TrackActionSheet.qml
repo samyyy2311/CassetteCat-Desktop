@@ -204,7 +204,7 @@ BottomSheet {
 
             ActionItem {
                 iconName: "search"
-                titleText: "Search Cover Online"
+                titleText: "Search Cover Art"
                 subtitleText: "Find and apply high-resolution artwork"
                 visible: !!(root.track && (root.track.album || root.track.title))
                 onClicked: {

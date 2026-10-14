@@ -70,8 +70,12 @@ Item {
     property bool updateAvailable: false
     property string updateUrl: ""
 
+    property var appWindow
+    property var tagScan
+
     readonly property var categories: [
         { id: "library", label: "Music Library", icon: "library" },
+        { id: "health", label: "Library Health", icon: "list-music" },
         { id: "appearance", label: "Appearance", icon: "sliders-horizontal" },
         { id: "playback", label: "Playback & Audio", icon: "play" },
         { id: "shortcuts", label: "Keyboard Shortcuts", icon: "keyboard" },
@@ -87,6 +91,7 @@ Item {
     readonly property real activeSectionHeight: {
         switch (currentSection) {
             case "library": return secLibrary.implicitHeight
+            case "health": return secHealth.implicitHeight
             case "appearance": return secAppearance.implicitHeight
             case "playback": return secPlayback.implicitHeight
             case "shortcuts": return secShortcuts.implicitHeight
@@ -154,6 +159,63 @@ Item {
     signal sectionSelected(string section)
 
     property string pendingSection: ""
+    property var pendingRow: null
+    // Typed in the search field in the window's title bar.
+    readonly property string searchQuery: appWindow ? appWindow.settingsSearchQuery : ""
+    // While searching, the results take the place of the section.
+    readonly property string shownSection: searchQuery.trim() ? "" : currentSection
+    readonly property var searchResults: findSettings(searchQuery)
+    // Library Health lists songs and Credits lists projects, so those two are found by their names only.
+    readonly property var searchableSections: ({
+        library: secLibrary, appearance: secAppearance, playback: secPlayback, shortcuts: secShortcuts,
+        desktop: secDesktop, lyrics: secLyrics, scrobble: secScrobble, network: secNetwork,
+        phone: secPhoneRemote, data: secBackup
+    })
+
+    // Settings are read from the rows in each section, so a new setting is found without a list to keep up to date.
+    function settingRows(item, found) {
+        for (let i = 0; i < item.children.length; ++i) {
+            const child = item.children[i]
+            if (typeof child.title === "string" && typeof child.subtitle === "string" && child.title.length > 0)
+                found.push(child)
+            settingRows(child, found)
+        }
+        return found
+    }
+
+    function findSettings(query) {
+        const words = query.toLowerCase().split(/\s+/).filter(word => word.length > 0)
+        if (words.length === 0) return []
+        const matches = text => words.every(word => text.toLowerCase().includes(word))
+        const results = []
+        categories.forEach(category => {
+            if (matches(category.label))
+                results.push({ section: category.id, sectionLabel: category.label, title: category.label, row: null })
+            const section = searchableSections[category.id]
+            if (!section) return
+            const seen = {}
+            settingRows(section, []).forEach(row => {
+                if (seen[row.title] || !matches(row.title + " " + row.subtitle + " " + category.label)) return
+                seen[row.title] = true
+                results.push({ section: category.id, sectionLabel: category.label, title: row.title, row: row })
+            })
+        })
+        return results
+    }
+
+    function openSearchResult(result) {
+        pendingRow = result.row
+        appWindow.clearSettingsSearch()
+        if (currentSection === result.section) Qt.callLater(scrollToPendingRow)
+        else chooseSection(result.section)
+    }
+
+    function scrollToPendingRow() {
+        if (!pendingRow) return
+        const top = pendingRow.mapToItem(sectionContent, 0, 0).y - 16
+        contentScroll.contentY = Math.max(0, Math.min(top, contentScroll.contentHeight - contentScroll.height))
+        pendingRow = null
+    }
 
     function chooseSection(id) {
         if (currentSection === id) return
@@ -169,6 +231,7 @@ Item {
                 currentSection = pendingSection
                 if (contentScroll) contentScroll.contentY = 0
                 sectionSelected(pendingSection)
+                if (pendingRow) Qt.callLater(root.scrollToPendingRow)
             }
         }
         NumberAnimation { target: sectionContent; property: "opacity"; to: 1.0; duration: 150; easing.type: Easing.OutCubic }
@@ -273,9 +336,36 @@ Item {
                             width: Math.min(contentScroll.availableWidth - 20, 960)
                             spacing: 18
 
+                            SectionLabel {
+                                visible: root.searchQuery.trim() !== ""
+                                text: root.searchResults.length > 0
+                                      ? root.searchResults.length + (root.searchResults.length === 1 ? " Setting Found" : " Settings Found")
+                                      : "No Settings Found"
+                            }
+
+                            SettingCard {
+                                visible: root.searchResults.length > 0
+
+                                Repeater {
+                                    model: root.searchResults
+
+                                    SettingRow {
+                                        required property var modelData
+                                        title: modelData.title
+                                        subtitle: modelData.row ? modelData.sectionLabel : "Settings section"
+
+                                        SettingButton {
+                                            text: "Open"
+                                            accessibleName: "Open " + modelData.title
+                                            onClicked: root.openSearchResult(modelData)
+                                        }
+                                    }
+                                }
+                            }
+
                             SettingsLibrarySection {
                                 id: secLibrary
-                                visible: root.currentSection === "library"
+                                visible: root.shownSection === "library"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 trackCount: root.trackCount
                                 libraryFolders: root.libraryFolders
@@ -294,9 +384,17 @@ Item {
                                 onShowFormatBadgesSelected: value => root.showFormatBadgesSelected(value)
                             }
 
+                            SettingsLibraryHealthSection {
+                                id: secHealth
+                                visible: root.shownSection === "health"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
+                                appWindow: root.appWindow
+                                tagScan: root.tagScan
+                            }
+
                             SettingsAppearanceSection {
                                 id: secAppearance
-                                visible: root.currentSection === "appearance"
+                                visible: root.shownSection === "appearance"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 accentName: root.accentName
                                 customAccentColor: root.customAccentColor
@@ -312,7 +410,7 @@ Item {
 
                             SettingsPlaybackSection {
                                 id: secPlayback
-                                visible: root.currentSection === "playback"
+                                visible: root.shownSection === "playback"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 audioOutputs: root.audioOutputs
                                 audioDeviceId: root.audioDeviceId
@@ -339,7 +437,7 @@ Item {
 
                             SettingsShortcutsSection {
                                 id: secShortcuts
-                                visible: root.currentSection === "shortcuts"
+                                visible: root.shownSection === "shortcuts"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 globalShortcutsEnabled: root.globalShortcutsEnabled
                                 globalShortcutsSupported: root.globalShortcutsSupported
@@ -355,7 +453,7 @@ Item {
 
                             SettingsDesktopSection {
                                 id: secDesktop
-                                visible: root.currentSection === "desktop"
+                                visible: root.shownSection === "desktop"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 defaultLaunchPage: root.defaultLaunchPage
                                 closeToTray: root.closeToTray
@@ -378,7 +476,7 @@ Item {
 
                             SettingsLyricsSection {
                                 id: secLyrics
-                                visible: root.currentSection === "lyrics"
+                                visible: root.shownSection === "lyrics"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 lyricsFontSize: root.lyricsFontSize
                                 lyricsAlignment: root.lyricsAlignment
@@ -392,7 +490,7 @@ Item {
 
                             SettingsScrobbleSection {
                                 id: secScrobble
-                                visible: root.currentSection === "scrobble"
+                                visible: root.shownSection === "scrobble"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 offlineBlackout: root.offlineBlackout
                                 listenBrainzEnabled: root.scrobbleListenBrainzEnabled
@@ -414,7 +512,7 @@ Item {
 
                             SettingsNetworkSection {
                                 id: secNetwork
-                                visible: root.currentSection === "network"
+                                visible: root.shownSection === "network"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 offlineBlackout: root.offlineBlackout
                                 svcLrclib: root.svcLrclib
@@ -432,7 +530,7 @@ Item {
 
                             SettingsPhoneRemoteSection {
                                 id: secPhoneRemote
-                                visible: root.currentSection === "phone"
+                                visible: root.shownSection === "phone"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 offlineBlackout: root.offlineBlackout
                                 svcPhoneRemote: root.svcPhoneRemote
@@ -441,7 +539,7 @@ Item {
 
                             SettingsBackupSection {
                                 id: secBackup
-                                visible: root.currentSection === "data"
+                                visible: root.shownSection === "data"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 backupStatus: root.backupStatus
                                 onExportBackupRequested: root.exportBackupRequested()
@@ -450,7 +548,7 @@ Item {
 
                             CreditsView {
                                 id: secCredits
-                                visible: root.currentSection === "credits"
+                                visible: root.shownSection === "credits"
                                 Layout.fillWidth: true
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 onWhatsNewRequested: root.whatsNewRequested()

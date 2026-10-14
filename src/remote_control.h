@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QByteArray>
+#include <QDeadlineTimer>
 #include <QElapsedTimer>
 #include <QHash>
 #include <QJsonArray>
@@ -65,6 +66,9 @@ class RemoteControlServer final : public QObject {
     Q_INVOKABLE void regenerateCode();
     /// Asks the controlling phone to take over playback; it picks this up on its next poll.
     Q_INVOKABLE void continueOnPhone();
+    /// Asks the phone to stop controlling and reporting to this computer, while staying paired, so each plays its own
+    /// music. It picks this up on its next poll or check-in.
+    Q_INVOKABLE void disconnectPhone();
     /// Asks the paired phone to sync likes and the listening record the next time it is in touch.
     Q_INVOKABLE void requestSync();
     QVariantMap phonePlayback() const;
@@ -127,7 +131,7 @@ class RemoteControlServer final : public QObject {
     Response respond(const QByteArray &method, const QByteArray &target, const QByteArray &authorization,
                      const QByteArray &body, const QHostAddress &peer, const QByteArray &deviceName = {});
     Response answerPairRequest(const QByteArray &method, const QUrl &url, const QByteArray &body);
-    Response answerGet(const QUrl &url);
+    Response answerGet(const QUrl &url, const QByteArray &deviceName);
     Response answerMedia(const QByteArray &path, const QUrlQuery &query);
     Response answerControl(const QByteArray &path, const QJsonObject &request);
     Response playFromLibrary(const QJsonObject &request);
@@ -147,7 +151,10 @@ class RemoteControlServer final : public QObject {
     QHash<QString, QString> libraryPathsByKey() const;
     /// Answers a phone looking for computers on the network, or returns empty for anything else.
     QByteArray discoveryReply(const QByteArray &datagram, const QHostAddress &peer) const;
-    QJsonObject status();
+    QJsonObject status(const QByteArray &deviceName);
+    /// Whether a disconnect is waiting for the phone; it is handed over once.
+    bool takeDisconnectRequest(const QByteArray &deviceName);
+    bool disconnectRequestedFor(const QByteArray &deviceName) const;
     /// Emits addressChanged when the address a phone should use differs from the one last shown.
     void checkAddress();
 
@@ -170,6 +177,10 @@ class RemoteControlServer final : public QObject {
     // A controlling phone polls every couple of seconds; when it stops, it is no longer shown.
     QTimer m_controllerTimeout;
     bool m_handoffToPhone = false;
+    // Long enough for a paused phone's slowest check-in, and no longer, so a phone connecting again later isn't sent
+    // away.
+    QDeadlineTimer m_disconnectPhoneUntil{0};
+    QString m_disconnectPhoneName;
     bool m_syncRequested = false;
     QVariantMap m_phonePlayback;
     QStringList m_phoneCommands;

@@ -126,6 +126,16 @@ AppDialog {
 
             Item { Layout.fillWidth: true }
 
+            // Keeps the pairing, so the phone can connect again from its devices button.
+            SettingButton {
+                visible: root.remoteOn && root.phoneName !== ""
+                text: "Disconnect"
+                onClicked: {
+                    root.remote.disconnectPhone()
+                    root.close()
+                }
+            }
+
             SettingButton {
                 visible: root.remoteOn && root.controlled
                 text: "Continue on " + root.phoneName

@@ -275,6 +275,30 @@ void RemoteControlServer::continueOnPhone() {
         m_handoffToPhone = true;
 }
 
+void RemoteControlServer::disconnectPhone() {
+    m_disconnectPhoneName = m_controllerName.isEmpty() ? m_phonePlayback.value("name").toString() : m_controllerName;
+    m_disconnectPhoneUntil.setRemainingTime(75 * 1000);
+    m_controllerName.clear();
+    m_controllerTimeout.stop();
+    m_phonePlayback.clear();
+    m_phoneTimeout.stop();
+    emit controllerChanged();
+    emit phonePlaybackChanged();
+}
+
+// Only the phone that was disconnected hears it; any other paired phone carries on.
+bool RemoteControlServer::disconnectRequestedFor(const QByteArray &deviceName) const {
+    return !m_disconnectPhoneUntil.hasExpired() && !deviceName.isEmpty() &&
+           QString::fromUtf8(deviceName) == m_disconnectPhoneName;
+}
+
+bool RemoteControlServer::takeDisconnectRequest(const QByteArray &deviceName) {
+    if (!disconnectRequestedFor(deviceName))
+        return false;
+    m_disconnectPhoneUntil = QDeadlineTimer(0);
+    return true;
+}
+
 QVariantMap RemoteControlServer::phonePlayback() const {
     return m_phonePlayback;
 }
@@ -538,7 +562,8 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
     const bool controlsPlayback = path == "/api/playback" || path == "/api/volume" || path == "/api/seek" ||
                                   path.startsWith("/api/queue") || path == "/api/library/play" ||
                                   path == "/api/handoff";
-    if (controlsPlayback && !deviceName.isEmpty()) {
+    // The poll that carries a disconnect request doesn't name the phone again.
+    if (controlsPlayback && !deviceName.isEmpty() && !disconnectRequestedFor(deviceName)) {
         const QString name = QString::fromUtf8(deviceName);
         m_controllerTimeout.start();
         if (m_controllerName != name) {
@@ -548,7 +573,7 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
     }
 
     if (method == "GET")
-        return answerGet(url);
+        return answerGet(url, deviceName);
     if (method != "POST")
         return {404, {}};
     const QJsonObject request = QJsonDocument::fromJson(body).object();
@@ -593,10 +618,10 @@ RemoteControlServer::Response RemoteControlServer::answerPairRequest(const QByte
                      .toJson(QJsonDocument::Compact)};
 }
 
-RemoteControlServer::Response RemoteControlServer::answerGet(const QUrl &url) {
+RemoteControlServer::Response RemoteControlServer::answerGet(const QUrl &url, const QByteArray &deviceName) {
     const QByteArray path = url.path().toLatin1();
     if (path == "/api/playback")
-        return {200, QJsonDocument(status()).toJson(QJsonDocument::Compact)};
+        return {200, QJsonDocument(status(deviceName)).toJson(QJsonDocument::Compact)};
     if (path == "/api/library")
         return libraryPage(QUrlQuery(url));
     if (path == "/api/stream" || path == "/api/artwork")
@@ -838,6 +863,11 @@ RemoteControlServer::Response RemoteControlServer::updatePhoneState(const QJsonO
                     {"artwork", artwork},
                     {"filePath", filePath}};
     }
+    QStringList commands = std::exchange(m_phoneCommands, {});
+    if (takeDisconnectRequest(deviceName)) {
+        playback.clear();
+        commands = {"disconnect"};
+    }
     // A phone paused for a while checks in only every 30 seconds.
     if (playback.isEmpty())
         m_phoneTimeout.stop();
@@ -847,9 +877,8 @@ RemoteControlServer::Response RemoteControlServer::updatePhoneState(const QJsonO
         m_phonePlayback = playback;
         emit phonePlaybackChanged();
     }
-    const QJsonArray commands = QJsonArray::fromStringList(std::exchange(m_phoneCommands, {}));
     const QJsonObject reply{{"ok", true},
-                            {"commands", commands},
+                            {"commands", QJsonArray::fromStringList(commands)},
                             {"playNext", std::exchange(m_phonePlayNext, {})},
                             {"likesRevision", m_likesRevision},
                             {"needsArtwork", !playback.isEmpty() && playback.value("artwork").toString().isEmpty()}};
@@ -972,7 +1001,7 @@ QByteArray RemoteControlServer::discoveryReply(const QByteArray &datagram, const
         .toJson(QJsonDocument::Compact);
 }
 
-QJsonObject RemoteControlServer::status() {
+QJsonObject RemoteControlServer::status(const QByteArray &deviceName) {
     const QVariantMap track = m_player->currentTrack();
     const QString title = track.value("title").toString();
     return {
@@ -988,6 +1017,7 @@ QJsonObject RemoteControlServer::status() {
         {"deviceName", computerName()},
         // Reported once, so the phone takes over a single time.
         {"handoffRequested", std::exchange(m_handoffToPhone, false)},
+        {"disconnectRequested", takeDisconnectRequest(deviceName)},
         {"syncRequested", std::exchange(m_syncRequested, false)},
     };
 }
@@ -1100,6 +1130,20 @@ bool RemoteControlServer::selfCheck() {
         remote.phonePlayback().value("artwork") == "data:image/jpeg;base64,/9j/AA==" &&
         remote.phonePlayback().value("positionMs").toInt() == 5000 &&
         checkIn(R"({"title":"Next","artist":"Ann"})").value("needsArtwork").toBool();
+    remote.disconnectPhone();
+    const auto pollAsks = [&](const QByteArray &phone) {
+        return QJsonDocument::fromJson(remote.respond("GET", "/api/playback", auth, {}, lan, phone).body)
+            .object()
+            .value("disconnectRequested")
+            .toBool();
+    };
+    // Another paired phone doesn't take the request; the disconnected one gets it once, then shows here again.
+    const bool disconnectsOnce =
+        remote.phonePlayback().isEmpty() && !pollAsks("pixel 9") &&
+        checkIn(R"({"title":"Next","isPlaying":true})").value("commands") == QJsonArray{"disconnect"} &&
+        remote.phonePlayback().isEmpty() && !pollAsks("motorola edge 40") &&
+        checkIn(R"({"title":"Cover","artist":"Ann"})").value("commands").toArray().isEmpty() &&
+        !remote.phonePlayback().isEmpty();
     const bool rejectsUnknownAction =
         remote.respond("POST", "/api/playback", auth, R"({"action":"reset"})", lan).status == 400;
     const bool keysByTitleAndArtist =
@@ -1300,8 +1344,8 @@ bool RemoteControlServer::selfCheck() {
 
     const bool ok = rejectsPublicPeer && rejectsWrongCode && reportsStatus && routesNext && clampsVolume &&
                     rejectsUnknownAction && relaysToPhone && asksForCover && keepsPhoneCover && acceptsHandoff &&
-                    namesController && handsBackOnce && codeInQueryOnlyForArtwork && servesQueue && servesHttp &&
-                    answersDiscovery && locksOutGuessing && rejectsInvalidBackup && keepsPreviousBackup &&
+                    namesController && handsBackOnce && disconnectsOnce && codeInQueryOnlyForArtwork && servesQueue &&
+                    servesHttp && answersDiscovery && locksOutGuessing && rejectsInvalidBackup && keepsPreviousBackup &&
                     routesPlayNext && relaysPlayNextOnce && refusesUnpairedUploadEarly && keysByTitleAndArtist &&
                     syncsLikes && copiesPlaylists && rejectsBadListens && asksBeforePairing &&
                     keepsAllowedUntilCollected && givesCodeOnceAllowed && unpairsOnePhone && turnsAwayDenied &&
@@ -1314,6 +1358,6 @@ bool RemoteControlServer::selfCheck() {
                    << keepsPreviousBackup << routesPlayNext << relaysPlayNextOnce << refusesUnpairedUploadEarly
                    << keysByTitleAndArtist << syncsLikes << copiesPlaylists << rejectsBadListens << asksBeforePairing
                    << keepsAllowedUntilCollected << givesCodeOnceAllowed << unpairsOnePhone << turnsAwayDenied
-                   << servesLibrary << streamsOnlyLibraryFiles << streamsRanges << refusesPlainHttp;
+                   << servesLibrary << streamsOnlyLibraryFiles << streamsRanges << refusesPlainHttp << disconnectsOnce;
     return ok;
 }

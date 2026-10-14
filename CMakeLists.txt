@@ -54,6 +54,7 @@ qt_add_executable(CassetteCat
     src/services_artist.cpp
     src/services_scrobble.cpp
     src/services_covers.cpp
+    src/services_tags.cpp
     src/credential_vault.h
     src/credential_vault.cpp
     src/discord_presence.h
@@ -121,6 +122,9 @@ qt_add_qml_module(CassetteCat
         qml/SongRow.qml
         qml/TrackTitles.js
         qml/QueueOrder.js
+        qml/LibraryTidy.js
+        qml/TagScan.qml
+        qml/SettingsLibraryHealthSection.qml
         qml/LyricsText.js
         qml/AutoEqProfiles.js
         qml/SongCard.qml
@@ -503,6 +507,7 @@ if(CASSETTECAT_BUILD_TESTING AND BUILD_TESTING)
     add_test(NAME catalog-tracklist COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_catalogtracklist.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME track-titles COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_tracktitles.qml")
     add_test(NAME queue-order COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_queueorder.qml")
+    add_test(NAME library-tidy COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_librarytidy.qml")
     add_test(NAME lyrics-text COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_lyricstext.qml")
     add_test(NAME queue-model COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_queuemodel.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
     add_test(NAME setting-choice-group COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_settingchoicegroup.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")

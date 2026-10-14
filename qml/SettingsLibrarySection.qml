@@ -31,7 +31,7 @@ ColumnLayout {
             iconName: "folder"
             title: "Audio Folders"
             subtitle: root.libraryFolders.length > 0
-                      ? (root.libraryFolders.length + " folder(s) • " + root.trackCount + " songs")
+                      ? (root.libraryFolders.length + (root.libraryFolders.length === 1 ? " folder" : " folders") + "  •  " + root.trackCount + " songs")
                       : (root.trackCount + " tracks loaded from library")
 
             SettingButton {
@@ -50,7 +50,7 @@ ColumnLayout {
         SettingRow {
             iconName: "eye-off"
             title: "Excluded Folders"
-            subtitle: root.excludedFolders.length === 0 ? "No exclusions. Every subfolder is scanned" : (root.excludedFolders.length + " folder(s) hidden from the library")
+            subtitle: root.excludedFolders.length === 0 ? "No exclusions. Every subfolder is scanned" : (root.excludedFolders.length + (root.excludedFolders.length === 1 ? " folder" : " folders") + " hidden from the library")
 
             SettingButton {
                 text: "Exclude folder"

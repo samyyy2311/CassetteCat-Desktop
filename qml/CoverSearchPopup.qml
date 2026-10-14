@@ -5,6 +5,7 @@ import QtQuick.Layouts
 AppDialog {
     id: root
 
+    required property var appWindow
     property string targetAlbum: ""
     property string targetArtist: ""
     property string targetFilePath: ""
@@ -45,6 +46,15 @@ AppDialog {
             root.applyingCover = false
         }
         function onCoverApplied(album, artist, artworkPath, filePath) {
+            if (root.applyingCover && root.appWindow.embedCoversInFiles) {
+                // A chosen cover is the whole album's, so every local song of it gets it in its file.
+                const sameText = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase()
+                const paths = root.appWindow.availableTracks()
+                    .filter(track => !track.remoteId && (track.filePath === filePath
+                            || (album && sameText(track.album, album) && (!artist || sameText(track.artist, artist)))))
+                    .map(track => track.filePath)
+                library.embedArtwork(paths, artworkPath)
+            }
             root.applyingCover = false
             root.close()
         }
@@ -124,6 +134,29 @@ AppDialog {
             Layout.fillWidth: true
             Layout.leftMargin: 20
             Layout.rightMargin: 20
+            Layout.bottomMargin: 12
+            spacing: 10
+
+            Label {
+                Layout.fillWidth: true
+                text: "Also save the cover into the music files, so other apps show it"
+                color: textSecondary
+                font.family: bodyFont
+                font.pixelSize: 12
+                wrapMode: Text.Wrap
+            }
+
+            SettingSwitch {
+                Accessible.name: "Also save the cover into the music files"
+                checked: root.appWindow.embedCoversInFiles
+                onToggled: value => root.appWindow.embedCoversInFiles = value
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
             Layout.bottomMargin: 8
             visible: !root.searchLoading && root.searchResults.length > 0
 
@@ -142,6 +175,7 @@ AppDialog {
                 font.family: bodyFont
                 font.pixelSize: 10
             }
+
         }
 
         Item {

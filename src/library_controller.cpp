@@ -11,16 +11,19 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
+#include <QImage>
 #include <QFileInfo>
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QPointer>
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QSet>
 #include <QSettings>
 #include <QTemporaryDir>
+#include <QThreadPool>
 #include <QTimer>
 
 #include <algorithm>
@@ -550,6 +553,14 @@ bool LibraryController::selfCheck() {
     if (saved.title != "Keep" || saved.artist != "New")
         return fail("batch tag edit keeps other fields");
 
+    // A cover saved into the file leaves its tags alone.
+    const QString coverPath = tagDir.filePath("cover.png");
+    QImage(4, 4, QImage::Format_RGB32).save(coverPath);
+    if (tagged.hasEmbeddedArtwork(wavPath) ||
+        tagged.embedArtwork({wavPath}, QUrl::fromLocalFile(coverPath).toString()) != 1 ||
+        readTrackInfo(wavPath).title != "Keep" || !tagged.hasEmbeddedArtwork(wavPath))
+        return fail("cover saved into the file");
+
     LibraryController mixLibrary;
     mixLibrary.m_tracks = {
         QVariantMap{{"filePath", "/m/seed.flac"},
@@ -937,6 +948,73 @@ int LibraryController::updateTracksMetadata(const QStringList &filePaths, const 
     if (updated > 0)
         publishTrackChanges();
     return updated;
+}
+
+int LibraryController::updateEachTrackMetadata(const QVariantList &tracks) {
+    int updated = 0;
+    for (const QVariant &value : tracks) {
+        const QVariantMap metadata = value.toMap();
+        QString error;
+        if (!writeTrackInfo(metadata, &error)) {
+            qWarning().noquote() << "METADATA_UPDATE_FAILED:" << metadata.value("filePath").toString() << error;
+            continue;
+        }
+        refreshTrack(metadata.value("filePath").toString());
+        ++updated;
+    }
+    if (updated > 0)
+        publishTrackChanges();
+    return updated;
+}
+
+int LibraryController::moveToTrash(const QStringList &filePaths) {
+    int moved = 0;
+    for (const QString &filePath : filePaths) {
+        if (!QFile::moveToTrash(filePath)) {
+            qWarning().noquote() << "TRASH_FAILED:" << filePath;
+            continue;
+        }
+        m_tracks.removeIf(
+            [&](const QVariant &track) { return track.toMap().value("filePath").toString() == filePath; });
+        ++moved;
+    }
+    if (moved > 0)
+        publishTrackChanges();
+    return moved;
+}
+
+bool LibraryController::hasEmbeddedArtwork(const QString &filePath) const {
+    return ::hasEmbeddedArtwork(filePath);
+}
+
+void LibraryController::countMissingArtwork(const QStringList &filePaths) {
+    // Opening every file of a large library takes seconds, which would freeze the window.
+    QThreadPool::globalInstance()->start([self = QPointer(this), filePaths] {
+        const auto missing = std::count_if(filePaths.cbegin(), filePaths.cend(),
+                                           [](const QString &path) { return !::hasEmbeddedArtwork(path); });
+        QMetaObject::invokeMethod(qApp, [self, missing] {
+            if (self)
+                emit self->missingArtworkCounted(int(missing));
+        });
+    });
+}
+
+int LibraryController::embedArtwork(const QStringList &filePaths, const QString &artworkUrl) {
+    QFile file(QUrl(artworkUrl).toLocalFile());
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning().noquote() << "ARTWORK_EMBED_FAILED: cover unreadable" << artworkUrl;
+        return 0;
+    }
+    const QByteArray image = file.readAll();
+    int saved = 0;
+    for (const QString &filePath : filePaths) {
+        QString error;
+        if (writeEmbeddedArtwork(filePath, image, &error))
+            ++saved;
+        else
+            qWarning().noquote() << "ARTWORK_EMBED_FAILED:" << filePath << error;
+    }
+    return saved;
 }
 
 QVariantMap LibraryController::refreshTrack(const QString &filePath) {

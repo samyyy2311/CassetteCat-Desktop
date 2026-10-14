@@ -104,7 +104,7 @@ AppDialog {
                 iconName: "folder"
                 title: "Music Folders"
                 subtitle: library.folders.length > 0
-                          ? (library.folders.length + " folder(s) • " + library.trackCount + " songs")
+                          ? (library.folders.length + (library.folders.length === 1 ? " folder" : " folders") + "  •  " + library.trackCount + " songs")
                           : "No folders yet"
 
                 SettingButton {

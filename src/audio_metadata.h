@@ -85,5 +85,9 @@ float extractReplayGain(const QString &filePath, bool albumMode = false);
 QVariantMap readAudioFormat(const QString &filePath);
 TrackInfo readTrackInfo(const QString &filePath);
 bool writeTrackInfo(const QVariantMap &metadata, QString *error = nullptr);
+/// Saves \p image as the front cover inside the audio file, replacing any cover it had.
+/// Whether the audio file carries a cover of its own.
+bool hasEmbeddedArtwork(const QString &filePath);
+bool writeEmbeddedArtwork(const QString &filePath, const QByteArray &image, QString *error = nullptr);
 /// Parses local tracks and HTTP streams from an M3U playlist.
 QVariantList parseM3uPlaylist(const QString &playlistPath);

@@ -5,6 +5,7 @@ import QtQuick.Layouts
 import QtQuick.Effects
 import "LyricsText.js" as LyricsText
 import "QueueOrder.js" as QueueOrder
+import "LibraryTidy.js" as LibraryTidy
 
 ApplicationWindow {
     id: window
@@ -232,6 +233,8 @@ ApplicationWindow {
     property int maxVolumePercent: 80
     property string replayGainMode: "off"
     property bool preferLocalLyrics: true
+    property bool embedCoversInFiles: true
+    property string settingsSearchQuery: ""
     property string lyricsAlignment: "left"
     property string lyricsActiveStyle: "white"
     property bool offlineBlackout: false
@@ -659,6 +662,7 @@ ApplicationWindow {
         lyricsAlignment = appSettings.value("lyrics/alignment", "left")
         lyricsActiveStyle = appSettings.value("lyrics/activeStyle", "white")
         preferLocalLyrics = appSettings.value("lyrics/preferLocal", true)
+        embedCoversInFiles = appSettings.value("covers/embedInFiles", true)
         offlineBlackout = appSettings.value("network/offlineBlackout", false)
         svcLrclib = appSettings.value("services/lrclib", true)
         svcRadio = appSettings.value("services/radio", true)
@@ -922,30 +926,26 @@ ApplicationWindow {
         clearTrackSelection()
     }
 
-    function createSmartPlaylist(name, tracks) {
-        const paths = [...new Set((tracks || []).map(track => track.filePath).filter(path => !!path))]
-        if (!paths.length) return false
-        const existing = playlists.find(playlist => playlist.name === name)
-        playlists = existing
-            ? playlists.map(playlist => playlist.id === existing.id ? Object.assign({}, playlist, { trackPaths: paths }) : playlist)
-            : playlists.concat([{ id: Date.now().toString(36), name: name, trackPaths: paths }])
-        playlistStatus = name + " updated"
-        return true
-    }
-
     function libraryHealth() {
-        const tracks = availableTracks().filter(track => track && track.format !== "STREAM")
-        const keys = {}
-        tracks.forEach(track => {
-            const key = [track.title, track.artist, track.album].map(value => String(value || "").trim().toLowerCase()).join("\u001f")
-            keys[key] = (keys[key] || 0) + 1
-        })
+        const tracks = availableTracks().filter(track => track && track.format !== "STREAM" && !track.remoteId)
         return {
             total: tracks.length,
-            noFolderArtwork: tracks.filter(track => !track.artworkUrl).length,
+            // Songs without a cover file; whether the files hold one is counted separately, in the background.
+            withoutCoverFile: tracks.filter(track => !track.artworkUrl).map(track => track.filePath),
             metadataGaps: tracks.filter(track => !track.title || !track.artist || !track.album).length,
-            duplicateMetadata: Object.keys(keys).filter(key => key && keys[key] > 1).reduce((total, key) => total + keys[key] - 1, 0)
+            duplicateMetadata: LibraryTidy.duplicateGroups(tracks).reduce((total, group) => total + group.length - 1, 0)
         }
+    }
+
+    function clearSettingsSearch() {
+        settingsSearchBar.collapse()
+    }
+
+    function fixTags(songs) {
+        libraryTagScan.start(songs)
+        clearTrackSelection()
+        settingsSection = "health"
+        page = "settings"
     }
 
     function deletePlaylist(id) {
@@ -1311,7 +1311,8 @@ ApplicationWindow {
         const radioPage = radioPageLoader.item
         const jellyfinPage = jellyfinPageLoader.item
         const subsonicPage = subsonicPageLoader.item
-        if (contains(libraryPage ? libraryPage.searchBox : null) || contains(searchPage ? searchPage.searchBox : null) || contains(radioPage ? radioPage.searchBox : null) || contains(jellyfinPage ? jellyfinPage.searchBox : null) || contains(subsonicPage ? subsonicPage.searchBox : null)) return
+        if (contains(libraryPage ? libraryPage.searchBox : null) || contains(searchPage ? searchPage.searchBox : null) || contains(radioPage ? radioPage.searchBox : null) || contains(jellyfinPage ? jellyfinPage.searchBox : null) || contains(subsonicPage ? subsonicPage.searchBox : null) || contains(settingsSearchBar)) return
+        settingsSearchBar.input.focus = false
         if (libraryPage) {
             libraryPage.searchInput.focus = false
             if (!libraryPage.appWindow.libSearchQuery.length && libraryPage.searchBox) libraryPage.searchBox.collapse()
@@ -1422,6 +1423,7 @@ ApplicationWindow {
         saveSetting("player/replayGainMode", replayGainMode)
     }
     onPreferLocalLyricsChanged: saveSetting("lyrics/preferLocal", preferLocalLyrics)
+    onEmbedCoversInFilesChanged: saveSetting("covers/embedInFiles", embedCoversInFiles)
     onLyricsAlignmentChanged: saveSetting("lyrics/alignment", lyricsAlignment)
     onLyricsActiveStyleChanged: saveSetting("lyrics/activeStyle", lyricsActiveStyle)
     onCloseToTrayChanged: saveSetting("ui/closeToTray", closeToTray)
@@ -1608,6 +1610,7 @@ ApplicationWindow {
 
     function persistBeforeExit() {
         finishHistoryTracking()
+        libraryTagScan.save()
         persistPlayerState()
         if (window.visibility !== Window.Maximized) {
             if (window.width > 400) appSettings.setValue("window/width", window.width)
@@ -1748,7 +1751,7 @@ ApplicationWindow {
             catalogDetailOpen = false
             const loaders = { library: libraryPageLoader, radio: radioPageLoader, jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader, stats: listeningRecordPageLoader }
             const pageItem = !nowPlayingOpen && loaders[page] ? loaders[page].item : null
-            const box = pageItem ? pageItem.searchBox : null
+            const box = pageItem ? pageItem.searchBox : !nowPlayingOpen && page === "settings" ? settingsSearchBar : null
             if (box && box.visible && box.enabled) box.expand()
             else openSearchPage()
         }
@@ -1848,6 +1851,7 @@ ApplicationWindow {
             favs[norm] = true
         }
         favoriteTracks = favs
+        syncServerFavorite(filePath, !!favs[norm])
     }
 
     function setFavorites(filePaths, favorite) {
@@ -1858,6 +1862,12 @@ ApplicationWindow {
             else delete favs[normalizedPlaylistPath(filePath)]
         }
         favoriteTracks = favs
+        filePaths.forEach(filePath => syncServerFavorite(filePath, favorite))
+    }
+
+    // A like on a server's song goes to the server too, as it does from the phone.
+    function syncServerFavorite(filePath, favorite) {
+        if (filePath.startsWith("subsonic:") || filePath.startsWith("jellyfin:")) streaming.setServerFavorite(filePath, favorite)
     }
 
     function isFavorite(filePath) {
@@ -2141,8 +2151,8 @@ ApplicationWindow {
         metadataDialog.openForMany(selectedTracks())
     }
 
-    function openTrackMetadataEditor() {
-        if (player.currentTrack && player.currentTrack.filePath) metadataDialog.openFor(player.currentTrack)
+    function openTrackMetadataEditor(track) {
+        if (track && track.filePath) metadataDialog.openFor(track)
     }
 
     function openAudioDetails() {
@@ -2315,14 +2325,6 @@ ApplicationWindow {
         folderGroups = []
     }
 
-    function getArtistGroups() { return artists }
-
-    function getAlbumGroups() { return albums }
-
-    function minimizeWindow() {
-        window.showMinimized()
-    }
-
     function filterCatalogDetailTracks(mode, title, heroTrack) {
         if (mode === "playlist") return playlistTracks(title)
         const trackPool = (heroTrack && heroTrack.remoteId) ? playbackTracks() : availableTracks()
@@ -2385,8 +2387,6 @@ ApplicationWindow {
         }
         catalogDetailOpen = false
     }
-    function getGenreGroups() { return genreGroups }
-    function getFolderGroups() { return folderGroups }
 
     // The player bar's cover and title open Now Playing, or start the library when nothing is loaded yet.
     function dockClicked(button) {
@@ -3356,6 +3356,19 @@ ApplicationWindow {
                 }
 
                 Item { Layout.fillWidth: true }
+
+                ExpandableSearchBar {
+                    id: settingsSearchBar
+                    visible: page === "settings"
+                    alwaysOpen: true
+                    boxSize: 34
+                    iconSize: 16
+                    expandedWidth: 260
+                    placeholder: "Search settings..."
+                    onTextChanged: window.settingsSearchQuery = text
+                    onCleared: window.settingsSearchQuery = ""
+                    onVisibleChanged: if (!visible) collapse()
+                }
             }
         }
 
@@ -3905,6 +3918,8 @@ ApplicationWindow {
                             SettingsPage {
                                 id: settingsRoot
                                 anchors.fill: parent
+                                appWindow: window
+                                tagScan: libraryTagScan
                                 currentSection: window.settingsSection
                                 trackCount: library.trackCount
                                 libraryFolders: library.folders
@@ -5254,8 +5269,13 @@ ApplicationWindow {
         onClosed: radioRefineOpen = false
     }
 
+    TagScan {
+        id: libraryTagScan
+    }
+
     CoverSearchPopup {
         id: coverSearchPopup
+        appWindow: window
     }
 
     // Asks once per version; Settings keeps showing the update after "Later".

@@ -605,6 +605,36 @@ TrackInfo readTrackInfo(const QString &filePath) {
     return info;
 }
 
+bool writeEmbeddedArtwork(const QString &filePath, const QByteArray &image, QString *error) {
+    try {
+#ifdef _WIN32
+        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
+#else
+        TagLib::FileRef fileRef(filePath.toUtf8().constData());
+#endif
+        if (fileRef.isNull() || !fileRef.file() || !fileRef.file()->isValid()) {
+            if (error)
+                *error = "This file format does not support cover art.";
+            return false;
+        }
+        TagLib::VariantMap picture;
+        picture["data"] = TagLib::ByteVector(image.constData(), static_cast<unsigned int>(image.size()));
+        picture["mimeType"] = TagLib::String(image.startsWith("\x89PNG") ? "image/png" : "image/jpeg");
+        picture["pictureType"] = TagLib::String("Front Cover");
+        picture["description"] = TagLib::String("");
+        if (!fileRef.setComplexProperties("PICTURE", {picture}) || !fileRef.save()) {
+            if (error)
+                *error = "CassetteCat could not save the cover into this file.";
+            return false;
+        }
+        return true;
+    } catch (...) {
+        if (error)
+            *error = "CassetteCat could not update this file.";
+        return false;
+    }
+}
+
 bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
     const QString filePath = metadata.value("filePath").toString();
     if (filePath.isEmpty() || !QFileInfo::exists(filePath)) {

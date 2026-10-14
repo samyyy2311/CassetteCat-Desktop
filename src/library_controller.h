@@ -72,6 +72,8 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE QVariantMap updateTrackMetadata(const QVariantMap &metadata);
     /// Applies the same tag \p changes to every file in \p filePaths; returns how many were saved.
     Q_INVOKABLE int updateTracksMetadata(const QStringList &filePaths, const QVariantMap &changes);
+    /// Saves the image at \p artworkUrl into each file in \p filePaths; returns how many were saved.
+    Q_INVOKABLE int embedArtwork(const QStringList &filePaths, const QString &artworkUrl);
     Q_INVOKABLE QVariantMap firstPlayableTrack() const;
     Q_INVOKABLE QVariantList playbackTracks() const;
     /// Up to \p limit available tracks most like \p seed by genre, artist and era, skipping \p excludePaths.

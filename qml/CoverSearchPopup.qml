@@ -5,6 +5,7 @@ import QtQuick.Layouts
 AppDialog {
     id: root
 
+    required property var appWindow
     property string targetAlbum: ""
     property string targetArtist: ""
     property string targetFilePath: ""
@@ -141,6 +142,21 @@ AppDialog {
                 color: silverDim
                 font.family: bodyFont
                 font.pixelSize: 10
+            }
+
+            Item { Layout.fillWidth: true }
+
+            Label {
+                text: "Also save into the music files"
+                color: textSecondary
+                font.family: bodyFont
+                font.pixelSize: 11
+            }
+
+            SettingSwitch {
+                Accessible.name: "Also save into the music files"
+                checked: root.appWindow.embedCoversInFiles
+                onToggled: value => root.appWindow.embedCoversInFiles = value
             }
         }
 

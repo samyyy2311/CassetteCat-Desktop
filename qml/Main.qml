@@ -232,6 +232,7 @@ ApplicationWindow {
     property int maxVolumePercent: 80
     property string replayGainMode: "off"
     property bool preferLocalLyrics: true
+    property bool embedCoversInFiles: false
     property string lyricsAlignment: "left"
     property string lyricsActiveStyle: "white"
     property bool offlineBlackout: false
@@ -499,6 +500,15 @@ ApplicationWindow {
             if (filePath) {
                 library.setCustomArtwork(filePath, artworkPath)
             }
+            if (window.embedCoversInFiles) {
+                // The cover applies to the whole album, so every local song of it gets it in its file.
+                const sameText = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase()
+                const paths = availableTracks()
+                    .filter(track => !track.remoteId && (track.filePath === filePath
+                            || (album && sameText(track.album, album) && (!artist || sameText(track.artist, artist)))))
+                    .map(track => track.filePath)
+                library.embedArtwork(paths, artworkPath)
+            }
             if (player.currentTrack) {
                 const trackAlbum = player.currentTrack.album || ""
                 const trackArtist = player.currentTrack.artist || ""
@@ -659,6 +669,7 @@ ApplicationWindow {
         lyricsAlignment = appSettings.value("lyrics/alignment", "left")
         lyricsActiveStyle = appSettings.value("lyrics/activeStyle", "white")
         preferLocalLyrics = appSettings.value("lyrics/preferLocal", true)
+        embedCoversInFiles = appSettings.value("covers/embedInFiles", false)
         offlineBlackout = appSettings.value("network/offlineBlackout", false)
         svcLrclib = appSettings.value("services/lrclib", true)
         svcRadio = appSettings.value("services/radio", true)
@@ -1411,6 +1422,7 @@ ApplicationWindow {
         saveSetting("player/replayGainMode", replayGainMode)
     }
     onPreferLocalLyricsChanged: saveSetting("lyrics/preferLocal", preferLocalLyrics)
+    onEmbedCoversInFilesChanged: saveSetting("covers/embedInFiles", embedCoversInFiles)
     onLyricsAlignmentChanged: saveSetting("lyrics/alignment", lyricsAlignment)
     onLyricsActiveStyleChanged: saveSetting("lyrics/activeStyle", lyricsActiveStyle)
     onCloseToTrayChanged: saveSetting("ui/closeToTray", closeToTray)
@@ -5242,6 +5254,7 @@ ApplicationWindow {
 
     CoverSearchPopup {
         id: coverSearchPopup
+        appWindow: window
     }
 
     // Asks once per version; Settings keeps showing the update after "Later".

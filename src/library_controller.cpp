@@ -11,6 +11,7 @@
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
+#include <QImage>
 #include <QFileInfo>
 #include <QDateTime>
 #include <QJsonDocument>
@@ -550,6 +551,13 @@ bool LibraryController::selfCheck() {
     if (saved.title != "Keep" || saved.artist != "New")
         return fail("batch tag edit keeps other fields");
 
+    // A cover saved into the file leaves its tags alone.
+    const QString coverPath = tagDir.filePath("cover.png");
+    QImage(4, 4, QImage::Format_RGB32).save(coverPath);
+    if (tagged.embedArtwork({wavPath}, QUrl::fromLocalFile(coverPath).toString()) != 1 ||
+        readTrackInfo(wavPath).title != "Keep")
+        return fail("cover saved into the file");
+
     LibraryController mixLibrary;
     mixLibrary.m_tracks = {
         QVariantMap{{"filePath", "/m/seed.flac"},
@@ -937,6 +945,24 @@ int LibraryController::updateTracksMetadata(const QStringList &filePaths, const 
     if (updated > 0)
         publishTrackChanges();
     return updated;
+}
+
+int LibraryController::embedArtwork(const QStringList &filePaths, const QString &artworkUrl) {
+    QFile file(QUrl(artworkUrl).toLocalFile());
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning().noquote() << "ARTWORK_EMBED_FAILED: cover unreadable" << artworkUrl;
+        return 0;
+    }
+    const QByteArray image = file.readAll();
+    int saved = 0;
+    for (const QString &filePath : filePaths) {
+        QString error;
+        if (writeEmbeddedArtwork(filePath, image, &error))
+            ++saved;
+        else
+            qWarning().noquote() << "ARTWORK_EMBED_FAILED:" << filePath << error;
+    }
+    return saved;
 }
 
 QVariantMap LibraryController::refreshTrack(const QString &filePath) {

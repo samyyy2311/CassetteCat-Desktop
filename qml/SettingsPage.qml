@@ -160,7 +160,8 @@ Item {
 
     property string pendingSection: ""
     property var pendingRow: null
-    property string searchQuery: ""
+    // Typed in the search field in the window's title bar.
+    readonly property string searchQuery: appWindow ? appWindow.settingsSearchQuery : ""
     // While searching, the results take the place of the section.
     readonly property string shownSection: searchQuery.trim() ? "" : currentSection
     readonly property var searchResults: findSettings(searchQuery)
@@ -204,7 +205,7 @@ Item {
 
     function openSearchResult(result) {
         pendingRow = result.row
-        searchField.collapse()
+        appWindow.clearSettingsSearch()
         if (currentSection === result.section) Qt.callLater(scrollToPendingRow)
         else chooseSection(result.section)
     }
@@ -245,18 +246,6 @@ Item {
             anchors.rightMargin: 28
             anchors.topMargin: 14
             spacing: 0
-
-            ExpandableSearchBar {
-                id: searchField
-                Layout.bottomMargin: 12
-                alwaysOpen: true
-                boxSize: 38
-                iconSize: 16
-                expandedWidth: 184
-                placeholder: "Search settings..."
-                onTextChanged: root.searchQuery = text
-                onCleared: root.searchQuery = ""
-            }
 
             Item {
                 Layout.fillWidth: true

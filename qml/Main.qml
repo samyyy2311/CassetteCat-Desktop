@@ -234,6 +234,7 @@ ApplicationWindow {
     property string replayGainMode: "off"
     property bool preferLocalLyrics: true
     property bool embedCoversInFiles: true
+    property string settingsSearchQuery: ""
     property string lyricsAlignment: "left"
     property string lyricsActiveStyle: "white"
     property bool offlineBlackout: false
@@ -933,6 +934,10 @@ ApplicationWindow {
             metadataGaps: tracks.filter(track => !track.title || !track.artist || !track.album).length,
             duplicateMetadata: LibraryTidy.duplicateGroups(tracks).reduce((total, group) => total + group.length - 1, 0)
         }
+    }
+
+    function clearSettingsSearch() {
+        settingsSearchBar.collapse()
     }
 
     function fixTags(songs) {
@@ -3349,6 +3354,19 @@ ApplicationWindow {
                 }
 
                 Item { Layout.fillWidth: true }
+
+                ExpandableSearchBar {
+                    id: settingsSearchBar
+                    visible: page === "settings"
+                    alwaysOpen: true
+                    boxSize: 34
+                    iconSize: 16
+                    expandedWidth: 260
+                    placeholder: "Search settings..."
+                    onTextChanged: window.settingsSearchQuery = text
+                    onCleared: window.settingsSearchQuery = ""
+                    onVisibleChanged: if (!visible) collapse()
+                }
             }
         }
 

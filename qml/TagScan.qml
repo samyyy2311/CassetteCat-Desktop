@@ -146,6 +146,9 @@ QtObject {
             item.changes.forEach(change => update[change.field] = change.to)
             return update
         })
+        // A check can still be running, so only what was reviewed here leaves the lists; new finds stay.
+        const reviewedSongs = details.map(item => item.song.filePath)
+        const reviewedCovers = covers.map(item => item.releaseId)
         library.updateEachTrackMetadata(updates)
         const pending = {}
         covers.filter(item => !skippedCovers[item.releaseId]).forEach(item => {
@@ -157,8 +160,8 @@ QtObject {
         const playing = player.currentTrack && player.currentTrack.filePath
                         ? library.tracksForPaths([player.currentTrack.filePath])[0] : null
         if (playing) player.updateCurrentTrackMetadata(playing)
-        details = []
-        covers = []
+        details = details.filter(item => !reviewedSongs.includes(item.song.filePath))
+        covers = covers.filter(item => !reviewedCovers.includes(item.releaseId))
         skippedDetails = ({})
         skippedCovers = ({})
         save()

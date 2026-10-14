@@ -28,6 +28,16 @@ QString creditedArtist(const QJsonArray &credits) {
     return artist;
 }
 
+// Spelling that differs only in case, quote style or spacing reads the same.
+QString comparableText(QString value) {
+    value = value.toLower().simplified();
+    value.replace(QChar(0x2018), '\'')
+        .replace(QChar(0x2019), '\'')
+        .replace(QChar(0x201c), '"')
+        .replace(QChar(0x201d), '"');
+    return value;
+}
+
 bool isStudioAlbum(const QJsonObject &release) {
     const QJsonObject group = release[QStringLiteral("release-group")].toObject();
     return release[QStringLiteral("status")].toString() == QStringLiteral("Official") &&
@@ -56,13 +66,25 @@ QVariantMap ServicesController::musicBrainzTagsFrom(const QJsonObject &search, c
     const QString album = track.value("album").toString().trimmed();
     // MusicBrainz often has the same song as several recordings, so every one that fits is searched for its album:
     // the one the file already names, or else the earliest studio album, where the song first came out.
-    QJsonObject firstRecording, namedRecording, namedRelease, studioRecording, studioRelease;
+    QList<QJsonObject> confident;
     for (const QJsonValue &value : search[QStringLiteral("recordings")].toArray()) {
         const QJsonObject recording = value.toObject();
         const qint64 recordingMs = recording[QStringLiteral("length")].toInteger();
-        if (recording[QStringLiteral("score")].toInt() < kMinimumScore ||
-            (lengthMs > 0 && recordingMs > 0 && std::llabs(recordingMs - lengthMs) > kLengthToleranceMs))
-            continue;
+        if (recording[QStringLiteral("score")].toInt() >= kMinimumScore &&
+            (lengthMs <= 0 || recordingMs <= 0 || std::llabs(recordingMs - lengthMs) <= kLengthToleranceMs))
+            confident.append(recording);
+    }
+    // A recording with the file's own title wins over versions of it, such as a remix of the same length.
+    const QString title = comparableText(track.value("title").toString());
+    QList<QJsonObject> fitting;
+    for (const QJsonObject &recording : confident)
+        if (comparableText(recording[QStringLiteral("title")].toString()) == title)
+            fitting.append(recording);
+    if (fitting.isEmpty())
+        fitting = confident;
+
+    QJsonObject firstRecording, namedRecording, namedRelease, studioRecording, studioRelease;
+    for (const QJsonObject &recording : fitting) {
         if (firstRecording.isEmpty())
             firstRecording = recording;
         for (const QJsonValue &releaseValue : recording[QStringLiteral("releases")].toArray()) {

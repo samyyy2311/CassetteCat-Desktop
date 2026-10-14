@@ -74,7 +74,7 @@ ColumnLayout {
         SettingButton {
             visible: root.view === "tags"
             primary: true
-            enabled: !root.tagScan.running && root.acceptedCount > 0
+            enabled: root.acceptedCount > 0
             text: "Apply " + root.plural(root.acceptedCount, "Change", "Changes")
             onClicked: {
                 root.tagScan.apply()

@@ -28,6 +28,8 @@ function tagChanges(song, tags, options) {
             const to = comparable(tags[field])
             if (from === to) return false
             if (missingNumbersOnly && numberFields.includes(field) && from !== "") return false
+            // A title that only gains words, such as " - Remix" or " (Live)", belongs to another version of the song.
+            if (field === "title" && from !== "" && to.startsWith(from)) return false
             return !(field === "album" && from.startsWith(to))
         })
         .map(field => ({ field: field, label: tagLabels[field], from: String(song[field] || ""), to: String(tags[field]) }))

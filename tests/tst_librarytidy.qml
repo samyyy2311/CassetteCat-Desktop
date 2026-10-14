@@ -20,6 +20,10 @@ TestCase {
         compare(LibraryTidy.tagChanges(song, tags).map(change => change.field), ["year", "trackNumber"])
     }
 
+    function test_a_version_suffix_is_not_a_title_fix() {
+        compare(LibraryTidy.tagChanges({ title: "Aa Jao" }, { title: "Aa Jao - Jhankar" }), [])
+    }
+
     function test_duplicates_keep_the_lossless_or_largest_copy() {
         const songs = [
             { filePath: "a.mp3", title: "Song", artist: "Band", album: "LP", format: "MP3", fileSize: 9000000 },

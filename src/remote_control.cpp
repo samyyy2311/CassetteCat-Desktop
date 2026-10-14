@@ -1130,7 +1130,10 @@ bool RemoteControlServer::selfCheck() {
         !QJsonDocument::fromJson(remote.respond("GET", "/api/playback", auth, {}, lan).body)
              .object()
              .value("disconnectRequested")
-             .toBool();
+             .toBool() &&
+        // The request goes once, so the phone shows here again on its next check-in.
+        checkIn(R"({"title":"Cover","artist":"Ann"})").value("commands").toArray().isEmpty() &&
+        !remote.phonePlayback().isEmpty();
     const bool rejectsUnknownAction =
         remote.respond("POST", "/api/playback", auth, R"({"action":"reset"})", lan).status == 400;
     const bool keysByTitleAndArtist =
@@ -1345,6 +1348,6 @@ bool RemoteControlServer::selfCheck() {
                    << keepsPreviousBackup << routesPlayNext << relaysPlayNextOnce << refusesUnpairedUploadEarly
                    << keysByTitleAndArtist << syncsLikes << copiesPlaylists << rejectsBadListens << asksBeforePairing
                    << keepsAllowedUntilCollected << givesCodeOnceAllowed << unpairsOnePhone << turnsAwayDenied
-                   << servesLibrary << streamsOnlyLibraryFiles << streamsRanges << refusesPlainHttp;
+                   << servesLibrary << streamsOnlyLibraryFiles << streamsRanges << refusesPlainHttp << disconnectsOnce;
     return ok;
 }

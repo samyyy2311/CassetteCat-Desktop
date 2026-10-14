@@ -21,6 +21,8 @@ inline constexpr int requestTimeoutMs = 15'000;
 
 class ServicesController : public QObject {
     Q_OBJECT
+    /// Why ListenBrainz last refused a listen, in its own words; empty once one goes through.
+    Q_PROPERTY(QString listenBrainzProblem READ listenBrainzProblem NOTIFY listenBrainzProblemChanged)
   public:
     explicit ServicesController(QObject *parent = nullptr);
     /// Runs deterministic checks for service configuration and cancellation.
@@ -54,6 +56,7 @@ class ServicesController : public QObject {
     Q_INVOKABLE void disconnectListenBrainz();
     Q_INVOKABLE void disconnectScrobbleAccount(const QString &service);
     Q_INVOKABLE bool hasListenBrainzSession();
+    QString listenBrainzProblem() const;
     Q_INVOKABLE bool hasScrobbleSession(const QString &service);
     /// Whether this build has a Last.fm API account.
     Q_INVOKABLE bool lastFmAvailable() const;
@@ -80,6 +83,7 @@ class ServicesController : public QObject {
     void albumBioLoaded(const QString &album, const QString &bio);
     void artistImageLoaded(const QString &artist, const QString &imageUrl);
     void listenBrainzValidationFinished(bool valid, const QString &userName, const QString &error);
+    void listenBrainzProblemChanged();
     void scrobbleAccountAuthFinished(const QString &service, bool success, const QString &userName,
                                      const QString &error);
     /// Announces the result of a completed update check.
@@ -103,6 +107,9 @@ class ServicesController : public QObject {
                              std::function<void()> missing);
     /// Searches TheAudioDB for \p artist and passes the artists it returns to \p handle.
     void searchAudioDb(const QString &artist, std::function<void(const QJsonArray &)> handle);
+    void setListenBrainzProblem(const QString &problem);
+    void submitToListenBrainz(const char *listenType, const QString &artist, const QString &title, const QString &album,
+                              qint64 listenedAt);
     void searchDeezerCovers(quint64 requestToken, const QString &term, const QString &album, const QString &artist,
                             const QVariantList &results, const QSet<QString> &seen);
     /// Adds covers from the Cover Art Archive, found through MusicBrainz, and reports the search's results.
@@ -123,6 +130,7 @@ class ServicesController : public QObject {
     quint64 m_lyricsRequestToken = 0;
     quint64 m_coverRequestToken = 0;
     QString m_listenBrainzToken;
+    QString m_listenBrainzProblem;
     QHash<QString, QString> m_scrobbleSessionKeys;
     bool m_scrobbleCredentialsLoaded = false;
 };

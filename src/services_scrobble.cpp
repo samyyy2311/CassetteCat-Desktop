@@ -3,6 +3,7 @@
 #include "app_settings.h"
 #include "credential_vault.h"
 
+#include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDateTime>
 #include <QDebug>
@@ -128,6 +129,7 @@ void ServicesController::saveListenBrainzSession(const QString &token, const QSt
     m_listenBrainzToken = value;
     SettingsController::setGlobalValue("scrobble/listenbrainz_user", userName.trimmed());
     SettingsController::setGlobalValue("scrobble/listenbrainz_enabled", true);
+    setListenBrainzProblem({});
 }
 
 void ServicesController::disconnectListenBrainz() {
@@ -138,6 +140,60 @@ void ServicesController::disconnectListenBrainz() {
     SettingsController::setGlobalValue("scrobble_secure/listenbrainz_token", QVariant());
     SettingsController::setGlobalValue("scrobble/listenbrainz_user", QString());
     SettingsController::setGlobalValue("scrobble/listenbrainz_enabled", false);
+    setListenBrainzProblem({});
+}
+
+QString ServicesController::listenBrainzProblem() const {
+    return m_listenBrainzProblem;
+}
+
+void ServicesController::setListenBrainzProblem(const QString &problem) {
+    if (m_listenBrainzProblem == problem)
+        return;
+    m_listenBrainzProblem = problem;
+    emit listenBrainzProblemChanged();
+}
+
+void ServicesController::submitToListenBrainz(const char *listenType, const QString &artist, const QString &title,
+                                              const QString &album, qint64 listenedAt) {
+    if (!SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool() ||
+        m_listenBrainzToken.isEmpty())
+        return;
+    QJsonObject trackMeta{{"artist_name", artist}, {"track_name", title}};
+    if (!album.isEmpty())
+        trackMeta.insert("release_name", album);
+    trackMeta.insert("additional_info",
+                     QJsonObject{{"submission_client", "CassetteCat Desktop"},
+                                 {"submission_client_version", QCoreApplication::applicationVersion()}});
+    QJsonObject listen{{"track_metadata", trackMeta}};
+    if (listenedAt > 0)
+        listen.insert("listened_at", listenedAt);
+    const QJsonObject root{{"listen_type", listenType}, {"payload", QJsonArray{listen}}};
+
+    QNetworkRequest request(QUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/submit-listens"));
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
+    request.setRawHeader("Authorization", "Token " + m_listenBrainzToken.toUtf8());
+    auto *reply = trackReply(m_net->post(request, QJsonDocument(root).toJson(QJsonDocument::Compact)));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, listenType, token = m_listenBrainzToken] {
+        reply->deleteLater();
+        // An answer about a token that has since been replaced says nothing about the current one.
+        if (token != m_listenBrainzToken)
+            return;
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        if (reply->error() == QNetworkReply::NoError) {
+            // Playing-now is only kept for a moment, so only a saved listen shows the problem is gone.
+            if (qstrcmp(listenType, "single") == 0)
+                setListenBrainzProblem({});
+            return;
+        }
+        const QString reason = QJsonDocument::fromJson(reply->readAll()).object().value("error").toString();
+        qWarning().noquote() << "[SCROBBLE] ListenBrainz refused" << listenType << "status=" << status << reason;
+        // Without an answer it was the network, which sorts itself out; an answer says what the person must fix,
+        // such as verifying their email, so its first sentence goes to Settings.
+        if (status != 0)
+            setListenBrainzProblem(reason.isEmpty() ? QStringLiteral("ListenBrainz didn't accept your listens.")
+                                                    : reason.section(QStringLiteral(". "), 0, 0) + '.');
+    });
 }
 
 void ServicesController::saveScrobbleSession(const QString &service, const QString &username,
@@ -320,29 +376,7 @@ void ServicesController::scrobbleNowPlaying(const QVariantMap &track) {
 
     initScrobbleCredentials();
 
-    if (SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool() &&
-        !m_listenBrainzToken.isEmpty()) {
-        QJsonObject trackMeta;
-        trackMeta.insert("artist_name", artist);
-        trackMeta.insert("track_name", title);
-        if (!album.isEmpty())
-            trackMeta.insert("release_name", album);
-
-        QJsonObject payloadItem;
-        payloadItem.insert("track_metadata", trackMeta);
-
-        QJsonArray payloadArray;
-        payloadArray.append(payloadItem);
-
-        QJsonObject root;
-        root.insert("listen_type", "playing_now");
-        root.insert("payload", payloadArray);
-
-        QNetworkRequest request(QUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/submit-listens"));
-        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
-        request.setRawHeader("Authorization", "Token " + m_listenBrainzToken.toUtf8());
-        trackReply(m_net->post(request, QJsonDocument(root).toJson(QJsonDocument::Compact)));
-    }
+    submitToListenBrainz("playing_now", artist, title, album, 0);
 
     QMap<QString, QString> params;
     params.insert("method", "track.updateNowPlaying");
@@ -373,30 +407,7 @@ void ServicesController::scrobbleTrack(const QVariantMap &track, qint64 timestam
 
     initScrobbleCredentials();
 
-    if (SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool() &&
-        !m_listenBrainzToken.isEmpty()) {
-        QJsonObject trackMeta;
-        trackMeta.insert("artist_name", artist);
-        trackMeta.insert("track_name", title);
-        if (!album.isEmpty())
-            trackMeta.insert("release_name", album);
-
-        QJsonObject payloadItem;
-        payloadItem.insert("listened_at", timestampSec);
-        payloadItem.insert("track_metadata", trackMeta);
-
-        QJsonArray payloadArray;
-        payloadArray.append(payloadItem);
-
-        QJsonObject root;
-        root.insert("listen_type", "single");
-        root.insert("payload", payloadArray);
-
-        QNetworkRequest request(QUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/submit-listens"));
-        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
-        request.setRawHeader("Authorization", "Token " + m_listenBrainzToken.toUtf8());
-        trackReply(m_net->post(request, QJsonDocument(root).toJson(QJsonDocument::Compact)));
-    }
+    submitToListenBrainz("single", artist, title, album, timestampSec);
 
     QMap<QString, QString> params;
     params.insert("method", "track.scrobble");

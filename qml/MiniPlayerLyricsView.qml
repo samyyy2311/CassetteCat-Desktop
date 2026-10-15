@@ -27,7 +27,8 @@ Item {
                 positionMs: root.miniPlayer.playerController.position
                 playing: root.miniPlayer.playerController.isPlaying
                 fontSize: Math.round((root.miniPlayer.lyricsFontSize || 28) * 0.7)
-                fontFamily: root.miniPlayer.displayFont
+                fontFamily: root.miniPlayer.lyricsFont
+                fontWeight: root.miniPlayer.lyricsFontWeight
                 centered: root.miniPlayer.lyricsAlignment === "center"
                 activeColor: root.miniPlayer.lyricsActiveStyle === "accent" ? root.miniPlayer.recordRedHover : "#FFFFFF"
                 sidePadding: 8

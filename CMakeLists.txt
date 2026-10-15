@@ -275,6 +275,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/command.svg
         qml/icons/maximize-2.svg
         qml/icons/minimize-2.svg
+        qml/icons/type.svg
         qml/icons/minus.svg
         qml/icons/plus.svg
         qml/icons/jellyfin.svg

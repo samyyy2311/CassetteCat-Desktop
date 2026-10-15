@@ -59,7 +59,8 @@ Item {
         positionMs: player.position
         playing: player.isPlaying
         fontSize: lyricsFontSize
-        fontFamily: displayFont
+        fontFamily: root.appWindow.lyricsFont || displayFont
+        fontWeight: root.appWindow.lyricsFontWeight
         centered: root.appWindow.lyricsAlignment === "center"
         activeColor: root.appWindow.lyricsActiveStyle === "accent" ? recordRedHover : "#FFFFFF"
         enabled: !lyricsSwap.running

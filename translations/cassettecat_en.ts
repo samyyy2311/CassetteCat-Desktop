@@ -3144,6 +3144,22 @@ Try the track title, or add custom lyrics</source>
 <context>
     <name>SettingsAppearanceSection</name>
     <message>
+        <source>Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>App Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Any font installed on this computer, for all of CassetteCat&apos;s text</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Default</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Color Scheme</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3877,6 +3893,42 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>White</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lyrics Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Any font installed on this computer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Same as App</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lyrics Weight</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How bold the lyric lines are</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Regular</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Medium</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>SemiBold</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bold</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

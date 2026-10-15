@@ -66,8 +66,13 @@ ApplicationWindow {
     readonly property color borderVariant: Qt.rgba(1, 1, 1, 0.09)
     readonly property color borderCard: borderVariant
 
-    readonly property string displayFont: (typeof displayFontFamily !== "undefined" && displayFontFamily.length > 0) ? displayFontFamily : "Space Grotesk"
-    readonly property string bodyFont: (typeof bodyFontFamily !== "undefined" && bodyFontFamily.length > 0) ? bodyFontFamily : "IBM Plex Sans"
+    // A font chosen in Settings replaces both the display and the body font; empty keeps the bundled ones.
+    property string appFont: ""
+    property string lyricsFont: ""
+    property int lyricsFontWeight: Font.Bold
+    readonly property var fontFamilies: Qt.fontFamilies().filter(family => !family.startsWith("@"))
+    readonly property string displayFont: appFont || ((typeof displayFontFamily !== "undefined" && displayFontFamily.length > 0) ? displayFontFamily : "Space Grotesk")
+    readonly property string bodyFont: appFont || ((typeof bodyFontFamily !== "undefined" && bodyFontFamily.length > 0) ? bodyFontFamily : "IBM Plex Sans")
     readonly property string monoFont: (typeof monoFontFamily !== "undefined" && monoFontFamily.length > 0) ? monoFontFamily : "IBM Plex Mono"
 
     property bool settingsInitialized: false
@@ -634,6 +639,9 @@ ApplicationWindow {
             window.hide()
         }
         lyricsFontSize = appSettings.value("lyrics/fontSize", 28)
+        appFont = appSettings.value("ui/font", "")
+        lyricsFont = appSettings.value("lyrics/font", "")
+        lyricsFontWeight = appSettings.value("lyrics/fontWeight", Font.Bold)
         accentName = appSettings.value("ui/accentName", "recordRed")
         customAccentColor = appSettings.value("ui/customAccentColor", accentPresets[0].base)
         albumArtRadius = appSettings.value("ui/albumArtRadius", 16)
@@ -1394,6 +1402,9 @@ ApplicationWindow {
         if (settingsInitialized) saveSetting("ui/inAppShortcuts", JSON.stringify(inAppShortcutBindings))
     }
     onLyricsFontSizeChanged: saveSetting("lyrics/fontSize", lyricsFontSize)
+    onAppFontChanged: saveSetting("ui/font", appFont)
+    onLyricsFontChanged: saveSetting("lyrics/font", lyricsFont)
+    onLyricsFontWeightChanged: saveSetting("lyrics/fontWeight", lyricsFontWeight)
     onAccentNameChanged: saveSetting("ui/accentName", accentName)
     onCustomAccentColorChanged: saveSetting("ui/customAccentColor", customAccentColor)
     onAlbumArtRadiusChanged: saveSetting("ui/albumArtRadius", albumArtRadius)
@@ -1648,6 +1659,9 @@ ApplicationWindow {
             "ui/showFormatBadges": showFormatBadges,
             "library/ignoreShortClips": ignoreShortClips,
             "lyrics/fontSize": lyricsFontSize,
+            "ui/font": appFont,
+            "lyrics/font": lyricsFont,
+            "lyrics/fontWeight": lyricsFontWeight,
             "player/nowPlayingBackdrop": nowPlayingBackdrop,
             "player/showRemainingTime": showRemainingTime,
             "lyrics/alignment": lyricsAlignment,
@@ -2809,6 +2823,9 @@ ApplicationWindow {
                 startMinimizedToTray: window.startMinimizedToTray,
                 nowPlayingNotifications: window.nowPlayingNotifications,
                 lyricsFontSize: window.lyricsFontSize,
+                appFont: window.appFont,
+                lyricsFont: window.lyricsFont,
+                lyricsFontWeight: window.lyricsFontWeight,
                 lyricsAlignment: window.lyricsAlignment,
                 lyricsActiveStyle: window.lyricsActiveStyle,
                 preferLocalLyrics: window.preferLocalLyrics,
@@ -2883,6 +2900,9 @@ ApplicationWindow {
                     if (data.startMinimizedToTray !== undefined) { window.startMinimizedToTray = data.startMinimizedToTray; appSettings.setValue("ui/startMinimizedToTray", data.startMinimizedToTray) }
                     if (data.nowPlayingNotifications) { window.nowPlayingNotifications = data.nowPlayingNotifications; appSettings.setValue("ui/nowPlayingNotifications", data.nowPlayingNotifications) }
                     if (data.lyricsFontSize) { window.lyricsFontSize = data.lyricsFontSize; appSettings.setValue("lyrics/fontSize", data.lyricsFontSize) }
+                    if (data.appFont !== undefined) window.appFont = data.appFont
+                    if (data.lyricsFont !== undefined) window.lyricsFont = data.lyricsFont
+                    if (data.lyricsFontWeight) window.lyricsFontWeight = data.lyricsFontWeight
                     if (data.lyricsAlignment) { window.lyricsAlignment = data.lyricsAlignment; appSettings.setValue("lyrics/alignment", data.lyricsAlignment) }
                     if (data.lyricsActiveStyle) { window.lyricsActiveStyle = data.lyricsActiveStyle; appSettings.setValue("lyrics/activeStyle", data.lyricsActiveStyle) }
                     if (data.preferLocalLyrics !== undefined) { window.preferLocalLyrics = data.preferLocalLyrics; appSettings.setValue("lyrics/preferLocal", data.preferLocalLyrics) }
@@ -3169,6 +3189,8 @@ ApplicationWindow {
             lyricsActiveStyle: window.lyricsActiveStyle
             lyricsAlignment: window.lyricsAlignment
             lyricsFontSize: window.lyricsFontSize
+            lyricsFont: window.lyricsFont || window.displayFont
+            lyricsFontWeight: window.lyricsFontWeight
             volumeLimitEnabled: window.volumeLimitEnabled
             maxVolumePercent: window.maxVolumePercent
             queueEntries: window.queueEntries

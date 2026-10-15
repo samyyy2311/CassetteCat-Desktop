@@ -80,6 +80,8 @@ Window {
     property string lyricsActiveStyle: "white"
     property string lyricsAlignment: "left"
     property int lyricsFontSize: 28
+    property string lyricsFont: displayFont
+    property int lyricsFontWeight: Font.Bold
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 100
 

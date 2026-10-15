@@ -16,6 +16,7 @@ AppListView {
     required property bool playing
     property int fontSize: 28
     property string fontFamily
+    property int fontWeight: Font.Bold
     property bool centered: false
     property color activeColor: "#FFFFFF"
     property int sidePadding: 36
@@ -198,7 +199,7 @@ AppListView {
                 color: entry.current && entry.synced ? Qt.rgba(1, 1, 1, 0.4) : (entry.current ? root.activeColor : "#FFFFFF")
                 font.family: root.fontFamily
                 font.pixelSize: root.fontSize
-                font.weight: Font.Bold
+                font.weight: root.fontWeight
                 font.letterSpacing: -0.3
                 // Only the words not yet lit, so the lit copy above never has faint text showing at its edges.
                 layer.enabled: entry.words.length > 0

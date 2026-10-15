@@ -104,7 +104,6 @@ ApplicationWindow {
     property var catalogDetailHeroTrack: ({})
     property var catalogDetailHistory: []
     property string nowPlayingMode: "controls" // "controls", "lyrics", "queue"
-    property var lyricsListView: null
     property bool nowPlayingLoaded: false
     // Hidden in the tray, no page is on screen, so pages and Now Playing are dropped and rebuilt on return.
     readonly property bool inTray: !window.visible
@@ -1726,6 +1725,19 @@ ApplicationWindow {
         window.showMinimized()
     }
 
+    // Full screen covers the taskbar too; leaving it puts the window back the way it was.
+    function toggleFullScreen() {
+        if (visibility !== Window.FullScreen) showFullScreen()
+        else if (wasMaximized) showMaximized()
+        else showNormal()
+    }
+
+    Shortcut {
+        sequence: inAppShortcut("fullScreen")
+        enabled: shortcutAllowed(sequence)
+        onActivated: toggleFullScreen()
+    }
+
     Shortcut {
         sequence: inAppShortcut("toggleMiniPlayer")
         enabled: shortcutAllowed(sequence)
@@ -1769,7 +1781,10 @@ ApplicationWindow {
         sequence: inAppShortcut("closePlayerView")
         // An open sheet handles Escape itself; two enabled shortcuts on one key would both be ignored as ambiguous.
         enabled: shortcutAllowed(sequence) && !refineSheetOpen && !radioRefineOpen && !trackActionSheet.isOpen
-        onActivated: nowPlayingOpen = false
+        onActivated: {
+            if (visibility === Window.FullScreen) toggleFullScreen()
+            else nowPlayingOpen = false
+        }
     }
 
     Shortcut {
@@ -1969,19 +1984,10 @@ ApplicationWindow {
 
             const m = line.match(/^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\](.*)$/)
             if (m) {
-                const mins = parseInt(m[1], 10) || 0
-                const secs = parseInt(m[2], 10) || 0
-                let ms = 0
-                if (m[3]) {
-                    const frac = m[3]
-                    if (frac.length === 1) ms = parseInt(frac, 10) * 100
-                    else if (frac.length === 2) ms = parseInt(frac, 10) * 10
-                    else ms = parseInt(frac.substring(0, 3), 10)
-                }
-                const timeMs = Math.max(0, (mins * 60 + secs) * 1000 + ms + lyricsSyncOffsetMs)
-                const text = (m[4] || "").trim()
-                if (text.length > 0) {
-                    result.push({ timeMs: timeMs, text: text })
+                const timeMs = Math.max(0, LyricsText.stampMs(m[1], m[2], m[3]) + lyricsSyncOffsetMs)
+                const timed = LyricsText.timedWords((m[4] || "").trim(), lyricsSyncOffsetMs)
+                if (timed.text.length > 0) {
+                    result.push({ timeMs: timeMs, text: timed.text, words: timed.words })
                 }
             } else {
                 result.push({ timeMs: -1, text: line })
@@ -2041,6 +2047,10 @@ ApplicationWindow {
                 if (gapEnd - gapStart >= 6000) items.push({ type: "gap", startMs: gapStart, endMs: gapEnd })
             }
         }
+        // A line is sung until the next line or pause starts, which paces its word fill.
+        items.forEach((item, i) => {
+            if (item.type === "line") item.endMs = i + 1 < items.length ? items[i + 1].startMs : item.startMs + 4000
+        })
         return items
     }
 
@@ -2071,17 +2081,7 @@ ApplicationWindow {
             if (pos >= lyricDisplayItems[i].startMs) displayIndex = i
             else break
         }
-        if (displayIndex !== activeLyricDisplayIndex) {
-            activeLyricDisplayIndex = displayIndex
-            if (lyricsListView && displayIndex >= 0) lyricsListView.currentIndex = displayIndex
-        }
-    }
-
-    function karaokeLyricHtml(index, text) {
-        // Checked before reading the position, so only the active line re-renders as the song plays.
-        if (index !== activeLyricIndex) return LyricsText.escape(text)
-        const color = window.lyricsActiveStyle === "accent" ? recordRedHover : Qt.color("#FFFFFF")
-        return LyricsText.karaoke(parsedLyrics, index, activeLyricIndex, player.position, color, text)
+        activeLyricDisplayIndex = displayIndex
     }
 
     function applyLyrics(lyrics, provider) {
@@ -2095,10 +2095,6 @@ ApplicationWindow {
         parsedLyrics = parseLrc(lyrics || "")
         activeLyricIndex = -1
         activeLyricDisplayIndex = -1
-        if (lyricsListView) {
-            lyricsListView.currentIndex = -1
-            lyricsListView.contentY = 0
-        }
         updateActiveLyric()
     }
 
@@ -2187,9 +2183,6 @@ ApplicationWindow {
         if (nowPlayingMode === "lyrics") {
             parsedLyrics = parseLrc(player.currentLyrics)
             updateActiveLyric()
-            if (lyricsListView && activeLyricIndex >= 0) {
-                lyricsListView.currentIndex = activeLyricIndex
-            }
         }
     }
 
@@ -2716,10 +2709,6 @@ ApplicationWindow {
             parsedLyrics = parseLrc(player.currentLyrics)
             activeLyricIndex = -1
             activeLyricDisplayIndex = -1
-            if (lyricsListView) {
-                lyricsListView.currentIndex = -1
-                lyricsListView.contentY = 0
-            }
             updateActiveLyric()
             playerStateDirty = true
             persistPlayerState()

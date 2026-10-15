@@ -2373,6 +2373,14 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Exit full screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Full screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Open MiniPlayer</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4536,6 +4544,10 @@ Try the track title, or add custom lyrics</source>
     <name>ShortcutDefinitions</name>
     <message>
         <source>Toggle Mini Player</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Full Screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

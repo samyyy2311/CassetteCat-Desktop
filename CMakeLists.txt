@@ -110,6 +110,7 @@ qt_add_qml_module(CassetteCat
         qml/TrackMetadataDialog.qml
         qml/ExpandableSearchBar.qml
         qml/LucideIcon.qml
+        qml/LyricsList.qml
         qml/HoverMarqueeLabel.qml
         qml/TransportButton.qml
         qml/PressDepthIconButton.qml
@@ -273,6 +274,7 @@ qt_add_qml_module(CassetteCat
         qml/icons/rewind.svg
         qml/icons/command.svg
         qml/icons/maximize-2.svg
+        qml/icons/minimize-2.svg
         qml/icons/minus.svg
         qml/icons/plus.svg
         qml/icons/jellyfin.svg

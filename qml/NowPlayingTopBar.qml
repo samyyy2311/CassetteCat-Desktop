@@ -137,6 +137,13 @@ Item {
         }
 
         GlassButton {
+            readonly property bool fullScreen: root.appWindow.visibility === Window.FullScreen
+            iconName: fullScreen ? "minimize-2" : "maximize-2"
+            tooltipText: fullScreen ? qsTr("Exit full screen") : qsTr("Full screen")
+            onClicked: root.appWindow.toggleFullScreen()
+        }
+
+        GlassButton {
             iconName: "pip"
             tooltipText: qsTr("Open MiniPlayer")
             onClicked: root.appWindow.toggleMiniPlayer()

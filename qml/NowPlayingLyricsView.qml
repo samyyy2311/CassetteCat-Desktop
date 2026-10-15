@@ -44,102 +44,29 @@ Item {
         NumberAnimation { target: lyricsListView; property: "opacity"; to: 1; duration: UiConstants.durationStd; easing.type: UiConstants.easingStd }
     }
 
-    AppListView {
+    LyricsList {
         id: lyricsListView
-        Component.onCompleted: root.appWindow.lyricsListView = lyricsListView
-        Component.onDestruction: {
-            if (root.appWindow.lyricsListView === lyricsListView) root.appWindow.lyricsListView = null
-        }
         anchors.fill: parent
-        clip: true
-        model: root.shownLyrics
-        currentIndex: root.appWindow.lyricsTapSyncing ? root.appWindow.lyricsTapStamps.length : root.appWindow.activeLyricDisplayIndex
-        spacing: 26
-        interactive: root.shownLyrics.length > 0
-        topMargin: Math.round(height * 0.38)
-        bottomMargin: Math.round(height * 0.45)
-        highlightRangeMode: ListView.ApplyRange
-        preferredHighlightBegin: Math.round(height * 0.36)
-        preferredHighlightEnd: Math.round(height * 0.38)
-        highlightMoveDuration: UiConstants.highlightDurationFull
-        reuseItems: true
-        ScrollBar.vertical: AutoHideScrollBar {}
-
-        delegate: Item {
-            id: lyricItem
-            width: ListView.view.width
-            readonly property bool isGap: modelData.type === "gap"
-            readonly property bool isCurrent: root.appWindow.lyricsTapSyncing
-                ? modelData.lineIndex === root.appWindow.lyricsTapStamps.length
-                : Boolean(!isGap && root.appWindow.activeLyricDisplayIndex >= 0 && modelData.lineIndex === root.appWindow.activeLyricIndex && root.appWindow.lyricDisplayItems[root.appWindow.activeLyricDisplayIndex] && root.appWindow.lyricDisplayItems[root.appWindow.activeLyricDisplayIndex].type === "line")
-            readonly property bool isSynced: !isGap && modelData.startMs >= 0
-            readonly property bool gapActive: Boolean(isGap && player.position >= modelData.startMs && player.position <= modelData.endMs)
-            height: isGap ? 72 : lyricTextLabel.implicitHeight + 14
-
-            Label {
-                id: lyricTextLabel
-                width: Math.min(parent.width - 72, 920)
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.verticalCenter: parent.verticalCenter
-                visible: !lyricItem.isGap
-                wrapMode: Text.WordWrap
-                textFormat: Text.RichText
-                text: lyricItem.isGap ? "" : root.appWindow.karaokeLyricHtml(modelData.lineIndex, modelData.text)
-                color: isCurrent ? (root.appWindow.lyricsActiveStyle === "accent" ? recordRedHover : "#FFFFFF") : (lyricLineMouse.containsMouse ? textPrimary : (isSynced ? "#7E7A74" : textPrimary))
-                horizontalAlignment: root.appWindow.lyricsAlignment === "center" ? Text.AlignHCenter : Text.AlignLeft
-                font.family: displayFont
-                font.pixelSize: lyricsFontSize
-                font.weight: isCurrent ? Font.Bold : Font.DemiBold
-                font.letterSpacing: -0.3
-                lineHeight: 1.35
-                transformOrigin: Item.Center
-                scale: isCurrent ? 1.03 : (lyricLineMouse.containsMouse ? 1.01 : 0.96)
-                opacity: isCurrent ? 1.0 : (lyricLineMouse.containsMouse ? 0.75 : (isSynced ? 0.28 : 0.85))
-
-                Behavior on color { ColorAnimation { duration: 300 } }
-                Behavior on opacity { NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd } }
-                Behavior on scale { NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd } }
-            }
-
-            Row {
-                anchors.centerIn: parent
-                spacing: 10
-                visible: lyricItem.isGap
-                opacity: lyricItem.gapActive ? 1.0 : 0.22
-
-                Behavior on opacity { NumberAnimation { duration: UiConstants.durationStd; easing.type: UiConstants.easingStd } }
-
-                Repeater {
-                    model: 3
-                    delegate: Rectangle {
-                        width: 7
-                        height: 7
-                        radius: 4
-                        color: recordRedHover
-                        y: 0
-                        SequentialAnimation on y {
-                            running: lyricItem.gapActive && player.isPlaying
-                            loops: Animation.Infinite
-                            PauseAnimation { duration: index * 150 }
-                            NumberAnimation { to: -6; duration: 260; easing.type: Easing.OutSine }
-                            NumberAnimation { to: 0; duration: 260; easing.type: Easing.InSine }
-                            PauseAnimation { duration: (2 - index) * 150 }
-                        }
-                    }
-                }
-            }
-
-            MouseArea {
-                id: lyricLineMouse
-                anchors.fill: parent
-                enabled: !lyricsSwap.running
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (root.appWindow.lyricsTapSyncing) root.appWindow.stampLyricLine()
-                    else if (lyricItem.isSynced) player.seek(modelData.startMs)
-                }
-            }
+        items: root.shownLyrics
+        lines: root.appWindow.parsedLyrics
+        activeItemIndex: root.appWindow.lyricsTapSyncing ? root.appWindow.lyricsTapStamps.length : root.appWindow.activeLyricDisplayIndex
+        activeLineIndex: {
+            if (root.appWindow.lyricsTapSyncing)
+                return root.appWindow.lyricsTapStamps.length
+            const active = root.appWindow.lyricDisplayItems[root.appWindow.activeLyricDisplayIndex]
+            return active && active.type === "line" ? root.appWindow.activeLyricIndex : -1
+        }
+        positionMs: player.position
+        playing: player.isPlaying
+        fontSize: lyricsFontSize
+        fontFamily: displayFont
+        centered: root.appWindow.lyricsAlignment === "center"
+        activeColor: root.appWindow.lyricsActiveStyle === "accent" ? recordRedHover : "#FFFFFF"
+        dotColor: recordRedHover
+        enabled: !lyricsSwap.running
+        onLineClicked: item => {
+            if (root.appWindow.lyricsTapSyncing) root.appWindow.stampLyricLine()
+            else if (item.startMs >= 0) player.seek(item.startMs)
         }
 
         Item {

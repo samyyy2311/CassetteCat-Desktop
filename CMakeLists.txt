@@ -115,7 +115,6 @@ qt_add_qml_module(CassetteCat
         qml/TransportButton.qml
         qml/PressDepthIconButton.qml
         qml/AudioSeeker.qml
-        qml/SliderTrack.qml
         qml/VolumeControl.qml
         qml/Cover.qml
         qml/CoverFrame.qml

@@ -4849,9 +4849,12 @@ ApplicationWindow {
                             onRemainingToggled: val => { window.showRemainingTime = val; appSettings.setValue("player/showRemainingTime", val) }
                         }
 
+                        // Shuffle and repeat sit beside the other buttons, evenly spaced, as one centred group.
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 10
+                            spacing: 16
+
+                            Item { Layout.fillWidth: true }
 
                             TransportButton {
                                 Accessible.name: qsTr("Shuffle")
@@ -4861,8 +4864,6 @@ ApplicationWindow {
                                 accented: player.shuffleEnabled
                                 onClicked: toggleQueueShuffle()
                             }
-
-                            Item { Layout.fillWidth: true }
 
                             TransportButton {
                                 Accessible.name: qsTr("Previous track")
@@ -4889,8 +4890,6 @@ ApplicationWindow {
                                 onClicked: shownNext()
                             }
 
-                            Item { Layout.fillWidth: true }
-
                             TransportButton {
                                 Accessible.name: qsTr("Repeat")
                                 visible: !phoneInDock
@@ -4900,6 +4899,8 @@ ApplicationWindow {
                                 iconColor: repeatMode > 0 ? recordRed : textPrimary
                                 onClicked: toggleRepeat()
                             }
+
+                            Item { Layout.fillWidth: true }
                         }
 
                         RowLayout {
@@ -4928,8 +4929,7 @@ ApplicationWindow {
 
                 NowPlayingDeckControls {
                     id: deckControlsView
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.centerIn: parent
                     width: Math.min(parent.width - 24, 480)
                     height: 310
                     appWindow: window

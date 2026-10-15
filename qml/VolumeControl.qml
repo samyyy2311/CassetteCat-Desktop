@@ -73,13 +73,47 @@ Item {
             Layout.fillWidth: true
             Layout.preferredHeight: 22
 
-            SliderTrack {
+            Rectangle {
+                id: trackGroove
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                fraction: root.volume
-                active: volTrackMouse.containsMouse || root.isDragging
-                fillColor: root.recordRed
+                height: (volTrackMouse.containsMouse || root.isDragging) ? 5 : 3
+                radius: height / 2
+                color: surfaceElevated
+                border.width: 1
+                border.color: borderVariant
+
+                Behavior on height {
+                    NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                }
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: Math.round(trackGroove.width * Math.min(1.0, Math.max(0.0, root.volume)))
+                    radius: height / 2
+                    color: root.recordRed
+                }
+
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: Math.max(0, Math.min(trackGroove.width - width, Math.round(trackGroove.width * Math.min(1.0, Math.max(0.0, root.volume))) - width / 2))
+                    width: (volTrackMouse.containsMouse || root.isDragging) ? 10 : 7
+                    height: (volTrackMouse.containsMouse || root.isDragging) ? 16 : 11
+                    radius: 4
+                    color: "#FFFFFF"
+                    border.width: 1.5
+                    border.color: root.recordRed
+
+                    Behavior on width {
+                        NumberAnimation { duration: 80 }
+                    }
+                    Behavior on height {
+                        NumberAnimation { duration: 80 }
+                    }
+                }
             }
 
             Rectangle {

@@ -77,14 +77,52 @@ Item {
             Layout.preferredHeight: 22
             Layout.alignment: Qt.AlignVCenter
 
-            SliderTrack {
+            Rectangle {
+                id: groove
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
-                fraction: root.progressFraction
-                active: trackMouse.containsMouse || root.isDragging
-                animateFill: !root.isDragging && !root.pendingSeek
-                fillColor: root.recordRed
+                height: (trackMouse.containsMouse || root.isDragging) ? 5 : 3
+                radius: height / 2
+                color: surfaceElevated
+                border.width: 1
+                border.color: borderVariant
+
+                Behavior on height {
+                    NumberAnimation { duration: 100; easing.type: Easing.OutQuad }
+                }
+
+                Rectangle {
+                    id: fillTrack
+                    anchors.left: parent.left
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: Math.round(groove.width * root.progressFraction)
+                    radius: height / 2
+                    color: root.recordRed
+
+                    Behavior on width {
+                        enabled: !root.isDragging && !root.pendingSeek
+                        NumberAnimation { duration: 250; easing.type: Easing.Linear }
+                    }
+                }
+
+                Rectangle {
+                    id: thumb
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: Math.max(0, Math.min(groove.width - width, Math.round(groove.width * root.progressFraction) - width / 2))
+                    width: (trackMouse.containsMouse || root.isDragging) ? 10 : 0
+                    height: (trackMouse.containsMouse || root.isDragging) ? 18 : 0
+                    radius: 5
+                    color: "#FFFFFF"
+                    border.width: 1.5
+                    border.color: root.recordRed
+                    opacity: (trackMouse.containsMouse || root.isDragging) ? 1.0 : 0.0
+
+                    Behavior on opacity { NumberAnimation { duration: 100 } }
+                    Behavior on width { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
+                    Behavior on height { NumberAnimation { duration: 100; easing.type: Easing.OutQuad } }
+                }
             }
 
             Rectangle {

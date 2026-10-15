@@ -304,7 +304,11 @@ qt_add_qml_module(CassetteCat
         assets/06-calico-player.png
         assets/vinyl_record.svg
         assets/vinyl_tonearm.svg
-        fonts/space_grotesk_variable.ttf
+        fonts/space_grotesk_light.ttf
+        fonts/space_grotesk_regular.ttf
+        fonts/space_grotesk_medium.ttf
+        fonts/space_grotesk_semibold.ttf
+        fonts/space_grotesk_bold.ttf
         fonts/ibm_plex_sans_variable.ttf
         fonts/ibm_plex_mono_regular.ttf
         fonts/ibm_plex_mono_semibold.ttf

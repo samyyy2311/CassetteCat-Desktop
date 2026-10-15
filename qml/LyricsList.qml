@@ -199,8 +199,6 @@ AppListView {
                 font.family: root.fontFamily
                 font.pixelSize: root.fontSize
                 font.weight: Font.Bold
-                // The display font is variable; without the axis set it draws at its default weight.
-                font.variableAxes: { "wght": 700 }
                 font.letterSpacing: -0.3
                 // Only the words not yet lit, so the lit copy above never has faint text showing at its edges.
                 layer.enabled: entry.words.length > 0

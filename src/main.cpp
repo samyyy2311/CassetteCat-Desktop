@@ -390,6 +390,17 @@ static void showMainWindow(QQuickWindow *window, bool startMinimized, SmtcContro
 #endif
 }
 
+// English is written in the code; other languages, and English's plural forms, come from the translation files. A
+// language without a file, chosen or from the system, falls back to the English file so plurals still read "1 song".
+// An empty code follows the system language.
+static void loadLanguage(QTranslator &translator, const QString &code) {
+    QCoreApplication::removeTranslator(&translator);
+    const QLocale locale = code.isEmpty() ? QLocale() : QLocale(code);
+    if (translator.load(locale, QStringLiteral("cassettecat"), QStringLiteral("_"), QStringLiteral(":/i18n")) ||
+        translator.load(QStringLiteral("cassettecat_en"), QStringLiteral(":/i18n")))
+        QCoreApplication::installTranslator(&translator);
+}
+
 int main(int argc, char *argv[]) {
     qInstallMessageHandler(writeDebugLog);
 
@@ -414,10 +425,7 @@ int main(int argc, char *argv[]) {
     QCoreApplication::setApplicationName(kApplicationName);
     QCoreApplication::setApplicationVersion(QStringLiteral(CASSETTECAT_VERSION));
     initializeDebugLog();
-    // English is written in the code; other languages, and English plural forms, come from the translation files.
     QTranslator translator;
-    if (translator.load(QLocale(), QStringLiteral("cassettecat"), QStringLiteral("_"), QStringLiteral(":/i18n")))
-        QCoreApplication::installTranslator(&translator);
 #ifdef Q_OS_WIN
     CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     registerWindowsAppIdentity();
@@ -482,6 +490,7 @@ int main(int argc, char *argv[]) {
     PlayerController player(&app, &streaming);
     ServicesController services(&app);
     SettingsController appSettings(&app);
+    loadLanguage(translator, appSettings.value(QStringLiteral("ui/language")).toString());
     QObject::connect(&app, &QCoreApplication::aboutToQuit, [&appSettings]() {
         qInfo() << "APP_ABOUT_TO_QUIT: app is exiting";
         appSettings.sync();
@@ -585,6 +594,10 @@ int main(int argc, char *argv[]) {
         }
     });
 
+    QObject::connect(&appSettings, &SettingsController::languageChanged, &engine, [&] {
+        loadLanguage(translator, appSettings.value(QStringLiteral("ui/language")).toString());
+        engine.retranslate();
+    });
     engine.loadFromModule("CassetteCat", "Main");
     // After the first pass this only reads image headers, so it runs on every launch rather than tracking a flag.
     QThreadPool::globalInstance()->start(shrinkOversizedCachedImages);

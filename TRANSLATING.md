@@ -28,6 +28,8 @@ Every string the user can see is marked for translation:
 - Write counts as plurals: `qsTr("%n song(s)", "", count)`, never `count === 1 ? "song" : "songs"`.
 - Don't mark keys, settings names, file names, URLs, shortcut keys or log messages.
 
+The `translatable-text` test, run by `ctest`, fails when a label, title or tooltip in the QML is plain text instead of `qsTr()`. Names of products and services are allowed; add a new one to the list in `tests/check_translatable.cmake`.
+
 Then update the translation files from the code:
 
 ```bash

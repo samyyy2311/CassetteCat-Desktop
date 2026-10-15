@@ -523,6 +523,7 @@ if(CASSETTECAT_BUILD_TESTING AND BUILD_TESTING)
     add_test(NAME library-tidy COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_librarytidy.qml")
     add_test(NAME lyrics-text COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_lyricstext.qml")
     add_test(NAME queue-model COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_queuemodel.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
+    add_test(NAME translatable-text COMMAND "${CMAKE_COMMAND}" -DQML_DIR=${CMAKE_CURRENT_SOURCE_DIR}/qml -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/check_translatable.cmake")
     add_test(NAME setting-choice-group COMMAND Qt6::qmltestrunner -input "${CMAKE_CURRENT_SOURCE_DIR}/tests/tst_settingchoicegroup.qml" -import "${CMAKE_CURRENT_SOURCE_DIR}/qml")
     set_tests_properties(library-scan streaming-protocol service-cancellation audio-meter catalog-tracklist setting-choice-group PROPERTIES
         ENVIRONMENT_MODIFICATION

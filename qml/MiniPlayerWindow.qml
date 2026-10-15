@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
-import "LyricsText.js" as LyricsText
 
 Window {
     id: root
@@ -81,6 +80,8 @@ Window {
     property string lyricsActiveStyle: "white"
     property string lyricsAlignment: "left"
     property int lyricsFontSize: 28
+    property string lyricsFont: displayFont
+    property int lyricsFontWeight: Font.Bold
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 100
 
@@ -130,12 +131,6 @@ Window {
     function formatRemaining(pos, dur) {
         if (!dur || dur <= 0 || pos > dur) return "-0:00"
         return "-" + formatTime(dur - pos)
-    }
-
-    function karaokeLyricHtml(index, text) {
-        if (index !== activeLyricIndex) return LyricsText.escape(text)
-        const color = lyricsActiveStyle === "accent" ? accentHover : Qt.color("#FFFFFF")
-        return LyricsText.karaoke(parsedLyrics, index, activeLyricIndex, player.position, color, text)
     }
 
     MouseArea {

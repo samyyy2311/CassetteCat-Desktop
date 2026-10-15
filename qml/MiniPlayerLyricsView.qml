@@ -16,77 +16,25 @@ Item {
             Layout.fillHeight: true
             clip: true
 
-            AppListView {
+            LyricsList {
                 id: lyricsListView
                 anchors.fill: parent
-                clip: true
-                model: root.miniPlayer.lyricDisplayItems
-                currentIndex: root.miniPlayer.activeLyricDisplayIndex
-                spacing: 22
-                topMargin: Math.round(height * 0.30)
-                bottomMargin: Math.round(height * 0.40)
-                highlightRangeMode: ListView.ApplyRange
-                preferredHighlightBegin: Math.round(height * 0.28)
-                preferredHighlightEnd: Math.round(height * 0.36)
-                highlightMoveDuration: UiConstants.highlightDurationMini
-                reuseItems: true
-                ScrollBar.vertical: AutoHideScrollBar {}
-
-                delegate: Item {
-                    id: lyricItem
-                    width: ListView.view.width
-                    readonly property bool isGap: modelData.type === "gap"
-                    readonly property bool isCurrent: !isGap && modelData.lineIndex === root.miniPlayer.activeLyricIndex && (root.miniPlayer.lyricDisplayItems[root.miniPlayer.activeLyricDisplayIndex] || {}).type === "line"
-                    readonly property bool gapActive: isGap && root.miniPlayer.playerController.position >= modelData.startMs && root.miniPlayer.playerController.position <= modelData.endMs
-                    height: isGap ? 36 : lyricLabel.implicitHeight + 8
-
-                    Label {
-                        id: lyricLabel
-                        width: parent.width - 16
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: !lyricItem.isGap
-                        wrapMode: Text.WordWrap
-                        textFormat: Text.RichText
-                        text: lyricItem.isGap ? "" : root.miniPlayer.karaokeLyricHtml(modelData.lineIndex, modelData.text)
-                        color: isCurrent
-                            ? (root.miniPlayer.lyricsActiveStyle === "accent" ? root.miniPlayer.recordRedHover : "#FFFFFF")
-                            : (lyricLineMouse.containsMouse ? root.miniPlayer.textPrimary : root.miniPlayer.silverDim)
-                        horizontalAlignment: root.miniPlayer.lyricsAlignment === "center" ? Text.AlignHCenter : Text.AlignLeft
-                        font.family: root.miniPlayer.displayFont
-                        font.pixelSize: {
-                            const base = root.miniPlayer.lyricsFontSize || 28
-                            const scale = base / 28.0
-                            return isCurrent ? Math.round(22 * scale) : Math.round(16 * scale)
-                        }
-                        font.weight: isCurrent ? Font.Bold : Font.DemiBold
-                        scale: isCurrent ? 1.03 : 1.0
-                        opacity: isCurrent ? 1.0 : (lyricLineMouse.containsMouse ? 0.75 : 0.36)
-
-                        Behavior on color { ColorAnimation { duration: UiConstants.durationStd } }
-                        Behavior on opacity { NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd } }
-                        Behavior on scale { NumberAnimation { duration: UiConstants.durationEmphasis; easing.type: UiConstants.easingStd } }
-                    }
-
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 6
-                        visible: lyricItem.isGap
-                        opacity: lyricItem.gapActive ? 1.0 : 0.2
-
-                        Repeater {
-                            model: 3
-                            delegate: Rectangle { width: 5; height: 5; radius: 2.5; color: root.miniPlayer.recordRedHover }
-                        }
-                    }
-
-                    MouseArea {
-                        id: lyricLineMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.miniPlayer.playerController.seek(modelData.startMs)
-                    }
+                items: root.miniPlayer.lyricDisplayItems
+                lines: root.miniPlayer.parsedLyrics
+                activeItemIndex: root.miniPlayer.activeLyricDisplayIndex
+                activeLineIndex: (root.miniPlayer.lyricDisplayItems[root.miniPlayer.activeLyricDisplayIndex] || {}).type === "line"
+                    ? root.miniPlayer.activeLyricIndex : -1
+                positionMs: root.miniPlayer.playerController.position
+                playing: root.miniPlayer.playerController.isPlaying
+                fontSize: Math.round((root.miniPlayer.lyricsFontSize || 28) * 0.7)
+                fontFamily: root.miniPlayer.lyricsFont
+                fontWeight: root.miniPlayer.lyricsFontWeight
+                centered: root.miniPlayer.lyricsAlignment === "center"
+                activeColor: root.miniPlayer.lyricsActiveStyle === "accent" ? root.miniPlayer.recordRedHover : "#FFFFFF"
+                sidePadding: 8
+                anchorRatio: 0.3
+                onLineClicked: item => {
+                    if (item.startMs >= 0) root.miniPlayer.playerController.seek(item.startMs)
                 }
 
                 Item {

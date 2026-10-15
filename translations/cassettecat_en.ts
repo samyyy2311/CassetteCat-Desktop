@@ -3188,11 +3188,15 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Visual style of the expanded player backdrop</source>
+        <source>Moving slowly shifts the cover&apos;s colors, and uses more graphics memory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Tinted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Moving</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

@@ -62,7 +62,6 @@ Item {
         fontFamily: displayFont
         centered: root.appWindow.lyricsAlignment === "center"
         activeColor: root.appWindow.lyricsActiveStyle === "accent" ? recordRedHover : "#FFFFFF"
-        dotColor: recordRedHover
         enabled: !lyricsSwap.running
         onLineClicked: item => {
             if (root.appWindow.lyricsTapSyncing) root.appWindow.stampLyricLine()

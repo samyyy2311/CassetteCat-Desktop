@@ -2036,13 +2036,15 @@ ApplicationWindow {
             const next = lines[i + 1]
             items.push({ type: "line", lineIndex: i, startMs: line.timeMs, text: line.text })
             const words = String(line.text || "").trim().split(/\s+/).filter(word => word.length > 0).length
-            if (next && next.timeMs - line.timeMs >= 8000) {
-                const vocalMs = Math.min(Math.max(1500, Math.min(5000, words * 280 + 600)), Math.max(1500, next.timeMs - line.timeMs - 2000))
-                const gapStart = line.timeMs + vocalMs + 300
+            // How long the line is sung is only a guess, so it's generous: slow singers hold words, and a pause
+            // shown while they're still singing is worse than one shown a little late.
+            const vocalMs = Math.min(8000, Math.max(2500, words * 500 + 1000))
+            if (next && next.timeMs - line.timeMs >= vocalMs + 5000) {
+                const gapStart = line.timeMs + vocalMs
                 const gapEnd = next.timeMs - 150
                 if (gapEnd - gapStart >= 4000) items.push({ type: "gap", startMs: gapStart, endMs: gapEnd })
             } else if (!next && player.duration > 0) {
-                const gapStart = line.timeMs + Math.max(1800, Math.min(4500, words * 260 + 500)) + 400
+                const gapStart = line.timeMs + vocalMs
                 const gapEnd = player.duration - 500
                 if (gapEnd - gapStart >= 6000) items.push({ type: "gap", startMs: gapStart, endMs: gapEnd })
             }
@@ -2069,7 +2071,7 @@ ApplicationWindow {
         const pos = player.position
         let idx = -1
         for (let i = 0; i < parsedLyrics.length; i++) {
-            if (pos >= parsedLyrics[i].timeMs - 200) {
+            if (pos >= parsedLyrics[i].timeMs) {
                 idx = i
             } else {
                 break
@@ -4613,9 +4615,11 @@ ApplicationWindow {
         }
 
         Item {
+            id: npBackdrop
+            readonly property bool moving: window.nowPlayingBackdrop === "moving"
             anchors.fill: parent
             clip: true
-            opacity: window.nowPlayingBackdrop === "clean" ? 0.0 : 0.35
+            opacity: window.nowPlayingBackdrop === "clean" ? 0.0 : (moving ? 0.9 : 0.35)
 
             Behavior on opacity {
                 NumberAnimation { duration: 240 }
@@ -4624,6 +4628,7 @@ ApplicationWindow {
             // Blurred at 240px and scaled up to cover the window; blurring at window size keeps
             // several window-sized textures alive for the life of the page.
             Cover {
+                visible: !npBackdrop.moving
                 anchors.centerIn: parent
                 width: 240
                 height: 240
@@ -4632,7 +4637,7 @@ ApplicationWindow {
                 keepPreviousArtwork: true
                 cacheArtwork: true
                 stableSourceSize: 280
-                layer.enabled: true
+                layer.enabled: visible
                 layer.smooth: true
                 layer.effect: MultiEffect {
                     blurEnabled: true
@@ -4643,12 +4648,58 @@ ApplicationWindow {
                 }
             }
 
+            // Moving keeps only the cover's main colors: it's shrunk to 4 by 4 pixels, then stretched and blurred
+            // into soft patches. Two of them turn slowly in opposite directions, so the colors drift and mix.
+            Repeater {
+                model: npBackdrop.moving ? 2 : 0
+
+                Item {
+                    required property int index
+                    anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: index * parent.width * 0.25
+                    width: 64
+                    height: 64
+                    scale: Math.max(parent.width, parent.height) * 1.6 / width
+                    opacity: index ? 0.6 : 1.0
+                    layer.enabled: true
+                    layer.smooth: true
+                    layer.effect: MultiEffect {
+                        blurEnabled: true
+                        blur: 1.0
+                        blurMax: 32
+                        saturation: 1.0
+                        brightness: -0.1
+                    }
+
+                    Cover {
+                        width: 4
+                        height: 4
+                        scale: 16
+                        transformOrigin: Item.TopLeft
+                        radius: 0
+                        track: shownPlayer.currentTrack
+                        keepPreviousArtwork: true
+                        cacheArtwork: true
+                        layer.enabled: true
+                        layer.smooth: true
+                    }
+
+                    RotationAnimation on rotation {
+                        running: nowPlayingOpen && window.visibility !== Window.Minimized
+                        from: index ? 360 : 0
+                        to: index ? 0 : 360
+                        duration: index ? 140000 : 100000
+                        loops: Animation.Infinite
+                    }
+                }
+            }
+
             Rectangle {
                 anchors.fill: parent
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: "#50000000" }
-                    GradientStop { position: 0.45; color: Qt.alpha(surfaceDeep, 0.75) }
-                    GradientStop { position: 1.0; color: Qt.alpha(surfaceDeep, 0.97) }
+                    GradientStop { position: 0.45; color: Qt.alpha(surfaceDeep, npBackdrop.moving ? 0.45 : 0.75) }
+                    GradientStop { position: 1.0; color: Qt.alpha(surfaceDeep, npBackdrop.moving ? 0.7 : 0.97) }
                 }
             }
         }

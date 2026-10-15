@@ -30,7 +30,6 @@ Item {
                 fontFamily: root.miniPlayer.displayFont
                 centered: root.miniPlayer.lyricsAlignment === "center"
                 activeColor: root.miniPlayer.lyricsActiveStyle === "accent" ? root.miniPlayer.recordRedHover : "#FFFFFF"
-                dotColor: root.miniPlayer.recordRedHover
                 sidePadding: 8
                 anchorRatio: 0.3
                 onLineClicked: item => {

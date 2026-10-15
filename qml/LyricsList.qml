@@ -18,7 +18,6 @@ AppListView {
     property string fontFamily
     property bool centered: false
     property color activeColor: "#FFFFFF"
-    property color dotColor: "#FFFFFF"
     property int sidePadding: 36
     property int maxLineWidth: 920
     property real anchorRatio: 0.36
@@ -46,7 +45,8 @@ AppListView {
         }
         if (!item)
             return
-        const target = Math.max(originY - topMargin, item.y + item.height / 2 - height * anchorRatio)
+        // Whole pixels, so the text and its effects stay sharp.
+        const target = Math.round(Math.max(originY - topMargin, item.y + item.height / 2 - height * anchorRatio))
         followShift = animated ? target - contentY : 0
         followAt = Date.now()
         contentY = target
@@ -138,7 +138,7 @@ AppListView {
         function followCurrent() {
             trailAnimation.stop()
             trail.y = root.followShift
-            trailDelay.duration = Math.min(6, Math.max(0, index - root.activeItemIndex + 1)) * 45
+            trailDelay.duration = Math.min(6, Math.max(0, index - root.activeItemIndex + 1)) * 70
             trailAnimation.start()
         }
         Component.onCompleted: if (Date.now() - root.followAt < 60) followCurrent()
@@ -149,18 +149,18 @@ AppListView {
         SequentialAnimation {
             id: trailAnimation
             PauseAnimation { id: trailDelay }
-            NumberAnimation { target: trail; property: "y"; to: 0; duration: 560; easing.type: Easing.OutCubic }
+            NumberAnimation { target: trail; property: "y"; to: 0; duration: 900; easing.type: Easing.InOutCubic }
         }
 
         Item {
             id: lineBox
             property real blur: entry.current || !entry.synced || root.browsing || lineMouse.containsMouse
-                ? 0 : Math.min(0.6, Math.abs(entry.index - root.activeItemIndex) * 0.12)
+                ? 0 : Math.min(0.5, Math.max(0, Math.abs(entry.index - root.activeItemIndex) - 2) * 0.12)
             visible: !entry.isGap
             width: Math.min(entry.width - root.sidePadding * 2, root.maxLineWidth)
             height: lineText.contentHeight
             x: root.centered ? Math.round((entry.width - width) / 2) : root.sidePadding
-            anchors.verticalCenter: parent.verticalCenter
+            y: Math.round((entry.height - height) / 2)
             transformOrigin: root.centered ? Item.Center : Item.Left
             scale: entry.current ? 1.0 : 0.97
             // Lines already sung all but disappear, and the ones to come fade the further away they are.
@@ -201,6 +201,7 @@ AppListView {
                 font.letterSpacing: -0.3
             }
 
+            // The words sung so far, lit one by one.
             TextEdit {
                 visible: entry.words.length > 0
                 width: lineText.width
@@ -222,7 +223,7 @@ AppListView {
                 }
             }
 
-            // Covers each word as far as it has been sung, with a soft leading edge.
+            // Each word fades in over the time it's sung.
             Item {
                 id: fillMask
                 width: lineText.width
@@ -233,8 +234,7 @@ AppListView {
                 Repeater {
                     model: entry.words
 
-                    Item {
-                        id: word
+                    Rectangle {
                         required property var modelData
                         readonly property rect from: {
                             lineText.contentHeight
@@ -244,62 +244,51 @@ AppListView {
                             lineText.contentHeight
                             return lineText.positionToRectangle(modelData.end)
                         }
-                        readonly property real fill: Math.max(0, Math.min(1,
-                            (root.livePositionMs - modelData.startMs) / Math.max(1, modelData.endMs - modelData.startMs)))
-                        readonly property real edge: Math.round(root.fontSize * 0.6)
+                        readonly property real lit: Math.max(0, Math.min(1,
+                            (root.livePositionMs - modelData.startMs) / Math.max(250, modelData.endMs - modelData.startMs)))
                         x: from.x
                         y: from.y
                         width: (to.y === from.y ? to.x : lineText.width) - from.x
                         height: from.height
-
-                        Rectangle {
-                            width: word.width * word.fill
-                            height: parent.height
-                            color: "white"
-                        }
-
-                        Rectangle {
-                            visible: word.fill > 0 && word.fill < 1
-                            x: word.width * word.fill
-                            width: Math.min(word.edge, word.width * (1 - word.fill))
-                            height: parent.height
-                            gradient: Gradient {
-                                orientation: Gradient.Horizontal
-                                GradientStop { position: 0; color: "white" }
-                                GradientStop { position: 1; color: "transparent" }
-                            }
-                        }
+                        color: "white"
+                        opacity: lit * lit * (3 - 2 * lit)
                     }
                 }
             }
         }
 
+        // A pause between lines: the dots light up one by one as it passes.
         Row {
-            anchors.centerIn: parent
-            spacing: Math.round(root.fontSize * 0.35)
+            readonly property real progress: entry.isGap
+                ? (root.positionMs - entry.modelData.startMs) / Math.max(1, entry.modelData.endMs - entry.modelData.startMs) : 0
+            x: root.centered ? Math.round((entry.width - width) / 2) : root.sidePadding
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: Math.round(root.fontSize * 0.3)
             visible: entry.isGap
             opacity: entry.gapActive ? 1.0 : 0.0
+            transformOrigin: root.centered ? Item.Center : Item.Left
 
             Behavior on opacity { NumberAnimation { duration: UiConstants.durationOverlay; easing.type: UiConstants.easingStd } }
+
+            SequentialAnimation on scale {
+                running: entry.gapActive && root.playing
+                loops: Animation.Infinite
+                NumberAnimation { to: 1.15; duration: 1100; easing.type: Easing.InOutSine }
+                NumberAnimation { to: 1.0; duration: 1100; easing.type: Easing.InOutSine }
+            }
 
             Repeater {
                 model: 3
 
                 Rectangle {
                     required property int index
-                    width: Math.round(root.fontSize * 0.26)
+                    width: Math.round(root.fontSize * 0.36)
                     height: width
                     radius: width / 2
-                    color: root.dotColor
+                    color: root.activeColor
+                    opacity: parent.progress > index / 3 ? 1.0 : 0.3
 
-                    SequentialAnimation on y {
-                        running: entry.gapActive && root.playing
-                        loops: Animation.Infinite
-                        PauseAnimation { duration: index * 150 }
-                        NumberAnimation { to: -6; duration: 260; easing.type: Easing.OutSine }
-                        NumberAnimation { to: 0; duration: 260; easing.type: Easing.InSine }
-                        PauseAnimation { duration: (2 - index) * 150 }
-                    }
+                    Behavior on opacity { NumberAnimation { duration: UiConstants.durationOverlay } }
                 }
             }
         }

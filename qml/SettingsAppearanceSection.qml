@@ -81,11 +81,12 @@ ColumnLayout {
         SettingRow {
             iconName: "maximize-2"
             title: qsTr("Now Playing Backdrop")
-            subtitle: qsTr("Visual style of the expanded player backdrop")
+            subtitle: qsTr("Moving slowly shifts the cover's colors, and uses more graphics memory")
 
             SettingSegmentedControl {
                 options: [
                     { value: "tinted", label: qsTr("Tinted") },
+                    { value: "moving", label: qsTr("Moving") },
                     { value: "clean", label: qsTr("Clean") }
                 ]
                 selectedValue: root.nowPlayingBackdrop

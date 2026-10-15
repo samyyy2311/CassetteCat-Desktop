@@ -138,7 +138,7 @@ AppListView {
         function followCurrent() {
             trailAnimation.stop()
             trail.y = root.followShift
-            trailDelay.duration = Math.min(6, Math.max(0, index - root.activeItemIndex + 1)) * 70
+            trailDelay.duration = Math.min(4, Math.max(0, index - root.activeItemIndex + 1)) * 25
             trailAnimation.start()
         }
         Component.onCompleted: if (Date.now() - root.followAt < 60) followCurrent()
@@ -149,7 +149,7 @@ AppListView {
         SequentialAnimation {
             id: trailAnimation
             PauseAnimation { id: trailDelay }
-            NumberAnimation { target: trail; property: "y"; to: 0; duration: 900; easing.type: Easing.InOutCubic }
+            NumberAnimation { target: trail; property: "y"; to: 0; duration: 650; easing.type: Easing.OutCubic }
         }
 
         Item {
@@ -163,14 +163,15 @@ AppListView {
             y: Math.round((entry.height - height) / 2)
             transformOrigin: root.centered ? Item.Center : Item.Left
             scale: entry.current ? 1.0 : 0.97
-            // Lines already sung all but disappear, and the ones to come fade the further away they are.
+            // Lines already sung disappear, and the ones to come fade the further away they are. Hovering or
+            // scrolling brings them all back.
             opacity: {
                 if (entry.current) return 1.0
                 if (lineMouse.containsMouse) return 0.8
                 if (!entry.synced) return 0.85
                 if (root.browsing) return 0.45
                 const ahead = entry.index - root.activeItemIndex
-                return ahead > 0 ? Math.max(0.12, 0.45 - (ahead - 1) * 0.1) : 0.12
+                return ahead > 0 ? Math.max(0.12, 0.45 - (ahead - 1) * 0.1) : 0.0
             }
             layer.enabled: blur > 0.01
             layer.effect: MultiEffect {

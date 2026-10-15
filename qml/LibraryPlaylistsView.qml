@@ -30,25 +30,29 @@ Item {
         const smart = [
             {
                 id: "smart_favorites",
-                name: "Favorites",
+                key: "Favorites",
+                name: qsTr("Favorites"),
                 isSmart: true,
                 tracks: root.favoritesTracks
             },
             {
                 id: "smart_most_played",
-                name: "Most Played",
+                key: "Most Played",
+                name: qsTr("Most Played"),
                 isSmart: true,
                 tracks: root.mostPlayedTracks
             },
             {
                 id: "smart_recently_added",
-                name: "Recently Added",
+                key: "Recently Added",
+                name: qsTr("Recently Added"),
                 isSmart: true,
                 tracks: root.recentlyAddedTracks
             },
             {
                 id: "smart_never_played",
-                name: "Never Played",
+                key: "Never Played",
+                name: qsTr("Never Played"),
                 isSmart: true,
                 tracks: root.neverPlayedTracks
             }
@@ -92,13 +96,13 @@ Item {
                 cardWidth: parent.width - 16
                 cardHeight: 235
                 name: modelData.name
-                artist: modelData.isSmart ? "Smart Playlist" : "Custom Playlist"
+                artist: modelData.isSmart ? qsTr("Smart Playlist") : qsTr("Custom Playlist")
                 count: modelData.tracks.length
                 track: modelData.tracks.length ? modelData.tracks[0] : ({})
                 onClicked: {
                     const hero = modelData.tracks.length ? modelData.tracks[0] : ({})
                     root.appWindow.openCatalogDetail("playlist", modelData.name, hero,
-                                                     modelData.isSmart ? modelData.name : modelData.id)
+                                                     modelData.isSmart ? modelData.key : modelData.id)
                 }
 
                 DropArea {
@@ -152,7 +156,7 @@ Item {
                 onClicked: {
                     const hero = playlistRow.modelData.tracks.length ? playlistRow.modelData.tracks[0] : ({})
                     root.appWindow.openCatalogDetail("playlist", playlistRow.modelData.name, hero,
-                                                     playlistRow.modelData.isSmart ? playlistRow.modelData.name
+                                                     playlistRow.modelData.isSmart ? playlistRow.modelData.key
                                                                                    : playlistRow.modelData.id)
                 }
             }
@@ -187,7 +191,7 @@ Item {
 
                     Label {
                         Layout.fillWidth: true
-                        text: playlistRow.modelData.tracks.length + " track" + (playlistRow.modelData.tracks.length === 1 ? "" : "s") + (playlistRow.modelData.isSmart ? " • Smart" : "")
+                        text: qsTr("%n track(s)", "", playlistRow.modelData.tracks.length) + (playlistRow.modelData.isSmart ? " • " + qsTr("Smart") : "")
                         color: root.appWindow.textSecondary
                         font.family: root.appWindow.bodyFont
                         font.pixelSize: 11
@@ -199,7 +203,7 @@ Item {
                     iconSize: 14
                     iconName: "play"
                     tint: root.appWindow.textPrimary
-                    tooltipText: "Play playlist"
+                    tooltipText: qsTr("Play playlist")
                     enabled: playlistRow.modelData.tracks.length > 0
                     onClicked: {
                         if (playlistRow.modelData.isSmart) {
@@ -216,7 +220,7 @@ Item {
                     iconSize: 14
                     iconName: "external-link"
                     tint: root.appWindow.silverDim
-                    tooltipText: "Export M3U"
+                    tooltipText: qsTr("Export M3U")
                     onClicked: root.appWindow.requestPlaylistExport(playlistRow.modelData)
                 }
 
@@ -226,7 +230,7 @@ Item {
                     iconSize: 14
                     iconName: "x"
                     tint: root.appWindow.silverDim
-                    tooltipText: "Delete playlist"
+                    tooltipText: qsTr("Delete playlist")
                     onClicked: root.appWindow.deletePlaylist(playlistRow.modelData.id)
                 }
             }
@@ -249,9 +253,9 @@ Item {
         anchors.fill: parent
         visible: root.allPlaylists.length === 0
         catImage: "qrc:/qt/qml/CassetteCat/assets/02-black-cat-cassette.png"
-        title: "No Playlists Found"
-        subtitle: "No playlists match \"" + root.appWindow.libSearchQuery + "\""
-        actionLabel: "Clear Search"
+        title: qsTr("No Playlists Found")
+        subtitle: qsTr("No playlists match \"%1\"").arg(root.appWindow.libSearchQuery)
+        actionLabel: qsTr("Clear Search")
         onActionClicked: root.appWindow.libSearchQuery = ""
     }
 }

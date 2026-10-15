@@ -7,6 +7,7 @@
 
 #include <QAbstractNativeEventFilter>
 #include <QCoreApplication>
+#include <string>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
@@ -90,6 +91,11 @@ enum SystemMediaTransportControlsButton {
     SystemMediaTransportControlsButton_ChannelUp = 8,
     SystemMediaTransportControlsButton_ChannelDown = 9
 };
+
+// A taskbar button's tooltip, translated, as the wide string Windows takes.
+std::wstring thumbnailTip(const char *text) {
+    return QCoreApplication::translate("SmtcController", text).toStdWString();
+}
 
 struct EventRegistrationToken {
     __int64 value;
@@ -379,7 +385,9 @@ class SmtcController::Private {
         button.dwMask = THB_ICON | THB_TOOLTIP | THB_FLAGS;
         button.iId = ThumbPlayPause;
         button.hIcon = playing ? pauseIcon : playIcon;
-        wcscpy_s(button.szTip, playing ? L"Pause" : L"Play");
+        wcscpy_s(button.szTip, thumbnailTip(playing ? QT_TRANSLATE_NOOP("SmtcController", "Pause")
+                                                    : QT_TRANSLATE_NOOP("SmtcController", "Play"))
+                                   .c_str());
         button.dwFlags = THBF_ENABLED;
         return button;
     }
@@ -406,13 +414,13 @@ class SmtcController::Private {
         buttons[0].dwMask = THB_ICON | THB_TOOLTIP | THB_FLAGS;
         buttons[0].iId = ThumbPrevious;
         buttons[0].hIcon = previousIcon;
-        wcscpy_s(buttons[0].szTip, L"Previous");
+        wcscpy_s(buttons[0].szTip, thumbnailTip(QT_TRANSLATE_NOOP("SmtcController", "Previous")).c_str());
         buttons[0].dwFlags = THBF_ENABLED;
         buttons[1] = playPauseButton(playing);
         buttons[2].dwMask = THB_ICON | THB_TOOLTIP | THB_FLAGS;
         buttons[2].iId = ThumbNext;
         buttons[2].hIcon = nextIcon;
-        wcscpy_s(buttons[2].szTip, L"Next");
+        wcscpy_s(buttons[2].szTip, thumbnailTip(QT_TRANSLATE_NOOP("SmtcController", "Next")).c_str());
         buttons[2].dwFlags = THBF_ENABLED;
         taskbar->ThumbBarAddButtons(window, 3, buttons);
     }

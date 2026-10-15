@@ -24,18 +24,18 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Audio Folders" }
+    SectionLabel { text: qsTr("Audio Folders") }
 
     SettingCard {
         SettingRow {
             iconName: "folder"
-            title: "Audio Folders"
+            title: qsTr("Audio Folders")
             subtitle: root.libraryFolders.length > 0
-                      ? (root.libraryFolders.length + (root.libraryFolders.length === 1 ? " folder" : " folders") + "  •  " + root.trackCount + " songs")
-                      : (root.trackCount + " tracks loaded from library")
+                      ? (qsTr("%n folder(s)", "", root.libraryFolders.length) + "  •  " + qsTr("%n song(s)", "", root.trackCount))
+                      : qsTr("%n track(s) loaded from library", "", root.trackCount)
 
             SettingButton {
-                text: "Add folder"
+                text: qsTr("Add folder")
                 onClicked: root.addLibraryFolderRequested()
             }
         }
@@ -49,11 +49,11 @@ ColumnLayout {
 
         SettingRow {
             iconName: "eye-off"
-            title: "Excluded Folders"
-            subtitle: root.excludedFolders.length === 0 ? "No exclusions. Every subfolder is scanned" : (root.excludedFolders.length + (root.excludedFolders.length === 1 ? " folder" : " folders") + " hidden from the library")
+            title: qsTr("Excluded Folders")
+            subtitle: root.excludedFolders.length === 0 ? qsTr("No exclusions. Every subfolder is scanned") : qsTr("%n folder(s) hidden from the library", "", root.excludedFolders.length)
 
             SettingButton {
-                text: "Exclude folder"
+                text: qsTr("Exclude folder")
                 onClicked: root.addExcludeRequested()
             }
         }
@@ -64,13 +64,13 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Library Filtering" }
+    SectionLabel { text: qsTr("Library Filtering") }
 
     SettingCard {
         SettingRow {
             iconName: "clock"
-            title: "Ignore Short Clips"
-            subtitle: "Hide audio tracks shorter than 30 seconds from library and search"
+            title: qsTr("Ignore Short Clips")
+            subtitle: qsTr("Hide audio tracks shorter than 30 seconds from library and search")
 
             SettingSwitch {
                 checked: root.ignoreShortClips
@@ -79,18 +79,18 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Display & Sorting" }
+    SectionLabel { text: qsTr("Display & Sorting") }
 
     SettingCard {
         SettingChoiceGroup {
             iconName: "arrow-up-down"
-            title: "Default Library Sort"
-            subtitle: "Default track order for songs listing"
+            title: qsTr("Default Library Sort")
+            subtitle: qsTr("Default track order for songs listing")
             options: [
-                { value: "title", label: "Title" },
-                { value: "artist", label: "Artist" },
-                { value: "album", label: "Album" },
-                { value: "duration", label: "Duration" }
+                { value: "title", label: qsTr("Title") },
+                { value: "artist", label: qsTr("Artist") },
+                { value: "album", label: qsTr("Album") },
+                { value: "duration", label: qsTr("Duration") }
             ]
             selectedValue: root.songSortMetric
             onOptionSelected: val => root.songSortSelected(String(val))
@@ -100,13 +100,13 @@ ColumnLayout {
 
         SettingRow {
             iconName: "list"
-            title: "Track Row Density"
-            subtitle: "Vertical spacing for song rows in track lists"
+            title: qsTr("Track Row Density")
+            subtitle: qsTr("Vertical spacing for song rows in track lists")
 
             SettingSegmentedControl {
                 options: [
-                    { value: "comfortable", label: "Comfortable" },
-                    { value: "compact", label: "Compact" }
+                    { value: "comfortable", label: qsTr("Comfortable") },
+                    { value: "compact", label: qsTr("Compact") }
                 ]
                 selectedValue: root.trackDensity
                 onOptionSelected: val => root.trackDensitySelected(String(val))
@@ -117,8 +117,8 @@ ColumnLayout {
 
         SettingRow {
             iconName: "disc"
-            title: "Audio Format Badges"
-            subtitle: "Show FLAC, MP3, and AAC badges on track rows"
+            title: qsTr("Audio Format Badges")
+            subtitle: qsTr("Show FLAC, MP3, and AAC badges on track rows")
 
             SettingSwitch {
                 checked: root.showFormatBadges

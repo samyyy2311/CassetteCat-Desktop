@@ -122,7 +122,7 @@ Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
-                text: root.track ? (TrackTitles.title(root.track) || root.track.fileName || "Untitled Track") : ""
+                text: root.track ? (TrackTitles.title(root.track) || root.track.fileName || qsTr("Untitled Track")) : ""
                 color: isCurrent ? activeTextColor : defaultTextColor
                 font.family: displayFont
                 font.pixelSize: 14
@@ -227,7 +227,7 @@ Rectangle {
             Layout.alignment: Qt.AlignVCenter
             Layout.preferredWidth: 60
             horizontalAlignment: Text.AlignRight
-            text: playCount + (playCount === 1 ? " play" : " plays")
+            text: qsTr("%n play(s)", "", playCount)
             color: silverDim
             font.family: monoFont
             font.pixelSize: 11

@@ -68,7 +68,7 @@ CardBase {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
-                text: root.subtitle.length > 0 ? root.subtitle : (root.artist ? root.artist : (root.count + (root.count === 1 ? " song" : " songs")))
+                text: root.subtitle.length > 0 ? root.subtitle : (root.artist ? root.artist : (qsTr("%n song(s)", "", root.count)))
                 color: textSecondary
                 font.family: bodyFont
                 font.pixelSize: 11

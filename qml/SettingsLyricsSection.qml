@@ -17,19 +17,19 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Typography & Layout" }
+    SectionLabel { text: qsTr("Typography & Layout") }
 
     SettingCard {
         SettingRow {
             iconName: "quote"
-            title: "Lyrics Font Size"
-            subtitle: "Relative scale of lyric lines in synchronized view"
+            title: qsTr("Lyrics Font Size")
+            subtitle: qsTr("Relative scale of lyric lines in synchronized view")
 
             SettingSegmentedControl {
                 options: [
-                    { value: 24, label: "Small" },
-                    { value: 28, label: "Default" },
-                    { value: 32, label: "Large" }
+                    { value: 24, label: qsTr("Small") },
+                    { value: 28, label: qsTr("Default") },
+                    { value: 32, label: qsTr("Large") }
                 ]
                 selectedValue: root.lyricsFontSize
                 onOptionSelected: val => root.lyricsFontSizeSelected(Number(val))
@@ -40,13 +40,13 @@ ColumnLayout {
 
         SettingRow {
             iconName: "list"
-            title: "Text Alignment"
-            subtitle: "Horizontal alignment of synced lyric text"
+            title: qsTr("Text Alignment")
+            subtitle: qsTr("Horizontal alignment of synced lyric text")
 
             SettingSegmentedControl {
                 options: [
-                    { value: "left", label: "Left" },
-                    { value: "center", label: "Center" }
+                    { value: "left", label: qsTr("Left") },
+                    { value: "center", label: qsTr("Center") }
                 ]
                 selectedValue: root.lyricsAlignment
                 onOptionSelected: val => root.lyricsAlignmentSelected(String(val))
@@ -57,13 +57,13 @@ ColumnLayout {
 
         SettingRow {
             iconName: "pencil"
-            title: "Active Line Color"
-            subtitle: "Highlight styling for currently playing lyrics"
+            title: qsTr("Active Line Color")
+            subtitle: qsTr("Highlight styling for currently playing lyrics")
 
             SettingSegmentedControl {
                 options: [
-                    { value: "accent", label: "Accent" },
-                    { value: "white", label: "White" }
+                    { value: "accent", label: qsTr("Accent") },
+                    { value: "white", label: qsTr("White") }
                 ]
                 selectedValue: root.lyricsActiveStyle
                 onOptionSelected: val => root.lyricsActiveStyleSelected(String(val))
@@ -71,13 +71,13 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Local Files" }
+    SectionLabel { text: qsTr("Local Files") }
 
     SettingCard {
         SettingRow {
             iconName: "folder"
-            title: "Prefer Local .lrc Files"
-            subtitle: "Load sidecar .lrc files before querying online providers"
+            title: qsTr("Prefer Local .lrc Files")
+            subtitle: qsTr("Load sidecar .lrc files before querying online providers")
 
             SettingSwitch {
                 checked: root.preferLocalLyrics

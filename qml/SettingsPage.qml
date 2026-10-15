@@ -27,7 +27,7 @@ Item {
     property var inAppShortcutActions: []
     property string inAppShortcutStatus: ""
     property string sleepTimerMode: "off"
-    property string sleepTimerStatus: "Off"
+    property string sleepTimerStatus: qsTr("Off")
     property bool sleepFadeOut: true
     property bool autoplayEnabled: false
     property int crossfadeSeconds: 0
@@ -74,18 +74,18 @@ Item {
     property var tagScan
 
     readonly property var categories: [
-        { id: "library", label: "Music Library", icon: "library" },
-        { id: "health", label: "Library Health", icon: "list-music" },
-        { id: "appearance", label: "Appearance", icon: "sliders-horizontal" },
-        { id: "playback", label: "Playback & Audio", icon: "play" },
-        { id: "shortcuts", label: "Keyboard Shortcuts", icon: "keyboard" },
-        { id: "desktop", label: "General & System", icon: "settings" },
-        { id: "lyrics", label: "Lyrics", icon: "mic" },
-        { id: "scrobble", label: "Scrobbling", icon: "audio-lines" },
-        { id: "network", label: "Network & Services", icon: "globe" },
-        { id: "phone", label: "Phone Remote", icon: "smartphone" },
-        { id: "data", label: "Backup & Diagnostics", icon: "refresh-cw" },
-        { id: "credits", label: "Credits & Legal", icon: "info" }
+        { id: "library", label: qsTr("Music Library"), icon: "library" },
+        { id: "health", label: qsTr("Library Health"), icon: "list-music" },
+        { id: "appearance", label: qsTr("Appearance"), icon: "sliders-horizontal" },
+        { id: "playback", label: qsTr("Playback & Audio"), icon: "play" },
+        { id: "shortcuts", label: qsTr("Keyboard Shortcuts"), icon: "keyboard" },
+        { id: "desktop", label: qsTr("General & System"), icon: "settings" },
+        { id: "lyrics", label: qsTr("Lyrics"), icon: "mic" },
+        { id: "scrobble", label: qsTr("Scrobbling"), icon: "audio-lines" },
+        { id: "network", label: qsTr("Network & Services"), icon: "globe" },
+        { id: "phone", label: qsTr("Phone Remote"), icon: "smartphone" },
+        { id: "data", label: qsTr("Backup & Diagnostics"), icon: "refresh-cw" },
+        { id: "credits", label: qsTr("Credits & Legal"), icon: "info" }
     ]
 
     readonly property real activeSectionHeight: {
@@ -339,8 +339,8 @@ Item {
                             SectionLabel {
                                 visible: root.searchQuery.trim() !== ""
                                 text: root.searchResults.length > 0
-                                      ? root.searchResults.length + (root.searchResults.length === 1 ? " Setting Found" : " Settings Found")
-                                      : "No Settings Found"
+                                      ? qsTr("%n Setting(s) Found", "", root.searchResults.length)
+                                      : qsTr("No Settings Found")
                             }
 
                             SettingCard {
@@ -352,11 +352,11 @@ Item {
                                     SettingRow {
                                         required property var modelData
                                         title: modelData.title
-                                        subtitle: modelData.row ? modelData.sectionLabel : "Settings section"
+                                        subtitle: modelData.row ? modelData.sectionLabel : qsTr("Settings section")
 
                                         SettingButton {
-                                            text: "Open"
-                                            accessibleName: "Open " + modelData.title
+                                            text: qsTr("Open")
+                                            accessibleName: qsTr("Open %1").arg(modelData.title)
                                             onClicked: root.openSearchResult(modelData)
                                         }
                                     }

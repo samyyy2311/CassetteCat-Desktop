@@ -17,24 +17,24 @@ ColumnLayout {
     signal inAppShortcutSelected(string action, string shortcut)
 
     readonly property var globalActions: [
-        { action: "playPause", label: "Play / Pause", defaultKey: "Ctrl+Alt+Space", icon: "play" },
-        { action: "previous", label: "Previous Track", defaultKey: "Ctrl+Alt+Left", icon: "skip-back" },
-        { action: "next", label: "Next Track", defaultKey: "Ctrl+Alt+Right", icon: "skip-forward" },
-        { action: "favorite", label: "Toggle Favorite", defaultKey: "Ctrl+Alt+F", icon: "heart" },
-        { action: "search", label: "Focus Search", defaultKey: "Ctrl+Alt+S", icon: "search" },
-        { action: "miniPlayer", label: "Toggle Mini Player", defaultKey: "Ctrl+Alt+M", icon: "pip" }
+        { action: "playPause", label: qsTr("Play / Pause"), defaultKey: "Ctrl+Alt+Space", icon: "play" },
+        { action: "previous", label: qsTr("Previous Track"), defaultKey: "Ctrl+Alt+Left", icon: "skip-back" },
+        { action: "next", label: qsTr("Next Track"), defaultKey: "Ctrl+Alt+Right", icon: "skip-forward" },
+        { action: "favorite", label: qsTr("Toggle Favorite"), defaultKey: "Ctrl+Alt+F", icon: "heart" },
+        { action: "search", label: qsTr("Focus Search"), defaultKey: "Ctrl+Alt+S", icon: "search" },
+        { action: "miniPlayer", label: qsTr("Toggle Mini Player"), defaultKey: "Ctrl+Alt+M", icon: "pip" }
     ]
 
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "System-Wide Hotkeys" }
+    SectionLabel { text: qsTr("System-Wide Hotkeys") }
 
     SettingCard {
         SettingRow {
             iconName: "keyboard"
-            title: "Enable Global Shortcuts"
-            subtitle: root.globalShortcutsSupported ? root.globalShortcutStatus : "Not available on this platform"
+            title: qsTr("Enable Global Shortcuts")
+            subtitle: root.globalShortcutsSupported ? root.globalShortcutStatus : qsTr("Not available on this platform")
 
             SettingSwitch {
                 enabled: root.globalShortcutsSupported
@@ -76,14 +76,14 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "In-App Controls" }
+    SectionLabel { text: qsTr("In-App Controls") }
 
     SettingCard {
         Label {
             Layout.fillWidth: true
             Layout.topMargin: 8
             Layout.bottomMargin: 4
-            text: "Click a shortcut field to record keys. Press Backspace to clear, Escape to cancel."
+            text: qsTr("Click a shortcut field to record keys. Press Backspace to clear, Escape to cancel.")
             color: textSecondary
             font.family: (typeof bodyFont !== "undefined" ? bodyFont : "Space Grotesk")
             font.pixelSize: 11

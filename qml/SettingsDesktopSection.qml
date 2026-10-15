@@ -26,33 +26,33 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Startup & Navigation" }
+    SectionLabel { text: qsTr("Startup & Navigation") }
 
     SettingCard {
         SettingChoiceGroup {
             iconName: "compass"
-            title: "Default Launch Page"
-            subtitle: "View displayed immediately upon opening CassetteCat"
+            title: qsTr("Default Launch Page")
+            subtitle: qsTr("View displayed immediately upon opening CassetteCat")
             options: [
-                { value: "last", label: "Last Visited" },
-                { value: "home", label: "Home" },
-                { value: "library", label: "Library" },
-                { value: "radio", label: "Radio" },
-                { value: "search", label: "Search" },
-                { value: "settings", label: "Settings" }
+                { value: "last", label: qsTr("Last Visited") },
+                { value: "home", label: qsTr("Home") },
+                { value: "library", label: qsTr("Library") },
+                { value: "radio", label: qsTr("Radio") },
+                { value: "search", label: qsTr("Search") },
+                { value: "settings", label: qsTr("Settings") }
             ]
             selectedValue: root.defaultLaunchPage
             onOptionSelected: val => root.defaultLaunchPageSelected(String(val))
         }
     }
 
-    SectionLabel { text: "Window & System Tray" }
+    SectionLabel { text: qsTr("Window & System Tray") }
 
     SettingCard {
         SettingRow {
             iconName: "shield"
-            title: "Close to System Tray"
-            subtitle: "Keep CassetteCat running in the background when the window is closed"
+            title: qsTr("Close to System Tray")
+            subtitle: qsTr("Keep CassetteCat running in the background when the window is closed")
 
             SettingSwitch {
                 enabled: root.trayAvailable
@@ -65,8 +65,8 @@ ColumnLayout {
 
         SettingRow {
             iconName: "minus"
-            title: "Start Minimized"
-            subtitle: "Launch silently in the system tray without showing the main window"
+            title: qsTr("Start Minimized")
+            subtitle: qsTr("Launch silently in the system tray without showing the main window")
 
             SettingSwitch {
                 enabled: root.trayAvailable
@@ -76,19 +76,19 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Desktop Notifications" }
+    SectionLabel { text: qsTr("Desktop Notifications") }
 
     SettingCard {
         SettingRow {
             iconName: "disc"
-            title: "Now-Playing Notifications"
-            subtitle: "Show native system notification when the track changes"
+            title: qsTr("Now-Playing Notifications")
+            subtitle: qsTr("Show native system notification when the track changes")
 
             SettingSegmentedControl {
                 options: [
-                    { value: "off", label: "Off" },
-                    { value: "minimized", label: "When Minimized" },
-                    { value: "always", label: "Always" }
+                    { value: "off", label: qsTr("Off") },
+                    { value: "minimized", label: qsTr("When Minimized") },
+                    { value: "always", label: qsTr("Always") }
                 ]
                 selectedValue: root.nowPlayingNotifications
                 onOptionSelected: val => root.nowPlayingNotificationsSelected(String(val))
@@ -96,13 +96,13 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Mini Player Window" }
+    SectionLabel { text: qsTr("Mini Player Window") }
 
     SettingCard {
         SettingRow {
             iconName: "pin"
-            title: "Keep Mini Player on Top"
-            subtitle: "Float compact mini player above other application windows"
+            title: qsTr("Keep Mini Player on Top")
+            subtitle: qsTr("Float compact mini player above other application windows")
 
             SettingSwitch {
                 checked: root.miniPlayerAlwaysOnTop
@@ -113,18 +113,18 @@ ColumnLayout {
 
     SectionLabel {
         visible: !installedFromStore
-        text: "Application Updates"
+        text: qsTr("Application Updates")
     }
 
     SettingCard {
         visible: !installedFromStore
         SettingRow {
             iconName: "arrow-up"
-            title: "Check for Updates"
+            title: qsTr("Check for Updates")
             subtitle: root.updateStatusText
 
             SettingButton {
-                text: root.updateChecking ? "Checking..." : "Check Now"
+                text: root.updateChecking ? qsTr("Checking...") : qsTr("Check Now")
                 iconName: "refresh-cw"
                 enabled: !root.updateChecking
                 onClicked: root.checkUpdatesRequested()
@@ -132,7 +132,7 @@ ColumnLayout {
 
             SettingButton {
                 visible: root.updateAvailable
-                text: "Download Update"
+                text: qsTr("Download Update")
                 iconName: "external-link"
                 primary: true
                 onClicked: root.downloadUpdateRequested()

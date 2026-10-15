@@ -292,7 +292,7 @@ QStringList ServicesController::releaseNotesFrom(const QString &changelog, const
 void ServicesController::checkForUpdates(bool manual) {
     if (!onlineEnabled()) {
         if (manual) {
-            emit updateCheckFailed(QStringLiteral("Offline blackout is enabled."), manual);
+            emit updateCheckFailed(tr("Offline blackout is enabled."), manual);
         }
         return;
     }
@@ -313,7 +313,7 @@ void ServicesController::checkForUpdates(bool manual) {
 
         const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
         if (!doc.isObject()) {
-            emit updateCheckFailed(QStringLiteral("Invalid response from GitHub."), manual);
+            emit updateCheckFailed(tr("Invalid response from GitHub."), manual);
             return;
         }
 

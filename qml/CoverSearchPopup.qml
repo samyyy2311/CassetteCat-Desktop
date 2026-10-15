@@ -75,7 +75,7 @@ AppDialog {
                 spacing: 2
 
                 Label {
-                    text: root.searchLoading ? "Searching artwork…" : "Choose album cover"
+                    text: root.searchLoading ? qsTr("Searching artwork…") : qsTr("Choose album cover")
                     color: textPrimary
                     font.family: displayFont
                     font.pixelSize: 18
@@ -84,7 +84,7 @@ AppDialog {
 
                 Label {
                     Layout.fillWidth: true
-                    text: root.targetAlbum.length ? (root.targetAlbum + (root.targetArtist.length ? " • " + root.targetArtist : "")) : "Search online album artwork"
+                    text: root.targetAlbum.length ? (root.targetAlbum + (root.targetArtist.length ? " • " + root.targetArtist : "")) : qsTr("Search online album artwork")
                     color: textSecondary
                     font.family: bodyFont
                     font.pixelSize: 11
@@ -93,7 +93,7 @@ AppDialog {
             }
 
             TransportButton {
-                Accessible.name: "Close"
+                Accessible.name: qsTr("Close")
                 buttonSize: 30
                 iconName: "x"
                 onClicked: root.close()
@@ -110,19 +110,19 @@ AppDialog {
             RefineTextInput {
                 id: albumInput
                 Layout.fillWidth: true
-                placeholder: "Album title"
+                placeholder: qsTr("Album title")
                 onSubmitted: root.triggerSearch()
             }
 
             RefineTextInput {
                 id: artistInput
                 Layout.preferredWidth: 160
-                placeholder: "Artist (optional)"
+                placeholder: qsTr("Artist (optional)")
                 onSubmitted: root.triggerSearch()
             }
 
             TransportButton {
-                Accessible.name: "Search"
+                Accessible.name: qsTr("Search")
                 buttonSize: 36
                 iconName: "search"
                 accented: true
@@ -139,7 +139,7 @@ AppDialog {
 
             Label {
                 Layout.fillWidth: true
-                text: "Also save the cover into the music files, so other apps show it"
+                text: qsTr("Also save the cover into the music files, so other apps show it")
                 color: textSecondary
                 font.family: bodyFont
                 font.pixelSize: 12
@@ -147,7 +147,7 @@ AppDialog {
             }
 
             SettingSwitch {
-                Accessible.name: "Also save the cover into the music files"
+                Accessible.name: qsTr("Also save the cover into the music files")
                 checked: root.appWindow.embedCoversInFiles
                 onToggled: value => root.appWindow.embedCoversInFiles = value
             }
@@ -162,7 +162,7 @@ AppDialog {
 
             Label {
                 Layout.fillWidth: true
-                text: root.searchResults.length + (root.searchResults.length === 1 ? " artwork found" : " artworks found")
+                text: qsTr("%n artwork(s) found", "", root.searchResults.length)
                 color: accentText
                 font.family: monoFont
                 font.pixelSize: 10
@@ -170,7 +170,7 @@ AppDialog {
             }
 
             Label {
-                text: "Select a cover to apply"
+                text: qsTr("Select a cover to apply")
                 color: silverDim
                 font.family: bodyFont
                 font.pixelSize: 10
@@ -190,7 +190,7 @@ AppDialog {
                     anchors.centerIn: parent
                     spacing: 8
                     Label {
-                        text: "Searching catalog for covers…"
+                        text: qsTr("Searching catalog for covers…")
                         color: textSecondary
                         font.family: displayFont
                         font.pixelSize: 13
@@ -206,7 +206,7 @@ AppDialog {
                     anchors.centerIn: parent
                     spacing: 6
                     Label {
-                        text: "No album covers found"
+                        text: qsTr("No album covers found")
                         color: textPrimary
                         font.family: displayFont
                         font.pixelSize: 14
@@ -214,7 +214,7 @@ AppDialog {
                         Layout.alignment: Qt.AlignHCenter
                     }
                     Label {
-                        text: "Try refining the album title or artist above."
+                        text: qsTr("Try refining the album title or artist above.")
                         color: textSecondary
                         font.family: bodyFont
                         font.pixelSize: 12
@@ -370,7 +370,7 @@ AppDialog {
                     spacing: 8
 
                     Label {
-                        text: "Downloading & applying artwork…"
+                        text: qsTr("Downloading & applying artwork…")
                         color: textPrimary
                         font.family: displayFont
                         font.pixelSize: 14

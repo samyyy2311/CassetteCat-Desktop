@@ -19,13 +19,13 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Color Scheme" }
+    SectionLabel { text: qsTr("Color Scheme") }
 
     SettingCard {
         SettingRow {
             iconName: "pencil"
-            title: "Accent Colour"
-            subtitle: "Applied to active navigation, selected controls, playback, seek bars, and volume"
+            title: qsTr("Accent Colour")
+            subtitle: qsTr("Applied to active navigation, selected controls, playback, seek bars, and volume")
         }
 
         Flow {
@@ -48,7 +48,7 @@ ColumnLayout {
 
             ColorSwatch {
                 color: selected ? root.customAccentColor : surfaceElevated
-                label: "Custom"
+                label: qsTr("Custom")
                 selected: root.accentName === "custom"
                 icon: selected ? "check" : "sliders-horizontal"
                 onClicked: colorPicker.open()
@@ -57,19 +57,19 @@ ColumnLayout {
 
     }
 
-    SectionLabel { text: "Cover Art & Backdrop" }
+    SectionLabel { text: qsTr("Cover Art & Backdrop") }
 
     SettingCard {
         SettingRow {
             iconName: "disc"
-            title: "Album Art Corners"
-            subtitle: "Corner roundness for artwork thumbnails and cards"
+            title: qsTr("Album Art Corners")
+            subtitle: qsTr("Corner roundness for artwork thumbnails and cards")
 
             SettingSegmentedControl {
                 options: [
-                    { value: 0, label: "Square" },
-                    { value: 8, label: "Soft" },
-                    { value: 16, label: "Rounded" }
+                    { value: 0, label: qsTr("Square") },
+                    { value: 8, label: qsTr("Soft") },
+                    { value: 16, label: qsTr("Rounded") }
                 ]
                 selectedValue: root.albumArtRadius
                 onOptionSelected: val => root.albumArtRadiusSelected(Number(val))
@@ -80,13 +80,13 @@ ColumnLayout {
 
         SettingRow {
             iconName: "maximize-2"
-            title: "Now Playing Backdrop"
-            subtitle: "Visual style of the expanded player backdrop"
+            title: qsTr("Now Playing Backdrop")
+            subtitle: qsTr("Visual style of the expanded player backdrop")
 
             SettingSegmentedControl {
                 options: [
-                    { value: "tinted", label: "Tinted" },
-                    { value: "clean", label: "Clean" }
+                    { value: "tinted", label: qsTr("Tinted") },
+                    { value: "clean", label: qsTr("Clean") }
                 ]
                 selectedValue: root.nowPlayingBackdrop
                 onOptionSelected: val => root.nowPlayingBackdropSelected(val)
@@ -94,18 +94,18 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Time Counter" }
+    SectionLabel { text: qsTr("Time Counter") }
 
     SettingCard {
         SettingRow {
             iconName: "clock"
-            title: "Time Display"
-            subtitle: "Show remaining time countdown or total track duration"
+            title: qsTr("Time Display")
+            subtitle: qsTr("Show remaining time countdown or total track duration")
 
             SettingSegmentedControl {
                 options: [
-                    { value: true, label: "Remaining" },
-                    { value: false, label: "Total" }
+                    { value: true, label: qsTr("Remaining") },
+                    { value: false, label: qsTr("Total") }
                 ]
                 selectedValue: root.showRemainingTime
                 onOptionSelected: val => root.showRemainingTimeSelected(Boolean(val))

@@ -73,7 +73,7 @@ Rectangle {
 
         AppToolTip {
             targetItem: eyeMouse
-            text: root.passwordVisible ? "Hide password" : "Show password"
+            text: root.passwordVisible ? qsTr("Hide password") : qsTr("Show password")
             visibleTarget: eyeMouse.containsMouse
             below: true
         }

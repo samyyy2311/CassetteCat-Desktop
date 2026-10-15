@@ -10,7 +10,7 @@ ColumnLayout {
     property bool autoplayEnabled: false
     property int crossfadeSeconds: 0
     property string sleepTimerMode: "off"
-    property string sleepTimerStatus: "Off"
+    property string sleepTimerStatus: qsTr("Off")
     property bool sleepFadeOut: true
     property bool volumeLimitEnabled: false
     property int maxVolumePercent: 80
@@ -30,13 +30,13 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 16
 
-    SectionLabel { text: "Audio Output" }
+    SectionLabel { text: qsTr("Audio Output") }
 
     SettingCard {
         SettingChoiceGroup {
             iconName: "plug"
-            title: "Playback Device"
-            subtitle: "Choose where CassetteCat sends audio output"
+            title: qsTr("Playback Device")
+            subtitle: qsTr("Choose where CassetteCat sends audio output")
             forceMenu: true
             options: root.audioOutputs
             selectedValue: root.audioDeviceId
@@ -44,13 +44,13 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Queue & Playback" }
+    SectionLabel { text: qsTr("Queue & Playback") }
 
     SettingCard {
         SettingRow {
             iconName: "rotate-ccw"
-            title: "Resume Queue on Launch"
-            subtitle: "Restore active track, queue, and playback position"
+            title: qsTr("Resume Queue on Launch")
+            subtitle: qsTr("Restore active track, queue, and playback position")
 
             SettingSwitch {
                 checked: root.resumeQueueOnLaunch
@@ -62,8 +62,8 @@ ColumnLayout {
 
         SettingRow {
             iconName: "shuffle"
-            title: "Autoplay"
-            subtitle: "Keep playing similar songs when the queue ends"
+            title: qsTr("Autoplay")
+            subtitle: qsTr("Keep playing similar songs when the queue ends")
 
             SettingSwitch {
                 checked: root.autoplayEnabled
@@ -75,10 +75,10 @@ ColumnLayout {
 
         SettingChoiceGroup {
             iconName: "audio-lines"
-            title: "Crossfade"
-            subtitle: "Fade each song into the next as it ends"
+            title: qsTr("Crossfade")
+            subtitle: qsTr("Fade each song into the next as it ends")
             options: [
-                { value: 0, label: "Off" },
+                { value: 0, label: qsTr("Off") },
                 { value: 3, label: "3s" },
                 { value: 6, label: "6s" },
                 { value: 10, label: "10s" }
@@ -88,13 +88,13 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Audio Protection" }
+    SectionLabel { text: qsTr("Audio Protection") }
 
     SettingCard {
         SettingRow {
             iconName: "shield"
-            title: "Volume Limit"
-            subtitle: "Cap the maximum output level to protect your hearing"
+            title: qsTr("Volume Limit")
+            subtitle: qsTr("Cap the maximum output level to protect your hearing")
 
             SettingSwitch {
                 checked: root.volumeLimitEnabled
@@ -111,8 +111,8 @@ ColumnLayout {
 
             SettingChoiceGroup {
                 iconName: "volume-2"
-                title: "Maximum Volume Limit"
-                subtitle: "Ceiling threshold applied to the master volume slider"
+                title: qsTr("Maximum Volume Limit")
+                subtitle: qsTr("Ceiling threshold applied to the master volume slider")
                 options: [
                     { value: 50, label: "50%" },
                     { value: 60, label: "60%" },
@@ -127,41 +127,41 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: "Equalizer" }
+    SectionLabel { text: qsTr("Equalizer") }
 
     SettingsEqualizerCard {}
 
-    SectionLabel { text: "Loudness & Normalization" }
+    SectionLabel { text: qsTr("Loudness & Normalization") }
 
     SettingCard {
         SettingChoiceGroup {
             iconName: "audio-lines"
-            title: "Volume Normalization (ReplayGain)"
-            subtitle: root.replayGainMode === "off" ? "Preserve original file loudness" : (root.replayGainMode === "track" ? "Track gain active: balance volume per song" : "Album gain active: preserve album dynamic range")
+            title: qsTr("Volume Normalization (ReplayGain)")
+            subtitle: root.replayGainMode === "off" ? qsTr("Preserve original file loudness") : (root.replayGainMode === "track" ? qsTr("Track gain active: balance volume per song") : qsTr("Album gain active: preserve album dynamic range"))
             options: [
-                { value: "off", label: "Off" },
-                { value: "track", label: "Track" },
-                { value: "album", label: "Album" }
+                { value: "off", label: qsTr("Off") },
+                { value: "track", label: qsTr("Track") },
+                { value: "album", label: qsTr("Album") }
             ]
             selectedValue: root.replayGainMode
             onOptionSelected: val => root.replayGainModeSelected(String(val))
         }
     }
 
-    SectionLabel { text: "Sleep Timer" }
+    SectionLabel { text: qsTr("Sleep Timer") }
 
     SettingCard {
         SettingChoiceGroup {
             iconName: "clock"
-            title: "Sleep Timer"
-            subtitle: root.sleepTimerMode === "off" ? "Stop playback automatically after a duration or track" : ("Active countdown: " + root.sleepTimerStatus)
+            title: qsTr("Sleep Timer")
+            subtitle: root.sleepTimerMode === "off" ? qsTr("Stop playback automatically after a duration or track") : qsTr("Active countdown: %1").arg(root.sleepTimerStatus)
             options: [
-                { value: "off", label: "Off" },
-                { value: "15", label: "15 min" },
-                { value: "30", label: "30 min" },
-                { value: "45", label: "45 min" },
-                { value: "60", label: "60 min" },
-                { value: "track", label: "End of track" }
+                { value: "off", label: qsTr("Off") },
+                { value: "15", label: qsTr("15 min") },
+                { value: "30", label: qsTr("30 min") },
+                { value: "45", label: qsTr("45 min") },
+                { value: "60", label: qsTr("60 min") },
+                { value: "track", label: qsTr("End of track") }
             ]
             selectedValue: root.sleepTimerMode
             onOptionSelected: val => {
@@ -177,8 +177,8 @@ ColumnLayout {
 
         SettingRow {
             iconName: "volume-1"
-            title: "Gentle Fade-Out"
-            subtitle: "Smoothly ramp down volume before stopping playback"
+            title: qsTr("Gentle Fade-Out")
+            subtitle: qsTr("Smoothly ramp down volume before stopping playback")
 
             SettingSwitch {
                 checked: root.sleepFadeOut

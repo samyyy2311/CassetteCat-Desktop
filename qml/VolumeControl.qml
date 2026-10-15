@@ -63,7 +63,7 @@ Item {
 
             AppToolTip {
                 targetItem: iconMouse
-                text: root.volume <= 0.001 ? "Unmute" : "Mute"
+                text: root.volume <= 0.001 ? qsTr("Unmute") : qsTr("Mute")
                 visibleTarget: iconMouse.containsMouse
             }
         }

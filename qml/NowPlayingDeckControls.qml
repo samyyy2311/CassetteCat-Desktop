@@ -20,7 +20,7 @@ Item {
 
         HoverMarqueeLabel {
             Layout.fillWidth: true
-            text: root.playerController.currentTrack.title || "No Track Selected"
+            text: root.playerController.currentTrack.title || qsTr("No Track Selected")
             textColor: "#FFFFFF"
             fontFamily: root.appWindow.displayFont
             pixelSize: 30
@@ -33,7 +33,7 @@ Item {
             Layout.fillWidth: true
             text: {
                 if (!root.playerController.currentTrack.title && !root.playerController.currentTrack.filePath) {
-                    return "Select a track to start playback"
+                    return qsTr("Select a track to start playback")
                 }
                 let artist = root.playerController.currentTrack.artist || "Unknown Artist"
                 if (root.playerController.currentTrack.album) artist += " • " + root.playerController.currentTrack.album
@@ -78,7 +78,7 @@ Item {
 
             activeFocusOnTab: visible
             Accessible.role: Accessible.Button
-            Accessible.name: "Audio quality: " + (format.label || "")
+            Accessible.name: qsTr("Audio quality: %1").arg(format.label || "")
             Accessible.onPressAction: root.appWindow.openAudioDetails()
             Keys.onReturnPressed: root.appWindow.openAudioDetails()
             Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space
@@ -135,7 +135,7 @@ Item {
                 iconName: "shuffle"
                 visible: !root.appWindow.phoneInDock
                 accented: root.playerController.shuffleEnabled
-                tooltipText: root.playerController.shuffleEnabled ? "Shuffle On" : "Shuffle Off"
+                tooltipText: root.playerController.shuffleEnabled ? qsTr("Shuffle On") : qsTr("Shuffle Off")
                 onClicked: root.appWindow.toggleQueueShuffle()
             }
 
@@ -143,7 +143,7 @@ Item {
                 buttonSize: 52
                 iconName: "skip-back"
                 iconColor: root.appWindow.textPrimary
-                tooltipText: "Previous"
+                tooltipText: qsTr("Previous")
                 onClicked: root.appWindow.shownPrevious()
             }
 
@@ -152,7 +152,7 @@ Item {
                 iconName: root.appWindow.shownPlaying ? "pause" : "play"
                 accented: true
                 iconColor: root.appWindow.recordRed
-                tooltipText: root.appWindow.shownPlaying ? "Pause" : "Play"
+                tooltipText: root.appWindow.shownPlaying ? qsTr("Pause") : qsTr("Play")
                 onClicked: root.playerController.togglePlay()
             }
 
@@ -160,7 +160,7 @@ Item {
                 buttonSize: 52
                 iconName: "skip-forward"
                 iconColor: root.appWindow.textPrimary
-                tooltipText: "Next"
+                tooltipText: qsTr("Next")
                 onClicked: root.appWindow.shownNext()
             }
 
@@ -170,7 +170,7 @@ Item {
                 visible: !root.appWindow.phoneInDock
                 accented: root.appWindow.repeatMode > 0
                 iconColor: root.appWindow.repeatMode > 0 ? root.appWindow.recordRed : root.appWindow.textPrimary
-                tooltipText: root.appWindow.repeatMode === 2 ? "Repeat Track" : (root.appWindow.repeatMode === 1 ? "Repeat All" : "Repeat Off")
+                tooltipText: root.appWindow.repeatMode === 2 ? qsTr("Repeat Track") : (root.appWindow.repeatMode === 1 ? qsTr("Repeat All") : qsTr("Repeat Off"))
                 onClicked: root.appWindow.toggleRepeat()
             }
         }

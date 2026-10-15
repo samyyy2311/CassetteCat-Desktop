@@ -33,19 +33,19 @@ AppDialog {
 
         DialogHeader {
             iconName: "smartphone"
-            title: "Phone Remote"
-            subtitle: root.offlineBlackout ? "Paused by Offline Blackout Mode"
-                : !root.enabledSetting ? "Off"
-                : root.controlled ? "Controlled from " + root.remote.controllerName
-                : root.phoneName !== "" ? root.phoneName + " is playing"
-                : "Ready on " + root.remote.computerName
+            title: qsTr("Phone Remote")
+            subtitle: root.offlineBlackout ? qsTr("Paused by Offline Blackout Mode")
+                : !root.enabledSetting ? qsTr("Off")
+                : root.controlled ? qsTr("Controlled from %1").arg(root.remote.controllerName)
+                : root.phoneName !== "" ? qsTr("%1 is playing").arg(root.phoneName)
+                : qsTr("Ready on %1").arg(root.remote.computerName)
 
             TransportButton {
                 Layout.alignment: Qt.AlignTop
-                Accessible.name: "Close"
+                Accessible.name: qsTr("Close")
                 buttonSize: 32
                 iconName: "x"
-                tooltipText: "Close"
+                tooltipText: qsTr("Close")
                 onClicked: root.close()
             }
         }
@@ -53,23 +53,23 @@ AppDialog {
         Body {
             visible: !root.remoteOn
             text: root.offlineBlackout
-                  ? "Turn off Offline Blackout Mode in Settings to use your phone as a remote."
-                  : "Control this computer from the CassetteCat Android app, move music between them, and keep likes, playlists and backups in sync over your Wi-Fi."
+                  ? qsTr("Turn off Offline Blackout Mode in Settings to use your phone as a remote.")
+                  : qsTr("Control this computer from the CassetteCat Android app, move music between them, and keep likes, playlists and backups in sync over your Wi-Fi.")
         }
 
         Body {
             visible: root.remoteOn && root.phoneName === ""
             text: root.remote.address === ""
-                  ? "Connect this computer to Wi-Fi to use your phone as a remote."
-                  : "On your phone, open CassetteCat on the same Wi-Fi, tap the devices button in Now Playing and choose "
-                    + root.remote.computerName + ". Then click Allow here."
+                  ? qsTr("Connect this computer to Wi-Fi to use your phone as a remote.")
+                  : qsTr("On your phone, open CassetteCat on the same Wi-Fi, tap the devices button in Now Playing and choose %1. Then click Allow here.")
+                    .arg(root.remote.computerName)
         }
 
         Body {
             visible: root.remoteOn && root.phoneName !== ""
             text: root.controlled
-                  ? "Playback here follows your phone. Continue on the phone to move the music back to it."
-                  : (root.remote.phonePlayback.title || "Music") + " is playing on your phone. Play it here to move it to this computer."
+                  ? qsTr("Playback here follows your phone. Continue on the phone to move the music back to it.")
+                  : qsTr("%1 is playing on your phone. Play it here to move it to this computer.").arg(root.remote.phonePlayback.title || qsTr("Music"))
         }
 
         // Only for networks where the phone can't find the computer by itself.
@@ -79,7 +79,7 @@ AppDialog {
             spacing: 8
 
             Label {
-                text: root.showAddress ? "Enter this in the app under Settings > Desktop Remote:" : "Phone can't find this computer?"
+                text: root.showAddress ? qsTr("Enter this in the app under Settings > Desktop Remote:") : qsTr("Phone can't find this computer?")
                 color: root.showAddress ? textSecondary : accentText
                 font.family: bodyFont
                 font.pixelSize: 13
@@ -107,13 +107,13 @@ AppDialog {
                 }
 
                 SettingButton {
-                    text: "Copy"
+                    text: qsTr("Copy")
                     onClicked: appSettings.copyToClipboard(root.remote.address + "#" + root.remote.code)
                 }
 
                 SettingButton {
                     iconName: "refresh-cw"
-                    accessibleName: "New pairing code. Paired phones will need to pair again."
+                    accessibleName: qsTr("New pairing code. Paired phones will need to pair again.")
                     onClicked: root.remote.regenerateCode()
                 }
             }
@@ -129,7 +129,7 @@ AppDialog {
             // Keeps the pairing, so the phone can connect again from its devices button.
             SettingButton {
                 visible: root.remoteOn && root.phoneName !== ""
-                text: "Disconnect"
+                text: qsTr("Disconnect")
                 onClicked: {
                     root.remote.disconnectPhone()
                     root.close()
@@ -138,7 +138,7 @@ AppDialog {
 
             SettingButton {
                 visible: root.remoteOn && root.controlled
-                text: "Continue on " + root.phoneName
+                text: qsTr("Continue on %1").arg(root.phoneName)
                 primary: true
                 onClicked: {
                     root.remote.continueOnPhone()
@@ -148,7 +148,7 @@ AppDialog {
 
             SettingButton {
                 visible: root.remoteOn && !root.controlled && !!root.remote.phonePlayback.title
-                text: "Play Here"
+                text: qsTr("Play Here")
                 primary: true
                 onClicked: {
                     root.remote.sendToPhone("handoff")
@@ -158,7 +158,7 @@ AppDialog {
 
             SettingButton {
                 visible: !root.enabledSetting && !root.offlineBlackout
-                text: "Turn On"
+                text: qsTr("Turn On")
                 primary: true
                 onClicked: root.enableRequested(true)
             }

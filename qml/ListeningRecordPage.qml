@@ -6,7 +6,7 @@ import QtQuick.Window
 
 Item {
     id: root
-    readonly property string countText: root.totalPlays + " plays • " + root.uniquePlayed + " tracks"
+    readonly property string countText: qsTr("%n play(s)", "", root.totalPlays) + " • " + qsTr("%n track(s)", "", root.uniquePlayed)
 
     required property var appWindow
     property alias searchBox: recordSearchBar
@@ -209,17 +209,17 @@ Item {
     }
 
     function formatCount(count) {
-        return count + (count === 1 ? " play" : " plays")
+        return qsTr("%n play(s)", "", count)
     }
 
     function formatDurationTotal(seconds) {
-        if (!seconds || seconds <= 0) return "0m"
+        if (!seconds || seconds <= 0) return qsTr("%1m").arg(0)
         const hrs = Math.floor(seconds / 3600)
         const mins = Math.floor((seconds % 3600) / 60)
         if (hrs > 0) {
-            return hrs + "h " + (mins < 10 ? "0" : "") + mins + "m"
+            return qsTr("%1h %2m").arg(hrs).arg(String(mins).padStart(2, "0"))
         }
-        return Math.max(1, mins) + "m"
+        return qsTr("%1m").arg(Math.max(1, mins))
     }
 
 
@@ -348,9 +348,9 @@ Item {
         anchors.centerIn: parent
         visible: !root.hasData
         catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
-        title: "No listening history yet"
-        subtitle: "Play songs most of the way through to record your listening stats and build your personal record"
-        actionLabel: "Explore Library"
+        title: qsTr("No listening history yet")
+        subtitle: qsTr("Play songs most of the way through to record your listening stats and build your personal record")
+        actionLabel: qsTr("Explore Library")
         onActionClicked: root.appWindow.page = "library"
     }
 
@@ -372,12 +372,12 @@ Item {
 
             PageTabs {
                 tabs: [
-                    { id: "overview", label: "Overview" },
-                    { id: "tracks", label: "Top Tracks" },
-                    { id: "artists", label: "Top Artists" },
-                    { id: "albums", label: "Top Albums" },
-                    { id: "history", label: "History" },
-                    { id: "recap", label: "Rewind" }
+                    { id: "overview", label: qsTr("Overview") },
+                    { id: "tracks", label: qsTr("Top Tracks") },
+                    { id: "artists", label: qsTr("Top Artists") },
+                    { id: "albums", label: qsTr("Top Albums") },
+                    { id: "history", label: qsTr("History") },
+                    { id: "recap", label: qsTr("Rewind") }
                 ]
                 current: root.currentTab
                 onSelected: id => {
@@ -398,7 +398,7 @@ Item {
                     iconSize: 16
                     iconName: "play"
                     tint: root.appWindow.recordRedHover
-                    tooltipText: "Play all"
+                    tooltipText: qsTr("Play all")
                     enabled: root.activeTabTracks.length > 0
                     onClicked: {
                         const tracksToPlay = root.activeTabTracks
@@ -413,7 +413,7 @@ Item {
                     iconSize: 16
                     iconName: "shuffle"
                     tint: root.appWindow.textPrimary
-                    tooltipText: "Shuffle"
+                    tooltipText: qsTr("Shuffle")
                     enabled: root.activeTabTracks.length > 0
                     onClicked: {
                         const tracksToShuffle = root.activeTabTracks
@@ -428,7 +428,7 @@ Item {
                     boxSize: 34
                     iconSize: 16
                     expandedWidth: 180
-                    placeholder: root.currentTab === "artists" ? "Search artists..." : root.currentTab === "albums" ? "Search albums..." : "Search record..."
+                    placeholder: root.currentTab === "artists" ? qsTr("Search artists...") : root.currentTab === "albums" ? qsTr("Search albums...") : qsTr("Search record...")
                     text: root.searchQuery
                     onTextChanged: root.searchQuery = text
                     onCleared: root.searchQuery = ""
@@ -439,14 +439,14 @@ Item {
                     iconSize: 16
                     iconName: "list-music"
                     tint: root.appWindow.textPrimary
-                    tooltipText: "Save as playlist"
+                    tooltipText: qsTr("Save as playlist")
                     enabled: root.activeTabTracks.length > 0
                     opacity: root.activeTabTracks.length > 0 ? 1.0 : 0.45
                     onClicked: {
                         const tracksToSave = root.activeTabTracks
                         if (tracksToSave.length === 0) return
-                        root.appWindow.createPlaylist("Listening Record", tracksToSave)
-                        root.appWindow.playlistStatus = "Listening Record playlist saved"
+                        root.appWindow.createPlaylist(qsTr("Listening Record"), tracksToSave)
+                        root.appWindow.playlistStatus = qsTr("Listening Record playlist saved")
                     }
                 }
 
@@ -456,10 +456,10 @@ Item {
                     iconSize: 16
                     iconName: "refresh-cw"
                     tint: root.appWindow.textPrimary
-                    tooltipText: "Sync with your phone"
+                    tooltipText: qsTr("Sync with your phone")
                     onClicked: {
                         phoneRemote.requestSync()
-                        root.appWindow.playlistStatus = "Your phone will sync the next time it connects"
+                        root.appWindow.playlistStatus = qsTr("Your phone will sync the next time it connects")
                     }
                 }
 
@@ -468,7 +468,7 @@ Item {
                     iconSize: 16
                     iconName: "rotate-ccw"
                     tint: root.appWindow.silverDim
-                    tooltipText: "Clear listening record"
+                    tooltipText: qsTr("Clear listening record")
                     onClicked: clearPopup.open()
                 }
             }
@@ -573,7 +573,7 @@ Item {
                                     spacing: 3
 
                                     Label {
-                                        text: "ALL-TIME #1 TRACK"
+                                        text: qsTr("ALL-TIME #1 TRACK")
                                         color: root.appWindow.recordRed
                                         font.family: root.appWindow.monoFont
                                         font.pixelSize: 10
@@ -583,7 +583,7 @@ Item {
 
                                     Label {
                                         Layout.fillWidth: true
-                                        text: root.spotlightTrack && root.spotlightTrack.track ? (root.spotlightTrack.track.title || root.spotlightTrack.track.fileName || "Untitled Track") : ""
+                                        text: root.spotlightTrack && root.spotlightTrack.track ? (root.spotlightTrack.track.title || root.spotlightTrack.track.fileName || qsTr("Untitled Track")) : ""
                                         color: root.appWindow.textPrimary
                                         font.family: root.appWindow.displayFont
                                         font.pixelSize: 20
@@ -611,7 +611,7 @@ Item {
                                         text: {
                                             if (!root.spotlightTrack || !root.spotlightTrack.track) return ""
                                             const sec = (root.spotlightTrack.track.durationSeconds || 180) * root.spotlightTrack.count
-                                            return root.formatCount(root.spotlightTrack.count) + " • " + root.formatDurationTotal(sec) + " on repeat"
+                                            return root.formatCount(root.spotlightTrack.count) + " • " + qsTr("%1 on repeat").arg(root.formatDurationTotal(sec))
                                         }
                                         color: root.appWindow.silverDim
                                         font.family: root.appWindow.monoFont
@@ -628,7 +628,7 @@ Item {
                                         iconName: "play"
                                         accented: true
                                         iconColor: root.appWindow.recordRed
-                                        tooltipText: "Play #1 Track"
+                                        tooltipText: qsTr("Play #1 Track")
                                         onClicked: {
                                             if (root.spotlightTrack && root.spotlightTrack.track) {
                                                 root.appWindow.playTrack(root.spotlightTrack.track)
@@ -640,7 +640,7 @@ Item {
                                         buttonSize: 42
                                         iconName: "shuffle"
                                         iconColor: root.appWindow.textPrimary
-                                        tooltipText: "Shuffle Heavy Rotation"
+                                        tooltipText: qsTr("Shuffle Heavy Rotation")
                                         onClicked: {
                                             if (root.mostPlayed.length > 0) {
                                                 root.appWindow.shufflePlayback(root.mostPlayed.map(r => r.track))
@@ -670,27 +670,27 @@ Item {
                         spacing: 24
 
                         StatCard {
-                            label: "Listening Time"
+                            label: qsTr("Listening Time")
                             value: root.formatDurationTotal(root.totalDurationSeconds)
-                            subtitle: "based on qualified listens"
+                            subtitle: qsTr("based on qualified listens")
                         }
 
                         StatCard {
-                            label: "Total Plays"
+                            label: qsTr("Total Plays")
                             value: "" + root.totalPlays
-                            subtitle: root.totalPlays === 1 ? "1 qualified listen" : root.totalPlays + " qualified listens"
+                            subtitle: qsTr("%n qualified listen(s)", "", root.totalPlays)
                         }
 
                         StatCard {
-                            label: "Library Explored"
+                            label: qsTr("Library Explored")
                             value: root.libraryExploredPct + "%"
-                            subtitle: (root.playedTracks ? root.playedTracks.length : 0) + " of " + (root.tracks ? root.tracks.length : 0) + " songs"
+                            subtitle: qsTr("%1 of %n song(s)", "", root.tracks ? root.tracks.length : 0).arg(root.playedTracks ? root.playedTracks.length : 0)
                         }
 
                         StatCard {
-                            label: "Replay Depth"
+                            label: qsTr("Replay Depth")
                             value: root.replayDepth + "x"
-                            subtitle: "avg plays per song"
+                            subtitle: qsTr("avg plays per song")
                         }
                     }
 
@@ -708,7 +708,7 @@ Item {
                                 spacing: 2
 
                                 Label {
-                                    text: "Top Artists"
+                                    text: qsTr("Top Artists")
                                     color: root.appWindow.textPrimary
                                     font.family: root.appWindow.displayFont
                                     font.pixelSize: 18
@@ -717,7 +717,7 @@ Item {
                                 }
 
                                 Label {
-                                    text: "Your most played musical artists"
+                                    text: qsTr("Your most played musical artists")
                                     color: root.appWindow.textSecondary
                                     font.family: root.appWindow.bodyFont
                                     font.pixelSize: 12
@@ -747,7 +747,7 @@ Item {
                             delegate: ArtistCard {
                                 name: modelData.artist
                                 count: modelData.count
-                                subtitle: modelData.count + (modelData.count === 1 ? " play" : " plays")
+                                subtitle: qsTr("%n play(s)", "", modelData.count)
                                 track: modelData.track
                                 cardWidth: 148
                                 cardHeight: 200
@@ -770,7 +770,7 @@ Item {
                                 spacing: 2
 
                                 Label {
-                                    text: "Top Albums"
+                                    text: qsTr("Top Albums")
                                     color: root.appWindow.textPrimary
                                     font.family: root.appWindow.displayFont
                                     font.pixelSize: 18
@@ -779,7 +779,7 @@ Item {
                                 }
 
                                 Label {
-                                    text: "Your highest rotation records"
+                                    text: qsTr("Your highest rotation records")
                                     color: root.appWindow.textSecondary
                                     font.family: root.appWindow.bodyFont
                                     font.pixelSize: 12
@@ -810,7 +810,7 @@ Item {
                                 name: modelData.album
                                 artist: modelData.artist
                                 count: modelData.count
-                                subtitle: (modelData.artist ? (modelData.artist + " • ") : "") + modelData.count + (modelData.count === 1 ? " play" : " plays")
+                                subtitle: (modelData.artist ? (modelData.artist + " • ") : "") + qsTr("%n play(s)", "", modelData.count)
                                 track: modelData.track
                                 cardWidth: 140
                                 cardHeight: 205
@@ -830,7 +830,7 @@ Item {
                             spacing: 2
 
                             Label {
-                                text: "Taste Profile"
+                                text: qsTr("Taste Profile")
                                 color: root.appWindow.textPrimary
                                 font.family: root.appWindow.displayFont
                                 font.pixelSize: 18
@@ -839,7 +839,7 @@ Item {
                             }
 
                             Label {
-                                text: "Top genres across qualified playback"
+                                text: qsTr("Top genres across qualified playback")
                                 color: root.appWindow.textSecondary
                                 font.family: root.appWindow.bodyFont
                                 font.pixelSize: 12
@@ -946,7 +946,7 @@ Item {
                                 spacing: 2
 
                                 Label {
-                                    text: "Heavy Rotation"
+                                    text: qsTr("Heavy Rotation")
                                     color: root.appWindow.textPrimary
                                     font.family: root.appWindow.displayFont
                                     font.pixelSize: 18
@@ -955,7 +955,7 @@ Item {
                                 }
 
                                 Label {
-                                    text: "Your top tracks in highest rotation"
+                                    text: qsTr("Your top tracks in highest rotation")
                                     color: root.appWindow.textSecondary
                                     font.family: root.appWindow.bodyFont
                                     font.pixelSize: 12
@@ -1014,9 +1014,9 @@ Item {
                     anchors.fill: parent
                     visible: root.filteredTracks.length === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
-                    title: root.searchQuery.trim().length > 0 ? "No Tracks Found" : "No Plays Recorded"
-                    subtitle: root.searchQuery.trim().length > 0 ? ("No tracks match \"" + root.searchQuery + "\"") : "Play songs most of the way through to record your top tracks"
-                    actionLabel: root.searchQuery.trim().length > 0 ? "Clear Search" : "Explore Library"
+                    title: root.searchQuery.trim().length > 0 ? qsTr("No Tracks Found") : qsTr("No Plays Recorded")
+                    subtitle: root.searchQuery.trim().length > 0 ? qsTr("No tracks match \"%1\"").arg(root.searchQuery) : qsTr("Play songs most of the way through to record your top tracks")
+                    actionLabel: root.searchQuery.trim().length > 0 ? qsTr("Clear Search") : qsTr("Explore Library")
                     onActionClicked: {
                         if (root.searchQuery.trim().length > 0) root.searchQuery = ""
                         else root.appWindow.page = "library"
@@ -1050,7 +1050,7 @@ Item {
                             cardHeight: 225
                             name: modelData.artist
                             count: modelData.count
-                            subtitle: modelData.count + (modelData.count === 1 ? " play" : " plays")
+                            subtitle: qsTr("%n play(s)", "", modelData.count)
                             track: modelData.track
                             onClicked: root.appWindow.openCatalogDetail("artist", modelData.artist, modelData.track)
                         }
@@ -1061,9 +1061,9 @@ Item {
                     anchors.fill: parent
                     visible: root.filteredArtists.length === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/04-gray-dancing-headphones.png"
-                    title: root.searchQuery.trim().length > 0 ? "No Artists Found" : "No Artists Recorded"
-                    subtitle: root.searchQuery.trim().length > 0 ? ("No artists match \"" + root.searchQuery + "\"") : "Artists with qualified plays will appear here"
-                    actionLabel: root.searchQuery.trim().length > 0 ? "Clear Search" : "Explore Library"
+                    title: root.searchQuery.trim().length > 0 ? qsTr("No Artists Found") : qsTr("No Artists Recorded")
+                    subtitle: root.searchQuery.trim().length > 0 ? qsTr("No artists match \"%1\"").arg(root.searchQuery) : qsTr("Artists with qualified plays will appear here")
+                    actionLabel: root.searchQuery.trim().length > 0 ? qsTr("Clear Search") : qsTr("Explore Library")
                     onActionClicked: {
                         if (root.searchQuery.trim().length > 0) root.searchQuery = ""
                         else root.appWindow.page = "library"
@@ -1098,7 +1098,7 @@ Item {
                             name: modelData.album
                             artist: modelData.artist
                             count: modelData.count
-                            subtitle: (modelData.artist ? (modelData.artist + " • ") : "") + modelData.count + (modelData.count === 1 ? " play" : " plays")
+                            subtitle: (modelData.artist ? (modelData.artist + " • ") : "") + qsTr("%n play(s)", "", modelData.count)
                             track: modelData.track
                             onClicked: root.appWindow.openCatalogDetail("album", modelData.album, modelData.track)
                         }
@@ -1109,9 +1109,9 @@ Item {
                     anchors.fill: parent
                     visible: root.filteredAlbums.length === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
-                    title: root.searchQuery.trim().length > 0 ? "No Albums Found" : "No Albums Recorded"
-                    subtitle: root.searchQuery.trim().length > 0 ? ("No albums match \"" + root.searchQuery + "\"") : "Albums with qualified plays will appear here"
-                    actionLabel: root.searchQuery.trim().length > 0 ? "Clear Search" : "Explore Library"
+                    title: root.searchQuery.trim().length > 0 ? qsTr("No Albums Found") : qsTr("No Albums Recorded")
+                    subtitle: root.searchQuery.trim().length > 0 ? qsTr("No albums match \"%1\"").arg(root.searchQuery) : qsTr("Albums with qualified plays will appear here")
+                    actionLabel: root.searchQuery.trim().length > 0 ? qsTr("Clear Search") : qsTr("Explore Library")
                     onActionClicked: {
                         if (root.searchQuery.trim().length > 0) root.searchQuery = ""
                         else root.appWindow.page = "library"
@@ -1145,9 +1145,9 @@ Item {
                     anchors.fill: parent
                     visible: root.filteredHistory.length === 0
                     catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
-                    title: root.searchQuery.trim().length > 0 ? "No History Found" : "No History Recorded"
-                    subtitle: root.searchQuery.trim().length > 0 ? ("No tracks match \"" + root.searchQuery + "\"") : "Playback history will appear here as you listen to music"
-                    actionLabel: root.searchQuery.trim().length > 0 ? "Clear Search" : "Explore Library"
+                    title: root.searchQuery.trim().length > 0 ? qsTr("No History Found") : qsTr("No History Recorded")
+                    subtitle: root.searchQuery.trim().length > 0 ? qsTr("No tracks match \"%1\"").arg(root.searchQuery) : qsTr("Playback history will appear here as you listen to music")
+                    actionLabel: root.searchQuery.trim().length > 0 ? qsTr("Clear Search") : qsTr("Explore Library")
                     onActionClicked: {
                         if (root.searchQuery.trim().length > 0) root.searchQuery = ""
                         else root.appWindow.page = "library"
@@ -1179,7 +1179,7 @@ Item {
                             spacing: 4
 
                             Label {
-                                text: "Your " + root.recapPeriod
+                                text: qsTr("Your %1").arg(root.recapPeriod)
                                 color: root.appWindow.textPrimary
                                 font.family: root.appWindow.displayFont
                                 font.pixelSize: 26
@@ -1188,7 +1188,7 @@ Item {
 
                             Label {
                                 visible: root.recapHasPlays
-                                text: "Since " + new Date(root.recap.firstListen || 0).toLocaleDateString(Qt.locale(), "d MMMM yyyy")
+                                text: qsTr("Since %1").arg(new Date(root.recap.firstListen || 0).toLocaleDateString(Qt.locale(), "d MMMM yyyy"))
                                 color: root.appWindow.textSecondary
                                 font.family: root.appWindow.bodyFont
                                 font.pixelSize: 13
@@ -1219,8 +1219,8 @@ Item {
                         Layout.preferredHeight: 320
                         visible: !root.recapHasPlays
                         catImage: "qrc:/qt/qml/CassetteCat/assets/06-calico-player.png"
-                        title: "Nothing recorded for " + root.recapPeriod + " yet"
-                        subtitle: "Songs you play most of the way through are counted here, with the date you played them"
+                        title: qsTr("Nothing recorded for %1 yet").arg(root.recapPeriod)
+                        subtitle: qsTr("Songs you play most of the way through are counted here, with the date you played them")
                     }
 
                     RowLayout {
@@ -1242,7 +1242,7 @@ Item {
                             }
 
                             Label {
-                                text: "of listening"
+                                text: qsTr("of listening")
                                 color: root.appWindow.textSecondary
                                 font.family: root.appWindow.bodyFont
                                 font.pixelSize: 15
@@ -1251,8 +1251,8 @@ Item {
                             Label {
                                 Layout.topMargin: 10
                                 text: root.formatCount(root.recap.plays || 0) + "  \u2022  "
-                                      + (root.recap.songCount || 0) + (root.recap.songCount === 1 ? " song" : " songs") + "  \u2022  "
-                                      + (root.recap.artistCount || 0) + (root.recap.artistCount === 1 ? " artist" : " artists")
+                                      + qsTr("%n song(s)", "", root.recap.songCount || 0) + "  \u2022  "
+                                      + qsTr("%n artist(s)", "", root.recap.artistCount || 0)
                                 color: root.appWindow.silverDim
                                 font.family: root.appWindow.bodyFont
                                 font.pixelSize: 13
@@ -1344,7 +1344,7 @@ Item {
                             }
 
                             StatCard {
-                                label: "Top album"
+                                label: qsTr("Top album")
                                 value: root.recapAlbums.length ? root.recapAlbums[0].name : ""
                                 subtitle: root.recapAlbums.length ? root.formatCount(root.recapAlbums[0].plays) : ""
                             }
@@ -1352,17 +1352,17 @@ Item {
 
                         StatCard {
                             visible: root.recapGenres.length > 0
-                            label: "Top genre"
+                            label: qsTr("Top genre")
                             value: root.recapGenres.length ? root.recapGenres[0].name : ""
                             subtitle: root.recapGenres.length ? root.formatCount(root.recapGenres[0].plays) : ""
                         }
 
                         StatCard {
                             visible: root.recapMonth < 0 && (root.recap.busiestMonth ?? -1) >= 0
-                            label: "Busiest month"
+                            label: qsTr("Busiest month")
                             value: (root.recap.busiestMonth ?? -1) >= 0 ? root.monthName(root.recap.busiestMonth) : ""
                             subtitle: (root.recap.busiestMonth ?? -1) >= 0
-                                ? root.formatDurationTotal(root.recap.months[root.recap.busiestMonth] / 1000) + " listened"
+                                ? qsTr("%1 listened").arg(root.formatDurationTotal(root.recap.months[root.recap.busiestMonth] / 1000))
                                 : ""
                         }
                     }
@@ -1373,8 +1373,8 @@ Item {
                         spacing: 12
 
                         RecapHeading {
-                            title: "Top Artists"
-                            subtitle: "Who you played most in " + root.recapPeriod
+                            title: qsTr("Top Artists")
+                            subtitle: qsTr("Who you played most in %1").arg(root.recapPeriod)
                         }
 
                         AppListView {
@@ -1403,8 +1403,8 @@ Item {
 
                         RecapHeading {
                             Layout.bottomMargin: 8
-                            title: "Top Songs"
-                            subtitle: "Your most played songs of " + root.recapPeriod
+                            title: qsTr("Top Songs")
+                            subtitle: qsTr("Your most played songs of %1").arg(root.recapPeriod)
                         }
 
                         Repeater {
@@ -1426,10 +1426,10 @@ Item {
 
     ConfirmPopup {
         id: clearPopup
-        title: "Clear Listening Record?"
-        message: "This will reset all your play counts, top statistics, and playback history. Your music library files and playlists will not be affected."
+        title: qsTr("Clear Listening Record?")
+        message: qsTr("This will reset all your play counts, top statistics, and playback history. Your music library files and playlists will not be affected.")
         iconName: "rotate-ccw"
-        confirmText: "Clear Record"
+        confirmText: qsTr("Clear Record")
         destructive: true
         onConfirmed: root.appWindow.clearListeningRecord()
     }

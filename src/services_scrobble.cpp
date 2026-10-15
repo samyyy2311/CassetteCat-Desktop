@@ -191,7 +191,7 @@ void ServicesController::submitToListenBrainz(const char *listenType, const QStr
         // Without an answer it was the network, which sorts itself out; an answer says what the person must fix,
         // such as verifying their email, so its first sentence goes to Settings.
         if (status != 0)
-            setListenBrainzProblem(reason.isEmpty() ? QStringLiteral("ListenBrainz didn't accept your listens.")
+            setListenBrainzProblem(reason.isEmpty() ? tr("ListenBrainz didn't accept your listens.")
                                                     : reason.section(QStringLiteral(". "), 0, 0) + '.');
     });
 }
@@ -240,11 +240,11 @@ void ServicesController::postToScrobbleAccounts(const QMap<QString, QString> &pa
 void ServicesController::validateListenBrainzToken(const QString &token) {
     const QString trimmed = token.trimmed();
     if (trimmed.isEmpty()) {
-        emit listenBrainzValidationFinished(false, {}, QStringLiteral("Please enter a valid user token"));
+        emit listenBrainzValidationFinished(false, {}, tr("Please enter a valid user token"));
         return;
     }
     if (!onlineEnabled()) {
-        emit listenBrainzValidationFinished(false, {}, QStringLiteral("Offline Blackout Mode is active"));
+        emit listenBrainzValidationFinished(false, {}, tr("Offline Blackout Mode is active"));
         return;
     }
 
@@ -264,7 +264,7 @@ void ServicesController::validateListenBrainzToken(const QString &token) {
     connect(reply, &QNetworkReply::finished, this, [this, reply, trimmed] {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError) {
-            emit listenBrainzValidationFinished(false, {}, QStringLiteral("Invalid user token or network error"));
+            emit listenBrainzValidationFinished(false, {}, tr("Invalid user token or network error"));
             return;
         }
         const QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
@@ -281,7 +281,7 @@ void ServicesController::validateListenBrainzToken(const QString &token) {
                     false, {}, QStringLiteral("Token is valid, but secure credential storage is unavailable"));
             }
         } else {
-            emit listenBrainzValidationFinished(false, {}, QStringLiteral("Invalid user token or unauthorized"));
+            emit listenBrainzValidationFinished(false, {}, tr("Invalid user token or unauthorized"));
         }
     });
 }
@@ -293,11 +293,11 @@ void ServicesController::authenticateScrobbleAccount(const QString &service, con
     if (!network)
         return;
     if (user.isEmpty() || password.isEmpty()) {
-        emit scrobbleAccountAuthFinished(service, false, {}, QStringLiteral("Username and password are required"));
+        emit scrobbleAccountAuthFinished(service, false, {}, tr("Username and password are required"));
         return;
     }
     if (!onlineEnabled()) {
-        emit scrobbleAccountAuthFinished(service, false, {}, QStringLiteral("Offline Blackout Mode is active"));
+        emit scrobbleAccountAuthFinished(service, false, {}, tr("Offline Blackout Mode is active"));
         return;
     }
 
@@ -345,8 +345,8 @@ void ServicesController::authenticateScrobbleAccount(const QString &service, con
             // Both networks answer a wrong password with an error body, which Qt reports as an HTTP error.
             const bool answered = !responseData.isEmpty();
             emit scrobbleAccountAuthFinished(service, false, {},
-                                             answered ? QStringLiteral("Invalid username or password")
-                                                      : QStringLiteral("Authentication failed. Check your network."));
+                                             answered ? tr("Invalid username or password")
+                                                      : tr("Authentication failed. Check your network."));
             return;
         }
         saveScrobbleSession(service, sessionName, sessionKey);

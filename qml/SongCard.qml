@@ -52,7 +52,7 @@ CardBase {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
-                text: TrackTitles.title(root.track) || root.track.fileName || "Unknown Track"
+                text: TrackTitles.title(root.track) || root.track.fileName || qsTr("Unknown Track")
                 color: root.isCurrent ? recordRed : (root.highlighted ? recordRedHover : textPrimary)
                 font.family: displayFont
                 font.pixelSize: 13
@@ -66,7 +66,7 @@ CardBase {
                 Layout.fillWidth: true
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
-                text: TrackTitles.artist(root.track) || "Unknown Artist"
+                text: TrackTitles.artist(root.track) || qsTr("Unknown Artist")
                 color: textSecondary
                 font.family: bodyFont
                 font.pixelSize: 11

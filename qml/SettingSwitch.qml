@@ -20,7 +20,7 @@ Rectangle {
 
     activeFocusOnTab: true
     Accessible.role: Accessible.CheckBox
-    Accessible.name: "Switch"
+    Accessible.name: qsTr("Switch")
     Accessible.checked: root.checked
 
     Keys.onSpacePressed: event => {

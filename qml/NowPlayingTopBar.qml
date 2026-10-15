@@ -25,7 +25,7 @@ Item {
         anchors.leftMargin: 28
         anchors.verticalCenter: parent.verticalCenter
         iconName: "chevron-down"
-        tooltipText: "Close Now Playing"
+        tooltipText: qsTr("Close Now Playing")
         onClicked: root.appWindow.nowPlayingOpen = false
     }
 
@@ -48,7 +48,7 @@ Item {
             Label {
                 visible: parent.syncing
                 anchors.verticalCenter: parent.verticalCenter
-                text: "Press Space as each line starts  " + root.appWindow.lyricsTapStamps.length + " / " + parent.lines.length
+                text: qsTr("Press Space as each line starts  %1 / %2").arg(root.appWindow.lyricsTapStamps.length).arg(parent.lines.length)
                 color: root.appWindow.textSecondary
                 font.family: root.appWindow.bodyFont
                 font.pixelSize: 12
@@ -56,7 +56,7 @@ Item {
 
             SettingButton {
                 visible: parent.syncing
-                text: "Undo"
+                text: qsTr("Undo")
                 iconName: "rotate-ccw"
                 enabled: root.appWindow.lyricsTapStamps.length > 0
                 onClicked: root.appWindow.lyricsTapStamps = root.appWindow.lyricsTapStamps.slice(0, -1)
@@ -64,20 +64,20 @@ Item {
 
             SettingButton {
                 visible: parent.syncing
-                text: "Cancel"
+                text: qsTr("Cancel")
                 onClicked: root.appWindow.lyricsTapSyncing = false
             }
 
             SettingButton {
                 visible: !parent.syncing
-                text: "Choose Lyrics"
+                text: qsTr("Choose Lyrics")
                 iconName: "search"
                 onClicked: root.appWindow.openLyricsSearch()
             }
 
             SettingButton {
                 visible: !parent.syncing && !parent.synced && !!parent.track.filePath && !parent.track.remoteId && parent.track.format !== "STREAM"
-                text: "Tap to Sync"
+                text: qsTr("Tap to Sync")
                 iconName: "clock"
                 onClicked: root.appWindow.startLyricsTapSync()
             }
@@ -88,7 +88,7 @@ Item {
                 boxSize: 28
                 iconSize: 14
                 iconName: "minus"
-                tooltipText: "Lyrics earlier"
+                tooltipText: qsTr("Lyrics earlier")
                 onClicked: root.appWindow.lyricsSyncOffsetMs -= 100
             }
 
@@ -107,7 +107,7 @@ Item {
                 boxSize: 28
                 iconSize: 14
                 iconName: "plus"
-                tooltipText: "Lyrics later"
+                tooltipText: qsTr("Lyrics later")
                 onClicked: root.appWindow.lyricsSyncOffsetMs += 100
             }
         }
@@ -116,7 +116,7 @@ Item {
             visible: phoneRemote.controllerName !== ""
             iconName: "smartphone"
             highlighted: true
-            tooltipText: "Controlled from " + phoneRemote.controllerName + ". Click to continue on it."
+            tooltipText: qsTr("Controlled from %1. Click to continue on it.").arg(phoneRemote.controllerName)
             onClicked: phoneRemote.continueOnPhone()
         }
 
@@ -125,20 +125,20 @@ Item {
             iconName: "heart"
             visible: !!root.appWindow.shownPlayer.currentTrack.filePath
             highlighted: favorite
-            tooltipText: favorite ? "Remove from Favorites" : "Add to Favorites"
+            tooltipText: favorite ? qsTr("Remove from Favorites") : qsTr("Add to Favorites")
             onClicked: root.appWindow.toggleFavorite(root.appWindow.shownPlayer.currentTrack.filePath)
         }
 
         GlassButton {
             iconName: "more-vertical"
             visible: !root.appWindow.phoneInDock
-            tooltipText: "Track options"
+            tooltipText: qsTr("Track options")
             onClicked: root.appWindow.openTrackActionSheet(player.currentTrack)
         }
 
         GlassButton {
             iconName: "pip"
-            tooltipText: "Open MiniPlayer"
+            tooltipText: qsTr("Open MiniPlayer")
             onClicked: root.appWindow.toggleMiniPlayer()
         }
 
@@ -146,7 +146,7 @@ Item {
             iconName: "quote"
             visible: !root.appWindow.phoneInDock
             highlighted: root.appWindow.nowPlayingMode === "lyrics"
-            tooltipText: highlighted ? "Hide lyrics" : "Show lyrics"
+            tooltipText: highlighted ? qsTr("Hide lyrics") : qsTr("Show lyrics")
             onClicked: root.appWindow.nowPlayingMode = highlighted ? "controls" : "lyrics"
         }
 
@@ -154,7 +154,7 @@ Item {
             iconName: "list"
             visible: !root.appWindow.phoneInDock
             highlighted: root.appWindow.nowPlayingMode === "queue"
-            tooltipText: highlighted ? "Hide queue" : "Show queue"
+            tooltipText: highlighted ? qsTr("Hide queue") : qsTr("Show queue")
             onClicked: root.appWindow.nowPlayingMode = highlighted ? "controls" : "queue"
         }
 

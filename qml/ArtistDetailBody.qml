@@ -16,7 +16,7 @@ Column {
             || (group.count === 1 && (group.track.title || "").toLowerCase() === group.name.toLowerCase())
         const singles = albumGroups.filter(isSingle)
         const albums = albumGroups.filter(group => !isSingle(group))
-        return [{ title: "Albums", releases: albums }, { title: "Singles & EPs", releases: singles }]
+        return [{ title: qsTr("Albums"), releases: albums }, { title: qsTr("Singles & EPs"), releases: singles }]
             .filter(section => section.releases.length > 0)
     }
 
@@ -47,7 +47,7 @@ Column {
                     Layout.fillWidth: true
 
                     Label {
-                        text: "Popular Tracks"
+                        text: qsTr("Popular Tracks")
                         color: "#FFFFFF"
                         font.family: root.appWindow.displayFont
                         font.pixelSize: 21
@@ -58,7 +58,7 @@ Column {
                     Item { Layout.fillWidth: true }
 
                     OverlineLabel {
-                        text: "Top " + Math.min(5, root.tracks.length)
+                        text: qsTr("Top %1").arg(Math.min(5, root.tracks.length))
                     }
                 }
 
@@ -91,7 +91,7 @@ Column {
                         spacing: 1
 
                         Label {
-                            text: "Discography"
+                            text: qsTr("Discography")
                             color: "#FFFFFF"
                             font.family: root.appWindow.displayFont
                             font.pixelSize: 21
@@ -100,7 +100,7 @@ Column {
                         }
 
                         Label {
-                            text: root.albumGroups.length + (root.albumGroups.length === 1 ? " release" : " releases")
+                            text: qsTr("%n release(s)", "", root.albumGroups.length)
                             color: root.appWindow.textSecondary
                             font.family: root.appWindow.bodyFont
                             font.pixelSize: 12
@@ -145,7 +145,7 @@ Column {
                                 cardWidth: releaseList.cardWidth
                                 cardHeight: releaseList.cardWidth + 72
                                 name: modelData.name
-                                subtitle: (modelData.year ? modelData.year + " • " : "") + modelData.count + (modelData.count === 1 ? " song" : " songs")
+                                subtitle: (modelData.year ? modelData.year + " • " : "") + qsTr("%n song(s)", "", modelData.count)
                                 count: modelData.count
                                 track: modelData.track
                                 onClicked: root.albumRequested(modelData.name, modelData.track)

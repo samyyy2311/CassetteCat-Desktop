@@ -168,7 +168,7 @@ CardBase {
                 Layout.preferredWidth: 0
                 Layout.minimumWidth: 0
                 horizontalAlignment: Text.AlignHCenter
-                text: root.subtitle.length > 0 ? root.subtitle : (root.count + (root.count === 1 ? " song" : " songs"))
+                text: root.subtitle.length > 0 ? root.subtitle : (qsTr("%n song(s)", "", root.count))
                 color: textSecondary
                 font.family: monoFont
                 font.pixelSize: 11

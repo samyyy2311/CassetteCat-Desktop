@@ -8,7 +8,7 @@ Item {
     property alias text: inputField.text
     property alias input: inputField
     property alias searchInput: inputField
-    property string placeholder: "Search..."
+    property string placeholder: qsTr("Search...")
     // Stays a full field instead of folding to an icon, for places with room for it.
     property bool alwaysOpen: false
     property bool expanded: alwaysOpen
@@ -76,7 +76,7 @@ Item {
 
         AppToolTip {
             targetItem: searchIconMouseArea
-            text: "Close search"
+            text: qsTr("Close search")
             visibleTarget: searchIconMouseArea.containsMouse
         }
     }
@@ -130,7 +130,7 @@ Item {
             iconSize: 12
             iconName: "x"
             tint: root.placeholderColor
-            tooltipText: inputField.text.length > 0 ? "Clear search" : "Close search"
+            tooltipText: inputField.text.length > 0 ? qsTr("Clear search") : qsTr("Close search")
             Accessible.name: tooltipText
             onClicked: root.collapse()
         }

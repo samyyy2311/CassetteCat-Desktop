@@ -160,21 +160,17 @@ void StreamingController::updateStatusTexts() {
     }
     if (m_subsonicConnected) {
         const QString user = settings.value("stream/subsonicUsername").toString();
-        m_subsonicStatus = QString("%1 · %2 %3")
-                               .arg(user.isEmpty() ? QString("Connected") : user, QString::number(subCount),
-                                    subCount == 1 ? QString("song") : QString("songs"));
+        m_subsonicStatus = tr("%1 · %n song(s)", "", subCount).arg(user.isEmpty() ? tr("Connected") : user);
     }
     if (m_jellyfinConnected) {
         const QString user = settings.value("stream/jellyfinUsername").toString();
-        m_jellyfinStatus = QString("%1 · %2 %3")
-                               .arg(user.isEmpty() ? QString("Connected") : user, QString::number(jellyCount),
-                                    jellyCount == 1 ? QString("song") : QString("songs"));
+        m_jellyfinStatus = tr("%1 · %n song(s)", "", jellyCount).arg(user.isEmpty() ? tr("Connected") : user);
     }
     if (m_subsonicStatus.isEmpty()) {
-        m_subsonicStatus = QString("Not connected");
+        m_subsonicStatus = tr("Not connected");
     }
     if (m_jellyfinStatus.isEmpty()) {
-        m_jellyfinStatus = QString("Not connected");
+        m_jellyfinStatus = tr("Not connected");
     }
     emit statusChanged();
 }
@@ -314,21 +310,21 @@ QString StreamingController::friendlyError(QNetworkReply *reply, const QString &
     }
     switch (reply->error()) {
     case QNetworkReply::HostNotFoundError:
-        return QString("Couldn't find that server. Check the URL.");
+        return tr("Couldn't find that server. Check the URL.");
     case QNetworkReply::ConnectionRefusedError:
-        return QString("Couldn't reach the server. Check the URL and that it's running.");
+        return tr("Couldn't reach the server. Check the URL and that it's running.");
     case QNetworkReply::TimeoutError:
     case QNetworkReply::OperationCanceledError:
-        return QString("The server took too long to respond. Check the URL and your connection.");
+        return tr("The server took too long to respond. Check the URL and your connection.");
     case QNetworkReply::SslHandshakeFailedError:
-        return QString("The server certificate isn't trusted. Self-signed certificates need manual trust.");
+        return tr("The server certificate isn't trusted. Self-signed certificates need manual trust.");
     case QNetworkReply::AuthenticationRequiredError:
-        return QString("Wrong username or password.");
+        return tr("Wrong username or password.");
     case QNetworkReply::ContentAccessDenied:
     case QNetworkReply::ContentOperationNotPermittedError:
-        return QString("Access denied. Check the username and password.");
+        return tr("Access denied. Check the username and password.");
     case QNetworkReply::ContentNotFoundError:
-        return QString("Server endpoint not found. Check the URL and server type.");
+        return tr("Server endpoint not found. Check the URL and server type.");
     case QNetworkReply::NoError:
         return fallback;
     default:
@@ -368,8 +364,8 @@ void StreamingController::beginRefresh() {
     if (wantSubsonic) {
         const QString password = vault.loadSecret("subsonic");
         if (password.isEmpty()) {
-            setStatus("subsonic", false, QString("Saved password is missing. Connect again."));
-            emit serverFailed("subsonic", QString("Saved password is missing. Connect again."));
+            setStatus("subsonic", false, tr("Saved password is missing. Connect again."));
+            emit serverFailed("subsonic", tr("Saved password is missing. Connect again."));
         } else {
             m_subsonicRefreshActive = true;
             ++m_pendingStages;
@@ -381,8 +377,8 @@ void StreamingController::beginRefresh() {
         const QString token = vault.loadSecret("jellyfin");
         const QString userId = settings.value("stream/jellyfinUserId").toString();
         if (token.isEmpty() || userId.isEmpty()) {
-            setStatus("jellyfin", false, QString("Saved login is missing. Connect again."));
-            emit serverFailed("jellyfin", QString("Saved login is missing. Connect again."));
+            setStatus("jellyfin", false, tr("Saved login is missing. Connect again."));
+            emit serverFailed("jellyfin", tr("Saved login is missing. Connect again."));
         } else {
             m_jellyfinRefreshActive = true;
             ++m_pendingStages;
@@ -451,7 +447,7 @@ void StreamingController::disconnectServer(const QString &protocol) {
         vault.clearSecret("subsonic");
         settings.setValue("stream/subsonicConnected", false);
         settings.remove("stream/subsonicCertDigest");
-        setStatus("subsonic", false, QString("Not connected"));
+        setStatus("subsonic", false, tr("Not connected"));
         if (m_subsonicRefreshActive)
             finishRefreshStage("subsonic");
         removeProviderTracks("subsonic:");
@@ -462,7 +458,7 @@ void StreamingController::disconnectServer(const QString &protocol) {
         vault.clearSecret("jellyfin");
         settings.setValue("stream/jellyfinConnected", false);
         settings.remove("stream/jellyfinCertDigest");
-        setStatus("jellyfin", false, QString("Not connected"));
+        setStatus("jellyfin", false, tr("Not connected"));
         if (m_jellyfinRefreshActive)
             finishRefreshStage("jellyfin");
         removeProviderTracks("jellyfin:");

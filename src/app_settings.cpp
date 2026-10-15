@@ -181,7 +181,7 @@ QString SettingsController::readRecentLogs(int maxLines) const {
     }
     QFile file(debugLogFilePath());
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return QStringLiteral("No logs available.");
+        return tr("No logs available.");
     }
     const qint64 fileSize = file.size();
     if (fileSize == 0) {

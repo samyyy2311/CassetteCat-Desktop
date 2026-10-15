@@ -9,13 +9,13 @@ SettingCard {
     readonly property var eq: player.equalizer
     readonly property var bandLabels: ["31", "62", "125", "250", "500", "1K", "2K", "4K", "8K", "16K"]
     readonly property var presets: [
-        { label: "Flat", bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
-        { label: "Bass Boost", bands: [6, 5, 4, 2, 0, 0, 0, 0, 0, 0] },
-        { label: "Treble Boost", bands: [0, 0, 0, 0, 0, 0, 1, 3, 5, 6] },
-        { label: "Vocal", bands: [-2, -2, -1, 0, 2, 3, 3, 2, 0, -1] },
-        { label: "Loudness", bands: [4, 3, 1, 0, -1, -1, 0, 1, 3, 4] }
+        { label: qsTr("Flat"), bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+        { label: qsTr("Bass Boost"), bands: [6, 5, 4, 2, 0, 0, 0, 0, 0, 0] },
+        { label: qsTr("Treble Boost"), bands: [0, 0, 0, 0, 0, 0, 1, 3, 5, 6] },
+        { label: qsTr("Vocal"), bands: [-2, -2, -1, 0, 2, 3, 3, 2, 0, -1] },
+        { label: qsTr("Loudness"), bands: [4, 3, 1, 0, -1, -1, 0, 1, 3, 4] }
     ]
-    readonly property var headphoneOptions: [{ value: "", label: "None" }].concat(
+    readonly property var headphoneOptions: [{ value: "", label: qsTr("None") }].concat(
         AutoEq.profiles.map(p => ({ value: p.brand + " " + p.name, label: p.brand + " " + p.name })))
 
     function apply(changes) {
@@ -125,8 +125,8 @@ SettingCard {
 
     SettingRow {
         iconName: "sliders-horizontal"
-        title: "Equalizer"
-        subtitle: root.eq.enabled ? "On · " + root.eq.preset : "Shape the sound with ten bands from 31 Hz to 16 kHz"
+        title: qsTr("Equalizer")
+        subtitle: root.eq.enabled ? qsTr("On · %1").arg(root.eq.preset) : qsTr("Shape the sound with ten bands from 31 Hz to 16 kHz")
 
         SettingSwitch {
             checked: !!root.eq.enabled
@@ -138,8 +138,8 @@ SettingCard {
 
     SettingChoiceGroup {
         iconName: "audio-lines"
-        title: "Preset"
-        subtitle: "Starting points you can adjust band by band"
+        title: qsTr("Preset")
+        subtitle: qsTr("Starting points you can adjust band by band")
         forceMenu: true
         options: root.presets.map(p => ({ value: p.label, label: p.label }))
             .concat(root.presets.some(p => p.label === root.eq.preset) ? [] : [{ value: root.eq.preset, label: root.eq.preset }])
@@ -155,8 +155,8 @@ SettingCard {
 
     SettingChoiceGroup {
         iconName: "headphones"
-        title: "Headphone Correction"
-        subtitle: "Measured curves from the AutoEq project that even out your headphones"
+        title: qsTr("Headphone Correction")
+        subtitle: qsTr("Measured curves from the AutoEq project that even out your headphones")
         forceMenu: true
         options: root.headphoneOptions
         selectedValue: root.headphoneOptions.some(o => o.value === root.eq.preset) ? root.eq.preset : ""
@@ -179,7 +179,7 @@ SettingCard {
         opacity: root.eq.enabled ? 1 : 0.5
 
         BandSlider {
-            label: "PRE"
+            label: qsTr("PRE")
             value: root.eq.preamp
             onMoved: value => root.apply({ preamp: value })
         }
@@ -213,11 +213,11 @@ SettingCard {
 
     SettingRow {
         iconName: "rotate-ccw"
-        title: "Reset"
-        subtitle: "Set every band and the preamp back to 0 dB"
+        title: qsTr("Reset")
+        subtitle: qsTr("Set every band and the preamp back to 0 dB")
 
         SettingButton {
-            text: "Reset"
+            text: qsTr("Reset")
             onClicked: root.apply({ preset: "Flat", bands: root.presets[0].bands, preamp: 0 })
         }
     }

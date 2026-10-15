@@ -42,7 +42,7 @@ BottomSheet {
         spacing: 14
 
         Label {
-            text: "Refine & Sort"
+            text: qsTr("Refine & Sort")
             color: textPrimary
             font.family: displayFont
             font.pixelSize: 18
@@ -76,7 +76,7 @@ BottomSheet {
                 }
 
                 Label {
-                    text: "Reset"
+                    text: qsTr("Reset")
                     color: accentText
                     font.family: displayFont
                     font.pixelSize: 13
@@ -95,10 +95,10 @@ BottomSheet {
 
         TransportButton {
             Layout.alignment: Qt.AlignVCenter
-            Accessible.name: "Close"
+            Accessible.name: qsTr("Close")
             buttonSize: 32
             iconName: "x"
-            tooltipText: "Close"
+            tooltipText: qsTr("Close")
             onClicked: root.close()
         }
     }
@@ -110,7 +110,7 @@ BottomSheet {
                 spacing: 8
 
                 Label {
-                    text: "FILTER BY"
+                    text: qsTr("FILTER BY")
                     color: silverDim
                     font.family: monoFont
                     font.pixelSize: 10
@@ -123,11 +123,11 @@ BottomSheet {
 
                     Repeater {
                         model: [
-                            { id: "ALL", label: "All songs", icon: "music" },
-                            { id: "FAVORITES", label: "Favorites", icon: "heart" },
-                            { id: "FLAC", label: "FLAC / Lossless", icon: "audio-lines" },
+                            { id: "ALL", label: qsTr("All songs"), icon: "music" },
+                            { id: "FAVORITES", label: qsTr("Favorites"), icon: "heart" },
+                            { id: "FLAC", label: qsTr("FLAC / Lossless"), icon: "audio-lines" },
                             { id: "MP3", label: "MP3", icon: "music" },
-                            { id: "AAC", label: "AAC / M4A", icon: "music" }
+                            { id: "AAC", label: qsTr("AAC / M4A"), icon: "music" }
                         ]
 
                         Rectangle {
@@ -181,7 +181,7 @@ BottomSheet {
                 spacing: 8
 
                 Label {
-                    text: "FILTER BY"
+                    text: qsTr("FILTER BY")
                     color: silverDim
                     font.family: monoFont
                     font.pixelSize: 10
@@ -194,7 +194,7 @@ BottomSheet {
 
                     RefineTextInput {
                         Layout.fillWidth: true
-                        placeholder: "Country (e.g. India)"
+                        placeholder: qsTr("Country (e.g. India)")
                         text: root.radioCountry
                         onEdited: function(country) { root.radioCountrySelected(country) }
                         onSubmitted: root.radioFiltersSubmitted()
@@ -202,7 +202,7 @@ BottomSheet {
 
                     RefineTextInput {
                         Layout.fillWidth: true
-                        placeholder: "Language (e.g. English)"
+                        placeholder: qsTr("Language (e.g. English)")
                         text: root.radioLanguage
                         onEdited: function(language) { root.radioLanguageSelected(language) }
                         onSubmitted: root.radioFiltersSubmitted()
@@ -254,7 +254,7 @@ BottomSheet {
                 spacing: 8
 
                 Label {
-                    text: "SORT BY"
+                    text: qsTr("SORT BY")
                     color: silverDim
                     font.family: monoFont
                     font.pixelSize: 10
@@ -268,34 +268,34 @@ BottomSheet {
                     Repeater {
                         model: {
                             if (root.activeTab === "radio") return [
-                                { id: "votes", label: "Popularity", icon: "radio", isNumeric: true },
-                                { id: "clicktrend", label: "Trending", icon: "radio", isNumeric: true },
-                                { id: "name", label: "Station Name", icon: "arrow-up-down", isNumeric: false },
-                                { id: "country", label: "Country", icon: "globe", isNumeric: false },
-                                { id: "bitrate", label: "Bitrate", icon: "audio-lines", isNumeric: true }
+                                { id: "votes", label: qsTr("Popularity"), icon: "radio", isNumeric: true },
+                                { id: "clicktrend", label: qsTr("Trending"), icon: "radio", isNumeric: true },
+                                { id: "name", label: qsTr("Station Name"), icon: "arrow-up-down", isNumeric: false },
+                                { id: "country", label: qsTr("Country"), icon: "globe", isNumeric: false },
+                                { id: "bitrate", label: qsTr("Bitrate"), icon: "audio-lines", isNumeric: true }
                             ]
                             if (root.activeTab === "songs") return [
-                                { id: "title", label: "Title", icon: "arrow-up-down", isNumeric: false },
-                                { id: "artist", label: "Artist", icon: "mic", isNumeric: false },
-                                { id: "album", label: "Album", icon: "disc", isNumeric: false },
-                                { id: "duration", label: "Duration", icon: "clock", isNumeric: true }
+                                { id: "title", label: qsTr("Title"), icon: "arrow-up-down", isNumeric: false },
+                                { id: "artist", label: qsTr("Artist"), icon: "mic", isNumeric: false },
+                                { id: "album", label: qsTr("Album"), icon: "disc", isNumeric: false },
+                                { id: "duration", label: qsTr("Duration"), icon: "clock", isNumeric: true }
                             ]
                             if (root.activeTab === "artists") return [
-                                { id: "name", label: "Artist Name", icon: "mic", isNumeric: false },
-                                { id: "count", label: "Song Count", icon: "list", isNumeric: true }
+                                { id: "name", label: qsTr("Artist Name"), icon: "mic", isNumeric: false },
+                                { id: "count", label: qsTr("Song Count"), icon: "list", isNumeric: true }
                             ]
                             if (root.activeTab === "albums") return [
-                                { id: "album", label: "Album Title", icon: "disc", isNumeric: false },
-                                { id: "artist", label: "Artist", icon: "mic", isNumeric: false },
-                                { id: "count", label: "Song Count", icon: "list", isNumeric: true }
+                                { id: "album", label: qsTr("Album Title"), icon: "disc", isNumeric: false },
+                                { id: "artist", label: qsTr("Artist"), icon: "mic", isNumeric: false },
+                                { id: "count", label: qsTr("Song Count"), icon: "list", isNumeric: true }
                             ]
                             if (root.activeTab === "genres") return [
-                                { id: "name", label: "Genre Name", icon: "disc", isNumeric: false },
-                                { id: "count", label: "Song Count", icon: "list", isNumeric: true }
+                                { id: "name", label: qsTr("Genre Name"), icon: "disc", isNumeric: false },
+                                { id: "count", label: qsTr("Song Count"), icon: "list", isNumeric: true }
                             ]
                             return [
-                                { id: "name", label: "Folder Name", icon: "folder", isNumeric: false },
-                                { id: "count", label: "Song Count", icon: "list", isNumeric: true }
+                                { id: "name", label: qsTr("Folder Name"), icon: "folder", isNumeric: false },
+                                { id: "count", label: qsTr("Song Count"), icon: "list", isNumeric: true }
                             ]
                         }
 

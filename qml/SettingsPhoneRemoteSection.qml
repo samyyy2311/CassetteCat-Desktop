@@ -20,15 +20,15 @@ ColumnLayout {
         font.pixelSize: 13
     }
 
-    SectionLabel { text: "Phone Remote" }
+    SectionLabel { text: qsTr("Phone Remote") }
 
     SettingCard {
         SettingRow {
             iconName: "smartphone"
-            title: "Control From Your Phone" + (root.offlineBlackout ? " (paused)" : "")
+            title: root.offlineBlackout ? qsTr("Control From Your Phone (paused)") : qsTr("Control From Your Phone")
             subtitle: root.offlineBlackout
-                      ? "Turn off Offline Blackout Mode to use your phone as a remote"
-                      : "The CassetteCat Android app on the same Wi-Fi can control playback, move music between devices and sync likes, playlists and backups"
+                      ? qsTr("Turn off Offline Blackout Mode to use your phone as a remote")
+                      : qsTr("The CassetteCat Android app on the same Wi-Fi can control playback, move music between devices and sync likes, playlists and backups")
 
             SettingSwitch {
                 enabled: !root.offlineBlackout
@@ -42,19 +42,19 @@ ColumnLayout {
         SettingRow {
             visible: root.remoteOn
             iconName: "link"
-            title: phoneRemote.controllerName !== "" ? "Controlled from " + phoneRemote.controllerName
-                 : root.phoneName !== "" ? root.phoneName + " is playing"
-                 : phoneRemote.address !== "" ? "Pair a Phone" : "No Network Connection"
-            subtitle: root.phoneName !== "" ? "Connected over Wi-Fi to " + phoneRemote.computerName
+            title: phoneRemote.controllerName !== "" ? qsTr("Controlled from %1").arg(phoneRemote.controllerName)
+                 : root.phoneName !== "" ? qsTr("%1 is playing").arg(root.phoneName)
+                 : phoneRemote.address !== "" ? qsTr("Pair a Phone") : qsTr("No Network Connection")
+            subtitle: root.phoneName !== "" ? qsTr("Connected over Wi-Fi to %1").arg(phoneRemote.computerName)
                     : phoneRemote.address !== ""
-                      ? "In the app, tap the devices button in Now Playing and choose " + phoneRemote.computerName + ", then allow it here"
-                      : "Connect this computer to Wi-Fi to pair a phone"
+                      ? qsTr("In the app, tap the devices button in Now Playing and choose %1, then allow it here").arg(phoneRemote.computerName)
+                      : qsTr("Connect this computer to Wi-Fi to pair a phone")
         }
     }
 
     SectionLabel {
         visible: root.remoteOn
-        text: "Paired Phones"
+        text: qsTr("Paired Phones")
     }
 
     SettingCard {
@@ -63,8 +63,8 @@ ColumnLayout {
         SettingRow {
             visible: phoneRemote.pairedPhones.length === 0
             iconName: "smartphone"
-            title: "No Phones Yet"
-            subtitle: "Phones you allow from this computer appear here"
+            title: qsTr("No Phones Yet")
+            subtitle: qsTr("Phones you allow from this computer appear here")
         }
 
         Repeater {
@@ -81,11 +81,11 @@ ColumnLayout {
                 SettingRow {
                     iconName: "smartphone"
                     title: modelData.name
-                    subtitle: modelData.name === root.phoneName ? "Connected now" : "Paired"
+                    subtitle: modelData.name === root.phoneName ? qsTr("Connected now") : qsTr("Paired")
 
                     SettingButton {
-                        text: "Remove"
-                        accessibleName: "Remove " + modelData.name
+                        text: qsTr("Remove")
+                        accessibleName: qsTr("Remove %1").arg(modelData.name)
                         onClicked: phoneRemote.unpairPhone(modelData.code)
                     }
                 }
@@ -95,7 +95,7 @@ ColumnLayout {
 
     SectionLabel {
         visible: root.remoteOn && phoneRemote.address !== ""
-        text: "Pair Manually"
+        text: qsTr("Pair Manually")
     }
 
     SettingCard {
@@ -103,13 +103,13 @@ ColumnLayout {
 
         SettingRow {
             iconName: "globe"
-            title: "Address"
-            subtitle: "If your phone can't find this computer, enter this in the app under Settings, Desktop Remote"
+            title: qsTr("Address")
+            subtitle: qsTr("If your phone can't find this computer, enter this in the app under Settings, Desktop Remote")
 
             Value { text: phoneRemote.address + "#" + phoneRemote.code }
 
             SettingButton {
-                text: copiedTimer.running ? "Copied" : "Copy"
+                text: copiedTimer.running ? qsTr("Copied") : qsTr("Copy")
                 iconName: copiedTimer.running ? "check" : ""
                 onClicked: {
                     appSettings.copyToClipboard(phoneRemote.address + "#" + phoneRemote.code)
@@ -127,13 +127,13 @@ ColumnLayout {
 
         SettingRow {
             iconName: "key-round"
-            title: "Pairing Code"
-            subtitle: "For pairing by address. A new code unpairs phones paired that way; phones listed above stay paired"
+            title: qsTr("Pairing Code")
+            subtitle: qsTr("For pairing by address. A new code unpairs phones paired that way; phones listed above stay paired")
 
             Value { text: phoneRemote.code }
 
             SettingButton {
-                text: "New Code"
+                text: qsTr("New Code")
                 iconName: "refresh-cw"
                 onClicked: newCodeConfirm.open()
             }
@@ -143,10 +143,10 @@ ColumnLayout {
     ConfirmPopup {
         id: newCodeConfirm
         iconName: "key-round"
-        title: "New Pairing Code?"
-        subtitle: "Phones paired by address will need it"
-        message: "Phones that paired by entering the address lose access until you give them the new code. Phones under Paired Phones stay connected."
-        confirmText: "New Code"
+        title: qsTr("New Pairing Code?")
+        subtitle: qsTr("Phones paired by address will need it")
+        message: qsTr("Phones that paired by entering the address lose access until you give them the new code. Phones under Paired Phones stay connected.")
+        confirmText: qsTr("New Code")
         onConfirmed: phoneRemote.regenerateCode()
     }
 }

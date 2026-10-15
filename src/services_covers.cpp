@@ -268,13 +268,13 @@ void ServicesController::applyAlbumCover(const QString &album, const QString &ar
     connect(reply, &QNetworkReply::finished, this, [this, reply, album, artist, filePath]() {
         reply->deleteLater();
         if (reply->error() != QNetworkReply::NoError) {
-            emit coverSearchFailed("Failed to download cover image");
+            emit coverSearchFailed(tr("Failed to download cover image"));
             return;
         }
 
         const QByteArray imageBytes = reply->readAll();
         if (imageBytes.isEmpty()) {
-            emit coverSearchFailed("Downloaded image is empty");
+            emit coverSearchFailed(tr("Downloaded image is empty"));
             return;
         }
 
@@ -282,7 +282,7 @@ void ServicesController::applyAlbumCover(const QString &album, const QString &ar
                             QString::number(QDateTime::currentMSecsSinceEpoch());
         const QString savedUrl = saveCachedImage(imageBytes, key, false, "covers");
         if (savedUrl.isEmpty()) {
-            emit coverSearchFailed("Failed to save cover to local cache");
+            emit coverSearchFailed(tr("Failed to save cover to local cache"));
             return;
         }
 

@@ -219,8 +219,8 @@ struct Fonts {
 
 Fonts loadBundledFonts() {
     Fonts fonts;
-    // Space Grotesk comes as one file per weight: Qt on Windows draws a variable font at its default weight
-    // whatever weight is asked for, and Space Grotesk's default is Light.
+    // One file per weight: Qt on Windows draws a variable font at its default weight whatever weight is asked
+    // for, so bold text came out thin.
     const struct FontEntry {
         QString path;
         QString *targetFamily;
@@ -229,7 +229,10 @@ Fonts loadBundledFonts() {
                        {":/qt/qml/CassetteCat/fonts/space_grotesk_medium.ttf", nullptr},
                        {":/qt/qml/CassetteCat/fonts/space_grotesk_semibold.ttf", nullptr},
                        {":/qt/qml/CassetteCat/fonts/space_grotesk_bold.ttf", nullptr},
-                       {":/qt/qml/CassetteCat/fonts/ibm_plex_sans_variable.ttf", &fonts.body},
+                       {":/qt/qml/CassetteCat/fonts/ibm_plex_sans_regular.ttf", &fonts.body},
+                       {":/qt/qml/CassetteCat/fonts/ibm_plex_sans_medium.ttf", nullptr},
+                       {":/qt/qml/CassetteCat/fonts/ibm_plex_sans_semibold.ttf", nullptr},
+                       {":/qt/qml/CassetteCat/fonts/ibm_plex_sans_bold.ttf", nullptr},
                        {":/qt/qml/CassetteCat/fonts/ibm_plex_mono_regular.ttf", &fonts.mono},
                        {":/qt/qml/CassetteCat/fonts/ibm_plex_mono_semibold.ttf", nullptr}};
 

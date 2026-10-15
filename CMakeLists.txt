@@ -309,7 +309,10 @@ qt_add_qml_module(CassetteCat
         fonts/space_grotesk_medium.ttf
         fonts/space_grotesk_semibold.ttf
         fonts/space_grotesk_bold.ttf
-        fonts/ibm_plex_sans_variable.ttf
+        fonts/ibm_plex_sans_regular.ttf
+        fonts/ibm_plex_sans_medium.ttf
+        fonts/ibm_plex_sans_semibold.ttf
+        fonts/ibm_plex_sans_bold.ttf
         fonts/ibm_plex_mono_regular.ttf
         fonts/ibm_plex_mono_semibold.ttf
         fonts/silkscreen_regular.ttf

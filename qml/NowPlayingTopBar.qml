@@ -8,16 +8,16 @@ Item {
     height: 64
     z: 10
 
-    // The frosted round button every control on this bar uses.
+    // The round button every control on this bar uses. Its dark fill keeps it readable on a light backdrop.
     component GlassButton: PressDepthIconButton {
         boxSize: 38
         iconSize: 18
-        tint: root.appWindow.silverDim
+        tint: root.appWindow.textSecondary
         hoverTint: root.appWindow.textPrimary
-        backgroundColor: "#10FFFFFF"
-        hoverBackgroundColor: "#24FFFFFF"
-        borderColor: "#14FFFFFF"
-        hoverBorderColor: "#30FFFFFF"
+        backgroundColor: "#4D000000"
+        hoverBackgroundColor: "#80000000"
+        borderColor: "#1AFFFFFF"
+        hoverBorderColor: "#40FFFFFF"
     }
 
     GlassButton {

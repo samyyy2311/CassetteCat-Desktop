@@ -4668,7 +4668,7 @@ ApplicationWindow {
                         blur: 1.0
                         blurMax: 32
                         saturation: 1.0
-                        brightness: -0.1
+                        brightness: -0.2
                     }
 
                     Cover {
@@ -4730,7 +4730,7 @@ ApplicationWindow {
                 width: Math.min(420, Math.round(parent.width * 0.38))
 
                 readonly property int normalArtSize: Math.min(width - 20, Math.min(parent.height * 0.58, 360))
-                readonly property int lyricsArtSize: 260
+                readonly property int lyricsArtSize: Math.min(width - 20, 320)
                 readonly property bool compactPlayerMode: nowPlayingMode === "lyrics" || nowPlayingMode === "queue"
                 readonly property int currentArtSize: compactPlayerMode ? lyricsArtSize : normalArtSize
                 readonly property int normalArtY: Math.round((parent.height - normalArtSize) / 2)
@@ -4928,7 +4928,8 @@ ApplicationWindow {
 
                 NowPlayingDeckControls {
                     id: deckControlsView
-                    anchors.centerIn: parent
+                    anchors.left: parent.left
+                    anchors.verticalCenter: parent.verticalCenter
                     width: Math.min(parent.width - 24, 480)
                     height: 310
                     appWindow: window

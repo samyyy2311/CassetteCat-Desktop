@@ -927,11 +927,67 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Added in the last 30 days</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Favorites only</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Longer than 5 minutes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Shorter than 3 minutes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>1990s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>2000s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>2010s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>2020s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Playlist %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Enter a name for your new playlist:</source>
+        <source>Songs that match every rule, up to 100</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Songs you add yourself</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Standard</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Smart</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Playlist name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Create</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

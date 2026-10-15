@@ -35,6 +35,13 @@ class SettingsController final : public QObject {
     Q_INVOKABLE void clearLogs();
     /// Opens the current debug log with the platform default handler.
     Q_INVOKABLE void openLogFile();
+    /// The languages there are translations for, as {code, name}, each named in its own language.
+    Q_INVOKABLE QVariantList languages() const;
+    /// Saves the interface language, a code from languages() or empty to follow the system, and switches to it.
+    Q_INVOKABLE void setLanguage(const QString &code);
+
+  signals:
+    void languageChanged();
 
   private:
     static inline SettingsController *s_instance = nullptr;

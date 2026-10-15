@@ -8,6 +8,7 @@
 #include <QDebug>
 #include <QDesktopServices>
 #include <QDir>
+#include <QLocale>
 #include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -252,4 +253,29 @@ bool SettingsController::selfCheck() {
     const bool rejectsNaN = coerceSettingsValue(std::nan(""), 1).toInt() == 0;
     const bool readsBool = coerceSettingsValue(QStringLiteral("true"), false).toBool();
     return keepsTextFraction && keepsNumberFraction && keepsInteger && rejectsNaN && readsBool;
+}
+
+QVariantList SettingsController::languages() const {
+    QVariantList languages;
+    const QStringList files =
+        QDir(QStringLiteral(":/i18n")).entryList({QStringLiteral("cassettecat_*.qm")}, QDir::Files);
+    for (const QString &file : files) {
+        const QString code = file.mid(QStringLiteral("cassettecat_").size()).chopped(QStringLiteral(".qm").size());
+        const QLocale locale(code);
+        // Qt names English with no country "American English"; the source language is just English here.
+        QString name = code == QLatin1String("en") ? QStringLiteral("English") : locale.nativeLanguageName();
+        if (code.contains(QLatin1Char('_')))
+            name += QStringLiteral(" (%1)").arg(locale.nativeTerritoryName());
+        if (!name.isEmpty())
+            name[0] = name[0].toUpper();
+        languages.append(QVariantMap{{QStringLiteral("code"), code}, {QStringLiteral("name"), name}});
+    }
+    return languages;
+}
+
+void SettingsController::setLanguage(const QString &code) {
+    if (value(QStringLiteral("ui/language")).toString() == code)
+        return;
+    setValue(QStringLiteral("ui/language"), code);
+    emit languageChanged();
 }

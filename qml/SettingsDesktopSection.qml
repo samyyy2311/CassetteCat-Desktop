@@ -46,6 +46,27 @@ ColumnLayout {
         }
     }
 
+    SectionLabel { text: qsTr("Language") }
+
+    SettingCard {
+        SettingChoiceGroup {
+            id: languageChoice
+            // A list that grows with every translation, so always a menu.
+            forceMenu: true
+            property string language: appSettings.value("ui/language", "")
+            iconName: "globe"
+            title: qsTr("Language")
+            subtitle: qsTr("The language CassetteCat's menus and messages use")
+            options: [{ value: "", label: qsTr("System Default") }].concat(
+                appSettings.languages().map(language => ({ value: language.code, label: language.name })))
+            selectedValue: language
+            onOptionSelected: val => {
+                language = String(val)
+                appSettings.setLanguage(language)
+            }
+        }
+    }
+
     SectionLabel { text: qsTr("Window & System Tray") }
 
     SettingCard {

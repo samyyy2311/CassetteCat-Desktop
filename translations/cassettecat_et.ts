@@ -5,9 +5,9 @@
     <name>AlbumCard</name>
     <message numerus="yes">
         <source>%n song(s)</source>
-        <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+        <translation>
+            <numerusform>%n lugu</numerusform>
+            <numerusform>%n lugu</numerusform>
         </translation>
     </message>
 </context>
@@ -15,9 +15,9 @@
     <name>ArtistCard</name>
     <message numerus="yes">
         <source>%n song(s)</source>
-        <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+        <translation>
+            <numerusform>%n lugu</numerusform>
+            <numerusform>%n lugu</numerusform>
         </translation>
     </message>
 </context>
@@ -25,15 +25,15 @@
     <name>ArtistDetailBody</name>
     <message>
         <source>Albums</source>
-        <translation type="unfinished"></translation>
+        <translation>Albumid</translation>
     </message>
     <message>
         <source>Singles &amp; EPs</source>
-        <translation type="unfinished"></translation>
+        <translation>Singlid ja EP-d</translation>
     </message>
     <message>
         <source>Popular Tracks</source>
-        <translation type="unfinished"></translation>
+        <translation>Populaarsed lood</translation>
     </message>
     <message>
         <source>Top %1</source>
@@ -151,105 +151,105 @@
     <name>CatalogDetail</name>
     <message>
         <source>%1h %2m</source>
-        <translation type="unfinished"></translation>
+        <translation>%1 t %2 min</translation>
     </message>
     <message>
         <source>%1 min</source>
-        <translation type="unfinished"></translation>
+        <translation>%1 min</translation>
     </message>
     <message>
         <source>Change cover art</source>
-        <translation type="unfinished"></translation>
+        <translation>Muuda kaanepilti</translation>
     </message>
     <message>
         <source>Artist</source>
-        <translation type="unfinished"></translation>
+        <translation>Esitaja</translation>
     </message>
     <message>
         <source>Album</source>
-        <translation type="unfinished"></translation>
+        <translation>Album</translation>
     </message>
     <message numerus="yes">
         <source>%n song(s)</source>
-        <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+        <translation>
+            <numerusform>%n lugu</numerusform>
+            <numerusform>%n lugu</numerusform>
         </translation>
     </message>
     <message numerus="yes">
         <source>%n album(s)</source>
-        <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+        <translation>
+            <numerusform>%n album</numerusform>
+            <numerusform>%n albumit</numerusform>
         </translation>
     </message>
     <message numerus="yes">
         <source>%n track(s)</source>
-        <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+        <translation>
+            <numerusform>%n pala</numerusform>
+            <numerusform>%n pala</numerusform>
         </translation>
     </message>
     <message>
         <source>Open artist %1</source>
-        <translation type="unfinished"></translation>
+        <translation>Ava esitaja: %1</translation>
     </message>
     <message>
         <source>About this artist</source>
-        <translation type="unfinished"></translation>
+        <translation>Esitaja teave</translation>
     </message>
     <message>
         <source>About this album</source>
-        <translation type="unfinished"></translation>
+        <translation>Albumi teave</translation>
     </message>
     <message>
         <source>Less</source>
-        <translation type="unfinished"></translation>
+        <translation>Vähem</translation>
     </message>
     <message>
         <source>More</source>
-        <translation type="unfinished"></translation>
+        <translation>Rohkem</translation>
     </message>
     <message>
         <source>Show less</source>
-        <translation type="unfinished"></translation>
+        <translation>Näita vähem</translation>
     </message>
     <message>
         <source>Show more</source>
-        <translation type="unfinished"></translation>
+        <translation>Näita rohkem</translation>
     </message>
     <message>
         <source>Play All</source>
-        <translation type="unfinished"></translation>
+        <translation>Esita kõik</translation>
     </message>
     <message>
         <source>Shuffle</source>
-        <translation type="unfinished"></translation>
+        <translation>Sega järjestust</translation>
     </message>
     <message>
         <source>Remove songs from favorites</source>
-        <translation type="unfinished"></translation>
+        <translation>Eemalda lood lemmikute hulgast</translation>
     </message>
     <message>
         <source>Favorite all songs</source>
-        <translation type="unfinished"></translation>
+        <translation>Märgi kõik lood lemmikuks</translation>
     </message>
     <message>
         <source>All Songs (%1)</source>
-        <translation type="unfinished"></translation>
+        <translation>Kõik lood (%1)</translation>
     </message>
     <message>
         <source>Tracklist (%1)</source>
-        <translation type="unfinished"></translation>
+        <translation>Lugude loend (%1)</translation>
     </message>
 </context>
 <context>
     <name>CategoryCard</name>
     <message numerus="yes">
         <source>%n track(s)</source>
-        <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+        <translation>
+            <numerusform>%n pala</numerusform>
+            <numerusform>%n pala</numerusform>
         </translation>
     </message>
 </context>
@@ -257,42 +257,42 @@
     <name>ConfirmPopup</name>
     <message>
         <source>This cannot be undone</source>
-        <translation type="unfinished"></translation>
+        <translation>Seda tegevust ei saa tagasi pöörata</translation>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="unfinished"></translation>
+        <translation>Katkesta</translation>
     </message>
 </context>
 <context>
     <name>CoverSearchPopup</name>
     <message>
         <source>Searching artwork…</source>
-        <translation type="unfinished"></translation>
+        <translation>Otsin kaanepilte…</translation>
     </message>
     <message>
         <source>Choose album cover</source>
-        <translation type="unfinished"></translation>
+        <translation>Vali kaanepilt</translation>
     </message>
     <message>
         <source>Search online album artwork</source>
-        <translation type="unfinished"></translation>
+        <translation>Otsi kaanepilti veebist</translation>
     </message>
     <message>
         <source>Close</source>
-        <translation type="unfinished"></translation>
+        <translation>Sulge</translation>
     </message>
     <message>
         <source>Album title</source>
-        <translation type="unfinished"></translation>
+        <translation>Albumi pealkiri</translation>
     </message>
     <message>
         <source>Artist (optional)</source>
-        <translation type="unfinished"></translation>
+        <translation>Esitaja (kui tahad lisada)</translation>
     </message>
     <message>
         <source>Search</source>
-        <translation type="unfinished"></translation>
+        <translation>Otsi</translation>
     </message>
     <message>
         <source>Also save the cover into the music files, so other apps show it</source>

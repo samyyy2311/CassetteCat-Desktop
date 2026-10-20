@@ -236,16 +236,16 @@ struct ITypedEventHandler_PlaybackPosition : public IUnknown {
                                              IPlaybackPositionChangeRequestedEventArgs *args) = 0;
 };
 
-// Button handler COM implementation
-class ButtonHandler final : public ITypedEventHandler_ButtonPressed {
+// Reference counting and interface lookup for the event handlers below.
+template <typename Interface, const GUID &InterfaceId> class ComHandler : public Interface {
   public:
-    explicit ButtonHandler(SmtcController *parent) : m_parent(parent), m_ref(1) {}
+    virtual ~ComHandler() = default;
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppv) override {
         if (!ppv)
             return E_POINTER;
-        if (riid == IID_IUnknown || riid == IID_ITypedEventHandler_ButtonPressed) {
-            *ppv = static_cast<ITypedEventHandler_ButtonPressed *>(this);
+        if (riid == IID_IUnknown || riid == InterfaceId) {
+            *ppv = static_cast<Interface *>(this);
             AddRef();
             return S_OK;
         }
@@ -263,6 +263,15 @@ class ButtonHandler final : public ITypedEventHandler_ButtonPressed {
             delete this;
         return res;
     }
+
+  private:
+    LONG m_ref = 1;
+};
+
+// Button handler COM implementation
+class ButtonHandler final : public ComHandler<ITypedEventHandler_ButtonPressed, IID_ITypedEventHandler_ButtonPressed> {
+  public:
+    explicit ButtonHandler(SmtcController *parent) : m_parent(parent) {}
 
     HRESULT STDMETHODCALLTYPE Invoke(ISystemMediaTransportControls *sender,
                                      ISystemMediaTransportControlsButtonPressedEventArgs *args) override {
@@ -293,36 +302,13 @@ class ButtonHandler final : public ITypedEventHandler_ButtonPressed {
 
   private:
     SmtcController *m_parent = nullptr;
-    LONG m_ref = 1;
 };
 
 // Seek handler COM implementation
-class SeekHandler final : public ITypedEventHandler_PlaybackPosition {
+class SeekHandler final
+    : public ComHandler<ITypedEventHandler_PlaybackPosition, IID_ITypedEventHandler_PlaybackPosition> {
   public:
-    explicit SeekHandler(SmtcController *parent) : m_parent(parent), m_ref(1) {}
-
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppv) override {
-        if (!ppv)
-            return E_POINTER;
-        if (riid == IID_IUnknown || riid == IID_ITypedEventHandler_PlaybackPosition) {
-            *ppv = static_cast<ITypedEventHandler_PlaybackPosition *>(this);
-            AddRef();
-            return S_OK;
-        }
-        *ppv = nullptr;
-        return E_NOINTERFACE;
-    }
-
-    ULONG STDMETHODCALLTYPE AddRef() override {
-        return InterlockedIncrement(&m_ref);
-    }
-
-    ULONG STDMETHODCALLTYPE Release() override {
-        ULONG res = InterlockedDecrement(&m_ref);
-        if (res == 0)
-            delete this;
-        return res;
-    }
+    explicit SeekHandler(SmtcController *parent) : m_parent(parent) {}
 
     HRESULT STDMETHODCALLTYPE Invoke(ISystemMediaTransportControls2 *sender,
                                      IPlaybackPositionChangeRequestedEventArgs *args) override {
@@ -339,7 +325,6 @@ class SeekHandler final : public ITypedEventHandler_PlaybackPosition {
 
   private:
     SmtcController *m_parent = nullptr;
-    LONG m_ref = 1;
 };
 #endif
 

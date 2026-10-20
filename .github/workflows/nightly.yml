@@ -115,7 +115,8 @@ jobs:
           test -n "$deb" && mv "$deb" "CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-amd64.deb"
           test -n "$rpm" && mv "$rpm" "CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-x86_64.rpm"
           export APPIMAGE_EXTRACT_AND_RUN=1
-          ./linuxdeploy.AppImage --appdir AppDir --executable dist/CassetteCat/bin/CassetteCat --desktop-file packaging/linux/io.github.samyyy2311.CassetteCat.desktop --icon-file assets/cassettecat_icon.png --output appimage
+          cp assets/cassettecat_icon.png io.github.samyyy2311.CassetteCat.png
+          ./linuxdeploy.AppImage --appdir AppDir --executable dist/CassetteCat/bin/CassetteCat --desktop-file packaging/linux/io.github.samyyy2311.CassetteCat.desktop --icon-file io.github.samyyy2311.CassetteCat.png --output appimage
           mv CassetteCat*.AppImage "CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-x86_64.AppImage"
           mkdir -p smoke && tar -xzf "CassetteCat-nightly-${NIGHTLY_DATE}-${NIGHTLY_SHA_SHORT}.linux-x64.tar.gz" -C smoke
           smoke/CassetteCat/bin/CassetteCat --self-check

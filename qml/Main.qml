@@ -3963,7 +3963,6 @@ ApplicationWindow {
                                     libraryRevision
                                     return window.availableTracks()
                                 }
-                                playCounts: window.playCounts
                                 playbackHistory: window.playbackHistory
                             }
                         }

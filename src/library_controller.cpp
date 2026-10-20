@@ -163,6 +163,33 @@ QList<QJsonObject> readListeningLog(const QByteArray &log) {
     return entries;
 }
 
+// Plays follow Apple Music, counting once most of a song is heard; a skip only adds listening time. Listens logged
+// before skips were kept are all plays, and a month's total from the phone carries its own plays.
+int logPlays(const QJsonObject &entry) {
+    return entry.value("counted").toBool(true) ? qMax(1, entry.value("plays").toInt(1)) : 0;
+}
+
+QVariantMap totalsFromLog(const QByteArray &log) {
+    int plays = 0;
+    qint64 listenedMs = 0;
+    QSet<QString> songs;
+    QVariantMap playsByPath;
+    for (const QJsonObject &entry : readListeningLog(log)) {
+        const int entryPlays = logPlays(entry);
+        plays += entryPlays;
+        listenedMs += static_cast<qint64>(entry.value("ms").toDouble());
+        // An untitled total covers songs the phone no longer has; like the phone, it counts but isn't listed.
+        if (entryPlays == 0 || entry.value("title").toString().isEmpty())
+            continue;
+        songs.insert(LibraryController::matchKey(entry.toVariantMap()));
+        // A phone listen of a song this computer doesn't have counts without a file to list it under.
+        const QString path = entry.value("path").toString();
+        if (!path.isEmpty())
+            playsByPath.insert(path, playsByPath.value(path).toInt() + entryPlays);
+    }
+    return {{"plays", plays}, {"listenedMs", listenedMs}, {"songCount", songs.size()}, {"playsByPath", playsByPath}};
+}
+
 QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
     struct Tally {
         QVariantMap item;
@@ -223,12 +250,10 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
                                 {"artist", entry.value("artist").toString()},
                                 {"album", entry.value("album").toString()},
                                 {"genre", entry.value("genre").toString()}};
-        // Plays follow Apple Music, counting once most of a song is heard; listening time counts every minute, as in
-        // Apple Music Replay. Listens logged before skips were kept are all plays.
-        // A month's total from the phone carries its plays and is dated the first of the month, so it doesn't set when
-        // listening began.
+        // Listening time counts every minute, as in Apple Music Replay. A month's total from the phone is dated the
+        // first of the month, so it doesn't set when listening began.
         const bool total = entry.contains("plays");
-        const int entryPlays = entry.value("counted").toBool(true) ? qMax(1, entry.value("plays").toInt(1)) : 0;
+        const int entryPlays = logPlays(entry);
         plays += entryPlays;
         listenedMs += ms;
         if (!total)
@@ -528,6 +553,16 @@ bool LibraryController::selfCheck() {
     if (withUntitled.value("plays").toInt() != 5 || withUntitled.value("songCount").toInt() != 1 ||
         withUntitled.value("topSongs").toList().size() != 1)
         return fail("untitled monthly totals from the phone");
+    QJsonObject desktopPlay = QJsonDocument::fromJson(phoneLine("Here")).object();
+    desktopPlay.remove("device");
+    desktopPlay.insert("path", "C:/Music/here.flac");
+    const QVariantMap totals = totalsFromLog(phoneLine("Here") + phoneLine("Gone") +
+                                             QJsonDocument(desktopPlay).toJson(QJsonDocument::Compact) + '\n' +
+                                             QJsonDocument(skip).toJson(QJsonDocument::Compact) + '\n');
+    if (totals.value("plays").toInt() != 3 || totals.value("listenedMs").toLongLong() != 4000 ||
+        totals.value("songCount").toInt() != 2 ||
+        totals.value("playsByPath").toMap().value("C:/Music/here.flac").toInt() != 1)
+        return fail("listening totals across both devices");
 
     // Half a second of 8 kHz mono silence is enough for TagLib to accept the file.
     QTemporaryDir tagDir;
@@ -747,6 +782,8 @@ void LibraryController::recordListen(const QVariantMap &track, qint64 listenedMs
         return;
     }
     file.write(QJsonDocument(entry).toJson(QJsonDocument::Compact) + '\n');
+    file.close();
+    emit listensChanged();
 }
 
 bool LibraryController::appendPhoneListens(const QList<QJsonObject> &listens) {
@@ -801,6 +838,11 @@ QJsonArray LibraryController::listensSince(qint64 since) const {
     return listens;
 }
 
+QVariantMap LibraryController::listeningTotals() const {
+    QFile file(listeningLogFilePath());
+    return totalsFromLog(file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray());
+}
+
 QVariantList LibraryController::listeningYears() const {
     QFile file(listeningLogFilePath());
     if (!file.open(QIODevice::ReadOnly))
@@ -824,6 +866,7 @@ QVariantMap LibraryController::listeningRecap(int year, int month) const {
 
 void LibraryController::clearListeningLog() {
     QFile::remove(listeningLogFilePath());
+    emit listensChanged();
 }
 
 QStringList LibraryController::availablePaths() const {

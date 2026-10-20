@@ -9,6 +9,8 @@ Rectangle {
     required property color borderCard
     required property color accentColor
     required property color silverDim
+    signal closeRequested()
+
     function setVolume(val) {
         playerController.setVolume(Math.max(0.0, Math.min(1.0, val)))
     }
@@ -19,6 +21,15 @@ Rectangle {
     color: surfacePill
     border.width: 1
     border.color: borderCard
+
+    // Closes a moment after the pointer leaves, rather than on a click elsewhere: a window-wide catcher for that
+    // click also sat above the slider, so the slider itself could never be used.
+    HoverHandler { id: pillHover }
+    Timer {
+        interval: 1200
+        running: root.visible && !pillHover.hovered && !trackMouse.pressed
+        onTriggered: root.closeRequested()
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -75,6 +86,7 @@ Rectangle {
             }
 
             MouseArea {
+                id: trackMouse
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor

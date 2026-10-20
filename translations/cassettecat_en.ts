@@ -2089,6 +2089,65 @@ Try the track title, or add custom lyrics</source>
     </message>
 </context>
 <context>
+    <name>MiniPlayerControls</name>
+    <message>
+        <source>Volume</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Remove from favorites</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Add to favorites</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Shuffle On</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Shuffle Off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Previous</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Pause</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Play</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Next</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Repeat Track</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Repeat All</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Repeat Off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lyrics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Queue</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>MiniPlayerLyricsView</name>
     <message>
         <source>No Lyrics Available</source>
@@ -2173,70 +2232,6 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Select folder</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Switch to duration</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Switch to remaining time</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Volume</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Remove from favorites</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Add to favorites</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Shuffle On</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Shuffle Off</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Previous</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Pause</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Play</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Next</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Repeat Track</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Repeat All</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Repeat Off</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Lyrics</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Queue</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

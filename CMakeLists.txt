@@ -207,6 +207,7 @@ qt_add_qml_module(CassetteCat
         qml/MiniPlayerSubpageHeader.qml
         qml/MiniPlayerLyricsView.qml
         qml/MiniPlayerVolumePill.qml
+        qml/MiniPlayerControls.qml
     RESOURCES
         CHANGELOG.md
         qml/icons/external-link.svg

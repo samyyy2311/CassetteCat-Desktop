@@ -75,7 +75,9 @@ Item {
             border.width: 1
             border.color: "#35FFFFFF"
             z: 20
-            opacity: root.artHoverActive ? 1.0 : 0.85
+            // Hidden with the playback controls until the pointer is over the cover.
+            opacity: root.artHoverActive ? 1.0 : 0.0
+            visible: opacity > 0.001
 
             Behavior on opacity {
                 NumberAnimation {
@@ -377,6 +379,7 @@ Item {
                     // In-Place Volume Slider
                     MiniPlayerVolumePill {
                         id: artInlineVolPill
+                        onCloseRequested: root.miniPlayer.volumePillVisible = false
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
                         playerController: root.miniPlayer.playerController

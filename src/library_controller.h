@@ -51,6 +51,10 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE QStringList availablePaths() const;
     /// Orders names for display: symbols and numbers first, then letters in any script, ignoring leading articles.
     Q_INVOKABLE int compareNames(const QString &left, const QString &right) const;
+    /// The letter, A to Z, a name is filed under in a sorted list, or "#" for numbers, symbols and other scripts.
+    Q_INVOKABLE static QString indexLetter(const QString &name);
+    /// The first visible row filed under each letter, for the current sort by title, artist or album; empty otherwise.
+    Q_INVOKABLE QVariantMap letterRows() const;
     /// The individual artists credited in \p artist, as the Library's Artists tab counts them.
     Q_INVOKABLE QStringList artistNames(const QString &artist) const;
     /// Appends a counted play with the current date and the time listened to the listening log.

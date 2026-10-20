@@ -169,6 +169,7 @@ qt_add_qml_module(CassetteCat
         qml/EmptyState.qml
         qml/LoadingBar.qml
         qml/AutoHideScrollBar.qml
+        qml/IndexRail.qml
         qml/SettingsNavigationItem.qml
         qml/SettingCard.qml
         qml/SettingRow.qml

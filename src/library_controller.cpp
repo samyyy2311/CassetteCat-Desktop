@@ -415,6 +415,11 @@ bool LibraryController::selfCheck() {
     if (compareSortKeys(QStringLiteral("Émile"), QStringLiteral("1989")) <= 0 ||
         compareSortKeys(QStringLiteral("Кино"), QStringLiteral("#1 Hits")) <= 0)
         return fail("compareSortKeys unicode letters");
+    if (indexLetter(QStringLiteral("The Beatles")) != QStringLiteral("B") ||
+        indexLetter(QStringLiteral("émile")) != QStringLiteral("E") ||
+        indexLetter(QStringLiteral("1989")) != QStringLiteral("#") ||
+        indexLetter(QStringLiteral("Кино")) != QStringLiteral("#") || indexLetter(QString()) != QStringLiteral("#"))
+        return fail("index letters");
     library.m_tracks = {
         QVariantMap{
             {"filePath", "C:/Music/keep.flac"}, {"title", "Keep"}, {"format", "FLAC"}, {"durationSeconds", 180}},
@@ -753,6 +758,30 @@ QVariantList LibraryController::tracksForPaths(const QVariantList &paths) const 
             result[index] = track;
     }
     return result;
+}
+
+QString LibraryController::indexLetter(const QString &name) {
+    const QString key = sortKey(name);
+    // An accented letter is sorted with its plain one, so É is filed under E.
+    const QChar first =
+        key.isEmpty() ? QChar() : QString(key.at(0)).normalized(QString::NormalizationForm_D).at(0).toUpper();
+    return first >= QLatin1Char('A') && first <= QLatin1Char('Z') ? QString(first) : QStringLiteral("#");
+}
+
+QVariantMap LibraryController::letterRows() const {
+    if (m_sortMetric != "title" && m_sortMetric != "artist" && m_sortMetric != "album")
+        return {};
+    QVariantMap rows;
+    for (int row = 0; row < m_visibleRows.size(); ++row) {
+        const QVariantMap track = m_tracks.at(m_visibleRows.at(row)).toMap();
+        QString name = track.value(m_sortMetric).toString();
+        if (name.isEmpty() && m_sortMetric == "title")
+            name = track.value("fileName").toString();
+        const QString letter = indexLetter(name);
+        if (!rows.contains(letter))
+            rows.insert(letter, row);
+    }
+    return rows;
 }
 
 int LibraryController::compareNames(const QString &left, const QString &right) const {

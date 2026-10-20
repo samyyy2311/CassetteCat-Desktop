@@ -34,8 +34,7 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 28
         anchors.verticalCenter: parent.verticalCenter
-        // Song actions, window, and views, each kept together with a wider gap between them.
-        spacing: 24
+        spacing: 10
 
         Row {
             readonly property var lines: root.appWindow.parsedLyrics
@@ -113,73 +112,57 @@ Item {
             }
         }
 
-        Row {
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 8
-
-            GlassButton {
-                visible: phoneRemote.controllerName !== ""
-                iconName: "smartphone"
-                highlighted: true
-                tooltipText: qsTr("Controlled from %1. Click to continue on it.").arg(phoneRemote.controllerName)
-                onClicked: phoneRemote.continueOnPhone()
-            }
-
-            GlassButton {
-                readonly property bool favorite: root.appWindow.isFavorite(root.appWindow.shownPlayer.currentTrack.filePath)
-                iconName: "heart"
-                visible: !!root.appWindow.shownPlayer.currentTrack.filePath
-                highlighted: favorite
-                tooltipText: favorite ? qsTr("Remove from Favorites") : qsTr("Add to Favorites")
-                onClicked: root.appWindow.toggleFavorite(root.appWindow.shownPlayer.currentTrack.filePath)
-            }
-
-            GlassButton {
-                iconName: "more-vertical"
-                visible: !root.appWindow.phoneInDock
-                tooltipText: qsTr("Track options")
-                onClicked: root.appWindow.openTrackActionSheet(player.currentTrack)
-            }
+        GlassButton {
+            visible: phoneRemote.controllerName !== ""
+            iconName: "smartphone"
+            highlighted: true
+            tooltipText: qsTr("Controlled from %1. Click to continue on it.").arg(phoneRemote.controllerName)
+            onClicked: phoneRemote.continueOnPhone()
         }
 
-        Row {
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 8
-
-            GlassButton {
-                readonly property bool fullScreen: root.appWindow.visibility === Window.FullScreen
-                iconName: fullScreen ? "minimize-2" : "maximize-2"
-                tooltipText: fullScreen ? qsTr("Exit full screen") : qsTr("Full screen")
-                onClicked: root.appWindow.toggleFullScreen()
-            }
-
-            GlassButton {
-                iconName: "pip"
-                tooltipText: qsTr("Open MiniPlayer")
-                onClicked: root.appWindow.toggleMiniPlayer()
-            }
+        GlassButton {
+            readonly property bool favorite: root.appWindow.isFavorite(root.appWindow.shownPlayer.currentTrack.filePath)
+            iconName: "heart"
+            visible: !!root.appWindow.shownPlayer.currentTrack.filePath
+            highlighted: favorite
+            tooltipText: favorite ? qsTr("Remove from Favorites") : qsTr("Add to Favorites")
+            onClicked: root.appWindow.toggleFavorite(root.appWindow.shownPlayer.currentTrack.filePath)
         }
 
-        Row {
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: 8
+        GlassButton {
+            iconName: "more-vertical"
+            visible: !root.appWindow.phoneInDock
+            tooltipText: qsTr("Track options")
+            onClicked: root.appWindow.openTrackActionSheet(player.currentTrack)
+        }
 
-            GlassButton {
-                iconName: "quote"
-                visible: !root.appWindow.phoneInDock
-                highlighted: root.appWindow.nowPlayingMode === "lyrics"
-                tooltipText: highlighted ? qsTr("Hide lyrics") : qsTr("Show lyrics")
-                onClicked: root.appWindow.nowPlayingMode = highlighted ? "controls" : "lyrics"
-            }
+        GlassButton {
+            readonly property bool fullScreen: root.appWindow.visibility === Window.FullScreen
+            iconName: fullScreen ? "minimize-2" : "maximize-2"
+            tooltipText: fullScreen ? qsTr("Exit full screen") : qsTr("Full screen")
+            onClicked: root.appWindow.toggleFullScreen()
+        }
 
-            GlassButton {
-                iconName: "list"
-                visible: !root.appWindow.phoneInDock
-                highlighted: root.appWindow.nowPlayingMode === "queue"
-                tooltipText: highlighted ? qsTr("Hide queue") : qsTr("Show queue")
-                onClicked: root.appWindow.nowPlayingMode = highlighted ? "controls" : "queue"
-            }
+        GlassButton {
+            iconName: "pip"
+            tooltipText: qsTr("Open MiniPlayer")
+            onClicked: root.appWindow.toggleMiniPlayer()
+        }
 
+        GlassButton {
+            iconName: "quote"
+            visible: !root.appWindow.phoneInDock
+            highlighted: root.appWindow.nowPlayingMode === "lyrics"
+            tooltipText: highlighted ? qsTr("Hide lyrics") : qsTr("Show lyrics")
+            onClicked: root.appWindow.nowPlayingMode = highlighted ? "controls" : "lyrics"
+        }
+
+        GlassButton {
+            iconName: "list"
+            visible: !root.appWindow.phoneInDock
+            highlighted: root.appWindow.nowPlayingMode === "queue"
+            tooltipText: highlighted ? qsTr("Hide queue") : qsTr("Show queue")
+            onClicked: root.appWindow.nowPlayingMode = highlighted ? "controls" : "queue"
         }
 
     }

@@ -39,15 +39,13 @@ Q_DECLARE_METATYPE(PortalShortcut)
 PortalShortcuts::PortalShortcuts(QObject *parent) : QObject(parent) {
     qDBusRegisterMetaType<PortalShortcut>();
     qDBusRegisterMetaType<QList<PortalShortcut>>();
-    QDBusConnection::sessionBus().connect(
-        portalService, portalPath, shortcutsInterface, QStringLiteral("Activated"), this,
-        SLOT(onActivated(QDBusObjectPath, QString, qulonglong, QVariantMap)));
+    QDBusConnection::sessionBus().connect(portalService, portalPath, shortcutsInterface, QStringLiteral("Activated"),
+                                          this, SLOT(onActivated(QDBusObjectPath, QString, qulonglong, QVariantMap)));
 }
 
 bool PortalShortcuts::available() {
-    QDBusMessage get = QDBusMessage::createMethodCall(portalService, portalPath,
-                                                      QStringLiteral("org.freedesktop.DBus.Properties"),
-                                                      QStringLiteral("Get"));
+    QDBusMessage get = QDBusMessage::createMethodCall(
+        portalService, portalPath, QStringLiteral("org.freedesktop.DBus.Properties"), QStringLiteral("Get"));
     get << shortcutsInterface << QStringLiteral("version");
     const QDBusMessage reply = QDBusConnection::sessionBus().call(get, QDBus::Block, 2000);
     return reply.type() == QDBusMessage::ReplyMessage;
@@ -89,8 +87,8 @@ void PortalShortcuts::bind(const QList<QPair<QString, QPair<QString, QString>>> 
     const QString token = QStringLiteral("cassettecat%1").arg(++m_tokenCount);
     QDBusConnection::sessionBus().connect(portalService, requestPath(token), requestInterface,
                                           QStringLiteral("Response"), this, SLOT(onSessionCreated(uint, QVariantMap)));
-    QDBusMessage create = QDBusMessage::createMethodCall(portalService, portalPath, shortcutsInterface,
-                                                         QStringLiteral("CreateSession"));
+    QDBusMessage create =
+        QDBusMessage::createMethodCall(portalService, portalPath, shortcutsInterface, QStringLiteral("CreateSession"));
     create << QVariantMap{{QStringLiteral("handle_token"), token},
                           {QStringLiteral("session_handle_token"), QStringLiteral("cassettecat")}};
     QDBusConnection::sessionBus().asyncCall(create);
@@ -108,13 +106,14 @@ void PortalShortcuts::onSessionCreated(uint response, const QVariantMap &results
 void PortalShortcuts::sendBind() {
     QList<PortalShortcut> list;
     for (const auto &entry : m_pending)
-        list.append({entry.first, {{QStringLiteral("description"), entry.second.first},
-                                   {QStringLiteral("preferred_trigger"), entry.second.second}}});
+        list.append({entry.first,
+                     {{QStringLiteral("description"), entry.second.first},
+                      {QStringLiteral("preferred_trigger"), entry.second.second}}});
     const QString token = QStringLiteral("cassettecat%1").arg(++m_tokenCount);
     QDBusConnection::sessionBus().connect(portalService, requestPath(token), requestInterface,
                                           QStringLiteral("Response"), this, SLOT(onShortcutsBound(uint, QVariantMap)));
-    QDBusMessage bind = QDBusMessage::createMethodCall(portalService, portalPath, shortcutsInterface,
-                                                       QStringLiteral("BindShortcuts"));
+    QDBusMessage bind =
+        QDBusMessage::createMethodCall(portalService, portalPath, shortcutsInterface, QStringLiteral("BindShortcuts"));
     bind << QVariant::fromValue(m_session) << QVariant::fromValue(list) << QString()
          << QVariantMap{{QStringLiteral("handle_token"), token}};
     QDBusConnection::sessionBus().asyncCall(bind);

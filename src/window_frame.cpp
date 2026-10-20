@@ -63,14 +63,16 @@ QStringList WindowFrame::readLinuxButtons() {
     if (qEnvironmentVariable("XDG_CURRENT_DESKTOP").toUpper().contains(QLatin1String("KDE"))) {
         // KDE keeps its buttons in KWin's settings as letters: I minimizes, A maximizes, X closes.
         const QSettings kwin(QDir::homePath() + QStringLiteral("/.config/kwinrc"), QSettings::IniFormat);
-        const QString right = kwin.value(QStringLiteral("org.kde.kdecoration2/ButtonsOnRight"), QStringLiteral("IAX")).toString();
+        const QString right =
+            kwin.value(QStringLiteral("org.kde.kdecoration2/ButtonsOnRight"), QStringLiteral("IAX")).toString();
         const QString left = kwin.value(QStringLiteral("org.kde.kdecoration2/ButtonsOnLeft")).toString();
         const auto names = [](const QString &letters) {
             QStringList list;
             for (const QChar letter : letters)
-                list << (letter == QLatin1Char('I') ? QStringLiteral("minimize")
+                list << (letter == QLatin1Char('I')   ? QStringLiteral("minimize")
                          : letter == QLatin1Char('A') ? QStringLiteral("maximize")
-                         : letter == QLatin1Char('X') ? QStringLiteral("close") : QString());
+                         : letter == QLatin1Char('X') ? QStringLiteral("close")
+                                                      : QString());
             return list.join(QLatin1Char(','));
         };
         layout = names(left) + QLatin1Char(':') + names(right);

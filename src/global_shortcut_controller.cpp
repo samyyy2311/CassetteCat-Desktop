@@ -411,7 +411,8 @@ bool GlobalShortcutController::registerShortcuts() {
     QList<QPair<QString, QPair<QString, QString>>> shortcuts;
     for (const auto &entry : shortcutDefinitions) {
         const QString action = QString::fromLatin1(entry.action);
-        shortcuts.append({action, {tr(entry.label), PortalShortcuts::portalTrigger(m_shortcuts.value(action).toString())}});
+        shortcuts.append(
+            {action, {tr(entry.label), PortalShortcuts::portalTrigger(m_shortcuts.value(action).toString())}});
     }
     m_portal->bind(shortcuts);
     setStatus(tr("Waiting for the desktop to allow the shortcuts"));

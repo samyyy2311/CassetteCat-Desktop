@@ -2,6 +2,8 @@
 
 #include <QCoreApplication>
 #include <QGuiApplication>
+#include <QKeyEvent>
+#include <QWindow>
 #include <QStringList>
 #include <iterator>
 
@@ -144,12 +146,13 @@ GlobalShortcutController::GlobalShortcutController(QObject *parent) : QObject(pa
     m_altHoldTimer.setSingleShot(true);
     m_altHoldTimer.setInterval(500);
     connect(&m_altHoldTimer, &QTimer::timeout, this, [this] {
-        if (!m_altPressed || QGuiApplication::applicationState() != Qt::ApplicationActive)
+        if (!m_altAlone)
             return;
-        m_accessHintsVisible = true;
-        emit accessHintsRequested(true);
+        m_hintsShownByHold = true;
+        setAccessHintsVisible(true);
     });
     QCoreApplication::instance()->installNativeEventFilter(this);
+    QCoreApplication::instance()->installEventFilter(this);
 #ifdef CASSETTECAT_HAVE_DBUS
     if (PortalShortcuts::available()) {
         m_portal = new PortalShortcuts(this);
@@ -320,43 +323,66 @@ bool GlobalShortcutController::setShortcut(const QString &action, const QString 
 #endif
 }
 
+// Alt shows the letters that open each page, as Windows apps do, on every platform: holding it shows them after a
+// moment and tapping it shows or hides them. They stay up until a letter, Esc, a click or another key.
+bool GlobalShortcutController::eventFilter(QObject *watched, QEvent *event) {
+    // A key event goes to the window and then on to its items; the window's copy is the one that counts.
+    if (!qobject_cast<QWindow *>(watched))
+        return false;
+    switch (event->type()) {
+    case QEvent::KeyPress: {
+        const auto *key = static_cast<QKeyEvent *>(event);
+        if (key->key() == Qt::Key_Alt) {
+            // Some Linux setups report Alt's own press without Alt among the modifiers.
+            if (!key->isAutoRepeat() && (key->modifiers() & ~Qt::AltModifier) == Qt::NoModifier) {
+                m_altAlone = true;
+                m_hintsShownByHold = false;
+                m_altHoldTimer.start();
+            }
+            return false;
+        }
+        m_altAlone = false;
+        m_altHoldTimer.stop();
+        if (!m_accessHintsVisible)
+            return false;
+        setAccessHintsVisible(false);
+        if (key->key() >= Qt::Key_A && key->key() <= Qt::Key_Z) {
+            emit accessKeyRequested(QString(QChar(u'A' + (key->key() - Qt::Key_A))));
+            return true;
+        }
+        return key->key() == Qt::Key_Escape;
+    }
+    case QEvent::KeyRelease:
+        if (static_cast<QKeyEvent *>(event)->key() == Qt::Key_Alt) {
+            m_altHoldTimer.stop();
+            if (m_altAlone && !m_hintsShownByHold)
+                setAccessHintsVisible(!m_accessHintsVisible);
+            m_altAlone = false;
+        }
+        return false;
+    case QEvent::MouseButtonPress:
+    case QEvent::WindowDeactivate:
+        m_altAlone = false;
+        m_altHoldTimer.stop();
+        setAccessHintsVisible(false);
+        return false;
+    default:
+        return false;
+    }
+}
+
+void GlobalShortcutController::setAccessHintsVisible(bool visible) {
+    if (m_accessHintsVisible == visible)
+        return;
+    m_accessHintsVisible = visible;
+    emit accessHintsRequested(visible);
+}
+
 bool GlobalShortcutController::nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) {
 #ifdef Q_OS_WIN
     if (eventType != "windows_generic_MSG")
         return false;
     const auto *msg = static_cast<MSG *>(message);
-    if (msg->message == WM_SYSKEYDOWN && msg->wParam == VK_MENU) {
-        if (m_altPressed)
-            return false;
-        m_altPressed = true;
-        if (m_accessHintsVisible) {
-            m_accessHintsVisible = false;
-            emit accessHintsRequested(false);
-            return false;
-        }
-        m_altHoldTimer.start();
-        return false;
-    }
-    if (msg->message == WM_SYSKEYUP && msg->wParam == VK_MENU) {
-        m_altPressed = false;
-        m_altHoldTimer.stop();
-        if (m_accessHintsVisible) {
-            m_accessHintsVisible = false;
-            emit accessHintsRequested(false);
-        }
-        return false;
-    }
-    if (m_accessHintsVisible && (msg->message == WM_KEYDOWN || msg->message == WM_SYSKEYDOWN)) {
-        m_accessHintsVisible = false;
-        emit accessHintsRequested(false);
-        const UINT key = msg->wParam;
-        if (key >= 'A' && key <= 'Z') {
-            emit accessKeyRequested(QString(QChar(key)));
-            if (result)
-                *result = 0;
-            return true;
-        }
-    }
     if (msg->message != WM_HOTKEY)
         return false;
 

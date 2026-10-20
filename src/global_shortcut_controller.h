@@ -28,6 +28,7 @@ class GlobalShortcutController final : public QObject, public QAbstractNativeEve
     Q_INVOKABLE void setEnabled(bool enabled);
     Q_INVOKABLE bool setShortcut(const QString &action, const QString &shortcut);
     bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
     static bool selfCheck();
 
@@ -49,9 +50,12 @@ class GlobalShortcutController final : public QObject, public QAbstractNativeEve
     void unregisterShortcuts();
     void setStatus(const QString &status);
     bool trigger(int id);
+    void setAccessHintsVisible(bool visible);
 
     bool m_enabled = false;
-    bool m_altPressed = false;
+    // Alt is down with nothing pressed alongside it yet, so letting it go is a tap.
+    bool m_altAlone = false;
+    bool m_hintsShownByHold = false;
     bool m_accessHintsVisible = false;
     QTimer m_altHoldTimer;
     QString m_status;

@@ -433,6 +433,8 @@ int main(int argc, char *argv[]) {
     QCoreApplication::setOrganizationName("CassetteCat");
     QCoreApplication::setApplicationName(kApplicationName);
     QCoreApplication::setApplicationVersion(QStringLiteral(CASSETTECAT_VERSION));
+    // Wayland matches a window to its desktop file by this name, for the icon and name in the dock and Alt+Tab.
+    QGuiApplication::setDesktopFileName(QStringLiteral("io.github.samyyy2311.CassetteCat"));
     initializeDebugLog();
     QTranslator translator;
 #ifdef Q_OS_WIN

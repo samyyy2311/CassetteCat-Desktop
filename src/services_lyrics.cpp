@@ -62,31 +62,27 @@ void ServicesController::fetchLyrics(const QString &title, const QString &artist
         q.addQueryItem("duration", QString::number(durationSeconds));
     url.setQuery(q);
 
-    QNetworkRequest req(url);
-    req.setTransferTimeout(services::detail::requestTimeoutMs);
-    req.setHeader(QNetworkRequest::UserAgentHeader, "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
+    QNetworkRequest req = services::detail::request(url);
 
+    // Shows and caches a result that has lyrics, preferring the synced ones.
+    const auto deliver = [this, title, artist, album](const QJsonObject &result) {
+        const QString synced = result.value("syncedLyrics").toString();
+        const QString plain = result.value("plainLyrics").toString();
+        if (synced.isEmpty() && plain.isEmpty())
+            return false;
+        cacheLyrics(title, artist, album, synced, plain, "LRCLIB");
+        emit lyricsFetched(title, artist, synced.isEmpty() ? plain : synced, "LRCLIB");
+        return true;
+    };
     auto *reply = trackReply(m_net->get(req));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, title, artist, album, requestToken]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, title, artist, requestToken, deliver]() {
         reply->deleteLater();
         if (!onlineEnabled() || !serviceEnabled("lrclib"))
             return;
         if (requestToken != m_lyricsRequestToken)
             return;
-        if (reply->error() == QNetworkReply::NoError) {
-            const auto doc = QJsonDocument::fromJson(reply->readAll());
-            if (doc.isObject()) {
-                const auto obj = doc.object();
-                QString synced = obj.value("syncedLyrics").toString();
-                QString plain = obj.value("plainLyrics").toString();
-                QString res = !synced.isEmpty() ? synced : plain;
-                if (!res.isEmpty()) {
-                    cacheLyrics(title, artist, album, synced, plain, "LRCLIB");
-                    emit lyricsFetched(title, artist, res, "LRCLIB");
-                    return;
-                }
-            }
-        }
+        if (reply->error() == QNetworkReply::NoError && deliver(QJsonDocument::fromJson(reply->readAll()).object()))
+            return;
 
         QUrl searchUrl("https://lrclib.net/api/search");
         QUrlQuery sq;
@@ -94,33 +90,20 @@ void ServicesController::fetchLyrics(const QString &title, const QString &artist
         sq.addQueryItem("track_name", title);
         searchUrl.setQuery(sq);
 
-        QNetworkRequest sReq(searchUrl);
-        sReq.setTransferTimeout(services::detail::requestTimeoutMs);
-        sReq.setHeader(QNetworkRequest::UserAgentHeader,
-                       "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
+        QNetworkRequest sReq = services::detail::request(searchUrl);
         auto *sReply = trackReply(m_net->get(sReq));
-        connect(sReply, &QNetworkReply::finished, this, [this, sReply, title, artist, album, requestToken]() {
+        connect(sReply, &QNetworkReply::finished, this, [this, sReply, requestToken, deliver]() {
             sReply->deleteLater();
             if (!onlineEnabled() || !serviceEnabled("lrclib"))
                 return;
             if (requestToken != m_lyricsRequestToken)
                 return;
-            if (sReply->error() == QNetworkReply::NoError) {
-                const auto doc = QJsonDocument::fromJson(sReply->readAll());
-                if (doc.isArray()) {
-                    const auto arr = doc.array();
-                    for (const auto &val : arr) {
-                        const auto obj = val.toObject();
-                        QString synced = obj.value("syncedLyrics").toString();
-                        QString plain = obj.value("plainLyrics").toString();
-                        QString res = !synced.isEmpty() ? synced : plain;
-                        if (!res.isEmpty()) {
-                            cacheLyrics(title, artist, album, synced, plain, "LRCLIB");
-                            emit lyricsFetched(title, artist, res, "LRCLIB");
-                            return;
-                        }
-                    }
-                }
+            if (sReply->error() != QNetworkReply::NoError)
+                return;
+            const QJsonArray results = QJsonDocument::fromJson(sReply->readAll()).array();
+            for (const auto &result : results) {
+                if (deliver(result.toObject()))
+                    return;
             }
         });
     });
@@ -138,10 +121,7 @@ void ServicesController::searchLyrics(const QString &title, const QString &artis
         query.addQueryItem("artist_name", artist.trimmed());
     url.setQuery(query);
 
-    QNetworkRequest request(url);
-    request.setTransferTimeout(services::detail::requestTimeoutMs);
-    request.setHeader(QNetworkRequest::UserAgentHeader,
-                      "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
+    QNetworkRequest request = services::detail::request(url);
     auto *reply = trackReply(m_net->get(request));
     connect(reply, &QNetworkReply::finished, this, [this, reply, requestToken]() {
         reply->deleteLater();

@@ -5,6 +5,7 @@
 #include <QJsonObject>
 #include <QList>
 #include <QNetworkAccessManager>
+#include <QNetworkRequest>
 #include <QObject>
 #include <QPointer>
 #include <QSet>
@@ -18,7 +19,9 @@ class QSettings;
 
 namespace services::detail {
 inline constexpr int requestTimeoutMs = 15'000;
-}
+// MusicBrainz and LRCLIB ask callers to name the app and a way to reach its authors.
+QNetworkRequest request(const QUrl &url);
+} // namespace services::detail
 
 class ServicesController : public QObject {
     Q_OBJECT

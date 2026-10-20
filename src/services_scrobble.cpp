@@ -12,7 +12,6 @@
 #include <QJsonObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
 
@@ -65,9 +64,26 @@ QByteArray signedRequestBody(const ScrobbleNetwork &network, QMap<QString, QStri
     return query.toString(QUrl::FullyEncoded).toUtf8();
 }
 
+struct ScrobbleFields {
+    QString artist;
+    QString title;
+    QString album;
+};
+
+// Radio streams aren't scrobbled, and a song needs an artist and a title to be, so both come back empty for them.
+ScrobbleFields scrobbleFields(const QVariantMap &track) {
+    if (track.value("format").toString().toUpper() == "STREAM")
+        return {};
+    QString title = track.value("title").toString().trimmed();
+    if (title.isEmpty())
+        title = track.value("fileName").toString().trimmed();
+    return {track.value("artist").toString().trimmed(), title, track.value("album").toString().trimmed()};
+}
+
 QNetworkRequest scrobbleRequest(const ScrobbleNetwork &network) {
     QNetworkRequest request(QUrl(QString(network.apiUrl)));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+    request.setTransferTimeout(services::detail::requestTimeoutMs);
     return request;
 }
 
@@ -173,6 +189,7 @@ void ServicesController::submitToListenBrainz(const char *listenType, const QStr
     QNetworkRequest request(QUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/submit-listens"));
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
     request.setRawHeader("Authorization", "Token " + m_listenBrainzToken.toUtf8());
+    request.setTransferTimeout(services::detail::requestTimeoutMs);
     auto *reply = trackReply(m_net->post(request, QJsonDocument(root).toJson(QJsonDocument::Compact)));
     connect(reply, &QNetworkReply::finished, this, [this, reply, listenType, token = m_listenBrainzToken] {
         reply->deleteLater();
@@ -250,16 +267,8 @@ void ServicesController::validateListenBrainzToken(const QString &token) {
 
     QNetworkRequest request(QUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/validate-token"));
     request.setRawHeader("Authorization", "Token " + trimmed.toUtf8());
+    request.setTransferTimeout(services::detail::requestTimeoutMs);
     QNetworkReply *reply = trackReply(m_net->get(request));
-
-    auto *timer = new QTimer(reply);
-    timer->setSingleShot(true);
-    timer->setInterval(services::detail::requestTimeoutMs);
-    connect(timer, &QTimer::timeout, reply, [reply] {
-        if (reply->isRunning())
-            reply->abort();
-    });
-    timer->start();
 
     connect(reply, &QNetworkReply::finished, this, [this, reply, trimmed] {
         reply->deleteLater();
@@ -316,15 +325,6 @@ void ServicesController::authenticateScrobbleAccount(const QString &service, con
 
     QNetworkReply *reply = trackReply(m_net->post(scrobbleRequest(*network), signedRequestBody(*network, params)));
 
-    auto *timer = new QTimer(reply);
-    timer->setSingleShot(true);
-    timer->setInterval(services::detail::requestTimeoutMs);
-    connect(timer, &QTimer::timeout, reply, [reply] {
-        if (reply->isRunning())
-            reply->abort();
-    });
-    timer->start();
-
     connect(reply, &QNetworkReply::finished, this, [this, reply, user, service] {
         reply->deleteLater();
         const QByteArray responseData = reply->readAll();
@@ -361,18 +361,11 @@ void ServicesController::authenticateScrobbleAccount(const QString &service, con
 }
 
 void ServicesController::scrobbleNowPlaying(const QVariantMap &track) {
-    if (!onlineEnabled() || track.isEmpty())
+    if (!onlineEnabled())
         return;
-    if (track.value("format").toString().toUpper() == "STREAM")
-        return;
-
-    const QString artist = track.value("artist").toString().trimmed();
-    QString title = track.value("title").toString().trimmed();
-    if (title.isEmpty())
-        title = track.value("fileName").toString().trimmed();
+    const auto [artist, title, album] = scrobbleFields(track);
     if (artist.isEmpty() || title.isEmpty())
         return;
-    const QString album = track.value("album").toString().trimmed();
 
     initScrobbleCredentials();
 
@@ -388,18 +381,11 @@ void ServicesController::scrobbleNowPlaying(const QVariantMap &track) {
 }
 
 void ServicesController::scrobbleTrack(const QVariantMap &track, qint64 timestampSec) {
-    if (!onlineEnabled() || track.isEmpty())
+    if (!onlineEnabled())
         return;
-    if (track.value("format").toString().toUpper() == "STREAM")
-        return;
-
-    const QString artist = track.value("artist").toString().trimmed();
-    QString title = track.value("title").toString().trimmed();
-    if (title.isEmpty())
-        title = track.value("fileName").toString().trimmed();
+    const auto [artist, title, album] = scrobbleFields(track);
     if (artist.isEmpty() || title.isEmpty())
         return;
-    const QString album = track.value("album").toString().trimmed();
 
     if (timestampSec <= 0) {
         timestampSec = QDateTime::currentSecsSinceEpoch();

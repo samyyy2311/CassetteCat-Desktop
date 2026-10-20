@@ -137,10 +137,7 @@ void ServicesController::fetchWikipediaIntro(const QStringList &queries, int ind
     q.addQueryItem("titles", queries.at(index));
     url.setQuery(q);
 
-    QNetworkRequest request(url);
-    request.setTransferTimeout(services::detail::requestTimeoutMs);
-    request.setHeader(QNetworkRequest::UserAgentHeader,
-                      "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
+    QNetworkRequest request = services::detail::request(url);
     auto *reply = trackReply(m_net->get(request));
     connect(reply, &QNetworkReply::finished, this, [this, reply, queries, index, found, missing]() {
         reply->deleteLater();

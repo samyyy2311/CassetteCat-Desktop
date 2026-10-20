@@ -62,6 +62,9 @@ ApplicationWindow {
     readonly property color danger: "#FF6B6B"
     readonly property color success: "#34D399"
     readonly property color windowCloseHover: "#E53935"
+    // Buttons drawn over artwork, which stay dark whatever the cover's colours.
+    readonly property color overlayButton: Qt.rgba(0, 0, 0, 0.3)
+    readonly property color overlayButtonHover: Qt.rgba(0, 0, 0, 0.5)
     readonly property color borderSubtle: Qt.rgba(1, 1, 1, 0.05)
     readonly property color borderVariant: Qt.rgba(1, 1, 1, 0.09)
     readonly property color borderCard: borderVariant
@@ -1385,18 +1388,20 @@ ApplicationWindow {
         const path = player.currentTrack ? player.currentTrack.filePath || "" : ""
         if (offlineBlackout && (/^(subsonic|jellyfin):/.test(path) || /^https?:/i.test(path))) player.stop()
     }
-    // The desktop may turn the shortcuts down after they were asked for, so the switch follows the controller.
+    // The desktop may turn the shortcuts down after they were asked for, so the switch follows the controller. Only
+    // a choice made in Settings is saved, so a declined request asks again on the next launch.
     Connections {
         target: globalShortcuts
         function onEnabledChanged() { window.globalShortcutsEnabled = globalShortcuts.enabled }
     }
     onGlobalShortcutsEnabledChanged: {
         globalShortcuts.setEnabled(globalShortcutsEnabled)
-        if (globalShortcuts.enabled !== globalShortcutsEnabled) {
+        if (globalShortcuts.enabled !== globalShortcutsEnabled)
             globalShortcutsEnabled = globalShortcuts.enabled
-            return
-        }
-        saveSetting("ui/globalShortcutsEnabled", globalShortcutsEnabled)
+    }
+    function chooseGlobalShortcuts(value) {
+        saveSetting("ui/globalShortcutsEnabled", value)
+        globalShortcutsEnabled = value
     }
     onInAppShortcutBindingsChanged: {
         const normalized = normalizeInAppShortcutBindings(inAppShortcutBindings)
@@ -1599,16 +1604,18 @@ ApplicationWindow {
         }
     }
 
-    onWidthChanged: if (settingsInitialized && window.visibility !== Window.Maximized && window.width > 400) {
+    // Maximised and full-screen sizes aren't the window's own, so they don't replace the saved one.
+    readonly property bool geometryRestorable: visibility !== Window.Maximized && visibility !== Window.FullScreen
+    onWidthChanged: if (settingsInitialized && window.geometryRestorable && window.width > 400) {
         appSettings.setValue("window/width", window.width)
     }
-    onHeightChanged: if (settingsInitialized && window.visibility !== Window.Maximized && window.height > 300) {
+    onHeightChanged: if (settingsInitialized && window.geometryRestorable && window.height > 300) {
         appSettings.setValue("window/height", window.height)
     }
-    onXChanged: if (settingsInitialized && window.visibility !== Window.Maximized && window.x >= 0) {
+    onXChanged: if (settingsInitialized && window.geometryRestorable && window.x >= 0) {
         appSettings.setValue("window/x", window.x)
     }
-    onYChanged: if (settingsInitialized && window.visibility !== Window.Maximized && window.y >= 0) {
+    onYChanged: if (settingsInitialized && window.geometryRestorable && window.y >= 0) {
         appSettings.setValue("window/y", window.y)
     }
     onClosing: function(close) {
@@ -1627,7 +1634,7 @@ ApplicationWindow {
         finishHistoryTracking()
         libraryTagScan.save()
         persistPlayerState()
-        if (window.visibility !== Window.Maximized) {
+        if (window.geometryRestorable) {
             if (window.width > 400) appSettings.setValue("window/width", window.width)
             if (window.height > 300) appSettings.setValue("window/height", window.height)
             if (window.x >= 0) appSettings.setValue("window/x", window.x)
@@ -1651,7 +1658,6 @@ ApplicationWindow {
             "radio/sortDescending": radioSortDescending,
             "radio/viewMode": radioViewMode,
             "ui/miniPlayerAlwaysOnTop": miniPlayerAlwaysOnTop,
-            "ui/globalShortcutsEnabled": globalShortcutsEnabled,
             "ui/inAppShortcuts": JSON.stringify(inAppShortcutBindings),
             "ui/nowPlayingNotifications": nowPlayingNotifications,
             "player/resumeQueueOnLaunch": resumeQueueOnLaunch,
@@ -2006,7 +2012,7 @@ ApplicationWindow {
                 const timeMs = Math.max(0, LyricsText.stampMs(m[1], m[2], m[3]) + lyricsSyncOffsetMs)
                 const timed = LyricsText.timedWords((m[4] || "").trim(), lyricsSyncOffsetMs)
                 if (timed.text.length > 0) {
-                    result.push({ timeMs: timeMs, text: timed.text, words: timed.words })
+                    result.push({ timeMs: timeMs, text: timed.text, words: timed.words, wordsEndMs: timed.endMs })
                 }
             } else {
                 result.push({ timeMs: -1, text: line })
@@ -2880,7 +2886,7 @@ ApplicationWindow {
                     if (data.excludedFolders) { window.excludedFolders = data.excludedFolders; appSettings.setValue("library/excludedFolders", data.excludedFolders) }
                     if (data.resumeQueueOnLaunch !== undefined) { window.resumeQueueOnLaunch = data.resumeQueueOnLaunch; appSettings.setValue("player/resumeQueueOnLaunch", data.resumeQueueOnLaunch) }
                     if (Array.isArray(data.playlists)) { window.playlists = data.playlists; appSettings.setValue("library/playlists", JSON.stringify(data.playlists)) }
-                    if (data.globalShortcutsEnabled !== undefined) { window.globalShortcutsEnabled = data.globalShortcutsEnabled }
+                    if (data.globalShortcutsEnabled !== undefined) { window.chooseGlobalShortcuts(data.globalShortcutsEnabled) }
                     if (data.globalShortcutBindings) {
                         for (const action in data.globalShortcutBindings) {
                             if (globalShortcuts.setShortcut(action, data.globalShortcutBindings[action])) {
@@ -3434,24 +3440,31 @@ ApplicationWindow {
                 Repeater {
                     model: windowFrame.linuxButtons
 
-                    Rectangle {
+                    ButtonBase {
                         id: linuxButton
                         required property string modelData
                         readonly property bool maximized: window.visibility === Window.Maximized
                         anchors.verticalCenter: parent.verticalCenter
                         width: 24
                         height: 24
-                        radius: 12
-                        // GNOME-style desktops fill their buttons; KDE and others show the icon and fill on hover.
-                        color: linuxButtonMouse.pressed ? Qt.rgba(1, 1, 1, 0.24)
-                             : linuxButtonMouse.containsMouse ? (modelData === "close" && !windowFrame.roundButtons ? recordRed : Qt.rgba(1, 1, 1, 0.16))
-                             : windowFrame.roundButtons ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
                         enabled: modelData !== "maximize" || !window.nowPlayingOpen
-                        Accessible.role: Accessible.Button
                         Accessible.name: modelData === "minimize" ? qsTr("Minimize")
                                        : modelData === "close" ? qsTr("Close")
                                        : maximized ? qsTr("Restore") : qsTr("Maximize")
-                        Accessible.onPressAction: linuxButtonMouse.clicked(null)
+                        onClicked: {
+                            if (modelData === "minimize") window.showMinimized()
+                            else if (modelData === "close") window.close()
+                            else toggleMaximize()
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 12
+                            // GNOME-style desktops fill their buttons; KDE and others show the icon and fill on hover.
+                            color: linuxButton.isPressed ? Qt.alpha(textPrimary, 0.24)
+                                 : linuxButton.isHovered ? (linuxButton.modelData === "close" && !windowFrame.roundButtons ? recordRed : Qt.alpha(textPrimary, 0.16))
+                                 : windowFrame.roundButtons ? Qt.alpha(textPrimary, 0.08) : "transparent"
+                        }
 
                         LucideIcon {
                             anchors.centerIn: parent
@@ -3461,17 +3474,6 @@ ApplicationWindow {
                                 : linuxButton.modelData === "close" ? "x"
                                 : linuxButton.maximized ? "copy" : "square"
                             color: textPrimary
-                        }
-
-                        MouseArea {
-                            id: linuxButtonMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: {
-                                if (linuxButton.modelData === "minimize") window.showMinimized()
-                                else if (linuxButton.modelData === "close") window.close()
-                                else toggleMaximize()
-                            }
                         }
                     }
                 }
@@ -4052,7 +4054,7 @@ ApplicationWindow {
                                 onAddLibraryFolderRequested: folderDialog.open()
                                 onRemoveLibraryFolderRequested: path => library.removeFolder(path)
                                 onResumeQueueOnLaunchSelected: value => window.resumeQueueOnLaunch = value
-                                onGlobalShortcutsEnabledSelected: value => { window.globalShortcutsEnabled = value }
+                                onGlobalShortcutsEnabledSelected: value => window.chooseGlobalShortcuts(value)
                                 onGlobalShortcutSelected: (action, shortcut) => {
                                     if (globalShortcuts.setShortcut(action, shortcut)) {
                                         appSettings.setValue("ui/globalShortcut/" + action, globalShortcuts.shortcuts[action])

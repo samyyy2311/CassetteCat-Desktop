@@ -13,6 +13,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QUrl>
+#include <QTimer>
 #include <QUrlQuery>
 
 namespace {
@@ -269,6 +270,11 @@ void ServicesController::validateListenBrainzToken(const QString &token) {
     request.setRawHeader("Authorization", "Token " + trimmed.toUtf8());
     request.setTransferTimeout(services::detail::requestTimeoutMs);
     QNetworkReply *reply = trackReply(m_net->get(request));
+    // The transfer timeout only notices silence, so a sign-in check also has a hard deadline.
+    QTimer::singleShot(services::detail::requestTimeoutMs, reply, [reply] {
+        if (reply->isRunning())
+            reply->abort();
+    });
 
     connect(reply, &QNetworkReply::finished, this, [this, reply, trimmed] {
         reply->deleteLater();
@@ -324,6 +330,11 @@ void ServicesController::authenticateScrobbleAccount(const QString &service, con
     }
 
     QNetworkReply *reply = trackReply(m_net->post(scrobbleRequest(*network), signedRequestBody(*network, params)));
+    // The transfer timeout only notices silence, so a sign-in check also has a hard deadline.
+    QTimer::singleShot(services::detail::requestTimeoutMs, reply, [reply] {
+        if (reply->isRunning())
+            reply->abort();
+    });
 
     connect(reply, &QNetworkReply::finished, this, [this, reply, user, service] {
         reply->deleteLater();

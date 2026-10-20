@@ -290,8 +290,13 @@ bool GlobalShortcutController::setShortcut(const QString &action, const QString 
 #elif defined(CASSETTECAT_HAVE_DBUS)
     if (!m_portal || !m_shortcuts.contains(action))
         return false;
-    const QStringList parts = shortcut.split(QLatin1Char('+'), Qt::SkipEmptyParts);
-    if (parts.size() < 2 || (!parts.contains(QStringLiteral("Ctrl")) && !parts.contains(QStringLiteral("Alt")))) {
+    QStringList parts = shortcut.split(QLatin1Char('+'), Qt::SkipEmptyParts);
+    // "Ctrl++" splits to just "Ctrl"; its key is the plus, as the portal trigger reads it.
+    if (shortcut.endsWith(QStringLiteral("++")))
+        parts.append(QStringLiteral("Plus"));
+    static const QStringList modifiers{QStringLiteral("Ctrl"), QStringLiteral("Alt"), QStringLiteral("Shift")};
+    if (parts.size() < 2 || modifiers.contains(parts.constLast()) ||
+        (!parts.contains(QStringLiteral("Ctrl")) && !parts.contains(QStringLiteral("Alt")))) {
         setStatus(tr("Use Ctrl or Alt with a letter, number, arrow, Space, F key, or supported punctuation"));
         return false;
     }

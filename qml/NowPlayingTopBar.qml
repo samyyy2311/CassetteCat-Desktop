@@ -14,10 +14,10 @@ Item {
         iconSize: 18
         tint: root.appWindow.textSecondary
         hoverTint: root.appWindow.textPrimary
-        backgroundColor: "#4D000000"
-        hoverBackgroundColor: "#80000000"
-        borderColor: "#1AFFFFFF"
-        hoverBorderColor: "#40FFFFFF"
+        backgroundColor: root.appWindow.overlayButton
+        hoverBackgroundColor: root.appWindow.overlayButtonHover
+        borderColor: Qt.alpha(root.appWindow.textPrimary, 0.1)
+        hoverBorderColor: Qt.alpha(root.appWindow.textPrimary, 0.25)
     }
 
     GlassButton {

@@ -66,8 +66,8 @@ void ServicesController::fetchLyrics(const QString &title, const QString &artist
 
     // Shows and caches a result that has lyrics, preferring the synced ones.
     const auto deliver = [this, title, artist, album](const QJsonObject &result) {
-        const QString synced = result.value("syncedLyrics").toString();
-        const QString plain = result.value("plainLyrics").toString();
+        const QString synced = result.value("syncedLyrics").toString().trimmed();
+        const QString plain = result.value("plainLyrics").toString().trimmed();
         if (synced.isEmpty() && plain.isEmpty())
             return false;
         cacheLyrics(title, artist, album, synced, plain, "LRCLIB");

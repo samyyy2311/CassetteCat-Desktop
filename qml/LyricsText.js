@@ -9,8 +9,8 @@ function stampMs(minutes, seconds, fraction) {
     return (Number(minutes) * 60 + Number(seconds)) * 1000 + ms
 }
 
-// Enhanced LRC times each word, as in "<00:12.30>Hello <00:12.80>world". Returns the plain text and, when the
-// line has word times, each word's characters and start time.
+// Enhanced LRC times each word, as in "<00:12.30>Hello <00:12.80>world<00:13.50>". Returns the plain text and, when
+// the line has word times, each word's characters and start time, and when the last word ends if a closing time says.
 function timedWords(text, offsetMs) {
     const pattern = /<(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?>/g
     if (!pattern.test(text))
@@ -22,7 +22,8 @@ function timedWords(text, offsetMs) {
     let last = 0
     let match
     const take = chunk => {
-        const leading = chunk.length - chunk.trimStart().length
+        // Qt's JavaScript has no trimStart, so leading space is measured as where the first non-space is.
+        const leading = chunk.search(/\S|$/)
         const word = chunk.trim()
         if (word && startMs >= 0) {
             const start = plain.length + leading
@@ -35,17 +36,20 @@ function timedWords(text, offsetMs) {
         startMs = Math.max(0, stampMs(match[1], match[2], match[3]) + offsetMs)
         last = pattern.lastIndex
     }
-    take(text.substring(last))
-    const trimmed = plain.length - plain.trimStart().length
+    const tail = text.substring(last)
+    take(tail)
+    const endMs = !tail.trim() && words.length ? startMs : -1
+    const trimmed = plain.search(/\S|$/)
     words.forEach(word => { word.start -= trimmed; word.end -= trimmed })
-    return { text: plain.trim(), words: words }
+    return { text: plain.trim(), words: words, endMs: endMs }
 }
 
 // When each word of a line is sung, from its word times or, without them, spread over the line by length.
 function wordTimings(line, endMs) {
     if (line.words && line.words.length)
         return line.words.map((word, i) => ({ start: word.start, end: word.end, startMs: word.startMs,
-                                              endMs: i + 1 < line.words.length ? line.words[i + 1].startMs : endMs }))
+                                              endMs: i + 1 < line.words.length ? line.words[i + 1].startMs
+                                                   : line.wordsEndMs >= 0 ? line.wordsEndMs : endMs }))
     const text = String(line.text || "")
     const spans = []
     const pattern = /\S+/g

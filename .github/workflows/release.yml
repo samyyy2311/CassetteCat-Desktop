@@ -199,14 +199,11 @@ jobs:
           LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
         run: |
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          # flatpak-builder builds in a clean environment, so the Last.fm keys go in through a copy of the manifest,
-          # kept beside it for its relative source path and never committed.
+          # flatpak-builder builds in a clean environment, so a copy of the manifest, kept beside it for its relative
+          # source path and never committed, lets the Last.fm keys through as secrets, which stay out of the bundle.
           python3 - <<'PY'
-          import os
           manifest = open('packaging/flatpak/io.github.samyyy2311.CassetteCat.yml').read()
-          keys = ('    build-options:\n      env:\n'
-                  f'        LASTFM_API_KEY: "{os.environ["LASTFM_API_KEY"]}"\n'
-                  f'        LASTFM_API_SECRET: "{os.environ["LASTFM_API_SECRET"]}"\n')
+          keys = '    build-options:\n      secret-env:\n        - LASTFM_API_KEY\n        - LASTFM_API_SECRET\n'
           manifest = manifest.replace('  - name: cassettecat\n', '  - name: cassettecat\n' + keys, 1)
           open('packaging/flatpak/release.yml', 'w').write(manifest)
           PY

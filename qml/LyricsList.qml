@@ -88,6 +88,11 @@ AppListView {
         livePositionMs = positionMs
         positionAt = Date.now()
     }
+    // A pause stops the reports without moving the position, so the estimate restarts from it on resume.
+    onPlayingChanged: {
+        livePositionMs = positionMs
+        positionAt = Date.now()
+    }
     onItemsChanged: {
         browsing = false
         Qt.callLater(follow, false)

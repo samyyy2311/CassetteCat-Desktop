@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QDBusObjectPath>
+#include <QDBusPendingCall>
 #include <QObject>
 #include <QVariantMap>
 
@@ -34,8 +35,14 @@ class PortalShortcuts final : public QObject {
   private:
     QString requestPath(const QString &token) const;
     void sendBind();
+    void request(const QString &token, const char *slot);
+    void endRequest();
+    void watch(const QDBusPendingCall &call);
 
     QDBusObjectPath m_session;
+    // The request whose Response is awaited, and the slot it goes to; empty when none is.
+    QString m_request;
+    const char *m_requestSlot = nullptr;
     QList<QPair<QString, QPair<QString, QString>>> m_pending;
     int m_tokenCount = 0;
 };

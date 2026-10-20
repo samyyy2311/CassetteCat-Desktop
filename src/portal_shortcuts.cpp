@@ -5,6 +5,7 @@
 #include <QDBusMessage>
 #include <QDBusMetaType>
 #include <QDBusPendingCall>
+#include <QDBusPendingCallWatcher>
 
 namespace {
 
@@ -83,18 +84,46 @@ void PortalShortcuts::bind(const QList<QPair<QString, QPair<QString, QString>>> 
     m_pending = shortcuts;
     // A session's shortcuts are bound once, so changed ones go to a new session.
     close();
-    // The reply comes as a signal on a request object, so it's listened for before the call can answer.
+    // Each session gets its own name, so one still open on the desktop's side doesn't block the next.
     const QString token = QStringLiteral("cassettecat%1").arg(++m_tokenCount);
-    QDBusConnection::sessionBus().connect(portalService, requestPath(token), requestInterface,
-                                          QStringLiteral("Response"), this, SLOT(onSessionCreated(uint, QVariantMap)));
+    request(token, SLOT(onSessionCreated(uint, QVariantMap)));
     QDBusMessage create =
         QDBusMessage::createMethodCall(portalService, portalPath, shortcutsInterface, QStringLiteral("CreateSession"));
-    create << QVariantMap{{QStringLiteral("handle_token"), token},
-                          {QStringLiteral("session_handle_token"), QStringLiteral("cassettecat")}};
-    QDBusConnection::sessionBus().asyncCall(create);
+    create << QVariantMap{{QStringLiteral("handle_token"), token}, {QStringLiteral("session_handle_token"), token}};
+    watch(QDBusConnection::sessionBus().asyncCall(create));
+}
+
+void PortalShortcuts::request(const QString &token, const char *slot) {
+    endRequest();
+    // The reply comes as a signal on a request object, so it's listened for before the call can answer.
+    m_request = requestPath(token);
+    m_requestSlot = slot;
+    QDBusConnection::sessionBus().connect(portalService, m_request, requestInterface, QStringLiteral("Response"), this,
+                                          slot);
+}
+
+void PortalShortcuts::endRequest() {
+    if (m_request.isEmpty())
+        return;
+    QDBusConnection::sessionBus().disconnect(portalService, m_request, requestInterface, QStringLiteral("Response"),
+                                             this, m_requestSlot);
+    m_request.clear();
+}
+
+void PortalShortcuts::watch(const QDBusPendingCall &call) {
+    auto *watcher = new QDBusPendingCallWatcher(call, this);
+    // A call refused outright has no request to answer it, so its error is the only reply.
+    connect(watcher, &QDBusPendingCallWatcher::finished, this, [this, request = m_request](QDBusPendingCallWatcher *w) {
+        if (w->isError() && request == m_request) {
+            endRequest();
+            emit failed();
+        }
+        w->deleteLater();
+    });
 }
 
 void PortalShortcuts::onSessionCreated(uint response, const QVariantMap &results) {
+    endRequest();
     if (response != 0) {
         emit failed();
         return;
@@ -110,16 +139,16 @@ void PortalShortcuts::sendBind() {
                      {{QStringLiteral("description"), entry.second.first},
                       {QStringLiteral("preferred_trigger"), entry.second.second}}});
     const QString token = QStringLiteral("cassettecat%1").arg(++m_tokenCount);
-    QDBusConnection::sessionBus().connect(portalService, requestPath(token), requestInterface,
-                                          QStringLiteral("Response"), this, SLOT(onShortcutsBound(uint, QVariantMap)));
+    request(token, SLOT(onShortcutsBound(uint, QVariantMap)));
     QDBusMessage bind =
         QDBusMessage::createMethodCall(portalService, portalPath, shortcutsInterface, QStringLiteral("BindShortcuts"));
     bind << QVariant::fromValue(m_session) << QVariant::fromValue(list) << QString()
          << QVariantMap{{QStringLiteral("handle_token"), token}};
-    QDBusConnection::sessionBus().asyncCall(bind);
+    watch(QDBusConnection::sessionBus().asyncCall(bind));
 }
 
 void PortalShortcuts::onShortcutsBound(uint response, const QVariantMap &results) {
+    endRequest();
     if (response != 0) {
         emit failed();
         return;
@@ -136,6 +165,8 @@ void PortalShortcuts::onActivated(const QDBusObjectPath &session, const QString 
 }
 
 void PortalShortcuts::close() {
+    // A request still waiting on the user is dropped too, so approving it later binds nothing.
+    endRequest();
     if (m_session.path().isEmpty())
         return;
     QDBusConnection::sessionBus().asyncCall(QDBusMessage::createMethodCall(

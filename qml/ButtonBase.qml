@@ -18,9 +18,10 @@ Item {
     activeFocusOnTab: root.opacity > 0
     Keys.onReturnPressed: root.clicked()
     Keys.onEnterPressed: root.clicked()
-    // A focused button takes Space before a window's play/pause shortcut does.
-    Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space
-    Keys.onSpacePressed: event => { if (!event.isAutoRepeat) root.clicked() }
+    // A button reached with Tab takes Space before the play/pause shortcut does. One focused by a click leaves
+    // Space to the shortcut, or Space would press whatever was clicked last.
+    Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space && !root.mouseFocused
+    Keys.onSpacePressed: event => { if (!event.isAutoRepeat && !root.mouseFocused) root.clicked() }
 
     MouseArea {
         id: mouseArea

@@ -61,9 +61,7 @@ Rectangle {
         enabled: root.enabled
         hoverEnabled: root.enabled
         cursorShape: root.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-        onClicked: {
-            root.forceActiveFocus()
-            root.toggled(!root.checked)
-        }
+        // Not focused by a click, so Space afterwards still plays and pauses instead of flipping the switch.
+        onClicked: root.toggled(!root.checked)
     }
 }

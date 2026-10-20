@@ -428,9 +428,13 @@ float PlayerController::effectiveVolume() const {
         factor = std::clamp(factor, 0.05f, 2.0f);
     }
     // The volume limit scales everything down, so the slider keeps its full range and full volume plays at the limit.
+    // It's squared because loudness follows the level in decibels: a straight 50% sounds only a little quieter,
+    // while this turns 50% down by about 12 dB.
     float limit = 1.0f;
-    if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool())
+    if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
         limit = std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100) / 100.0f;
+        limit *= limit;
+    }
     return std::clamp(m_baseVolume * factor, 0.0f, 1.0f) * limit;
 }
 

@@ -4,6 +4,7 @@
 #include <QDBusConnection>
 #include <QDBusMessage>
 #include <QDBusMetaType>
+#include <QDBusPendingCall>
 
 namespace {
 

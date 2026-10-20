@@ -7,6 +7,8 @@
 #include <QTimer>
 #include <QVariantMap>
 
+class PortalShortcuts;
+
 class GlobalShortcutController final : public QObject, public QAbstractNativeEventFilter {
     Q_OBJECT
     Q_PROPERTY(bool supported READ supported CONSTANT)
@@ -46,6 +48,7 @@ class GlobalShortcutController final : public QObject, public QAbstractNativeEve
     bool registerShortcuts();
     void unregisterShortcuts();
     void setStatus(const QString &status);
+    bool trigger(int id);
 
     bool m_enabled = false;
     bool m_altPressed = false;
@@ -54,4 +57,6 @@ class GlobalShortcutController final : public QObject, public QAbstractNativeEve
     QString m_status;
     QVariantMap m_shortcuts;
     QSet<int> m_registeredIds;
+    // Linux desktops hand out app-wide shortcuts through the desktop portal; null where there isn't one.
+    PortalShortcuts *m_portal = nullptr;
 };

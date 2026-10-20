@@ -546,6 +546,14 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>No shortcuts were allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Global shortcuts weren&apos;t allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Global shortcuts are off</source>
         <translation type="unfinished"></translation>
     </message>
@@ -571,6 +579,10 @@
             <numerusform>Active, but %n shortcut unavailable: %1</numerusform>
             <numerusform>Active, but %n shortcuts unavailable: %1</numerusform>
         </translation>
+    </message>
+    <message>
+        <source>Waiting for the desktop to allow the shortcuts</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Global shortcuts are active</source>

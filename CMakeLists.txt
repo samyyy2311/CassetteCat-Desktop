@@ -22,7 +22,7 @@ if(WIN32)
     list(APPEND CassetteCat_PLATFORM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/app.rc")
 endif()
 if(UNIX AND NOT APPLE)
-    list(APPEND CassetteCat_PLATFORM_SOURCES src/mpris_adaptor.h src/mpris_adaptor.cpp)
+    list(APPEND CassetteCat_PLATFORM_SOURCES src/mpris_adaptor.h src/mpris_adaptor.cpp src/portal_shortcuts.h src/portal_shortcuts.cpp)
 endif()
 if(APPLE)
     enable_language(OBJCXX)
@@ -277,6 +277,8 @@ qt_add_qml_module(CassetteCat
         qml/icons/maximize-2.svg
         qml/icons/minimize-2.svg
         qml/icons/type.svg
+        qml/icons/square.svg
+        qml/icons/copy.svg
         qml/icons/minus.svg
         qml/icons/plus.svg
         qml/icons/jellyfin.svg

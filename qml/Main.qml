@@ -1385,6 +1385,11 @@ ApplicationWindow {
         const path = player.currentTrack ? player.currentTrack.filePath || "" : ""
         if (offlineBlackout && (/^(subsonic|jellyfin):/.test(path) || /^https?:/i.test(path))) player.stop()
     }
+    // The desktop may turn the shortcuts down after they were asked for, so the switch follows the controller.
+    Connections {
+        target: globalShortcuts
+        function onEnabledChanged() { window.globalShortcutsEnabled = globalShortcuts.enabled }
+    }
     onGlobalShortcutsEnabledChanged: {
         globalShortcuts.setEnabled(globalShortcutsEnabled)
         if (globalShortcuts.enabled !== globalShortcutsEnabled) {
@@ -3419,8 +3424,62 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             z: 10
 
+            // On Linux the buttons follow the desktop's own: which ones it shows, in its order, and in its style.
+            Row {
+                visible: windowFrame.linuxButtons.length > 0
+                height: 60
+                rightPadding: 14
+                spacing: 10
+
+                Repeater {
+                    model: windowFrame.linuxButtons
+
+                    Rectangle {
+                        id: linuxButton
+                        required property string modelData
+                        readonly property bool maximized: window.visibility === Window.Maximized
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 24
+                        height: 24
+                        radius: 12
+                        // GNOME-style desktops fill their buttons; KDE and others show the icon and fill on hover.
+                        color: linuxButtonMouse.pressed ? Qt.rgba(1, 1, 1, 0.24)
+                             : linuxButtonMouse.containsMouse ? (modelData === "close" && !windowFrame.roundButtons ? recordRed : Qt.rgba(1, 1, 1, 0.16))
+                             : windowFrame.roundButtons ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+                        enabled: modelData !== "maximize" || !window.nowPlayingOpen
+                        Accessible.role: Accessible.Button
+                        Accessible.name: modelData === "minimize" ? qsTr("Minimize")
+                                       : modelData === "close" ? qsTr("Close")
+                                       : maximized ? qsTr("Restore") : qsTr("Maximize")
+                        Accessible.onPressAction: linuxButtonMouse.clicked(null)
+
+                        LucideIcon {
+                            anchors.centerIn: parent
+                            width: 12
+                            height: 12
+                            icon: linuxButton.modelData === "minimize" ? "minus"
+                                : linuxButton.modelData === "close" ? "x"
+                                : linuxButton.maximized ? "copy" : "square"
+                            color: textPrimary
+                        }
+
+                        MouseArea {
+                            id: linuxButtonMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            onClicked: {
+                                if (linuxButton.modelData === "minimize") window.showMinimized()
+                                else if (linuxButton.modelData === "close") window.close()
+                                else toggleMaximize()
+                            }
+                        }
+                    }
+                }
+            }
+
             Row {
                 id: winControlRow
+                visible: windowFrame.linuxButtons.length === 0
                 height: 60
 
                 Rectangle {

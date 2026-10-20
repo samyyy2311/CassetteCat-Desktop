@@ -384,8 +384,6 @@ Item {
                         borderCard: root.miniPlayer.borderCard
                         accentColor: root.miniPlayer.recordRed
                         silverDim: root.miniPlayer.silverDim
-                        volumeLimitEnabled: root.miniPlayer.volumeLimitEnabled
-                        maxVolumePercent: root.miniPlayer.maxVolumePercent
                         visible: opacity > 0.001
                         opacity: (root.miniPlayer.mode === "art" && root.miniPlayer.volumePillVisible) ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }

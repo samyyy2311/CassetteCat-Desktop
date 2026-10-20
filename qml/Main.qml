@@ -226,7 +226,6 @@ ApplicationWindow {
     property bool showFormatBadges: true
     property int albumArtRadius: 16
     property string nowPlayingBackdrop: "tinted"
-    property bool showTrackFormat: true
     property bool showRemainingTime: true
     property string sleepTimerMode: "off"
     property string sleepTimerStatus: qsTr("Off")
@@ -647,7 +646,6 @@ ApplicationWindow {
         customAccentColor = appSettings.value("ui/customAccentColor", accentPresets[0].base)
         albumArtRadius = appSettings.value("ui/albumArtRadius", 16)
         nowPlayingBackdrop = appSettings.value("player/nowPlayingBackdrop", "tinted")
-        showTrackFormat = appSettings.value("player/showTrackFormat", true) !== false
         showRemainingTime = appSettings.value("player/showRemainingTime", true)
         trackDensity = appSettings.value("ui/trackDensity", "comfortable")
         showFormatBadges = appSettings.value("ui/showFormatBadges", true)
@@ -1411,7 +1409,6 @@ ApplicationWindow {
     onCustomAccentColorChanged: saveSetting("ui/customAccentColor", customAccentColor)
     onAlbumArtRadiusChanged: saveSetting("ui/albumArtRadius", albumArtRadius)
     onNowPlayingBackdropChanged: saveSetting("player/nowPlayingBackdrop", nowPlayingBackdrop)
-    onShowTrackFormatChanged: saveSetting("player/showTrackFormat", showTrackFormat)
     onShowRemainingTimeChanged: {
         saveSetting("player/showRemainingTime", showRemainingTime)
         if (miniPlayerWindow && miniPlayerWindow.showRemainingTime !== showRemainingTime) {
@@ -1666,7 +1663,6 @@ ApplicationWindow {
             "lyrics/font": lyricsFont,
             "lyrics/fontWeight": lyricsFontWeight,
             "player/nowPlayingBackdrop": nowPlayingBackdrop,
-            "player/showTrackFormat": showTrackFormat,
             "player/showRemainingTime": showRemainingTime,
             "lyrics/alignment": lyricsAlignment,
             "lyrics/activeStyle": lyricsActiveStyle,
@@ -2805,7 +2801,6 @@ ApplicationWindow {
                 customAccentColor: window.customAccentColor,
                 albumArtRadius: window.albumArtRadius,
                 nowPlayingBackdrop: window.nowPlayingBackdrop,
-                showTrackFormat: window.showTrackFormat,
                 showRemainingTime: window.showRemainingTime,
                 trackDensity: window.trackDensity,
                 showFormatBadges: window.showFormatBadges,
@@ -2872,7 +2867,6 @@ ApplicationWindow {
                     if (data.customAccentColor) { window.customAccentColor = data.customAccentColor; appSettings.setValue("ui/customAccentColor", data.customAccentColor) }
                     if (data.albumArtRadius !== undefined) { window.albumArtRadius = data.albumArtRadius; appSettings.setValue("ui/albumArtRadius", data.albumArtRadius) }
                     if (data.nowPlayingBackdrop) { window.nowPlayingBackdrop = data.nowPlayingBackdrop; appSettings.setValue("player/nowPlayingBackdrop", data.nowPlayingBackdrop) }
-                    if (data.showTrackFormat !== undefined) window.showTrackFormat = data.showTrackFormat
                     if (data.showRemainingTime !== undefined) { window.showRemainingTime = data.showRemainingTime; appSettings.setValue("player/showRemainingTime", data.showRemainingTime) }
                     if (data.trackDensity) { window.trackDensity = data.trackDensity; appSettings.setValue("ui/trackDensity", data.trackDensity) }
                     if (data.showFormatBadges !== undefined) { window.showFormatBadges = data.showFormatBadges; appSettings.setValue("ui/showFormatBadges", data.showFormatBadges) }
@@ -3165,18 +3159,12 @@ ApplicationWindow {
     }
 
     function setPlayerVolume(val) {
-        let v = Math.max(0.0, Math.min(1.0, val))
-        if (volumeLimitEnabled) {
-            const limit = Math.max(0.05, maxVolumePercent / 100.0)
-            if (v > limit) v = limit
-        }
-        player.setVolume(v)
+        player.setVolume(Math.max(0.0, Math.min(1.0, val)))
     }
 
-    function enforceVolumeLimit() {
-        let v = player.volume
-        if (volumeLimitEnabled) v = Math.min(v, Math.max(0.05, maxVolumePercent / 100.0))
-        player.setVolume(v)
+    // The limit is read when the volume is applied, so applying the same volume again picks up a new limit.
+    function applyVolumeLimit() {
+        player.setVolume(player.volume)
     }
 
     Component {
@@ -3197,8 +3185,6 @@ ApplicationWindow {
             lyricsFontSize: window.lyricsFontSize
             lyricsFont: window.lyricsFont || window.displayFont
             lyricsFontWeight: window.lyricsFontWeight
-            volumeLimitEnabled: window.volumeLimitEnabled
-            maxVolumePercent: window.maxVolumePercent
             queueEntries: window.queueEntries
             parsedLyrics: window.parsedLyrics
             activeLyricIndex: window.activeLyricIndex
@@ -4041,8 +4027,8 @@ ApplicationWindow {
                                 onSleepFadeOutSelected: value => window.sleepFadeOut = value
                                 onAutoplaySelected: value => window.autoplayEnabled = value
                                 onCrossfadeSelected: value => window.crossfadeSeconds = value
-                                onVolumeLimitSelected: value => { window.volumeLimitEnabled = value; window.enforceVolumeLimit() }
-                                onMaxVolumeSelected: value => { window.maxVolumePercent = value; window.enforceVolumeLimit() }
+                                onVolumeLimitSelected: value => { window.volumeLimitEnabled = value; window.applyVolumeLimit() }
+                                onMaxVolumeSelected: value => { window.maxVolumePercent = value; window.applyVolumeLimit() }
                                 onReplayGainModeSelected: value => window.replayGainMode = value
                                 onPreferLocalLyricsSelected: value => window.preferLocalLyrics = value
                                 onLyricsAlignmentSelected: value => window.lyricsAlignment = value

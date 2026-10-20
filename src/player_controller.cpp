@@ -45,11 +45,6 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
     m_pipeline->setMeteredSource(m_player->audioBufferOutput());
     m_replayGainMode = SettingsController::globalValue("player/replayGainMode", QStringLiteral("off")).toString();
     m_baseVolume = std::clamp(SettingsController::globalValue("player/volume", 1.0f).toFloat(), 0.0f, 1.0f);
-    if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
-        const int maxPercent =
-            std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
-        m_baseVolume = (std::min)(m_baseVolume, maxPercent / 100.0f);
-    }
     applyEffectiveVolume();
     connect(m_mediaDevices, &QMediaDevices::audioOutputsChanged, this, [this] {
         applyAudioDevice();
@@ -413,12 +408,7 @@ void PlayerController::toggleShuffle() {
 }
 
 void PlayerController::setVolume(float vol) {
-    float clamped = std::clamp(vol, 0.0f, 1.0f);
-    if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
-        const int maxPercent =
-            std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
-        clamped = (std::min)(clamped, maxPercent / 100.0f);
-    }
+    const float clamped = std::clamp(vol, 0.0f, 1.0f);
     const bool changed = !qFuzzyCompare(m_baseVolume, clamped);
     m_baseVolume = clamped;
     applyEffectiveVolume();
@@ -437,13 +427,11 @@ float PlayerController::effectiveVolume() const {
         factor = std::pow(10.0f, m_currentReplayGainDb / 20.0f);
         factor = std::clamp(factor, 0.05f, 2.0f);
     }
-    float maxCeiling = 1.0f;
-    if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool()) {
-        const int maxPercent =
-            std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100);
-        maxCeiling = maxPercent / 100.0f;
-    }
-    return std::clamp(m_baseVolume * factor, 0.0f, maxCeiling);
+    // The volume limit scales everything down, so the slider keeps its full range and full volume plays at the limit.
+    float limit = 1.0f;
+    if (SettingsController::globalValue("player/volumeLimitEnabled", false).toBool())
+        limit = std::clamp(SettingsController::globalValue("player/maxVolumePercent", 80).toInt(), 10, 100) / 100.0f;
+    return std::clamp(m_baseVolume * factor, 0.0f, 1.0f) * limit;
 }
 
 void PlayerController::finishCrossfade() {

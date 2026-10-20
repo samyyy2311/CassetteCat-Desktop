@@ -65,7 +65,7 @@ Item {
             id: qualityBadge
             readonly property var format: root.playerController.audioFormat
             readonly property bool lossless: !!format.isLossless
-            visible: !!format.badgeLabel && root.appWindow.showTrackFormat
+            visible: !!format.badgeLabel && root.appWindow.showFormatBadges
             implicitWidth: badgeText.implicitWidth + 10
             implicitHeight: badgeText.implicitHeight + 3
             radius: 3

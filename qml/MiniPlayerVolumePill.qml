@@ -9,16 +9,8 @@ Rectangle {
     required property color borderCard
     required property color accentColor
     required property color silverDim
-    property bool volumeLimitEnabled: false
-    property int maxVolumePercent: 100
-
     function setVolume(val) {
-        let v = Math.max(0.0, Math.min(1.0, val))
-        if (volumeLimitEnabled) {
-            const limit = Math.max(0.05, maxVolumePercent / 100.0)
-            if (v > limit) v = limit
-        }
-        playerController.setVolume(v)
+        playerController.setVolume(Math.max(0.0, Math.min(1.0, val)))
     }
 
     width: 80

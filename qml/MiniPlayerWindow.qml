@@ -82,8 +82,6 @@ Window {
     property int lyricsFontSize: 28
     property string lyricsFont: displayFont
     property int lyricsFontWeight: Font.Bold
-    property bool volumeLimitEnabled: false
-    property int maxVolumePercent: 100
 
     property bool volumePillVisible: false
     property bool showRemainingTime: true
@@ -580,8 +578,6 @@ Window {
                         borderCard: root.borderCard
                         accentColor: root.recordRed
                         silverDim: root.silverDim
-                        volumeLimitEnabled: root.volumeLimitEnabled
-                        maxVolumePercent: root.maxVolumePercent
                         visible: opacity > 0.001
                         opacity: root.volumePillVisible ? 1.0 : 0.0
                         Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }

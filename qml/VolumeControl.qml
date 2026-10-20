@@ -80,9 +80,10 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 height: (volTrackMouse.containsMouse || root.isDragging) ? 5 : 3
                 radius: height / 2
-                color: surfaceElevated
+                // Light rather than a dark surface colour, so the unplayed part shows on any backdrop.
+                color: Qt.rgba(1, 1, 1, 0.16)
                 border.width: 1
-                border.color: borderVariant
+                border.color: Qt.rgba(1, 1, 1, 0.06)
 
                 Behavior on height {
                     NumberAnimation { duration: 100; easing.type: Easing.OutQuad }

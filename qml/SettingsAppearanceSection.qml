@@ -8,7 +8,6 @@ ColumnLayout {
     property string customAccentColor
     property int albumArtRadius: 16
     property string nowPlayingBackdrop: "tinted"
-    property bool showTrackFormat: true
     property bool showRemainingTime: true
     property string appFont
     property var fontFamilies: []
@@ -17,7 +16,6 @@ ColumnLayout {
     signal customAccentSelected(string hexColor)
     signal albumArtRadiusSelected(int value)
     signal nowPlayingBackdropSelected(string value)
-    signal showTrackFormatSelected(bool value)
     signal showRemainingTimeSelected(bool value)
     signal appFontSelected(string value)
 
@@ -111,19 +109,6 @@ ColumnLayout {
                 ]
                 selectedValue: root.nowPlayingBackdrop
                 onOptionSelected: val => root.nowPlayingBackdropSelected(val)
-            }
-        }
-
-        SettingDivider {}
-
-        SettingRow {
-            iconName: "info"
-            title: qsTr("Show Audio Format")
-            subtitle: qsTr("The file format badge under the song title in Now Playing")
-
-            SettingSwitch {
-                checked: root.showTrackFormat
-                onToggled: val => root.showTrackFormatSelected(val)
             }
         }
     }

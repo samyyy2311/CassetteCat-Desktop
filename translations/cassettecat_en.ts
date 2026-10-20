@@ -3220,14 +3220,6 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Show Audio Format</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>The file format badge under the song title in Now Playing</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Time Counter</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3841,7 +3833,7 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Show FLAC, MP3, and AAC badges on track rows</source>
+        <source>Show FLAC, MP3, and AAC badges on track rows and in Now Playing</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -4290,15 +4282,15 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Cap the maximum output level to protect your hearing</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Maximum Volume Limit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Ceiling threshold applied to the master volume slider</source>
+        <source>Turns all playback down, to protect your hearing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How loud full volume plays</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

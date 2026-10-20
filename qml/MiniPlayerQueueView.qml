@@ -179,8 +179,6 @@ Item {
                     borderCard: miniPlayer.borderCard
                     accentColor: miniPlayer.recordRed
                     silverDim: miniPlayer.silverDim
-                    volumeLimitEnabled: miniPlayer.volumeLimitEnabled
-                    maxVolumePercent: miniPlayer.maxVolumePercent
                     visible: opacity > 0.001
                     opacity: (miniPlayer.mode === "queue" && miniPlayer.volumePillVisible) ? 1.0 : 0.0
                     Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }

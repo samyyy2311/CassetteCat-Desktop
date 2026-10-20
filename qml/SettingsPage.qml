@@ -400,8 +400,6 @@ Item {
                                 customAccentColor: root.customAccentColor
                                 albumArtRadius: root.albumArtRadius
                                 nowPlayingBackdrop: root.nowPlayingBackdrop
-                                showTrackFormat: root.appWindow.showTrackFormat
-                                onShowTrackFormatSelected: value => root.appWindow.showTrackFormat = value
                                 showRemainingTime: root.showRemainingTime
                                 appFont: root.appWindow.appFont
                                 fontFamilies: root.appWindow.fontFamilies

@@ -80,6 +80,8 @@ ApplicationWindow {
 
     property bool settingsInitialized: false
     property int libraryRevision: 0
+    // Covers on screen that are still loading; the page's loading bar stays up until they're in.
+    property int coversLoading: 0
     property bool appQuitting: false
     property string page: "home"
     property real homeScrollPosition: 0
@@ -3815,7 +3817,7 @@ ApplicationWindow {
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: homePageLoader.status === Loader.Loading
+                            visible: homePageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3849,7 +3851,7 @@ ApplicationWindow {
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: libraryPageLoader.status === Loader.Loading
+                            visible: libraryPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3874,7 +3876,7 @@ ApplicationWindow {
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: searchPageLoader.status === Loader.Loading
+                            visible: searchPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3895,7 +3897,7 @@ ApplicationWindow {
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: radioPageLoader.status === Loader.Loading
+                            visible: radioPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3915,7 +3917,7 @@ ApplicationWindow {
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: jellyfinPageLoader.status === Loader.Loading
+                            visible: jellyfinPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3935,7 +3937,7 @@ ApplicationWindow {
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: subsonicPageLoader.status === Loader.Loading
+                            visible: subsonicPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3955,7 +3957,7 @@ ApplicationWindow {
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: listeningRecordPageLoader.status === Loader.Loading
+                            visible: listeningRecordPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3979,7 +3981,7 @@ ApplicationWindow {
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: settingsLoader.status === Loader.Loading
+                            visible: settingsLoader.status === Loader.Loading || window.coversLoading > 0
                         }
                         sourceComponent: Component {
                             SettingsPage {

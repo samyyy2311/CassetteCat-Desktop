@@ -5,10 +5,13 @@ import QtQuick.Layouts
 ColumnLayout {
     id: root
     required property var miniPlayer
+    // The cover view draws its own seek bar over the artwork.
+    property bool showSeeker: true
     spacing: 4
 
     AudioSeeker {
         Layout.fillWidth: true
+        visible: root.showSeeker
         position: root.miniPlayer.playerController.position
         duration: root.miniPlayer.playerController.duration
         showRemainingTime: root.miniPlayer.showRemainingTime

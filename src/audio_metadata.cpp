@@ -47,6 +47,17 @@ QString formatDuration(int totalSeconds) {
 
 namespace {
 
+// TagLib opens wide-character paths on Windows and UTF-8 paths elsewhere.
+#ifdef _WIN32
+std::wstring tagLibPath(const QString &filePath) {
+    return QDir::toNativeSeparators(filePath).toStdWString();
+}
+#else
+std::string tagLibPath(const QString &filePath) {
+    return filePath.toStdString();
+}
+#endif
+
 // Includes the file's size and modification time so edited tags or replaced images get a fresh cover.
 QString artworkCacheKey(const QString &filePath, int targetDim) {
     const QFileInfo info(filePath);
@@ -62,6 +73,23 @@ QString artworkCacheBase(const QString &key) {
 
 } // namespace
 
+// Scales the image down to fit \p targetDim and caches it as the cover for \p key.
+QString saveThumbnail(QImageReader &reader, const QString &key, bool png, int targetDim) {
+    const QSize sourceSize = reader.size();
+    if (!sourceSize.isValid())
+        return {};
+    if (sourceSize.width() > targetDim || sourceSize.height() > targetDim)
+        reader.setScaledSize(sourceSize.scaled(targetDim, targetDim, Qt::KeepAspectRatio));
+    const QImage thumbnail = reader.read();
+    if (thumbnail.isNull())
+        return {};
+    QByteArray outputImage;
+    QBuffer output(&outputImage);
+    if (!output.open(QIODevice::WriteOnly) || !thumbnail.save(&output, png ? "PNG" : "JPEG", png ? -1 : 88))
+        return {};
+    return saveCachedImage(outputImage, key, png, "covers_v2");
+}
+
 QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, int maxDimension) {
     if (image.isEmpty())
         return {};
@@ -72,25 +100,12 @@ QString saveArtwork(const QString &filePath, const QByteArray &image, bool png, 
         return QUrl::fromLocalFile(targetPath).toString();
     }
 
-    QByteArray outputImage = image;
-    QBuffer input(&outputImage);
+    QByteArray source = image;
+    QBuffer input(&source);
     if (!input.open(QIODevice::ReadOnly))
         return {};
     QImageReader reader(&input);
-    const QSize sourceSize = reader.size();
-    if (!sourceSize.isValid())
-        return {};
-    if (sourceSize.width() > targetDim || sourceSize.height() > targetDim) {
-        reader.setScaledSize(sourceSize.scaled(targetDim, targetDim, Qt::KeepAspectRatio));
-    }
-    const QImage thumbnail = reader.read();
-    if (thumbnail.isNull())
-        return {};
-    outputImage.clear();
-    QBuffer output(&outputImage);
-    if (!output.open(QIODevice::WriteOnly) || !thumbnail.save(&output, png ? "PNG" : "JPEG", png ? -1 : 88))
-        return {};
-    return saveCachedImage(outputImage, key, png, "covers_v2");
+    return saveThumbnail(reader, key, png, targetDim);
 }
 
 QString saveFolderArtwork(const QString &filePath, int maxDimension) {
@@ -105,20 +120,7 @@ QString saveFolderArtwork(const QString &filePath, int maxDimension) {
     }
 
     QImageReader reader(filePath);
-    const QSize sourceSize = reader.size();
-    if (!sourceSize.isValid())
-        return {};
-    if (sourceSize.width() > targetDim || sourceSize.height() > targetDim) {
-        reader.setScaledSize(sourceSize.scaled(targetDim, targetDim, Qt::KeepAspectRatio));
-    }
-    const QImage thumbnail = reader.read();
-    if (thumbnail.isNull())
-        return {};
-    QByteArray outputImage;
-    QBuffer output(&outputImage);
-    if (!output.open(QIODevice::WriteOnly) || !thumbnail.save(&output, png ? "PNG" : "JPEG", png ? -1 : 88))
-        return {};
-    return saveCachedImage(outputImage, key, png, "covers_v2");
+    return saveThumbnail(reader, key, png, targetDim);
 }
 
 QString extractEmbeddedArtwork(const QString &filePath, int maxDimension) {
@@ -133,11 +135,7 @@ QString extractEmbeddedArtwork(const QString &filePath, int maxDimension) {
 
     if (suffix == "m4a" || suffix == "mp4" || suffix == "alac") {
         try {
-#ifdef _WIN32
-            TagLib::MP4::File file(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-            TagLib::MP4::File file(filePath.toUtf8().constData());
-#endif
+            TagLib::MP4::File file(tagLibPath(filePath).c_str());
             if (const TagLib::MP4::Tag *tag = file.tag()) {
                 const TagLib::MP4::CoverArtList covers = tag->item("covr").toCoverArtList();
                 if (!covers.isEmpty()) {
@@ -154,11 +152,7 @@ QString extractEmbeddedArtwork(const QString &filePath, int maxDimension) {
 
     if (suffix == "flac") {
         try {
-#ifdef _WIN32
-            TagLib::FLAC::File file(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-            TagLib::FLAC::File file(filePath.toUtf8().constData());
-#endif
+            TagLib::FLAC::File file(tagLibPath(filePath).c_str());
             const auto picList = file.pictureList();
             if (!picList.isEmpty()) {
                 const auto *pic = picList.front();
@@ -174,11 +168,7 @@ QString extractEmbeddedArtwork(const QString &filePath, int maxDimension) {
 
     if (suffix == "mp3") {
         try {
-#ifdef _WIN32
-            TagLib::MPEG::File file(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-            TagLib::MPEG::File file(filePath.toUtf8().constData());
-#endif
+            TagLib::MPEG::File file(tagLibPath(filePath).c_str());
             if (const TagLib::ID3v2::Tag *tag = file.ID3v2Tag()) {
                 const TagLib::ID3v2::FrameList frames = tag->frameListMap()["APIC"];
                 if (!frames.isEmpty()) {
@@ -197,11 +187,7 @@ QString extractEmbeddedArtwork(const QString &filePath, int maxDimension) {
     }
 
     try {
-#ifdef _WIN32
-        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-        TagLib::FileRef fileRef(filePath.toUtf8().constData());
-#endif
+        TagLib::FileRef fileRef(tagLibPath(filePath).c_str());
         if (!fileRef.isNull() && fileRef.file() && fileRef.file()->isValid()) {
             TagLib::PropertyMap props = fileRef.file()->properties();
             if (props.contains("METADATA_BLOCK_PICTURE")) {
@@ -281,11 +267,7 @@ QString extractEmbeddedLyrics(const QString &filePath) {
 
     if (suffix == "m4a" || suffix == "mp4" || suffix == "alac") {
         try {
-#ifdef _WIN32
-            TagLib::MP4::File file(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-            TagLib::MP4::File file(filePath.toUtf8().constData());
-#endif
+            TagLib::MP4::File file(tagLibPath(filePath).c_str());
             if (const TagLib::MP4::Tag *tag = file.tag()) {
                 const auto &itemMap = tag->itemMap();
                 for (auto it = itemMap.begin(); it != itemMap.end(); ++it) {
@@ -309,11 +291,7 @@ QString extractEmbeddedLyrics(const QString &filePath) {
 
     if (suffix == "mp3") {
         try {
-#ifdef _WIN32
-            TagLib::MPEG::File file(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-            TagLib::MPEG::File file(filePath.toUtf8().constData());
-#endif
+            TagLib::MPEG::File file(tagLibPath(filePath).c_str());
             if (const TagLib::ID3v2::Tag *tag = file.ID3v2Tag()) {
                 const TagLib::ID3v2::FrameList usltFrames = tag->frameListMap()["USLT"];
                 for (auto *frame : usltFrames) {
@@ -342,11 +320,7 @@ QString extractEmbeddedLyrics(const QString &filePath) {
     }
 
     try {
-#ifdef _WIN32
-        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-        TagLib::FileRef fileRef(filePath.toUtf8().constData());
-#endif
+        TagLib::FileRef fileRef(tagLibPath(filePath).c_str());
         if (!fileRef.isNull() && fileRef.file() && fileRef.file()->isValid()) {
             if (TagLib::PropertyMap properties = fileRef.file()->properties(); !properties.isEmpty()) {
                 if (properties.contains("LYRICS")) {
@@ -383,11 +357,7 @@ float extractReplayGain(const QString &filePath, bool albumMode) {
     if (filePath.isEmpty())
         return 0.0f;
     try {
-#ifdef _WIN32
-        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-        TagLib::FileRef fileRef(filePath.toUtf8().constData());
-#endif
+        TagLib::FileRef fileRef(tagLibPath(filePath).c_str());
         if (!fileRef.isNull() && fileRef.file() && fileRef.file()->isValid()) {
             const TagLib::PropertyMap properties = fileRef.file()->properties();
             auto parseGain = [&properties](const char *key, float &outDb) -> bool {
@@ -421,11 +391,7 @@ float extractReplayGain(const QString &filePath, bool albumMode) {
 
 QVariantMap readAudioFormat(const QString &filePath) {
     try {
-#ifdef _WIN32
-        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-        TagLib::FileRef fileRef(filePath.toUtf8().constData());
-#endif
+        TagLib::FileRef fileRef(tagLibPath(filePath).c_str());
         const TagLib::AudioProperties *props = fileRef.isNull() ? nullptr : fileRef.audioProperties();
         if (!props)
             return {};
@@ -511,11 +477,7 @@ TrackInfo readTrackInfo(const QString &filePath) {
     info.lyrics = "";
 
     try {
-#ifdef _WIN32
-        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-        TagLib::FileRef fileRef(filePath.toUtf8().constData());
-#endif
+        TagLib::FileRef fileRef(tagLibPath(filePath).c_str());
 
         if (!fileRef.isNull() && fileRef.file() && fileRef.file()->isValid()) {
             if (const TagLib::Tag *tag = fileRef.tag()) {
@@ -609,11 +571,7 @@ TrackInfo readTrackInfo(const QString &filePath) {
 
 bool hasEmbeddedArtwork(const QString &filePath) {
     try {
-#ifdef _WIN32
-        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-        TagLib::FileRef fileRef(filePath.toUtf8().constData());
-#endif
+        TagLib::FileRef fileRef(tagLibPath(filePath).c_str());
         return !fileRef.isNull() && !fileRef.complexProperties("PICTURE").isEmpty();
     } catch (...) {
         return false;
@@ -622,11 +580,7 @@ bool hasEmbeddedArtwork(const QString &filePath) {
 
 bool writeEmbeddedArtwork(const QString &filePath, const QByteArray &image, QString *error) {
     try {
-#ifdef _WIN32
-        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-        TagLib::FileRef fileRef(filePath.toUtf8().constData());
-#endif
+        TagLib::FileRef fileRef(tagLibPath(filePath).c_str());
         if (fileRef.isNull() || !fileRef.file() || !fileRef.file()->isValid()) {
             if (error)
                 *error = QCoreApplication::translate("AudioMetadata", "This file format does not support cover art.");
@@ -660,11 +614,7 @@ bool writeTrackInfo(const QVariantMap &metadata, QString *error) {
     }
 
     try {
-#ifdef _WIN32
-        TagLib::FileRef fileRef(QDir::toNativeSeparators(filePath).toStdWString().c_str());
-#else
-        TagLib::FileRef fileRef(filePath.toUtf8().constData());
-#endif
+        TagLib::FileRef fileRef(tagLibPath(filePath).c_str());
         if (fileRef.isNull() || !fileRef.file() || !fileRef.file()->isValid() || !fileRef.tag()) {
             if (error)
                 *error = QCoreApplication::translate("AudioMetadata",

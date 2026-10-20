@@ -194,9 +194,23 @@ jobs:
           chmod +x "CassetteCat-${RELEASE_TAG}-linux-${{ matrix.arch }}.AppImage"
           "./CassetteCat-${RELEASE_TAG}-linux-${{ matrix.arch }}.AppImage" --self-check
       - name: Build Flatpak bundle
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          LASTFM_API_SECRET: ${{ secrets.LASTFM_API_SECRET }}
         run: |
           flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-          flatpak-builder --force-clean --disable-rofiles-fuse --user --install-deps-from=flathub --default-branch="${RELEASE_TAG#v}" --repo=flatpak-repo build/flatpak packaging/flatpak/io.github.samyyy2311.CassetteCat.yml
+          # flatpak-builder builds in a clean environment, so the Last.fm keys go in through a copy of the manifest,
+          # kept beside it for its relative source path and never committed.
+          python3 - <<'PY'
+          import os
+          manifest = open('packaging/flatpak/io.github.samyyy2311.CassetteCat.yml').read()
+          keys = ('    build-options:\n      env:\n'
+                  f'        LASTFM_API_KEY: "{os.environ["LASTFM_API_KEY"]}"\n'
+                  f'        LASTFM_API_SECRET: "{os.environ["LASTFM_API_SECRET"]}"\n')
+          manifest = manifest.replace('  - name: cassettecat\n', '  - name: cassettecat\n' + keys, 1)
+          open('packaging/flatpak/release.yml', 'w').write(manifest)
+          PY
+          flatpak-builder --force-clean --disable-rofiles-fuse --user --install-deps-from=flathub --default-branch="${RELEASE_TAG#v}" --repo=flatpak-repo build/flatpak packaging/flatpak/release.yml
           flatpak build-bundle flatpak-repo "CassetteCat-${RELEASE_TAG}-${{ matrix.arch }}.flatpak" io.github.samyyy2311.CassetteCat "${RELEASE_TAG#v}"
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -3220,6 +3220,14 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Show Audio Format</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>The file format badge under the song title in Now Playing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Time Counter</source>
         <translation type="unfinished"></translation>
     </message>

@@ -226,6 +226,7 @@ ApplicationWindow {
     property bool showFormatBadges: true
     property int albumArtRadius: 16
     property string nowPlayingBackdrop: "tinted"
+    property bool showTrackFormat: true
     property bool showRemainingTime: true
     property string sleepTimerMode: "off"
     property string sleepTimerStatus: qsTr("Off")
@@ -646,6 +647,7 @@ ApplicationWindow {
         customAccentColor = appSettings.value("ui/customAccentColor", accentPresets[0].base)
         albumArtRadius = appSettings.value("ui/albumArtRadius", 16)
         nowPlayingBackdrop = appSettings.value("player/nowPlayingBackdrop", "tinted")
+        showTrackFormat = appSettings.value("player/showTrackFormat", true) !== false
         showRemainingTime = appSettings.value("player/showRemainingTime", true)
         trackDensity = appSettings.value("ui/trackDensity", "comfortable")
         showFormatBadges = appSettings.value("ui/showFormatBadges", true)
@@ -1409,6 +1411,7 @@ ApplicationWindow {
     onCustomAccentColorChanged: saveSetting("ui/customAccentColor", customAccentColor)
     onAlbumArtRadiusChanged: saveSetting("ui/albumArtRadius", albumArtRadius)
     onNowPlayingBackdropChanged: saveSetting("player/nowPlayingBackdrop", nowPlayingBackdrop)
+    onShowTrackFormatChanged: saveSetting("player/showTrackFormat", showTrackFormat)
     onShowRemainingTimeChanged: {
         saveSetting("player/showRemainingTime", showRemainingTime)
         if (miniPlayerWindow && miniPlayerWindow.showRemainingTime !== showRemainingTime) {
@@ -1663,6 +1666,7 @@ ApplicationWindow {
             "lyrics/font": lyricsFont,
             "lyrics/fontWeight": lyricsFontWeight,
             "player/nowPlayingBackdrop": nowPlayingBackdrop,
+            "player/showTrackFormat": showTrackFormat,
             "player/showRemainingTime": showRemainingTime,
             "lyrics/alignment": lyricsAlignment,
             "lyrics/activeStyle": lyricsActiveStyle,
@@ -2801,6 +2805,7 @@ ApplicationWindow {
                 customAccentColor: window.customAccentColor,
                 albumArtRadius: window.albumArtRadius,
                 nowPlayingBackdrop: window.nowPlayingBackdrop,
+                showTrackFormat: window.showTrackFormat,
                 showRemainingTime: window.showRemainingTime,
                 trackDensity: window.trackDensity,
                 showFormatBadges: window.showFormatBadges,
@@ -2867,6 +2872,7 @@ ApplicationWindow {
                     if (data.customAccentColor) { window.customAccentColor = data.customAccentColor; appSettings.setValue("ui/customAccentColor", data.customAccentColor) }
                     if (data.albumArtRadius !== undefined) { window.albumArtRadius = data.albumArtRadius; appSettings.setValue("ui/albumArtRadius", data.albumArtRadius) }
                     if (data.nowPlayingBackdrop) { window.nowPlayingBackdrop = data.nowPlayingBackdrop; appSettings.setValue("player/nowPlayingBackdrop", data.nowPlayingBackdrop) }
+                    if (data.showTrackFormat !== undefined) window.showTrackFormat = data.showTrackFormat
                     if (data.showRemainingTime !== undefined) { window.showRemainingTime = data.showRemainingTime; appSettings.setValue("player/showRemainingTime", data.showRemainingTime) }
                     if (data.trackDensity) { window.trackDensity = data.trackDensity; appSettings.setValue("ui/trackDensity", data.trackDensity) }
                     if (data.showFormatBadges !== undefined) { window.showFormatBadges = data.showFormatBadges; appSettings.setValue("ui/showFormatBadges", data.showFormatBadges) }

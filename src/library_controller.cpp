@@ -1372,7 +1372,7 @@ void LibraryController::readLyrics() {
             continue;
         QString text = track.value("lyrics").toString();
         if (text.trimmed().isEmpty())
-            text = lyrics::read(lyrics::keyFor(track)).text;
+            text = lyrics::load(lyrics::keyFor(track)).text;
         const QStringList lines = sungLines(text);
         if (lines.isEmpty())
             continue;

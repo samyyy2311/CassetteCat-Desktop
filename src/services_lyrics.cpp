@@ -29,7 +29,7 @@ void ServicesController::cacheLyrics(const QString &title, const QString &artist
     const QString text = !syncedLyrics.trimmed().isEmpty() ? syncedLyrics.trimmed() : plainLyrics.trimmed();
     if (text.isEmpty())
         return;
-    lyrics::write(lyrics::key(title, artist, album), text, provider.isEmpty() ? "LRCLIB" : provider);
+    lyrics::save(lyrics::key(title, artist, album), text, provider.isEmpty() ? "LRCLIB" : provider);
 }
 
 void ServicesController::fetchLyrics(const QString &title, const QString &artist, const QString &album,
@@ -38,7 +38,7 @@ void ServicesController::fetchLyrics(const QString &title, const QString &artist
         return;
     const quint64 requestToken = ++m_lyricsRequestToken;
 
-    const lyrics::Stored stored = lyrics::read(lyrics::key(title, artist, album));
+    const lyrics::Stored stored = lyrics::load(lyrics::key(title, artist, album));
     if (!stored.text.isEmpty()) {
         emit lyricsFetched(title, artist, stored.text, stored.provider.isEmpty() ? "LRCLIB" : stored.provider);
         return;
@@ -123,7 +123,7 @@ void ServicesController::fetchLibraryLyrics(const QVariantList &tracks) {
     for (const QVariant &value : tracks) {
         const QVariantMap track = value.toMap();
         const QString key = lyrics::keyFor(track);
-        if (!track.value("lyrics").toString().trimmed().isEmpty() || !lyrics::read(key).text.isEmpty()) {
+        if (!track.value("lyrics").toString().trimmed().isEmpty() || !lyrics::load(key).text.isEmpty()) {
             ++m_libraryLyricsFound;
             continue;
         }
@@ -176,7 +176,7 @@ void ServicesController::fetchNextLibraryLyrics() {
                 return;
             }
         } else if (result == LyricsLookup::Found) {
-            lyrics::write(key, text, "LRCLIB");
+            lyrics::save(key, text, "LRCLIB");
             ++m_libraryLyricsFound;
         } else {
             lyrics::markMissing(key);

@@ -14,8 +14,8 @@ struct Stored {
 QString key(const QString &title, const QString &artist, const QString &album);
 /// Uses the file name when the track has no title, as fetchLyrics does.
 QString keyFor(const QVariantMap &track);
-Stored read(const QString &key);
-void write(const QString &key, const QString &text, const QString &provider);
+Stored load(const QString &key);
+void save(const QString &key, const QString &text, const QString &provider);
 /// Records a miss so the library fetch skips the song for a while.
 void markMissing(const QString &key);
 bool missingRecently(const QString &key);

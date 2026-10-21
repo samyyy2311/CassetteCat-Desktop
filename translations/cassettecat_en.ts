@@ -3234,6 +3234,34 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Track Lists</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Track Row Density</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Vertical spacing for song rows in track lists</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Comfortable</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Compact</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Audio Format Badges</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show FLAC, MP3, and AAC badges on track rows and in Now Playing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Time Counter</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3815,7 +3843,7 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Display &amp; Sorting</source>
+        <source>Sorting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -3840,30 +3868,6 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Duration</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Track Row Density</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Vertical spacing for song rows in track lists</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Comfortable</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Compact</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Audio Format Badges</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Show FLAC, MP3, and AAC badges on track rows and in Now Playing</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -4064,11 +4068,15 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Appearance</source>
+        <source>Look &amp; Feel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Playback &amp; Audio</source>
+        <source>Sound</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Playback</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4260,14 +4268,6 @@ Try the track title, or add custom lyrics</source>
 <context>
     <name>SettingsPlaybackSection</name>
     <message>
-        <source>Playback Device</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Choose where CassetteCat sends audio output</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Resume Queue on Launch</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4284,75 +4284,11 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Crossfade</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Fade each song into the next as it ends</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Off</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Audio Output</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Queue &amp; Playback</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Audio Protection</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Volume Limit</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Maximum Volume Limit</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Turns all playback down, to protect your hearing</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>How loud full volume plays</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Equalizer</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Loudness &amp; Normalization</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Volume Normalization (ReplayGain)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Preserve original file loudness</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Track gain active: balance volume per song</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Album gain active: preserve album dynamic range</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Track</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Album</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4531,6 +4467,85 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Click a shortcut field to record keys. Press Backspace to clear, Escape to cancel.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SettingsSoundSection</name>
+    <message>
+        <source>Audio Output</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Playback Device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose where CassetteCat sends audio output</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Crossfade</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fade each song into the next as it ends</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Equalizer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loudness &amp; Normalization</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Volume Normalization (ReplayGain)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Preserve original file loudness</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Track gain active: balance volume per song</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Album gain active: preserve album dynamic range</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Track</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Album</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Audio Protection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Volume Limit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Turns all playback down, to protect your hearing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum Volume Limit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How loud full volume plays</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

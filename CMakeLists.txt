@@ -188,6 +188,7 @@ qt_add_qml_module(CassetteCat
         qml/SettingsLibrarySection.qml
         qml/SettingsAppearanceSection.qml
         qml/SettingsPlaybackSection.qml
+        qml/SettingsSoundSection.qml
         qml/SettingsEqualizerCard.qml
         qml/SettingsShortcutsSection.qml
         qml/SettingsDesktopSection.qml

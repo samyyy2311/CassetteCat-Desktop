@@ -9,8 +9,6 @@ ColumnLayout {
     property var excludedFolders: []
     property bool ignoreShortClips: false
     property string songSortMetric: "title"
-    property string trackDensity: "comfortable"
-    property bool showFormatBadges: true
 
     signal addLibraryFolderRequested()
     signal removeLibraryFolderRequested(string path)
@@ -18,8 +16,6 @@ ColumnLayout {
     signal removeExcludeRequested(string path)
     signal ignoreShortClipsSelected(bool value)
     signal songSortSelected(string value)
-    signal trackDensitySelected(string value)
-    signal showFormatBadgesSelected(bool value)
 
     Layout.fillWidth: true
     spacing: 16
@@ -79,7 +75,7 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: qsTr("Display & Sorting") }
+    SectionLabel { text: qsTr("Sorting") }
 
     SettingCard {
         SettingChoiceGroup {
@@ -96,34 +92,5 @@ ColumnLayout {
             onOptionSelected: val => root.songSortSelected(String(val))
         }
 
-        SettingDivider {}
-
-        SettingRow {
-            iconName: "list"
-            title: qsTr("Track Row Density")
-            subtitle: qsTr("Vertical spacing for song rows in track lists")
-
-            SettingSegmentedControl {
-                options: [
-                    { value: "comfortable", label: qsTr("Comfortable") },
-                    { value: "compact", label: qsTr("Compact") }
-                ]
-                selectedValue: root.trackDensity
-                onOptionSelected: val => root.trackDensitySelected(String(val))
-            }
-        }
-
-        SettingDivider {}
-
-        SettingRow {
-            iconName: "file-audio"
-            title: qsTr("Audio Format Badges")
-            subtitle: qsTr("Show FLAC, MP3, and AAC badges on track rows and in Now Playing")
-
-            SettingSwitch {
-                checked: root.showFormatBadges
-                onToggled: val => root.showFormatBadgesSelected(val)
-            }
-        }
     }
 }

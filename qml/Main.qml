@@ -251,7 +251,7 @@ ApplicationWindow {
     function setSidebarPages(order, hidden) {
         if (!Array.isArray(order)) order = []
         if (!Array.isArray(hidden)) hidden = []
-        sidebarOrder = order.filter(page => sidebarPages.includes(page))
+        sidebarOrder = order.filter((page, index) => sidebarPages.includes(page) && order.indexOf(page) === index)
             .concat(sidebarPages.filter(page => !order.includes(page)))
         sidebarHidden = hidden.filter(page => page !== "library" && sidebarPages.includes(page))
     }

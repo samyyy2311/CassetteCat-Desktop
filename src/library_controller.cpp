@@ -163,8 +163,8 @@ QList<QJsonObject> readListeningLog(const QByteArray &log) {
     return entries;
 }
 
-// Plays follow Apple Music, counting once most of a song is heard; a skip only adds listening time. Listens logged
-// before skips were kept are all plays, and a month's total from the phone carries its own plays.
+// A play counts once most of a song is heard; a skip only adds listening time. Listens logged before skips were
+// kept are all plays, and a month's total from the phone carries its own plays.
 int logPlays(const QJsonObject &entry) {
     return entry.value("counted").toBool(true) ? qMax(1, entry.value("plays").toInt(1)) : 0;
 }
@@ -250,8 +250,8 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
                                 {"artist", entry.value("artist").toString()},
                                 {"album", entry.value("album").toString()},
                                 {"genre", entry.value("genre").toString()}};
-        // Listening time counts every minute, as in Apple Music Replay. A month's total from the phone is dated the
-        // first of the month, so it doesn't set when listening began.
+        // Listening time counts every minute. A month's total from the phone is dated the first of the month, so it
+        // doesn't set when listening began.
         const bool total = entry.contains("plays");
         const int entryPlays = logPlays(entry);
         plays += entryPlays;

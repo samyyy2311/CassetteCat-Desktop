@@ -82,7 +82,6 @@ ColumnLayout {
                     iconName: root.sidebarPageIcon(sidebarEntry.modelData)
                     preserveIconColor: sidebarEntry.modelData === "jellyfin" || sidebarEntry.modelData === "subsonic"
                     title: sidebarEntry.label
-                    // Library is where CassetteCat falls back to, so it can't be taken off.
                     subtitle: sidebarEntry.modelData === "library" ? qsTr("Always shown") : ""
 
                     SettingButton {

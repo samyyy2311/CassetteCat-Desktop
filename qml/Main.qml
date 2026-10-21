@@ -1444,8 +1444,15 @@ ApplicationWindow {
     onSleepTimerModeChanged: saveSetting("player/sleepTimerMode", sleepTimerMode)
     onAutoplayEnabledChanged: saveSetting("player/autoplayEnabled", autoplayEnabled)
     onCrossfadeSecondsChanged: saveSetting("player/crossfadeSeconds", crossfadeSeconds)
-    onVolumeLimitEnabledChanged: saveSetting("player/volumeLimitEnabled", volumeLimitEnabled)
-    onMaxVolumePercentChanged: saveSetting("player/maxVolumePercent", maxVolumePercent)
+    // Applied from here, so a limit set in Settings or restored from a backup takes effect at once.
+    onVolumeLimitEnabledChanged: {
+        saveSetting("player/volumeLimitEnabled", volumeLimitEnabled)
+        applyVolumeLimit()
+    }
+    onMaxVolumePercentChanged: {
+        saveSetting("player/maxVolumePercent", maxVolumePercent)
+        applyVolumeLimit()
+    }
     onReplayGainModeChanged: {
         player.setReplayGainMode(replayGainMode)
         saveSetting("player/replayGainMode", replayGainMode)
@@ -4103,8 +4110,8 @@ ApplicationWindow {
                                 onSleepFadeOutSelected: value => window.sleepFadeOut = value
                                 onAutoplaySelected: value => window.autoplayEnabled = value
                                 onCrossfadeSelected: value => window.crossfadeSeconds = value
-                                onVolumeLimitSelected: value => { window.volumeLimitEnabled = value; window.applyVolumeLimit() }
-                                onMaxVolumeSelected: value => { window.maxVolumePercent = value; window.applyVolumeLimit() }
+                                onVolumeLimitSelected: value => window.volumeLimitEnabled = value
+                                onMaxVolumeSelected: value => window.maxVolumePercent = value
                                 onReplayGainModeSelected: value => window.replayGainMode = value
                                 onPreferLocalLyricsSelected: value => window.preferLocalLyrics = value
                                 onLyricsAlignmentSelected: value => window.lyricsAlignment = value

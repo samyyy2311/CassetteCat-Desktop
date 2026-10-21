@@ -454,6 +454,7 @@ ApplicationWindow {
     property var radioRecentStations: []
     property var radioCustomStations: []
     property string radioSearchQuery: ""
+    property var serverSearchQueries: ({})
     property string radioActiveTag: "ALL"
     property string radioCountryFilter: ""
     property string radioLanguageFilter: ""

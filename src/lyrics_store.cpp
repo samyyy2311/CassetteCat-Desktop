@@ -63,6 +63,9 @@ void save(const QString &key, const QString &text, const QString &provider) {
 }
 
 void markMissing(const QString &key) {
+    // Lyrics saved during the lookup take precedence.
+    if (!load(key).text.isEmpty())
+        return;
     writeObject(key, {{"missingAt", QDateTime::currentSecsSinceEpoch()}});
 }
 

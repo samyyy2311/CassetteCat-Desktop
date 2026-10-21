@@ -2662,7 +2662,8 @@ ApplicationWindow {
     }
 
     function playPrevious() {
-        if (player.position > 5000) {
+        // Past the first 3 seconds Previous restarts the song, as on the phone.
+        if (player.position > 3000) {
             player.seek(0)
             return
         }

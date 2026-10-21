@@ -488,6 +488,9 @@ Item {
                                 lyricsFont: root.appWindow.lyricsFont
                                 lyricsFontWeight: root.appWindow.lyricsFontWeight
                                 fontFamilies: root.appWindow.fontFamilies
+                                libraryLyricsEnabled: root.appWindow.libraryLyricsEnabled
+                                lrclibAvailable: root.svcLrclib && !root.offlineBlackout
+                                onLibraryLyricsSelected: value => root.appWindow.libraryLyricsEnabled = value
                                 onLyricsFontSelected: value => root.appWindow.lyricsFont = value
                                 onLyricsFontWeightSelected: value => root.appWindow.lyricsFontWeight = value
                                 onLyricsFontSizeSelected: value => root.lyricsFontSizeSelected(value)

@@ -20,6 +20,8 @@ class LibraryController final : public QAbstractListModel {
     Q_PROPERTY(QStringList folders READ folders NOTIFY changed)
     Q_PROPERTY(int trackCount READ trackCount NOTIFY tracksChanged)
     Q_PROPERTY(int visibleTrackCount READ visibleTrackCount NOTIFY visibleTracksChanged)
+    /// Changes whenever lyricMatches could return something new for the same query.
+    Q_PROPERTY(int lyricsRevision READ lyricsRevision NOTIFY lyricsChanged)
 
   public:
     explicit LibraryController(QObject *parent = nullptr);
@@ -97,6 +99,13 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE void setLibraryFilter(const QString &query, const QString &filter, const QVariantMap &favorites,
                                       const QString &sortMetric, bool ascending, const QVariantList &excludedFolders,
                                       bool ignoreShortClips);
+    /// Lyric lines matching every word of \p query, as {track, line}, best first. An empty query frees the index.
+    Q_INVOKABLE QVariantList lyricMatches(const QString &query);
+    int lyricsRevision() const {
+        return m_lyricsRevision;
+    }
+    /// Puts newly saved lyrics into the search index, if one is built.
+    void addLyrics(const QString &key, const QString &text);
     Q_INVOKABLE void setSearchFilter(const QString &query, const QString &format, const QVariantList &excludedFolders,
                                      bool ignoreShortClips);
     /// Parses \p filePath as an M3U playlist for direct playback.
@@ -107,6 +116,7 @@ class LibraryController final : public QAbstractListModel {
     void missingArtworkCounted(int count);
     void tracksChanged();
     void visibleTracksChanged();
+    void lyricsChanged();
     /// The listening log changed: a listen ended here, the phone sent its own, or the log was cleared.
     void listensChanged();
 
@@ -125,9 +135,20 @@ class LibraryController final : public QAbstractListModel {
     void saveLibraryCache();
     bool isAvailable(const QVariantMap &track) const;
     bool matchesVisibleFilter(const QVariantMap &track) const;
+    void readLyrics();
+
+    struct TrackLyrics {
+        int row;
+        QStringList lines;
+        QStringList folded;
+    };
+    static TrackLyrics indexedLyrics(int row, const QStringList &lines);
 
     QStringList m_folders;
     QVariantList m_tracks;
+    QList<TrackLyrics> m_lyrics;
+    bool m_lyricsRead = false;
+    int m_lyricsRevision = 0;
     QVector<int> m_visibleRows;
     QString m_query;
     QString m_format;

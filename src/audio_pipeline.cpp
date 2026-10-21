@@ -20,6 +20,9 @@ constexpr qint64 kPrimeFrames = kRate * 3 / 20;
 constexpr qint64 kMaxQueuedFrames = kRate / 2;
 // Without a working device nothing is played, so queues are capped instead of growing.
 constexpr qint64 kMaxBufferedFrames = kRate * 2;
+// The output device's own buffer. Windows' audio engine can briefly fall behind, such as while the system volume
+// changes on Bluetooth headphones, and a short buffer then runs dry and crackles.
+constexpr qint64 kBufferUs = 200'000;
 } // namespace
 
 // The device reads its source on the thread the source lives on, so the mix is read through this device, which
@@ -41,7 +44,7 @@ class AudioPipeline::Feed final : public QIODevice {
         return -1;
     }
     qint64 bytesAvailable() const override {
-        return format().bytesForDuration(80'000) + QIODevice::bytesAvailable();
+        return format().bytesForDuration(kBufferUs) + QIODevice::bytesAvailable();
     }
 
   private:
@@ -167,7 +170,7 @@ void AudioPipeline::openSink(const QAudioDevice &device, bool paused) {
     if (!m_feed)
         m_feed = new Feed(this);
     m_sink = new QAudioSink(device, format());
-    m_sink->setBufferSize(format().bytesForDuration(80'000));
+    m_sink->setBufferSize(format().bytesForDuration(kBufferUs));
     connect(m_sink, &QAudioSink::stateChanged, m_sink, [sink = m_sink](QAudio::State state) {
         if (sink->error() != QAudio::NoError)
             qWarning().noquote() << "[AUDIO] output state=" << state << "error=" << sink->error();

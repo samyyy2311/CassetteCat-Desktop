@@ -11,7 +11,8 @@ Item {
     required property var appWindow
     property alias searchBox: recordSearchBar
     property var tracks: []
-    property var playCounts: ({})
+    // All-time totals from the listening log, which holds this computer's listens and the phone's.
+    property var listenTotals: library.listeningTotals()
     property var playbackHistory: []
 
     property string currentTab: "overview"
@@ -37,7 +38,10 @@ Item {
     // Listens synced from the phone show up at once.
     Connections {
         target: library
-        function onListensChanged() { root.refreshRecap() }
+        function onListensChanged() {
+            root.listenTotals = library.listeningTotals()
+            root.refreshRecap()
+        }
     }
 
     function refreshRecap() {
@@ -65,6 +69,7 @@ Item {
     property string searchQuery: ""
 
     readonly property var playedTracks: {
+        const playCounts = listenTotals.playsByPath || {}
         const rows = (tracks || []).filter(track => track && track.filePath && (playCounts[track.filePath] || 0) > 0)
             .map(track => ({ track: track, count: playCounts[track.filePath] || 0 }))
         rows.sort((left, right) => right.count - left.count)
@@ -74,13 +79,9 @@ Item {
     readonly property var mostPlayed: (playedTracks || []).slice(0, 50)
 
     readonly property var recentTracks: (playbackHistory || []).slice(0, 50)
-    readonly property int totalPlays: Object.keys(playCounts || {}).reduce((total, path) => total + (playCounts[path] || 0), 0)
-    readonly property int uniquePlayed: Object.keys(playCounts || {}).filter(path => (playCounts[path] || 0) > 0).length
-
-    readonly property int totalDurationSeconds: (playedTracks || []).reduce((acc, row) => {
-        const dur = (row.track && row.track.durationSeconds > 0) ? row.track.durationSeconds : 180
-        return acc + (dur * row.count)
-    }, 0)
+    readonly property int totalPlays: listenTotals.plays || 0
+    readonly property int uniquePlayed: listenTotals.songCount || 0
+    readonly property int totalDurationSeconds: Math.round((listenTotals.listenedMs || 0) / 1000)
 
     readonly property int libraryExploredPct: {
         const totalLib = (tracks || []).length
@@ -672,7 +673,7 @@ Item {
                         StatCard {
                             label: qsTr("Listening Time")
                             value: root.formatDurationTotal(root.totalDurationSeconds)
-                            subtitle: qsTr("based on qualified listens")
+                            subtitle: qsTr("every minute you listened")
                         }
 
                         StatCard {

@@ -9,15 +9,33 @@ ColumnLayout {
     property int albumArtRadius: 16
     property string nowPlayingBackdrop: "tinted"
     property bool showRemainingTime: true
+    property string appFont
+    property var fontFamilies: []
 
     signal accentSelected(string value)
     signal customAccentSelected(string hexColor)
     signal albumArtRadiusSelected(int value)
     signal nowPlayingBackdropSelected(string value)
     signal showRemainingTimeSelected(bool value)
+    signal appFontSelected(string value)
 
     Layout.fillWidth: true
     spacing: 16
+
+    SectionLabel { text: qsTr("Font") }
+
+    SettingCard {
+        SettingChoiceGroup {
+            iconName: "type"
+            title: qsTr("App Font")
+            subtitle: qsTr("Any font installed on this computer, for all of CassetteCat's text")
+            forceMenu: true
+            options: [{ value: "", label: qsTr("Default") }].concat(
+                root.fontFamilies.map(family => ({ value: family, label: family, font: family })))
+            selectedValue: root.appFont
+            onOptionSelected: val => root.appFontSelected(String(val))
+        }
+    }
 
     SectionLabel { text: qsTr("Color Scheme") }
 
@@ -81,11 +99,12 @@ ColumnLayout {
         SettingRow {
             iconName: "maximize-2"
             title: qsTr("Now Playing Backdrop")
-            subtitle: qsTr("Visual style of the expanded player backdrop")
+            subtitle: qsTr("Moving slowly shifts the cover's colors, and uses more graphics memory")
 
             SettingSegmentedControl {
                 options: [
                     { value: "tinted", label: qsTr("Tinted") },
+                    { value: "moving", label: qsTr("Moving") },
                     { value: "clean", label: qsTr("Clean") }
                 ]
                 selectedValue: root.nowPlayingBackdrop

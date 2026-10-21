@@ -2,7 +2,6 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Effects
-import "LyricsText.js" as LyricsText
 
 Window {
     id: root
@@ -81,8 +80,8 @@ Window {
     property string lyricsActiveStyle: "white"
     property string lyricsAlignment: "left"
     property int lyricsFontSize: 28
-    property bool volumeLimitEnabled: false
-    property int maxVolumePercent: 100
+    property string lyricsFont: displayFont
+    property int lyricsFontWeight: Font.Bold
 
     property bool volumePillVisible: false
     property bool showRemainingTime: true
@@ -132,18 +131,6 @@ Window {
         return "-" + formatTime(dur - pos)
     }
 
-    function karaokeLyricHtml(index, text) {
-        if (index !== activeLyricIndex) return LyricsText.escape(text)
-        const color = lyricsActiveStyle === "accent" ? accentHover : Qt.color("#FFFFFF")
-        return LyricsText.karaoke(parsedLyrics, index, activeLyricIndex, player.position, color, text)
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        z: 90
-        visible: root.volumePillVisible
-        onClicked: root.volumePillVisible = false
-    }
 
     Rectangle {
         id: cardShadow
@@ -442,231 +429,9 @@ Window {
                     }
                 }
 
-                RowLayout {
+                MiniPlayerControls {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 16
-                    spacing: 8
-
-                    Label {
-                        Layout.preferredWidth: 32
-                        text: root.formatTime(player.position)
-                        color: root.silverDim
-                        font.family: root.monoFont
-                        font.pixelSize: 10
-                        elide: Text.ElideNone
-                    }
-
-                    Item {
-                        id: compactSeekArea
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 16
-
-                        Rectangle {
-                            id: compactGrooveBar
-                            anchors.left: parent.left; anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            height: 2.5
-                            radius: 1.25
-                            color: window.surfaceElevated
-
-                            Rectangle {
-                                anchors.left: parent.left; anchors.top: parent.top; anchors.bottom: parent.bottom
-                                width: Math.round(compactGrooveBar.width * (player.duration > 0 ? Math.min(1.0, Math.max(0.0, player.position / player.duration)) : 0.0))
-                                radius: 1.25
-                                color: root.recordRed
-                            }
-
-                            Rectangle {
-                                anchors.verticalCenter: parent.verticalCenter
-                                x: Math.max(0, Math.min(compactGrooveBar.width - width, Math.round(compactGrooveBar.width * (player.duration > 0 ? Math.min(1.0, Math.max(0.0, player.position / player.duration)) : 0.0)) - width / 2))
-                                width: (compactSeekM.containsMouse || compactSeekM.pressed) ? 7 : 0
-                                height: width
-                                radius: width / 2
-                                color: "#FFFFFF"
-                                border.width: 1.5
-                                border.color: root.recordRed
-                                opacity: (compactSeekM.containsMouse || compactSeekM.pressed) ? 1.0 : 0.0
-
-                                Behavior on width { NumberAnimation { duration: 100 } }
-                                Behavior on height { NumberAnimation { duration: 100 } }
-                            }
-                        }
-
-                        MouseArea {
-                            id: compactSeekM
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            preventStealing: true
-
-                            function applySeek(mouseX) {
-                                if (player.duration > 0) {
-                                    const frac = Math.max(0.0, Math.min(1.0, mouseX / compactSeekArea.width))
-                                    player.seek(Math.floor(frac * player.duration))
-                                }
-                            }
-
-                            onPressed: mouse => applySeek(mouse.x)
-                            onPositionChanged: mouse => { if (pressed) applySeek(mouse.x) }
-                        }
-                    }
-
-                    Label {
-                        Layout.preferredWidth: 36
-                        text: root.showRemainingTime
-                            ? root.formatRemaining(player.position, player.duration)
-                            : root.formatTime(player.duration)
-                        color: root.silverDim
-                        font.family: root.monoFont
-                        font.pixelSize: 10
-                        elide: Text.ElideNone
-                        horizontalAlignment: Text.AlignRight
-
-                        MouseArea {
-                            id: compactTimeMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.showRemainingTime = !root.showRemainingTime
-                        }
-
-                        AppToolTip {
-                            targetItem: compactTimeMouse
-                            text: root.showRemainingTime ? qsTr("Switch to duration") : qsTr("Switch to remaining time")
-                            visibleTarget: compactTimeMouse.containsMouse
-                            delay: 350
-                        }
-                    }
-                }
-
-                Item {
-                    id: bottomControlsArea
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 36
-                    implicitHeight: 36
-                    z: 5
-
-                    Row {
-                        id: leftControls
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 4
-                        visible: !root.volumePillVisible
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            filled: false
-                            iconName: player.volume <= 0.001 ? "volume-x" : (player.volume < 0.5 ? "volume-1" : "volume-2")
-                            iconColor: root.textSecondary
-                            tooltipText: qsTr("Volume")
-                            onClicked: root.volumePillVisible = true
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            filled: false
-                            iconName: "heart"
-                            readonly property bool isFav: !!(player.currentTrack && root.isFavorite(player.currentTrack.filePath))
-                            iconColor: isFav ? root.recordRed : root.textSecondary
-                            tooltipText: isFav ? qsTr("Remove from favorites") : qsTr("Add to favorites")
-                            onClicked: if (player.currentTrack && player.currentTrack.filePath) root.toggleFavorite(player.currentTrack.filePath)
-                        }
-                    }
-
-                    // In-Place Volume Slider (replaces left group when open, never collides with Prev)
-                    MiniPlayerVolumePill {
-                        id: inlineVolPill
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        playerController: root.playerController
-                        surfacePill: root.surfacePill
-                        borderCard: root.borderCard
-                        accentColor: root.recordRed
-                        silverDim: root.silverDim
-                        volumeLimitEnabled: root.volumeLimitEnabled
-                        maxVolumePercent: root.maxVolumePercent
-                        visible: opacity > 0.001
-                        opacity: root.volumePillVisible ? 1.0 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }
-                    }
-
-                    Row {
-                        id: centerControls
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            iconName: "shuffle"
-                            accented: player.shuffleEnabled
-                            tooltipText: player.shuffleEnabled ? qsTr("Shuffle On") : qsTr("Shuffle Off")
-                            onClicked: root.toggleShuffle()
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 30
-                            iconName: "skip-back"
-                            tooltipText: qsTr("Previous")
-                            onClicked: root.playPrevious()
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 36
-                            iconName: (player.isPlaying || root.playerVisuallyPlaying) ? "pause" : "play"
-                            accented: true
-                            tooltipText: (player.isPlaying || root.playerVisuallyPlaying) ? qsTr("Pause") : qsTr("Play")
-                            onClicked: player.togglePlay()
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 30
-                            iconName: "skip-forward"
-                            tooltipText: qsTr("Next")
-                            onClicked: root.playNext()
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            iconName: root.repeatMode === 2 ? "repeat-1" : "repeat"
-                            accented: root.repeatMode > 0
-                            tooltipText: root.repeatMode === 2 ? qsTr("Repeat Track") : (root.repeatMode === 1 ? qsTr("Repeat All") : qsTr("Repeat Off"))
-                            onClicked: root.toggleRepeat()
-                        }
-                    }
-
-                    Row {
-                        id: rightControls
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 6
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            filled: false
-                            iconName: "quote"
-                            iconColor: root.mode === "lyrics" ? root.recordRed : root.textSecondary
-                            tooltipText: qsTr("Lyrics")
-                            onClicked: root.mode = (root.mode === "lyrics" ? "compact" : "lyrics")
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            filled: false
-                            iconName: "list"
-                            iconColor: root.mode === "queue" ? root.recordRed : root.textSecondary
-                            tooltipText: qsTr("Queue")
-                            onClicked: root.mode = (root.mode === "queue" ? "compact" : "queue")
-                        }
-                    }
+                    miniPlayer: root
                 }
             }
         }

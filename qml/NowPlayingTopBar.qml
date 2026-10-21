@@ -8,16 +8,16 @@ Item {
     height: 64
     z: 10
 
-    // The frosted round button every control on this bar uses.
+    // The round button every control on this bar uses. Its dark fill keeps it readable on a light backdrop.
     component GlassButton: PressDepthIconButton {
         boxSize: 38
         iconSize: 18
-        tint: root.appWindow.silverDim
+        tint: root.appWindow.textSecondary
         hoverTint: root.appWindow.textPrimary
-        backgroundColor: "#10FFFFFF"
-        hoverBackgroundColor: "#24FFFFFF"
-        borderColor: "#14FFFFFF"
-        hoverBorderColor: "#30FFFFFF"
+        backgroundColor: root.appWindow.overlayButton
+        hoverBackgroundColor: root.appWindow.overlayButtonHover
+        borderColor: Qt.alpha(root.appWindow.textPrimary, 0.1)
+        hoverBorderColor: Qt.alpha(root.appWindow.textPrimary, 0.25)
     }
 
     GlassButton {
@@ -34,7 +34,7 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 28
         anchors.verticalCenter: parent.verticalCenter
-        spacing: 12
+        spacing: 10
 
         Row {
             readonly property var lines: root.appWindow.parsedLyrics
@@ -134,6 +134,13 @@ Item {
             visible: !root.appWindow.phoneInDock
             tooltipText: qsTr("Track options")
             onClicked: root.appWindow.openTrackActionSheet(player.currentTrack)
+        }
+
+        GlassButton {
+            readonly property bool fullScreen: root.appWindow.visibility === Window.FullScreen
+            iconName: fullScreen ? "minimize-2" : "maximize-2"
+            tooltipText: fullScreen ? qsTr("Exit full screen") : qsTr("Full screen")
+            onClicked: root.appWindow.toggleFullScreen()
         }
 
         GlassButton {

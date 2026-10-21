@@ -75,7 +75,9 @@ Item {
             border.width: 1
             border.color: "#35FFFFFF"
             z: 20
-            opacity: root.artHoverActive ? 1.0 : 0.85
+            // Hidden with the playback controls until the pointer is over the cover.
+            opacity: root.artHoverActive ? 1.0 : 0.0
+            visible: opacity > 0.001
 
             Behavior on opacity {
                 NumberAnimation {
@@ -341,129 +343,10 @@ Item {
                     }
                 }
 
-                Item {
+                MiniPlayerControls {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 32
-
-                    Row {
-                        id: artLeftControls
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 4
-                        visible: !root.miniPlayer.volumePillVisible
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            filled: false
-                            iconName: root.miniPlayer.playerController.volume <= 0.001 ? "volume-x" : (root.miniPlayer.playerController.volume < 0.5 ? "volume-1" : "volume-2")
-                            iconColor: root.miniPlayer.textSecondary
-                            tooltipText: qsTr("Volume")
-                            onClicked: root.miniPlayer.volumePillVisible = true
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            filled: false
-                            iconName: "heart"
-                            readonly property bool isFav: !!(root.miniPlayer.playerController.currentTrack && root.miniPlayer.isFavorite(root.miniPlayer.playerController.currentTrack.filePath))
-                            iconColor: isFav ? root.miniPlayer.recordRed : root.miniPlayer.textSecondary
-                            tooltipText: isFav ? qsTr("Remove from favorites") : qsTr("Add to favorites")
-                            onClicked: if (root.miniPlayer.playerController.currentTrack && root.miniPlayer.playerController.currentTrack.filePath) root.miniPlayer.toggleFavorite(root.miniPlayer.playerController.currentTrack.filePath)
-                        }
-                    }
-
-                    // In-Place Volume Slider
-                    MiniPlayerVolumePill {
-                        id: artInlineVolPill
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        playerController: root.miniPlayer.playerController
-                        surfacePill: root.miniPlayer.surfacePill
-                        borderCard: root.miniPlayer.borderCard
-                        accentColor: root.miniPlayer.recordRed
-                        silverDim: root.miniPlayer.silverDim
-                        volumeLimitEnabled: root.miniPlayer.volumeLimitEnabled
-                        maxVolumePercent: root.miniPlayer.maxVolumePercent
-                        visible: opacity > 0.001
-                        opacity: (root.miniPlayer.mode === "art" && root.miniPlayer.volumePillVisible) ? 1.0 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }
-                    }
-
-                    Row {
-                        anchors.centerIn: parent
-                        spacing: 8
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            iconName: "shuffle"
-                            accented: root.miniPlayer.playerController.shuffleEnabled
-                            tooltipText: root.miniPlayer.playerController.shuffleEnabled ? qsTr("Shuffle On") : qsTr("Shuffle Off")
-                            onClicked: root.miniPlayer.toggleShuffle()
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 30
-                            iconName: "skip-back"
-                            tooltipText: qsTr("Previous")
-                            onClicked: root.miniPlayer.playPrevious()
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 36
-                            iconName: (root.miniPlayer.playerController.isPlaying || root.miniPlayer.playerVisuallyPlaying) ? "pause" : "play"
-                            accented: true
-                            tooltipText: (root.miniPlayer.playerController.isPlaying || root.miniPlayer.playerVisuallyPlaying) ? qsTr("Pause") : qsTr("Play")
-                            onClicked: root.miniPlayer.playerController.togglePlay()
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 30
-                            iconName: "skip-forward"
-                            tooltipText: qsTr("Next")
-                            onClicked: root.miniPlayer.playNext()
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            iconName: root.miniPlayer.repeatMode === 2 ? "repeat-1" : "repeat"
-                            accented: root.miniPlayer.repeatMode > 0
-                            tooltipText: root.miniPlayer.repeatMode === 2 ? qsTr("Repeat Track") : (root.miniPlayer.repeatMode === 1 ? qsTr("Repeat All") : qsTr("Repeat Off"))
-                            onClicked: root.miniPlayer.toggleRepeat()
-                        }
-                    }
-
-                    Row {
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 6
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            filled: false
-                            iconName: "quote"
-                            iconColor: root.miniPlayer.mode === "lyrics" ? root.miniPlayer.recordRed : root.miniPlayer.textSecondary
-                            tooltipText: qsTr("Lyrics")
-                            onClicked: root.miniPlayer.mode = "lyrics"
-                        }
-
-                        TransportButton {
-                            anchors.verticalCenter: parent.verticalCenter
-                            buttonSize: 28
-                            filled: false
-                            iconName: "list"
-                            iconColor: root.miniPlayer.mode === "queue" ? root.miniPlayer.recordRed : root.miniPlayer.textSecondary
-                            tooltipText: qsTr("Queue")
-                            onClicked: root.miniPlayer.mode = "queue"
-                        }
-                    }
+                    miniPlayer: root.miniPlayer
+                    showSeeker: false
                 }
             }
         }

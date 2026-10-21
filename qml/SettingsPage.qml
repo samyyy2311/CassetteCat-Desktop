@@ -401,6 +401,9 @@ Item {
                                 albumArtRadius: root.albumArtRadius
                                 nowPlayingBackdrop: root.nowPlayingBackdrop
                                 showRemainingTime: root.showRemainingTime
+                                appFont: root.appWindow.appFont
+                                fontFamilies: root.appWindow.fontFamilies
+                                onAppFontSelected: value => root.appWindow.appFont = value
                                 onAccentSelected: value => root.accentSelected(value)
                                 onCustomAccentSelected: value => root.customAccentSelected(value)
                                 onAlbumArtRadiusSelected: value => root.albumArtRadiusSelected(value)
@@ -482,6 +485,11 @@ Item {
                                 lyricsAlignment: root.lyricsAlignment
                                 lyricsActiveStyle: root.lyricsActiveStyle
                                 preferLocalLyrics: root.preferLocalLyrics
+                                lyricsFont: root.appWindow.lyricsFont
+                                lyricsFontWeight: root.appWindow.lyricsFontWeight
+                                fontFamilies: root.appWindow.fontFamilies
+                                onLyricsFontSelected: value => root.appWindow.lyricsFont = value
+                                onLyricsFontWeightSelected: value => root.appWindow.lyricsFontWeight = value
                                 onLyricsFontSizeSelected: value => root.lyricsFontSizeSelected(value)
                                 onLyricsAlignmentSelected: value => root.lyricsAlignmentSelected(value)
                                 onLyricsActiveStyleSelected: value => root.lyricsActiveStyleSelected(value)

@@ -118,7 +118,7 @@ ColumnLayout {
         SettingRow {
             iconName: "disc"
             title: qsTr("Audio Format Badges")
-            subtitle: qsTr("Show FLAC, MP3, and AAC badges on track rows")
+            subtitle: qsTr("Show FLAC, MP3, and AAC badges on track rows and in Now Playing")
 
             SettingSwitch {
                 checked: root.showFormatBadges

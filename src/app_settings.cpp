@@ -259,8 +259,11 @@ QVariantList SettingsController::languages() const {
     QVariantList languages;
     const QStringList files =
         QDir(QStringLiteral(":/i18n")).entryList({QStringLiteral("cassettecat_*.qm")}, QDir::Files);
+    const QStringList offered = QStringLiteral(CASSETTECAT_OFFERED_LANGUAGES).split(QLatin1Char(','));
     for (const QString &file : files) {
         const QString code = file.mid(QStringLiteral("cassettecat_").size()).chopped(QStringLiteral(".qm").size());
+        if (!offered.contains(code))
+            continue;
         const QLocale locale(code);
         // Qt names English with no country "American English"; the source language is just English here.
         QString name = code == QLatin1String("en") ? QStringLiteral("English") : locale.nativeLanguageName();

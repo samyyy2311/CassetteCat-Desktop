@@ -51,6 +51,10 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE QStringList availablePaths() const;
     /// Orders names for display: symbols and numbers first, then letters in any script, ignoring leading articles.
     Q_INVOKABLE int compareNames(const QString &left, const QString &right) const;
+    /// The letter, A to Z, a name is filed under in a sorted list, or "#" for numbers, symbols and other scripts.
+    Q_INVOKABLE static QString indexLetter(const QString &name);
+    /// The first visible row filed under each letter, for the current sort by title, artist or album; empty otherwise.
+    Q_INVOKABLE QVariantMap letterRows() const;
     /// The individual artists credited in \p artist, as the Library's Artists tab counts them.
     Q_INVOKABLE QStringList artistNames(const QString &artist) const;
     /// Appends a counted play with the current date and the time listened to the listening log.
@@ -60,6 +64,8 @@ class LibraryController final : public QAbstractListModel {
     bool appendPhoneListens(const QList<QJsonObject> &listens);
     /// Listens made on this computer after \p since, oldest first, as the phone stores them.
     QJsonArray listensSince(qint64 since) const;
+    /// Totals across the whole log, from both devices: plays, listening time, songs played and each file's plays.
+    Q_INVOKABLE QVariantMap listeningTotals() const;
     /// Returns the years that have logged plays, newest first.
     Q_INVOKABLE QVariantList listeningYears() const;
     /// Summarizes the logged plays of \p year, or of one \p month (0-11) of it: totals, top songs, artists,
@@ -101,7 +107,7 @@ class LibraryController final : public QAbstractListModel {
     void missingArtworkCounted(int count);
     void tracksChanged();
     void visibleTracksChanged();
-    /// Listens from the phone were added to the listening log.
+    /// The listening log changed: a listen ended here, the phone sent its own, or the log was cleared.
     void listensChanged();
 
   private:

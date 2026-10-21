@@ -11,14 +11,35 @@ Item {
     signal jump(int index)
 
     readonly property var letters: ["#"].concat("ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""))
+    // The letter whose first entry is the nearest one at or above the position, in either sort direction.
     readonly property string currentLetter: {
         let current = ""
+        let best = -1
         for (const letter of letters) {
-            if (rows[letter] !== undefined && rows[letter] <= position)
+            const row = rows[letter]
+            if (row !== undefined && row <= position && row > best) {
+                best = row
                 current = letter
+            }
         }
         return current
     }
+    readonly property var filledLetters: letters.filter(letter => rows[letter] !== undefined)
+
+    // Up and Down step through the letters that have entries, in list order, and jump straight there.
+    function step(by) {
+        const ordered = filledLetters.slice().sort((a, b) => rows[a] - rows[b])
+        const at = ordered.indexOf(currentLetter)
+        const next = ordered[Math.max(0, Math.min(ordered.length - 1, at + by))]
+        if (next !== undefined)
+            jump(rows[next])
+    }
+
+    activeFocusOnTab: visible
+    Accessible.role: Accessible.ScrollBar
+    Accessible.name: qsTr("Jump to letter")
+    Keys.onUpPressed: step(-1)
+    Keys.onDownPressed: step(1)
 
     implicitWidth: 18
     visible: Object.keys(rows).length > 1
@@ -32,6 +53,16 @@ Item {
                 return
             }
         }
+    }
+
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -2
+        radius: 6
+        color: "transparent"
+        border.width: 1
+        border.color: Qt.alpha(textPrimary, 0.35)
+        visible: root.activeFocus
     }
 
     Column {

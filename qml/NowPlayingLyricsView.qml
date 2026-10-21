@@ -49,7 +49,10 @@ Item {
         anchors.fill: parent
         items: root.shownLyrics
         lines: root.appWindow.parsedLyrics
-        activeItemIndex: root.appWindow.lyricsTapSyncing ? root.appWindow.lyricsTapStamps.length : root.appWindow.activeLyricDisplayIndex
+        // While tapping, the line being stamped is a line number; breaks between lines also take rows.
+        activeItemIndex: root.appWindow.lyricsTapSyncing
+            ? root.shownLyrics.findIndex(item => item.type === "line" && item.lineIndex === root.appWindow.lyricsTapStamps.length)
+            : root.appWindow.activeLyricDisplayIndex
         activeLineIndex: {
             if (root.appWindow.lyricsTapSyncing)
                 return root.appWindow.lyricsTapStamps.length

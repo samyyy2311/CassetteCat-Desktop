@@ -135,6 +135,26 @@ AppListView {
         height: isGap ? (gapActive ? Math.round(root.fontSize * 2.2) : 0) : lineText.contentHeight + Math.round(root.fontSize * 0.9)
         transform: Translate { id: trail }
 
+        // A line reached with Tab seeks there, or is stamped during Tap to Sync, as a click would.
+        activeFocusOnTab: !isGap
+        Accessible.role: Accessible.Button
+        Accessible.name: isGap ? "" : modelData.text
+        Accessible.ignored: isGap
+        Accessible.onPressAction: if (!isGap) root.lineClicked(modelData)
+        Keys.onReturnPressed: root.lineClicked(modelData)
+        Keys.onEnterPressed: root.lineClicked(modelData)
+        Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space
+        Keys.onSpacePressed: event => { if (!event.isAutoRepeat) root.lineClicked(modelData) }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: 8
+            color: "transparent"
+            border.width: 1
+            border.color: Qt.alpha(textPrimary, 0.35)
+            visible: entry.activeFocus
+        }
+
         Behavior on height {
             enabled: entry.isGap
             NumberAnimation { duration: UiConstants.durationOverlay; easing.type: UiConstants.easingStd }

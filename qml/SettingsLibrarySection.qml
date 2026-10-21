@@ -116,7 +116,7 @@ ColumnLayout {
         SettingDivider {}
 
         SettingRow {
-            iconName: "disc"
+            iconName: "file-audio"
             title: qsTr("Audio Format Badges")
             subtitle: qsTr("Show FLAC, MP3, and AAC badges on track rows and in Now Playing")
 

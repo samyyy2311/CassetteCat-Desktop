@@ -19,7 +19,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "refresh-cw"
+            iconName: "save"
             title: qsTr("Configuration Backup")
             subtitle: root.backupStatus.length > 0
                       ? root.backupStatus

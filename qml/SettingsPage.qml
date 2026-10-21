@@ -80,11 +80,11 @@ Item {
         { id: "playback", label: qsTr("Playback & Audio"), icon: "play" },
         { id: "shortcuts", label: qsTr("Keyboard Shortcuts"), icon: "keyboard" },
         { id: "desktop", label: qsTr("General & System"), icon: "settings" },
-        { id: "lyrics", label: qsTr("Lyrics"), icon: "mic" },
+        { id: "lyrics", label: qsTr("Lyrics"), icon: "quote" },
         { id: "scrobble", label: qsTr("Scrobbling"), icon: "audio-lines" },
         { id: "network", label: qsTr("Network & Services"), icon: "globe" },
         { id: "phone", label: qsTr("Phone Remote"), icon: "smartphone" },
-        { id: "data", label: qsTr("Backup & Diagnostics"), icon: "refresh-cw" },
+        { id: "data", label: qsTr("Backup & Diagnostics"), icon: "save" },
         { id: "credits", label: qsTr("Credits & Legal"), icon: "info" }
     ]
 

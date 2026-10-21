@@ -26,7 +26,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "quote"
+            iconName: "a-large-small"
             title: qsTr("Lyrics Font Size")
             subtitle: qsTr("Relative scale of lyric lines in synchronized view")
 
@@ -44,7 +44,7 @@ ColumnLayout {
         SettingDivider {}
 
         SettingRow {
-            iconName: "list"
+            iconName: "align-left"
             title: qsTr("Text Alignment")
             subtitle: qsTr("Horizontal alignment of synced lyric text")
 
@@ -61,7 +61,7 @@ ColumnLayout {
         SettingDivider {}
 
         SettingRow {
-            iconName: "pencil"
+            iconName: "palette"
             title: qsTr("Active Line Color")
             subtitle: qsTr("Highlight styling for currently playing lyrics")
 
@@ -91,7 +91,7 @@ ColumnLayout {
         SettingDivider {}
 
         SettingRow {
-            iconName: "quote"
+            iconName: "bold"
             title: qsTr("Lyrics Weight")
             subtitle: qsTr("How bold the lyric lines are")
 
@@ -112,7 +112,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "folder"
+            iconName: "file-text"
             title: qsTr("Prefer Local .lrc Files")
             subtitle: qsTr("Load sidecar .lrc files before querying online providers")
 

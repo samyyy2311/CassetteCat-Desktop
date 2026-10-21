@@ -41,7 +41,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "pencil"
+            iconName: "palette"
             title: qsTr("Accent Colour")
             subtitle: qsTr("Applied to active navigation, selected controls, playback, seek bars, and volume")
         }
@@ -79,7 +79,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "disc"
+            iconName: "square"
             title: qsTr("Album Art Corners")
             subtitle: qsTr("Corner roundness for artwork thumbnails and cards")
 
@@ -97,7 +97,7 @@ ColumnLayout {
         SettingDivider {}
 
         SettingRow {
-            iconName: "maximize-2"
+            iconName: "image"
             title: qsTr("Now Playing Backdrop")
             subtitle: qsTr("Moving slowly shifts the cover's colors, and uses more graphics memory")
 

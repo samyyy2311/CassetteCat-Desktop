@@ -54,7 +54,7 @@ ColumnLayout {
             // A list that grows with every translation, so always a menu.
             forceMenu: true
             property string language: appSettings.value("ui/language", "")
-            iconName: "globe"
+            iconName: "languages"
             title: qsTr("Language")
             subtitle: qsTr("The language CassetteCat's menus and messages use")
             options: [{ value: "", label: qsTr("System Default") }].concat(
@@ -71,7 +71,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "shield"
+            iconName: "monitor-down"
             title: qsTr("Close to System Tray")
             subtitle: qsTr("Keep CassetteCat running in the background when the window is closed")
 
@@ -101,7 +101,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "disc"
+            iconName: "bell"
             title: qsTr("Now-Playing Notifications")
             subtitle: qsTr("Show native system notification when the track changes")
 

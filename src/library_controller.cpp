@@ -296,7 +296,7 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
             {"busiestMonth", busiestMonth}};
 }
 
-// Lower case without accents or punctuation, so "Don't Stop" finds "dont stop". Apostrophes join the word they're in.
+// Case-, accent- and punctuation-insensitive; apostrophes are dropped so "don't" matches "dont".
 QString foldedForSearch(const QString &text) {
     const QString decomposed = text.normalized(QString::NormalizationForm_KD).toCaseFolded();
     QString folded;
@@ -312,8 +312,7 @@ QString foldedForSearch(const QString &text) {
     return folded.trimmed();
 }
 
-// The sung lines of plain or LRC lyrics, without their times or tags such as [ar:Artist]. A repeated chorus counts
-// once.
+// Lyric lines without LRC timestamps or tags, duplicates removed.
 QStringList sungLines(const QString &text) {
     static const QRegularExpression tags(QStringLiteral(R"(\[[^\]]*\]|<[^>]*>)"));
     QStringList lines;
@@ -331,7 +330,7 @@ LibraryController::LibraryController(QObject *parent)
     : QAbstractListModel(parent), m_folderWatcher(this), m_watchDebounce(this), m_scanProcess(this) {
     m_watchDebounce.setSingleShot(true);
     m_watchDebounce.setInterval(750);
-    // The lyrics read for search point at rows of the track list, so a new list needs them read again.
+    // m_lyrics holds rows of m_tracks.
     connect(this, &LibraryController::tracksChanged, this, [this] { m_lyricsRead = false; });
     connect(&m_folderWatcher, &QFileSystemWatcher::directoryChanged, this, [this] { m_watchDebounce.start(); });
     connect(&m_watchDebounce, &QTimer::timeout, this, &LibraryController::rescanFolder);
@@ -1333,8 +1332,7 @@ QVariantList LibraryController::lyricMatches(const QString &query) {
     if (!m_lyricsRead)
         readLyrics();
 
-    // Words are matched from their start, so a word still being typed counts. The words in order rank above the same
-    // words anywhere in the line.
+    // Prefix match per word; the words in order score higher.
     const QStringList words = folded.split(' ');
     struct Hit {
         int score;

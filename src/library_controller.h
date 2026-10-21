@@ -97,8 +97,7 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE void setLibraryFilter(const QString &query, const QString &filter, const QVariantMap &favorites,
                                       const QString &sortMetric, bool ascending, const QVariantList &excludedFolders,
                                       bool ignoreShortClips);
-    /// Songs with a lyric line holding every word of \p query, best first, as {track, line}. Lyrics are read on the
-    /// first search and let go once \p query is empty.
+    /// Lyric lines matching every word of \p query, as {track, line}, best first. An empty query frees the index.
     Q_INVOKABLE QVariantList lyricMatches(const QString &query);
     Q_INVOKABLE void setSearchFilter(const QString &query, const QString &format, const QVariantList &excludedFolders,
                                      bool ignoreShortClips);

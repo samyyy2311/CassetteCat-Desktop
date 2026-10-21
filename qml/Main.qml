@@ -360,7 +360,7 @@ ApplicationWindow {
         }
     }
 
-    // Waits for a burst of library changes, such as a scan or a tag edit, to settle before looking for lyrics again.
+    // Debounce scans and tag edits before refetching lyrics.
     Timer {
         id: libraryLyricsTimer
         interval: 3000

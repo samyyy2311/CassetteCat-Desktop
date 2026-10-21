@@ -14,10 +14,10 @@
 namespace lyrics {
 namespace {
 
-// A song LRCLIB had nothing for is asked about again after this, in case someone has added it since.
+// Misses are retried after this, since LRCLIB keeps growing.
 constexpr qint64 missingRetrySeconds = 30LL * 24 * 60 * 60;
 
-// Kept with the app's data rather than its cache, as lyrics written in the app exist nowhere else.
+// Not CacheLocation: user-entered lyrics have no other copy.
 QString folder() {
     return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/lyrics";
 }

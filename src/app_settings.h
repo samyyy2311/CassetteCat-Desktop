@@ -16,7 +16,7 @@ class SettingsController final : public QObject {
     static SettingsController *instance();
     static QVariant globalValue(const QString &key, const QVariant &defaultValue = QVariant());
     static void setGlobalValue(const QString &key, const QVariant &value);
-    /// Removes every key under \p group and returns them, named without the group.
+    /// Removes \p group and returns its keys and values.
     static QVariantMap takeGlobalGroup(const QString &group);
     static bool selfCheck();
 

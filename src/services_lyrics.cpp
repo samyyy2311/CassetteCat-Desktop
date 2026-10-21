@@ -83,8 +83,7 @@ void ServicesController::lookUpLyrics(const QVariantMap &song,
         reply->deleteLater();
         if (!onlineEnabled() || !serviceEnabled("lrclib"))
             return done(LyricsLookup::Failed, {});
-        // LRCLIB answers 404 without an exact match, and for some songs 503 every time an album is given; either
-        // leaves a search to try.
+        // No exact match is a 404, or a 503 for some album queries. Fall back to search.
         const bool noMatch = reply->error() == QNetworkReply::ContentNotFoundError ||
                              reply->error() == QNetworkReply::ServiceUnavailableError;
         if (reply->error() != QNetworkReply::NoError && !noMatch)
@@ -171,7 +170,7 @@ void ServicesController::fetchNextLibraryLyrics() {
         const QString key = lyrics::key(song.value("title").toString(), song.value("artist").toString(),
                                         song.value("album").toString());
         if (result == LyricsLookup::Failed) {
-            // LRCLIB is busy now and then: ask again in a minute, and move on if this song keeps failing.
+            // Transient failure: retry in a minute, skip the song after three.
             if (++m_libraryLyricsFailures < 3) {
                 QTimer::singleShot(60'000, this, &ServicesController::fetchNextLibraryLyrics);
                 return;
@@ -183,10 +182,10 @@ void ServicesController::fetchNextLibraryLyrics() {
             lyrics::markMissing(key);
         }
         m_libraryLyricsFailures = 0;
-        // The queue may have been built again while this song was being looked up.
+        // The queue may have been rebuilt meanwhile.
         m_libraryLyricsQueue.removeOne(song);
         emit libraryLyricsChanged();
-        // LRCLIB is run by volunteers, so a library's worth of requests goes one at a time with a pause between.
+        // Throttle: one request at a time, with a short gap.
         QTimer::singleShot(300, this, &ServicesController::fetchNextLibraryLyrics);
     });
 }

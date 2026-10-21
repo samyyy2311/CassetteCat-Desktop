@@ -27,7 +27,7 @@ class ServicesController : public QObject {
     Q_OBJECT
     /// Why ListenBrainz last refused a listen, in its own words; empty once one goes through.
     Q_PROPERTY(QString listenBrainzProblem READ listenBrainzProblem NOTIFY listenBrainzProblemChanged)
-    /// Fetching lyrics for the whole library: songs that have lyrics, of all of them, and those still to look up.
+    /// Library-wide lyrics fetch progress.
     Q_PROPERTY(int libraryLyricsFound READ libraryLyricsFound NOTIFY libraryLyricsChanged)
     Q_PROPERTY(int libraryLyricsTotal READ libraryLyricsTotal NOTIFY libraryLyricsChanged)
     Q_PROPERTY(int libraryLyricsLeft READ libraryLyricsLeft NOTIFY libraryLyricsChanged)
@@ -43,7 +43,7 @@ class ServicesController : public QObject {
     Q_INVOKABLE void fetchLyrics(const QString &title, const QString &artist, const QString &album,
                                  int durationSeconds);
     Q_INVOKABLE void searchLyrics(const QString &title, const QString &artist);
-    /// Fetches lyrics, one song at a time, for each of \p tracks that has none and wasn't recently found to have none.
+    /// Fetches lyrics one at a time for \p tracks that have none and no recent miss.
     Q_INVOKABLE void fetchLibraryLyrics(const QVariantList &tracks);
     Q_INVOKABLE void stopLibraryLyrics();
     int libraryLyricsFound() const;
@@ -115,7 +115,7 @@ class ServicesController : public QObject {
   private:
     static QStringList releaseNotesFrom(const QString &changelog, const QString &version);
     enum class LyricsLookup { Found, Missing, Failed };
-    /// Asks LRCLIB for a song's lyrics, by an exact match and then by a search, preferring synced ones.
+    /// Exact match first, then search; synced lyrics preferred.
     void lookUpLyrics(const QVariantMap &song, std::function<void(LyricsLookup, const QString &)> done);
     void fetchNextLibraryLyrics();
     static QString canonicalArtistName(const QString &artist);

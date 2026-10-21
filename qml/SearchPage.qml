@@ -59,7 +59,7 @@ Item {
     }
     readonly property var matchingArtists: matches((cachedGroups && cachedGroups.artists) || [])
     readonly property var matchingAlbums: matches((cachedGroups && cachedGroups.albums) || [])
-    // Lyrics know nothing of audio formats, so they're left out while one is picked.
+    // Lyric matches aren't format-filtered.
     readonly property var lyricHits: appWindow.activeFormatFilter === "ALL" ? libraryModel.lyricMatches(appWindow.searchQuery) : []
 
     function refreshCatalog() {
@@ -301,7 +301,7 @@ Item {
 
             // Match count when filtering
             Label {
-                // Counts title, artist and album matches only, so it's hidden when only lyrics matched.
+                // Title, artist and album matches only.
                 visible: root.filtering && (root.libraryModel.visibleTrackCount > 0 || root.lyricHits.length === 0)
                 text: qsTr("%n track(s) found", "", root.libraryModel.visibleTrackCount)
                 color: silverDim
@@ -473,7 +473,7 @@ Item {
 
                         Label {
                             Layout.fillWidth: true
-                            // Lined up with the song's title, past the row's cover.
+                            // Align with SongRow's title (14 + 40 + 12).
                             Layout.leftMargin: 66
                             Layout.rightMargin: 16
                             text: "“" + modelData.line + "”"

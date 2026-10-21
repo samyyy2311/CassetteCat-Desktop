@@ -282,7 +282,7 @@ Item {
                     }
                 }
 
-                Column {
+                AppFlickable {
                     id: navigation
                     visible: !parent.compact
                     anchors.top: parent.top
@@ -291,17 +291,25 @@ Item {
                     anchors.topMargin: 4
                     anchors.bottomMargin: 8
                     width: 184
-                    spacing: 6
+                    contentHeight: navigationColumn.implicitHeight
+                    clip: true
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
-                    Repeater {
-                        model: root.categories
+                    Column {
+                        id: navigationColumn
+                        width: navigation.width
+                        spacing: 6
 
-                        delegate: SettingsNavigationItem {
-                            width: navigation.width
-                            label: modelData.label
-                            iconName: modelData.icon
-                            selected: root.currentSection === modelData.id
-                            onClicked: root.chooseSection(modelData.id)
+                        Repeater {
+                            model: root.categories
+
+                            delegate: SettingsNavigationItem {
+                                width: navigationColumn.width
+                                label: modelData.label
+                                iconName: modelData.icon
+                                selected: root.currentSection === modelData.id
+                                onClicked: root.chooseSection(modelData.id)
+                            }
                         }
                     }
                 }

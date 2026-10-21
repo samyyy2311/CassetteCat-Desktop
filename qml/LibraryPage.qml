@@ -720,48 +720,109 @@ Item {
         }
     }
 
-    Dialog {
+    AppDialog {
         id: createPlaylistDialog
-        title: qsTr("New Playlist")
-        modal: true
-        standardButtons: Dialog.Ok | Dialog.Cancel
-        onAccepted: {
-            const name = newPlaylistInput.text.trim() || qsTr("Playlist %1").arg((root.appWindow.playlists || []).length + 1)
-            root.appWindow.createPlaylist(name, [])
-            newPlaylistInput.text = ""
+        maxWidth: 400
+        property bool smart: false
+        property var rules: []
+        readonly property bool canCreate: !smart || rules.length > 0
+        // Rules in the same group rule each other out, so picking one replaces the other.
+        readonly property var smartRules: [
+            { id: "RECENTLY_ADDED", label: qsTr("Added in the last 30 days") },
+            { id: "FAVORITES_ONLY", label: qsTr("Favorites only") },
+            { id: "MIN_DURATION", label: qsTr("Longer than 5 minutes"), group: "length" },
+            { id: "MAX_DURATION", label: qsTr("Shorter than 3 minutes"), group: "length" },
+            { id: "DECADE_90S", label: qsTr("1990s"), group: "decade" },
+            { id: "DECADE_2000S", label: qsTr("2000s"), group: "decade" },
+            { id: "DECADE_2010S", label: qsTr("2010s"), group: "decade" },
+            { id: "DECADE_2020S", label: qsTr("2020s"), group: "decade" }
+        ]
+
+        function toggleRule(rule) {
+            if (rules.includes(rule.id)) {
+                rules = rules.filter(id => id !== rule.id)
+                return
+            }
+            const sameGroup = smartRules.filter(other => rule.group && other.group === rule.group).map(other => other.id)
+            rules = rules.filter(id => !sameGroup.includes(id)).concat([rule.id])
+        }
+
+        function create() {
+            if (!canCreate) return
+            const typed = newPlaylistInput.text.trim()
+            if (smart) {
+                const firstRule = smartRules.find(rule => rule.id === rules[0])
+                root.appWindow.createSmartPlaylist(typed || firstRule.label, rules)
+            } else {
+                root.appWindow.createPlaylist(typed || qsTr("Playlist %1").arg((root.appWindow.playlists || []).length + 1), [])
+            }
+            close()
         }
         onOpened: {
+            smart = false
+            rules = []
             newPlaylistInput.text = ""
             newPlaylistInput.forceActiveFocus()
         }
 
         contentItem: ColumnLayout {
-            spacing: 12
-            Label {
-                text: qsTr("Enter a name for your new playlist:")
-                color: root.appWindow.textSecondary
-                font.family: root.appWindow.bodyFont
-                font.pixelSize: 12
-            }
-            Rectangle {
-                Layout.preferredWidth: 280
-                Layout.preferredHeight: 34
-                radius: 8
-                color: root.appWindow.surfaceCard
-                border.width: 1
-                border.color: newPlaylistInput.activeFocus ? root.appWindow.recordRed : root.appWindow.borderSubtle
+            spacing: 14
 
-                TextInput {
-                    id: newPlaylistInput
-                    anchors.fill: parent
-                    anchors.leftMargin: 10
-                    anchors.rightMargin: 10
-                    verticalAlignment: Text.AlignVCenter
-                    color: root.appWindow.textPrimary
-                    font.family: root.appWindow.displayFont
-                    font.pixelSize: 13
-                    selectByMouse: true
-                    onAccepted: createPlaylistDialog.accept()
+            DialogHeader {
+                iconName: "list-music"
+                title: qsTr("New Playlist")
+                subtitle: createPlaylistDialog.smart
+                    ? qsTr("Songs that match every rule, up to 100")
+                    : qsTr("Songs you add yourself")
+            }
+
+            SettingSegmentedControl {
+                options: [{ value: "standard", label: qsTr("Standard") }, { value: "smart", label: qsTr("Smart") }]
+                selectedValue: createPlaylistDialog.smart ? "smart" : "standard"
+                onOptionSelected: value => createPlaylistDialog.smart = value === "smart"
+            }
+
+            RefineTextInput {
+                id: newPlaylistInput
+                Layout.fillWidth: true
+                placeholder: qsTr("Playlist name")
+                onSubmitted: createPlaylistDialog.create()
+            }
+
+            Flow {
+                visible: createPlaylistDialog.smart
+                Layout.fillWidth: true
+                spacing: 6
+
+                Repeater {
+                    model: createPlaylistDialog.smartRules
+
+                    FilterChip {
+                        required property var modelData
+                        text: modelData.label
+                        selected: createPlaylistDialog.rules.includes(modelData.id)
+                        onClicked: createPlaylistDialog.toggleRule(modelData)
+                    }
+                }
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.topMargin: 8
+                spacing: 12
+
+                Item { Layout.fillWidth: true }
+
+                SettingButton {
+                    text: qsTr("Cancel")
+                    onClicked: createPlaylistDialog.close()
+                }
+
+                SettingButton {
+                    text: qsTr("Create")
+                    primary: true
+                    enabled: createPlaylistDialog.canCreate
+                    onClicked: createPlaylistDialog.create()
                 }
             }
         }

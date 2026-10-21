@@ -253,6 +253,8 @@ ApplicationWindow {
     }
 
     function setSidebarPages(order, hidden) {
+        if (!Array.isArray(order)) order = []
+        if (!Array.isArray(hidden)) hidden = []
         sidebarOrder = order.filter(page => sidebarPages.includes(page))
             .concat(sidebarPages.filter(page => !order.includes(page)))
         sidebarHidden = hidden.filter(page => page !== "library" && sidebarPages.includes(page))
@@ -689,7 +691,11 @@ ApplicationWindow {
         showFormatBadges = appSettings.value("ui/showFormatBadges", true)
         ignoreShortClips = appSettings.value("library/ignoreShortClips", false)
         defaultLaunchPage = appSettings.value("ui/defaultLaunchPage", "last")
-        setSidebarPages(JSON.parse(appSettings.value("ui/sidebarOrder", "[]")), JSON.parse(appSettings.value("ui/sidebarHidden", "[]")))
+        try {
+            setSidebarPages(JSON.parse(appSettings.value("ui/sidebarOrder", "[]")), JSON.parse(appSettings.value("ui/sidebarHidden", "[]")))
+        } catch (e) {
+            setSidebarPages([], [])
+        }
         settingsSection = appSettings.value("ui/settingsSection", "library")
         try {
             const exc = appSettings.value("library/excludedFolders", [])

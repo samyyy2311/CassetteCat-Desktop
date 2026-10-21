@@ -110,7 +110,7 @@ void SettingsController::setGlobalValue(const QString &key, const QVariant &valu
 }
 
 QVariantMap SettingsController::globalGroup(const QString &group) {
-    const auto read = [&group](QSettings &settings) {
+    const auto collect = [&group](QSettings &settings) {
         QVariantMap values;
         settings.beginGroup(group);
         for (const QString &key : settings.childKeys())
@@ -120,10 +120,10 @@ QVariantMap SettingsController::globalGroup(const QString &group) {
     };
     if (s_instance) {
         QMutexLocker locker(&s_instance->m_mutex);
-        return read(s_instance->m_settings);
+        return collect(s_instance->m_settings);
     }
     QSettings settings(settingsFilePath(), QSettings::IniFormat);
-    return read(settings);
+    return collect(settings);
 }
 
 void SettingsController::removeGlobalGroup(const QString &group) {

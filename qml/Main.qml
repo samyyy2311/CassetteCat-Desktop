@@ -858,7 +858,8 @@ ApplicationWindow {
     function restorePlaylists() {
         try {
             const saved = JSON.parse(appSettings.value("library/playlists", "[]") || "[]")
-            playlists = Array.isArray(saved) ? saved.filter(item => item && item.id && item.name && Array.isArray(item.trackPaths)) : []
+            playlists = Array.isArray(saved) ? saved.filter(item => item && item.id && item.name
+                                                               && (Array.isArray(item.trackPaths) || Array.isArray(item.rules))) : []
         } catch (e) {
             playlists = []
         }
@@ -871,6 +872,9 @@ ApplicationWindow {
             const builtIn = ["Favorites", "Most Played", "Recently Added", "Never Played"].includes(playlist)
             const pl = playlists.find(p => p.id === playlist) || (builtIn ? null : playlists.find(p => p.name === playlist))
             playlist = pl || { name: playlist }
+        }
+        if (Array.isArray(playlist.rules)) {
+            return smartPlaylistTracks(playlist.rules)
         }
         if (Array.isArray(playlist.trackPaths)) {
             return tracksForPaths(playlist.trackPaths).filter(track => !!track)
@@ -890,8 +894,28 @@ ApplicationWindow {
         return []
     }
 
+    // The rules match the Android app's smart playlists: every rule must hold, and the list stops at 100 songs.
+    function smartPlaylistTracks(rules) {
+        const monthAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
+        const decade = start => track => track.year >= start && track.year < start + 10
+        const matches = {
+            RECENTLY_ADDED: track => (seenAt[track.filePath] || 0) >= monthAgo,
+            FAVORITES_ONLY: track => isFavorite(track.filePath),
+            MIN_DURATION: track => track.durationSeconds >= 300,
+            MAX_DURATION: track => track.durationSeconds > 0 && track.durationSeconds <= 180,
+            DECADE_90S: decade(1990),
+            DECADE_2000S: decade(2000),
+            DECADE_2010S: decade(2010),
+            DECADE_2020S: track => track.year >= 2020
+        }
+        // A rule this version doesn't know, from a newer app or a backup, is left out rather than breaking the list.
+        const known = rules.filter(rule => matches[rule] !== undefined)
+        return availableTracks().filter(track => known.every(rule => matches[rule](track))).slice(0, 100)
+    }
+
     function receivePlaylist(name, trackPaths, sentCount) {
-        const existing = playlists.find(playlist => playlist.name.toLowerCase() === name.toLowerCase())
+        // A smart playlist's songs come from its rules, so a copy from the phone never replaces one.
+        const existing = playlists.find(playlist => !playlist.rules && playlist.name.toLowerCase() === name.toLowerCase())
         if (existing && (trackPaths.length || sentCount === 0)) playlists = playlists.map(playlist => playlist === existing ? Object.assign({}, playlist, { trackPaths: trackPaths }) : playlist)
         else if (!existing) playlists = playlists.concat([{ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name, trackPaths: trackPaths }])
     }
@@ -902,6 +926,10 @@ ApplicationWindow {
         const trackPaths = [...new Set((tracks || []).map(track => track.filePath).filter(path => !!path))]
         playlists = playlists.concat([{ id: Date.now().toString(36), name: title, trackPaths: trackPaths }])
         return true
+    }
+
+    function createSmartPlaylist(name, rules) {
+        playlists = playlists.concat([{ id: Date.now().toString(36), name: name, rules: rules }])
     }
 
     function clearListeningRecord() {
@@ -1532,7 +1560,6 @@ ApplicationWindow {
     }
     onPlaylistsChanged: {
         if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
-        phoneRemote.playlists = playlists
     }
     onPlayCountsChanged: {
         if (settingsInitialized) appSettings.setValue("library/playCounts", JSON.stringify(playCounts))
@@ -5466,6 +5493,20 @@ ApplicationWindow {
         appWindow: window
         onAddFolderRequested: folderDialog.open()
         onFinished: appSettings.setValue("ui/setupDone", true)
+    }
+
+    // The phone gets a smart playlist as its current songs, kept up to date as the library and likes change.
+    Binding {
+        target: phoneRemote
+        property: "playlists"
+        value: {
+            window.libraryRevision
+            window.favoriteTracks
+            window.seenAt
+            return window.playlists.map(playlist => Array.isArray(playlist.rules)
+                ? Object.assign({}, playlist, { trackPaths: window.smartPlaylistTracks(playlist.rules).map(track => track.filePath) })
+                : playlist)
+        }
     }
 
     PhoneRemoteSheet {

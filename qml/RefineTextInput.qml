@@ -20,6 +20,8 @@ Rectangle {
     border.color: input.activeFocus ? recordRed : borderSubtle
     Accessible.name: root.accessibleName
     Accessible.role: Accessible.EditableText
+    // Focus given to the field goes to the text inside it.
+    onActiveFocusChanged: if (activeFocus) input.forceActiveFocus()
 
     TextInput {
         id: input

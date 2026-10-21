@@ -27,6 +27,8 @@ Item {
 
     readonly property var allPlaylists: {
         root.appWindow.libraryRevision
+        root.appWindow.favoriteTracks
+        root.appWindow.seenAt
         const smart = [
             {
                 id: "smart_favorites",
@@ -60,7 +62,7 @@ Item {
         const custom = (root.appWindow.playlists || []).map(p => ({
             id: p.id,
             name: p.name,
-            isSmart: false,
+            isSmart: Array.isArray(p.rules),
             trackPaths: p.trackPaths,
             tracks: root.appWindow.playlistTracks(p)
         }))
@@ -101,8 +103,7 @@ Item {
                 track: modelData.tracks.length ? modelData.tracks[0] : ({})
                 onClicked: {
                     const hero = modelData.tracks.length ? modelData.tracks[0] : ({})
-                    root.appWindow.openCatalogDetail("playlist", modelData.name, hero,
-                                                     modelData.isSmart ? modelData.key : modelData.id)
+                    root.appWindow.openCatalogDetail("playlist", modelData.name, hero, modelData.key || modelData.id)
                 }
 
                 DropArea {
@@ -156,8 +157,7 @@ Item {
                 onClicked: {
                     const hero = playlistRow.modelData.tracks.length ? playlistRow.modelData.tracks[0] : ({})
                     root.appWindow.openCatalogDetail("playlist", playlistRow.modelData.name, hero,
-                                                     playlistRow.modelData.isSmart ? playlistRow.modelData.key
-                                                                                   : playlistRow.modelData.id)
+                                                     playlistRow.modelData.key || playlistRow.modelData.id)
                 }
             }
 
@@ -225,7 +225,7 @@ Item {
                 }
 
                 PressDepthIconButton {
-                    visible: !playlistRow.modelData.isSmart
+                    visible: !playlistRow.modelData.key
                     boxSize: 30
                     iconSize: 14
                     iconName: "x"

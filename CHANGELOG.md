@@ -4,6 +4,34 @@ All notable changes to CassetteCat Desktop are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.1] - 2026-10-22
+
+### Added
+* Search finds songs by a line from their lyrics. Turn on Find Songs by Their Lyrics in Settings > Lyrics to download lyrics for your library in the background, so search has them to look through.
+* Smart playlists that fill themselves from rules you pick, the same rules as on the phone.
+* Choose which pages the sidebar shows and in what order, in Settings > General & System > Sidebar.
+* Pick the app's language in Settings > General & System. It switches at once, without a restart.
+* An A to Z bar beside long lists in the Library jumps to a letter.
+* Full screen Now Playing, also on F11, and a Moving backdrop that slowly drifts the cover's colours.
+* Choose the app font, and a font and weight for lyrics.
+* Hold or tap Alt to show the letter that opens each page.
+
+### Changed
+* Synced lyrics light up word by word and follow the song more smoothly.
+* Settings is grouped more clearly: Appearance is now Look & Feel, and Playback & Audio is split into Sound and Playback. Each setting has an icon that matches what it does.
+* Pages are rebuilt each time you open them, and covers use less memory, so the app uses noticeably less RAM.
+* A thin loading bar shows while a page or its covers load, instead of empty covers flashing up.
+* Previous restarts the song after its first 3 seconds, as on the phone.
+* The volume limit turns all playback down instead of capping the slider.
+
+### Fixed
+* Bold text across the app now looks bold.
+* Some songs never got lyrics from LRCLIB; they now do.
+* A Jellyfin or Subsonic search is kept when you come back to its page.
+* The list of Settings pages scrolls when the window is short, so the last pages are no longer cut off.
+
+---
+
 ## [1.0.0] - 2026-10-15
 
 ### Added

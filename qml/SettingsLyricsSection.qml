@@ -134,13 +134,13 @@ ColumnLayout {
             title: qsTr("Find Songs by Their Lyrics")
             subtitle: {
                 if (!root.libraryLyricsEnabled)
-                    return qsTr("Downloads lyrics for your whole library from LRCLIB, so search can find a song by a line from it")
+                    return qsTr("Downloads lyrics for your songs, so you can search by a line")
                 if (!root.lrclibAvailable)
-                    return qsTr("Paused until LrcLib Lyrics is on and Offline Mode is off")
+                    return qsTr("Paused while LrcLib Lyrics is off or Offline Mode is on")
                 if (services.libraryLyricsTotal === 0)
                     return qsTr("Looking up lyrics…")
                 if (services.libraryLyricsLeft > 0)
-                    return qsTr("Looking up lyrics, %n song(s) to go", "", services.libraryLyricsLeft)
+                    return qsTr("%n song(s) left to check", "", services.libraryLyricsLeft)
                 return qsTr("%1 of %2 songs have lyrics").arg(services.libraryLyricsFound).arg(services.libraryLyricsTotal)
             }
 

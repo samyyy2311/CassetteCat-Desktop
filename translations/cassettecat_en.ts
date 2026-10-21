@@ -3970,23 +3970,23 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Downloads lyrics for your whole library from LRCLIB, so search can find a song by a line from it</source>
+        <source>Downloads lyrics for your songs, so you can search by a line</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Paused until LrcLib Lyrics is on and Offline Mode is off</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Looking up lyrics…</source>
+        <source>Paused while LrcLib Lyrics is off or Offline Mode is on</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
-        <source>Looking up lyrics, %n song(s) to go</source>
+        <source>%n song(s) left to check</source>
         <translation type="unfinished">
             <numerusform></numerusform>
             <numerusform></numerusform>
         </translation>
+    </message>
+    <message>
+        <source>Looking up lyrics…</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>%1 of %2 songs have lyrics</source>

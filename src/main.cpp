@@ -426,6 +426,10 @@ int main(int argc, char *argv[]) {
     QSurfaceFormat surfaceFormat = QSurfaceFormat::defaultFormat();
     surfaceFormat.setSwapInterval(1);
     QSurfaceFormat::setDefaultFormat(surfaceFormat);
+    // Textures drop their CPU copy of the image once it is on the GPU. The image cache still holds what it
+    // needs to rebuild them, so covers come back intact after the window returns from the tray.
+    if (!qEnvironmentVariableIsSet("QSG_TRANSIENT_IMAGES"))
+        qputenv("QSG_TRANSIENT_IMAGES", "1");
 
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);

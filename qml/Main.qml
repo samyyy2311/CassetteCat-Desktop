@@ -72,6 +72,7 @@ ApplicationWindow {
     // A font chosen in Settings replaces both the display and the body font; empty keeps the bundled ones.
     property string appFont: ""
     property string lyricsFont: ""
+    property bool libraryLyricsEnabled: false
     property int lyricsFontWeight: Font.Bold
     readonly property var fontFamilies: Qt.fontFamilies().filter(family => !family.startsWith("@"))
     readonly property string displayFont: appFont || ((typeof displayFontFamily !== "undefined" && displayFontFamily.length > 0) ? displayFontFamily : "Space Grotesk")
@@ -355,6 +356,19 @@ ApplicationWindow {
             refreshLibraryState()
             reconcileTrackSnapshots()
             reconcileLibraryMaps()
+            libraryLyricsTimer.restart()
+        }
+    }
+
+    // Waits for a burst of library changes, such as a scan or a tag edit, to settle before looking for lyrics again.
+    Timer {
+        id: libraryLyricsTimer
+        interval: 3000
+        onTriggered: {
+            if (window.libraryLyricsEnabled && window.svcLrclib && !window.offlineBlackout)
+                services.fetchLibraryLyrics(library.playbackTracks())
+            else
+                services.stopLibraryLyrics()
         }
     }
 
@@ -651,6 +665,7 @@ ApplicationWindow {
         lyricsFontSize = appSettings.value("lyrics/fontSize", 28)
         appFont = appSettings.value("ui/font", "")
         lyricsFont = appSettings.value("lyrics/font", "")
+        libraryLyricsEnabled = appSettings.value("lyrics/fetchLibrary", false)
         lyricsFontWeight = appSettings.value("lyrics/fontWeight", Font.Bold)
         accentName = appSettings.value("ui/accentName", "recordRed")
         customAccentColor = appSettings.value("ui/customAccentColor", accentPresets[0].base)
@@ -1421,6 +1436,7 @@ ApplicationWindow {
         saveSetting("network/offlineBlackout", offlineBlackout)
         streaming.setBlackoutEnabled(offlineBlackout)
         services.setBlackoutEnabled(offlineBlackout)
+        libraryLyricsTimer.restart()
         const path = player.currentTrack ? player.currentTrack.filePath || "" : ""
         if (offlineBlackout && (/^(subsonic|jellyfin):/.test(path) || /^https?:/i.test(path))) player.stop()
     }
@@ -1450,6 +1466,10 @@ ApplicationWindow {
     onLyricsFontSizeChanged: saveSetting("lyrics/fontSize", lyricsFontSize)
     onAppFontChanged: saveSetting("ui/font", appFont)
     onLyricsFontChanged: saveSetting("lyrics/font", lyricsFont)
+    onLibraryLyricsEnabledChanged: {
+        saveSetting("lyrics/fetchLibrary", libraryLyricsEnabled)
+        libraryLyricsTimer.restart()
+    }
     onLyricsFontWeightChanged: saveSetting("lyrics/fontWeight", lyricsFontWeight)
     onAccentNameChanged: saveSetting("ui/accentName", accentName)
     onCustomAccentColorChanged: saveSetting("ui/customAccentColor", customAccentColor)
@@ -1492,7 +1512,10 @@ ApplicationWindow {
     onCloseToTrayChanged: saveSetting("ui/closeToTray", closeToTray)
     onStartMinimizedToTrayChanged: saveSetting("ui/startMinimizedToTray", startMinimizedToTray)
     onNowPlayingNotificationsChanged: saveSetting("ui/nowPlayingNotifications", nowPlayingNotifications)
-    onSvcLrclibChanged: saveSetting("services/lrclib", svcLrclib)
+    onSvcLrclibChanged: {
+        saveSetting("services/lrclib", svcLrclib)
+        libraryLyricsTimer.restart()
+    }
     onSvcRadioChanged: {
         saveSetting("services/radio", svcRadio)
         if (!svcRadio) services.cancelRadioRequests()
@@ -1722,6 +1745,7 @@ ApplicationWindow {
             "lyrics/fontSize": lyricsFontSize,
             "ui/font": appFont,
             "lyrics/font": lyricsFont,
+            "lyrics/fetchLibrary": libraryLyricsEnabled,
             "lyrics/fontWeight": lyricsFontWeight,
             "player/nowPlayingBackdrop": nowPlayingBackdrop,
             "player/showRemainingTime": showRemainingTime,
@@ -2886,6 +2910,7 @@ ApplicationWindow {
                 lyricsFontSize: window.lyricsFontSize,
                 appFont: window.appFont,
                 lyricsFont: window.lyricsFont,
+                libraryLyricsEnabled: window.libraryLyricsEnabled,
                 lyricsFontWeight: window.lyricsFontWeight,
                 lyricsAlignment: window.lyricsAlignment,
                 lyricsActiveStyle: window.lyricsActiveStyle,
@@ -2963,6 +2988,7 @@ ApplicationWindow {
                     if (data.lyricsFontSize) { window.lyricsFontSize = data.lyricsFontSize; appSettings.setValue("lyrics/fontSize", data.lyricsFontSize) }
                     if (data.appFont !== undefined) window.appFont = data.appFont
                     if (data.lyricsFont !== undefined) window.lyricsFont = data.lyricsFont
+                    if (data.libraryLyricsEnabled !== undefined) window.libraryLyricsEnabled = data.libraryLyricsEnabled
                     if (data.lyricsFontWeight) window.lyricsFontWeight = data.lyricsFontWeight
                     if (data.lyricsAlignment) { window.lyricsAlignment = data.lyricsAlignment; appSettings.setValue("lyrics/alignment", data.lyricsAlignment) }
                     if (data.lyricsActiveStyle) { window.lyricsActiveStyle = data.lyricsActiveStyle; appSettings.setValue("lyrics/activeStyle", data.lyricsActiveStyle) }

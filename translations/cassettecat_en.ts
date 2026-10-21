@@ -3008,6 +3008,10 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Lyrics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>No matching tracks</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3955,6 +3959,37 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Load sidecar .lrc files before querying online providers</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Find Songs by Their Lyrics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Downloads lyrics for your whole library from LRCLIB, so search can find a song by a line from it</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Paused until LrcLib Lyrics is on and Offline Mode is off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Looking up lyrics…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <source>Looking up lyrics, %n song(s) to go</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>%1 of %2 songs have lyrics</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

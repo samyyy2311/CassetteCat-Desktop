@@ -1,9 +1,7 @@
 #include "services_controller.h"
 
-#include "app_paths.h"
-#include "app_settings.h"
+#include "lyrics_store.h"
 
-#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -14,7 +12,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSet>
-#include <QSettings>
+#include <QTimer>
 #include <QUrlQuery>
 
 QString ServicesController::localLyricsFor(const QString &filePath) const {
@@ -28,12 +26,10 @@ QString ServicesController::localLyricsFor(const QString &filePath) const {
 
 void ServicesController::cacheLyrics(const QString &title, const QString &artist, const QString &album,
                                      const QString &syncedLyrics, const QString &plainLyrics, const QString &provider) {
-    const QString lyrics = !syncedLyrics.trimmed().isEmpty() ? syncedLyrics.trimmed() : plainLyrics.trimmed();
-    if (lyrics.isEmpty())
+    const QString text = !syncedLyrics.trimmed().isEmpty() ? syncedLyrics.trimmed() : plainLyrics.trimmed();
+    if (text.isEmpty())
         return;
-    const QString key = lyricsCacheKey(title, artist, album);
-    SettingsController::setGlobalValue("lyrics/cache/" + key, lyrics);
-    SettingsController::setGlobalValue("lyrics/provider/" + key, provider.isEmpty() ? "LRCLIB" : provider);
+    lyrics::write(lyrics::key(title, artist, album), text, provider.isEmpty() ? "LRCLIB" : provider);
 }
 
 void ServicesController::fetchLyrics(const QString &title, const QString &artist, const QString &album,
@@ -42,15 +38,31 @@ void ServicesController::fetchLyrics(const QString &title, const QString &artist
         return;
     const quint64 requestToken = ++m_lyricsRequestToken;
 
-    const QString key = lyricsCacheKey(title, artist, album);
-    const QString cached = SettingsController::globalValue("lyrics/cache/" + key).toString();
-    if (!cached.isEmpty()) {
-        emit lyricsFetched(title, artist, cached,
-                           SettingsController::globalValue("lyrics/provider/" + key, "LRCLIB").toString());
+    const lyrics::Stored stored = lyrics::read(lyrics::key(title, artist, album));
+    if (!stored.text.isEmpty()) {
+        emit lyricsFetched(title, artist, stored.text, stored.provider.isEmpty() ? "LRCLIB" : stored.provider);
         return;
     }
     if (!onlineEnabled())
         return;
+
+    const QVariantMap song{
+        {"title", title}, {"artist", artist}, {"album", album}, {"durationSeconds", durationSeconds}};
+    lookUpLyrics(song, [this, title, artist, album, requestToken](LyricsLookup result, const QString &text) {
+        if (result != LyricsLookup::Found)
+            return;
+        cacheLyrics(title, artist, album, text, {}, "LRCLIB");
+        if (requestToken == m_lyricsRequestToken)
+            emit lyricsFetched(title, artist, text, "LRCLIB");
+    });
+}
+
+void ServicesController::lookUpLyrics(const QVariantMap &song,
+                                      std::function<void(LyricsLookup, const QString &)> done) {
+    const QString title = song.value("title").toString();
+    const QString artist = song.value("artist").toString();
+    const QString album = song.value("album").toString();
+    const int durationSeconds = song.value("durationSeconds").toInt();
 
     QUrl url("https://lrclib.net/api/get");
     QUrlQuery q;
@@ -62,27 +74,26 @@ void ServicesController::fetchLyrics(const QString &title, const QString &artist
         q.addQueryItem("duration", QString::number(durationSeconds));
     url.setQuery(q);
 
-    QNetworkRequest req = services::detail::request(url);
-
-    // Shows and caches a result that has lyrics, preferring the synced ones.
-    const auto deliver = [this, title, artist, album](const QJsonObject &result) {
+    const auto lyricsOf = [](const QJsonObject &result) {
         const QString synced = result.value("syncedLyrics").toString().trimmed();
-        const QString plain = result.value("plainLyrics").toString().trimmed();
-        if (synced.isEmpty() && plain.isEmpty())
-            return false;
-        cacheLyrics(title, artist, album, synced, plain, "LRCLIB");
-        emit lyricsFetched(title, artist, synced.isEmpty() ? plain : synced, "LRCLIB");
-        return true;
+        return synced.isEmpty() ? result.value("plainLyrics").toString().trimmed() : synced;
     };
-    auto *reply = trackReply(m_net->get(req));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, title, artist, requestToken, deliver]() {
+    auto *reply = trackReply(m_net->get(services::detail::request(url)));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, title, artist, done, lyricsOf]() {
         reply->deleteLater();
         if (!onlineEnabled() || !serviceEnabled("lrclib"))
-            return;
-        if (requestToken != m_lyricsRequestToken)
-            return;
-        if (reply->error() == QNetworkReply::NoError && deliver(QJsonDocument::fromJson(reply->readAll()).object()))
-            return;
+            return done(LyricsLookup::Failed, {});
+        // LRCLIB answers 404 without an exact match, and for some songs 503 every time an album is given; either
+        // leaves a search to try.
+        const bool noMatch = reply->error() == QNetworkReply::ContentNotFoundError ||
+                             reply->error() == QNetworkReply::ServiceUnavailableError;
+        if (reply->error() != QNetworkReply::NoError && !noMatch)
+            return done(LyricsLookup::Failed, {});
+        if (!noMatch) {
+            const QString text = lyricsOf(QJsonDocument::fromJson(reply->readAll()).object());
+            if (!text.isEmpty())
+                return done(LyricsLookup::Found, text);
+        }
 
         QUrl searchUrl("https://lrclib.net/api/search");
         QUrlQuery sq;
@@ -90,22 +101,93 @@ void ServicesController::fetchLyrics(const QString &title, const QString &artist
         sq.addQueryItem("track_name", title);
         searchUrl.setQuery(sq);
 
-        QNetworkRequest sReq = services::detail::request(searchUrl);
-        auto *sReply = trackReply(m_net->get(sReq));
-        connect(sReply, &QNetworkReply::finished, this, [this, sReply, requestToken, deliver]() {
+        auto *sReply = trackReply(m_net->get(services::detail::request(searchUrl)));
+        connect(sReply, &QNetworkReply::finished, this, [this, sReply, done, lyricsOf]() {
             sReply->deleteLater();
-            if (!onlineEnabled() || !serviceEnabled("lrclib"))
-                return;
-            if (requestToken != m_lyricsRequestToken)
-                return;
-            if (sReply->error() != QNetworkReply::NoError)
-                return;
+            if (!onlineEnabled() || !serviceEnabled("lrclib") || sReply->error() != QNetworkReply::NoError)
+                return done(LyricsLookup::Failed, {});
             const QJsonArray results = QJsonDocument::fromJson(sReply->readAll()).array();
             for (const auto &result : results) {
-                if (deliver(result.toObject()))
-                    return;
+                const QString text = lyricsOf(result.toObject());
+                if (!text.isEmpty())
+                    return done(LyricsLookup::Found, text);
             }
+            done(LyricsLookup::Missing, {});
         });
+    });
+}
+
+void ServicesController::fetchLibraryLyrics(const QVariantList &tracks) {
+    m_libraryLyricsQueue.clear();
+    m_libraryLyricsFound = 0;
+    m_libraryLyricsTotal = int(tracks.size());
+    for (const QVariant &value : tracks) {
+        const QVariantMap track = value.toMap();
+        const QString key = lyrics::keyFor(track);
+        if (!track.value("lyrics").toString().trimmed().isEmpty() || !lyrics::read(key).text.isEmpty()) {
+            ++m_libraryLyricsFound;
+            continue;
+        }
+        if (track.value("artist").toString().isEmpty() || lyrics::missingRecently(key))
+            continue;
+        const QString title = track.value("title").toString();
+        m_libraryLyricsQueue.append({{"title", title.isEmpty() ? track.value("fileName").toString() : title},
+                                     {"artist", track.value("artist")},
+                                     {"album", track.value("album")},
+                                     {"durationSeconds", track.value("durationSeconds")}});
+    }
+    emit libraryLyricsChanged();
+    if (!m_libraryLyricsRunning)
+        fetchNextLibraryLyrics();
+}
+
+int ServicesController::libraryLyricsFound() const {
+    return m_libraryLyricsFound;
+}
+
+int ServicesController::libraryLyricsTotal() const {
+    return m_libraryLyricsTotal;
+}
+
+int ServicesController::libraryLyricsLeft() const {
+    return int(m_libraryLyricsQueue.size());
+}
+
+void ServicesController::stopLibraryLyrics() {
+    m_libraryLyricsQueue.clear();
+    emit libraryLyricsChanged();
+}
+
+void ServicesController::fetchNextLibraryLyrics() {
+    if (m_libraryLyricsQueue.isEmpty() || !onlineEnabled() || !serviceEnabled("lrclib")) {
+        m_libraryLyricsRunning = false;
+        if (!m_libraryLyricsQueue.isEmpty())
+            stopLibraryLyrics();
+        return;
+    }
+    m_libraryLyricsRunning = true;
+    const QVariantMap song = m_libraryLyricsQueue.first();
+    lookUpLyrics(song, [this, song](LyricsLookup result, const QString &text) {
+        const QString key = lyrics::key(song.value("title").toString(), song.value("artist").toString(),
+                                        song.value("album").toString());
+        if (result == LyricsLookup::Failed) {
+            // LRCLIB is busy now and then: ask again in a minute, and move on if this song keeps failing.
+            if (++m_libraryLyricsFailures < 3) {
+                QTimer::singleShot(60'000, this, &ServicesController::fetchNextLibraryLyrics);
+                return;
+            }
+        } else if (result == LyricsLookup::Found) {
+            lyrics::write(key, text, "LRCLIB");
+            ++m_libraryLyricsFound;
+        } else {
+            lyrics::markMissing(key);
+        }
+        m_libraryLyricsFailures = 0;
+        // The queue may have been built again while this song was being looked up.
+        m_libraryLyricsQueue.removeOne(song);
+        emit libraryLyricsChanged();
+        // LRCLIB is run by volunteers, so a library's worth of requests goes one at a time with a pause between.
+        QTimer::singleShot(300, this, &ServicesController::fetchNextLibraryLyrics);
     });
 }
 
@@ -154,9 +236,4 @@ void ServicesController::searchLyrics(const QString &title, const QString &artis
         }
         emit lyricsSearchResultsReady(results);
     });
-}
-
-QString ServicesController::lyricsCacheKey(const QString &title, const QString &artist, const QString &album) {
-    const QString source = (artist + "|" + title + "|" + album).trimmed().toCaseFolded();
-    return QString::fromLatin1(QCryptographicHash::hash(source.toUtf8(), QCryptographicHash::Sha256).toHex());
 }

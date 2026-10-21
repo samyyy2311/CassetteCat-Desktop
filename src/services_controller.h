@@ -27,6 +27,10 @@ class ServicesController : public QObject {
     Q_OBJECT
     /// Why ListenBrainz last refused a listen, in its own words; empty once one goes through.
     Q_PROPERTY(QString listenBrainzProblem READ listenBrainzProblem NOTIFY listenBrainzProblemChanged)
+    /// Fetching lyrics for the whole library: songs that have lyrics, of all of them, and those still to look up.
+    Q_PROPERTY(int libraryLyricsFound READ libraryLyricsFound NOTIFY libraryLyricsChanged)
+    Q_PROPERTY(int libraryLyricsTotal READ libraryLyricsTotal NOTIFY libraryLyricsChanged)
+    Q_PROPERTY(int libraryLyricsLeft READ libraryLyricsLeft NOTIFY libraryLyricsChanged)
   public:
     explicit ServicesController(QObject *parent = nullptr);
     /// Runs deterministic checks for service configuration and cancellation.
@@ -39,6 +43,12 @@ class ServicesController : public QObject {
     Q_INVOKABLE void fetchLyrics(const QString &title, const QString &artist, const QString &album,
                                  int durationSeconds);
     Q_INVOKABLE void searchLyrics(const QString &title, const QString &artist);
+    /// Fetches lyrics, one song at a time, for each of \p tracks that has none and wasn't recently found to have none.
+    Q_INVOKABLE void fetchLibraryLyrics(const QVariantList &tracks);
+    Q_INVOKABLE void stopLibraryLyrics();
+    int libraryLyricsFound() const;
+    int libraryLyricsTotal() const;
+    int libraryLyricsLeft() const;
     Q_INVOKABLE void fetchRadioStations(const QString &searchQuery = "", const QString &country = "",
                                         const QString &language = "", const QString &tag = "",
                                         const QString &sort = "votes", bool reverse = true);
@@ -81,6 +91,7 @@ class ServicesController : public QObject {
   signals:
     void lyricsFetched(const QString &title, const QString &artist, const QString &lyrics, const QString &provider);
     void lyricsSearchResultsReady(const QVariantList &results);
+    void libraryLyricsChanged();
     void coverSearchResultsReady(const QVariantList &results);
     /// \p tags is empty without a confident match. \p problem is "off" when MusicBrainz is turned off or the app is
     /// offline, and "busy" when it kept refusing.
@@ -103,7 +114,10 @@ class ServicesController : public QObject {
 
   private:
     static QStringList releaseNotesFrom(const QString &changelog, const QString &version);
-    static QString lyricsCacheKey(const QString &title, const QString &artist, const QString &album);
+    enum class LyricsLookup { Found, Missing, Failed };
+    /// Asks LRCLIB for a song's lyrics, by an exact match and then by a search, preferring synced ones.
+    void lookUpLyrics(const QVariantMap &song, std::function<void(LyricsLookup, const QString &)> done);
+    void fetchNextLibraryLyrics();
     static QString canonicalArtistName(const QString &artist);
     static bool serviceEnabled(const QSettings &settings, const QString &service);
     bool onlineEnabled() const;
@@ -142,6 +156,11 @@ class ServicesController : public QObject {
     QList<QPointer<QNetworkReply>> m_pendingReplies;
     int m_radioRequestToken = 0;
     quint64 m_lyricsRequestToken = 0;
+    QList<QVariantMap> m_libraryLyricsQueue;
+    bool m_libraryLyricsRunning = false;
+    int m_libraryLyricsFailures = 0;
+    int m_libraryLyricsFound = 0;
+    int m_libraryLyricsTotal = 0;
     quint64 m_coverRequestToken = 0;
     qint64 m_nextMusicBrainzRequestMs = 0;
     QString m_listenBrainzToken;

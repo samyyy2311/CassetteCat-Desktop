@@ -11,6 +11,8 @@ ColumnLayout {
     property string lyricsFont
     property int lyricsFontWeight: Font.Bold
     property var fontFamilies: []
+    property bool libraryLyricsEnabled: false
+    property bool lrclibAvailable: true
 
     signal lyricsFontSizeSelected(int value)
     signal lyricsAlignmentSelected(string value)
@@ -18,6 +20,7 @@ ColumnLayout {
     signal preferLocalLyricsSelected(bool value)
     signal lyricsFontSelected(string value)
     signal lyricsFontWeightSelected(int value)
+    signal libraryLyricsSelected(bool value)
 
     Layout.fillWidth: true
     spacing: 16
@@ -119,6 +122,31 @@ ColumnLayout {
             SettingSwitch {
                 checked: root.preferLocalLyrics
                 onToggled: val => root.preferLocalLyricsSelected(val)
+            }
+        }
+    }
+
+    SectionLabel { text: qsTr("Search") }
+
+    SettingCard {
+        SettingRow {
+            iconName: "search"
+            title: qsTr("Find Songs by Their Lyrics")
+            subtitle: {
+                if (!root.libraryLyricsEnabled)
+                    return qsTr("Downloads lyrics for your whole library from LRCLIB, so search can find a song by a line from it")
+                if (!root.lrclibAvailable)
+                    return qsTr("Paused until LrcLib Lyrics is on and Offline Mode is off")
+                if (services.libraryLyricsTotal === 0)
+                    return qsTr("Looking up lyrics…")
+                if (services.libraryLyricsLeft > 0)
+                    return qsTr("Looking up lyrics, %n song(s) to go", "", services.libraryLyricsLeft)
+                return qsTr("%1 of %2 songs have lyrics").arg(services.libraryLyricsFound).arg(services.libraryLyricsTotal)
+            }
+
+            SettingSwitch {
+                checked: root.libraryLyricsEnabled
+                onToggled: val => root.libraryLyricsSelected(val)
             }
         }
     }

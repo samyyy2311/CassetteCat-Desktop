@@ -3,6 +3,7 @@
 #include "app_paths.h"
 #include "app_settings.h"
 #include "image_cache.h"
+#include "lyrics_store.h"
 #include "network_requests.h"
 #include <QCoreApplication>
 #include <QDesktopServices>
@@ -29,6 +30,7 @@ QNetworkRequest services::detail::request(const QUrl &url) {
 }
 
 ServicesController::ServicesController(QObject *parent) : QObject(parent), m_net(new QNetworkAccessManager(this)) {
+    lyrics::moveFromSettings();
     QSettings s(settingsFilePath(), QSettings::IniFormat);
     s.beginGroup("artist_images");
     for (const QString &key : s.childKeys()) {

@@ -5,6 +5,7 @@
 #include "audio_metadata.h"
 #include "image_cache.h"
 #include "library_scanner.h"
+#include "lyrics_store.h"
 
 #include <QCoreApplication>
 #include <QDataStream>
@@ -295,12 +296,43 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
             {"busiestMonth", busiestMonth}};
 }
 
+// Lower case without accents or punctuation, so "Don't Stop" finds "dont stop". Apostrophes join the word they're in.
+QString foldedForSearch(const QString &text) {
+    const QString decomposed = text.normalized(QString::NormalizationForm_KD).toCaseFolded();
+    QString folded;
+    folded.reserve(decomposed.size());
+    for (const QChar c : decomposed) {
+        if (c.isLetterOrNumber())
+            folded += c;
+        else if (c.isMark() || c == '\'' || c == QChar(0x2019))
+            continue;
+        else if (!folded.isEmpty() && !folded.endsWith(' '))
+            folded += ' ';
+    }
+    return folded.trimmed();
+}
+
+// The sung lines of plain or LRC lyrics, without their times or tags such as [ar:Artist]. A repeated chorus counts
+// once.
+QStringList sungLines(const QString &text) {
+    static const QRegularExpression tags(QStringLiteral(R"(\[[^\]]*\]|<[^>]*>)"));
+    QStringList lines;
+    for (const QString &raw : text.split('\n')) {
+        const QString line = QString(raw).remove(tags).trimmed();
+        if (!line.isEmpty() && !lines.contains(line))
+            lines.append(line);
+    }
+    return lines;
+}
+
 } // namespace
 
 LibraryController::LibraryController(QObject *parent)
     : QAbstractListModel(parent), m_folderWatcher(this), m_watchDebounce(this), m_scanProcess(this) {
     m_watchDebounce.setSingleShot(true);
     m_watchDebounce.setInterval(750);
+    // The lyrics read for search point at rows of the track list, so a new list needs them read again.
+    connect(this, &LibraryController::tracksChanged, this, [this] { m_lyricsRead = false; });
     connect(&m_folderWatcher, &QFileSystemWatcher::directoryChanged, this, [this] { m_watchDebounce.start(); });
     connect(&m_watchDebounce, &QTimer::timeout, this, &LibraryController::rescanFolder);
     connect(&m_scanProcess, &QProcess::finished, this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
@@ -473,6 +505,23 @@ bool LibraryController::selfCheck() {
           library.firstPlayableTrack().value("filePath").toString() == "C:/Music/keep.flac" &&
           groups.value("artists").toList().size() == 1 && groups.value("albums").toList().size() == 1))
         return fail("search filter");
+
+    library.m_tracks = {
+        QVariantMap{{"filePath", "a.flac"},
+                    {"lyrics", "[ar:Queen]\n[00:01.00]Don't stop me now\n[00:04.00]Having a time"}},
+        QVariantMap{{"filePath", "b.flac"}, {"lyrics", "Now stop, me don't"}},
+        QVariantMap{{"filePath", "c.flac"}, {"lyrics", "Stopping by"}},
+    };
+    library.lyricMatches({});
+    const QVariantList lyricHits = library.lyricMatches("DONT stop me");
+    const auto hitAt = [&lyricHits](int i, const char *key) {
+        const QVariantMap hit = lyricHits.value(i).toMap();
+        return QString(key) == "line" ? hit.value("line").toString() : hit.value("track").toMap().value(key).toString();
+    };
+    if (lyricHits.size() != 2 || hitAt(0, "filePath") != "a.flac" || hitAt(0, "line") != "Don't stop me now" ||
+        hitAt(1, "filePath") != "b.flac" || library.lyricMatches("stopp").size() != 1 ||
+        library.lyricMatches("me").size() != 0)
+        return fail("lyric matches");
 
     library.m_tracks = {
         QVariantMap{{"filePath", "/Music/Live/song.flac"}},
@@ -1270,6 +1319,72 @@ void LibraryController::setLibraryFilter(const QString &query, const QString &fi
 void LibraryController::setSearchFilter(const QString &query, const QString &format,
                                         const QVariantList &excludedFolders, bool ignoreShortClips) {
     setFilter(query, format, false, false, {}, {}, true, excludedFolders, ignoreShortClips);
+}
+
+QVariantList LibraryController::lyricMatches(const QString &query) {
+    const QString folded = foldedForSearch(query);
+    if (folded.isEmpty()) {
+        m_lyrics = {};
+        m_lyricsRead = false;
+        return {};
+    }
+    if (folded.size() < 3)
+        return {};
+    if (!m_lyricsRead)
+        readLyrics();
+
+    // Words are matched from their start, so a word still being typed counts. The words in order rank above the same
+    // words anywhere in the line.
+    const QStringList words = folded.split(' ');
+    struct Hit {
+        int score;
+        int row;
+        QString line;
+    };
+    QList<Hit> hits;
+    for (const TrackLyrics &song : std::as_const(m_lyrics)) {
+        Hit best{0, song.row, {}};
+        for (int i = 0; i < song.folded.size() && best.score < 2; ++i) {
+            const QString line = ' ' + song.folded[i];
+            int score = 0;
+            if (line.contains(' ' + folded))
+                score = 2;
+            else if (std::all_of(words.cbegin(), words.cend(),
+                                 [&line](const QString &word) { return line.contains(' ' + word); }))
+                score = 1;
+            if (score > best.score)
+                best = {score, song.row, song.lines[i]};
+        }
+        if (best.score > 0)
+            hits.append(best);
+    }
+    std::stable_sort(hits.begin(), hits.end(), [](const Hit &a, const Hit &b) { return a.score > b.score; });
+
+    QVariantList result;
+    for (const Hit &hit : hits.mid(0, 20))
+        result.append(QVariantMap{{"track", m_tracks[hit.row]}, {"line", hit.line}});
+    return result;
+}
+
+void LibraryController::readLyrics() {
+    m_lyrics.clear();
+    for (int row = 0; row < m_tracks.size(); ++row) {
+        const QVariantMap track = m_tracks[row].toMap();
+        if (!isAvailable(track))
+            continue;
+        QString text = track.value("lyrics").toString();
+        if (text.trimmed().isEmpty())
+            text = lyrics::read(lyrics::keyFor(track)).text;
+        const QStringList lines = sungLines(text);
+        if (lines.isEmpty())
+            continue;
+        TrackLyrics song{row, lines, {}};
+        song.folded.reserve(lines.size());
+        for (const QString &line : lines)
+            song.folded.append(foldedForSearch(line));
+        m_lyrics.append(song);
+    }
+    m_lyricsRead = true;
 }
 
 void LibraryController::setFilter(const QString &query, const QString &format, bool strictFormat, bool favoritesOnly,

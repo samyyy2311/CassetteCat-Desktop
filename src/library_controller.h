@@ -97,6 +97,9 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE void setLibraryFilter(const QString &query, const QString &filter, const QVariantMap &favorites,
                                       const QString &sortMetric, bool ascending, const QVariantList &excludedFolders,
                                       bool ignoreShortClips);
+    /// Songs with a lyric line holding every word of \p query, best first, as {track, line}. Lyrics are read on the
+    /// first search and let go once \p query is empty.
+    Q_INVOKABLE QVariantList lyricMatches(const QString &query);
     Q_INVOKABLE void setSearchFilter(const QString &query, const QString &format, const QVariantList &excludedFolders,
                                      bool ignoreShortClips);
     /// Parses \p filePath as an M3U playlist for direct playback.
@@ -125,9 +128,18 @@ class LibraryController final : public QAbstractListModel {
     void saveLibraryCache();
     bool isAvailable(const QVariantMap &track) const;
     bool matchesVisibleFilter(const QVariantMap &track) const;
+    void readLyrics();
+
+    struct TrackLyrics {
+        int row;
+        QStringList lines;
+        QStringList folded;
+    };
 
     QStringList m_folders;
     QVariantList m_tracks;
+    QList<TrackLyrics> m_lyrics;
+    bool m_lyricsRead = false;
     QVector<int> m_visibleRows;
     QString m_query;
     QString m_format;

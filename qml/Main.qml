@@ -908,7 +908,9 @@ ApplicationWindow {
             DECADE_2010S: decade(2010),
             DECADE_2020S: track => track.year >= 2020
         }
-        return availableTracks().filter(track => rules.every(rule => matches[rule](track))).slice(0, 100)
+        // A rule this version doesn't know, from a newer app or a backup, is left out rather than breaking the list.
+        const known = rules.filter(rule => matches[rule] !== undefined)
+        return availableTracks().filter(track => known.every(rule => matches[rule](track))).slice(0, 100)
     }
 
     function receivePlaylist(name, trackPaths, sentCount) {

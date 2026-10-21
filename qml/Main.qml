@@ -84,6 +84,11 @@ ApplicationWindow {
     property int coversLoading: 0
     property bool appQuitting: false
     property string page: "home"
+    // Pages stay loaded once opened, so going back to one is instant and keeps its place; going to the tray drops them.
+    property var openedPages: []
+    function pageKept(name) {
+        return page === name || openedPages.indexOf(name) >= 0
+    }
     property real homeScrollPosition: 0
     property var libraryScrollPositions: ({})
     property string libraryTab: "songs"
@@ -1348,8 +1353,9 @@ ApplicationWindow {
         catalogDetailOpen = false
         if (settingsInitialized) appSettings.setValue("ui/page", page)
         updateVisibleLibrary()
-        if (page === "library") refreshLibraryGroups(library.catalogGroups())
-        else clearLibraryGroups()
+        if (openedPages.indexOf(page) < 0)
+            openedPages = openedPages.concat([page])
+        if (page === "library" && artists.length === 0) refreshLibraryGroups(library.catalogGroups())
         if (settingsInitialized && page === "radio" && radioStations.length === 0) Qt.callLater(refreshRadio)
         if (page !== "radio") services.cancelRadioRequests()
         dismissSearchFocus(Qt.point(-1, -1))
@@ -1547,7 +1553,15 @@ ApplicationWindow {
         phoneRemote.repeatMode = repeatMode
     }
 
-    onInTrayChanged: if (inTray) trayMemoryTimer.restart()
+    onInTrayChanged: {
+        if (inTray) {
+            openedPages = []
+            clearLibraryGroups()
+            trayMemoryTimer.restart()
+        } else if (page === "library") {
+            refreshLibraryGroups(library.catalogGroups())
+        }
+    }
 
     // Runs once the dropped pages are gone, so their memory can go back to the system.
     Timer {
@@ -2294,8 +2308,7 @@ ApplicationWindow {
     function refreshLibraryState() {
         const groups = library.catalogGroups()
         refreshHomeGroups(groups)
-        if (page === "library") refreshLibraryGroups(groups)
-        else clearLibraryGroups()
+        if (pageKept("library")) refreshLibraryGroups(groups)
         // Artwork and tag edits also land here; only a changed library gets new picks.
         if (library.trackCount !== homePickedTrackCount) {
             homePickedTrackCount = library.trackCount
@@ -2339,7 +2352,7 @@ ApplicationWindow {
     }
 
     function refreshVisibleLibraryGroups() {
-        if (page === "library") refreshLibraryGroups(library.catalogGroups())
+        if (pageKept("library")) refreshLibraryGroups(library.catalogGroups())
     }
 
     function clearLibraryGroups() {
@@ -3813,7 +3826,7 @@ ApplicationWindow {
                         Layout.fillHeight: true
                         asynchronous: true
                         // Wait for the saved page, or Home is built and discarded when launching elsewhere.
-                        active: settingsInitialized && page === "home" && !inTray
+                        active: settingsInitialized && pageKept("home") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3847,7 +3860,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "library" && !inTray
+                        active: pageKept("library") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3867,7 +3880,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "search" && !inTray
+                        active: pageKept("search") && !inTray
                         property bool focusOnLoad: false
                         onLoaded: if (focusOnLoad) {
                             focusOnLoad = false
@@ -3893,7 +3906,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "radio" && !inTray
+                        active: pageKept("radio") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3913,7 +3926,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "jellyfin" && !inTray
+                        active: pageKept("jellyfin") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3933,7 +3946,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "subsonic" && !inTray
+                        active: pageKept("subsonic") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3953,7 +3966,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "stats" && !inTray
+                        active: pageKept("stats") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3977,7 +3990,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "settings" && !inTray
+                        active: pageKept("settings") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent

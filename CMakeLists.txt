@@ -44,6 +44,8 @@ qt_add_executable(CassetteCat
     src/library_scanner.cpp
     src/library_controller.h
     src/library_controller.cpp
+    src/lyrics_store.h
+    src/lyrics_store.cpp
     src/audio_pipeline.h
     src/audio_pipeline.cpp
     src/player_controller.h

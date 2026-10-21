@@ -59,6 +59,11 @@ Item {
     }
     readonly property var matchingArtists: matches((cachedGroups && cachedGroups.artists) || [])
     readonly property var matchingAlbums: matches((cachedGroups && cachedGroups.albums) || [])
+    // Lyric matches aren't format-filtered.
+    readonly property var lyricHits: {
+        libraryModel.lyricsRevision
+        return appWindow.activeFormatFilter === "ALL" ? libraryModel.lyricMatches(appWindow.searchQuery) : []
+    }
 
     function refreshCatalog() {
         if (root.libraryModel && typeof root.libraryModel.catalogGroups === "function") {
@@ -299,7 +304,8 @@ Item {
 
             // Match count when filtering
             Label {
-                visible: root.filtering
+                // Title, artist and album matches only.
+                visible: root.filtering && (root.libraryModel.visibleTrackCount > 0 || root.lyricHits.length === 0)
                 text: qsTr("%n track(s) found", "", root.libraryModel.visibleTrackCount)
                 color: silverDim
                 font.family: monoFont
@@ -442,9 +448,50 @@ Item {
                 onFavoriteClicked: root.appWindow.toggleFavorite(model.track.filePath)
             }
 
+            footer: ColumnLayout {
+                width: searchResults.width - 56
+                spacing: 4
+                visible: root.lyricHits.length > 0
+
+                SectionLabel { text: qsTr("Lyrics") }
+
+                Repeater {
+                    model: root.lyricHits
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.bottomMargin: 6
+                        spacing: 0
+
+                        SongRow {
+                            Layout.fillWidth: true
+                            track: modelData.track
+                            showAlbum: false
+                            showCover: true
+                            showDuration: true
+                            showHeart: true
+                            onClicked: root.playResult(modelData.track)
+                            onFavoriteClicked: root.appWindow.toggleFavorite(modelData.track.filePath)
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            // Align with SongRow's title (14 + 40 + 12).
+                            Layout.leftMargin: 66
+                            Layout.rightMargin: 16
+                            text: "“" + modelData.line + "”"
+                            color: silverDim
+                            font.family: bodyFont
+                            font.pixelSize: 13
+                            elide: Text.ElideRight
+                        }
+                    }
+                }
+            }
+
             EmptyState {
                 anchors.centerIn: parent
-                visible: root.libraryModel.visibleTrackCount === 0
+                visible: root.libraryModel.visibleTrackCount === 0 && root.lyricHits.length === 0
                 catImage: "qrc:/qt/qml/CassetteCat/assets/01-orange-headphones.png"
                 title: qsTr("No matching tracks")
                 subtitle: qsTr("Try a different search or clear the format filter")

@@ -72,6 +72,7 @@ ApplicationWindow {
     // A font chosen in Settings replaces both the display and the body font; empty keeps the bundled ones.
     property string appFont: ""
     property string lyricsFont: ""
+    property bool libraryLyricsEnabled: false
     property int lyricsFontWeight: Font.Bold
     readonly property var fontFamilies: Qt.fontFamilies().filter(family => !family.startsWith("@"))
     readonly property string displayFont: appFont || ((typeof displayFontFamily !== "undefined" && displayFontFamily.length > 0) ? displayFontFamily : "Space Grotesk")
@@ -84,11 +85,6 @@ ApplicationWindow {
     property int coversLoading: 0
     property bool appQuitting: false
     property string page: "home"
-    // Pages stay loaded once opened, so going back to one is instant and keeps its place; going to the tray drops them.
-    property var openedPages: []
-    function pageKept(name) {
-        return page === name || openedPages.indexOf(name) >= 0
-    }
     property real homeScrollPosition: 0
     property var libraryScrollPositions: ({})
     property string libraryTab: "songs"
@@ -385,6 +381,19 @@ ApplicationWindow {
             refreshLibraryState()
             reconcileTrackSnapshots()
             reconcileLibraryMaps()
+            libraryLyricsTimer.restart()
+        }
+    }
+
+    // Debounce scans and tag edits before refetching lyrics.
+    Timer {
+        id: libraryLyricsTimer
+        interval: 3000
+        onTriggered: {
+            if (window.libraryLyricsEnabled && window.svcLrclib && !window.offlineBlackout)
+                services.fetchLibraryLyrics(library.playbackTracks())
+            else
+                services.stopLibraryLyrics()
         }
     }
 
@@ -489,6 +498,7 @@ ApplicationWindow {
     property var radioRecentStations: []
     property var radioCustomStations: []
     property string radioSearchQuery: ""
+    property var serverSearchQueries: ({})
     property string radioActiveTag: "ALL"
     property string radioCountryFilter: ""
     property string radioLanguageFilter: ""
@@ -681,6 +691,7 @@ ApplicationWindow {
         lyricsFontSize = appSettings.value("lyrics/fontSize", 28)
         appFont = appSettings.value("ui/font", "")
         lyricsFont = appSettings.value("lyrics/font", "")
+        libraryLyricsEnabled = appSettings.value("lyrics/fetchLibrary", false)
         lyricsFontWeight = appSettings.value("lyrics/fontWeight", Font.Bold)
         accentName = appSettings.value("ui/accentName", "recordRed")
         customAccentColor = appSettings.value("ui/customAccentColor", accentPresets[0].base)
@@ -1419,9 +1430,8 @@ ApplicationWindow {
         catalogDetailOpen = false
         if (settingsInitialized) appSettings.setValue("ui/page", page)
         updateVisibleLibrary()
-        if (openedPages.indexOf(page) < 0)
-            openedPages = openedPages.concat([page])
-        if (page === "library" && artists.length === 0) refreshLibraryGroups(library.catalogGroups())
+        if (page === "library") refreshLibraryGroups(library.catalogGroups())
+        else clearLibraryGroups()
         if (settingsInitialized && page === "radio" && radioStations.length === 0) Qt.callLater(refreshRadio)
         if (page !== "radio") services.cancelRadioRequests()
         dismissSearchFocus(Qt.point(-1, -1))
@@ -1459,6 +1469,7 @@ ApplicationWindow {
         saveSetting("network/offlineBlackout", offlineBlackout)
         streaming.setBlackoutEnabled(offlineBlackout)
         services.setBlackoutEnabled(offlineBlackout)
+        libraryLyricsTimer.restart()
         const path = player.currentTrack ? player.currentTrack.filePath || "" : ""
         if (offlineBlackout && (/^(subsonic|jellyfin):/.test(path) || /^https?:/i.test(path))) player.stop()
     }
@@ -1488,6 +1499,10 @@ ApplicationWindow {
     onLyricsFontSizeChanged: saveSetting("lyrics/fontSize", lyricsFontSize)
     onAppFontChanged: saveSetting("ui/font", appFont)
     onLyricsFontChanged: saveSetting("lyrics/font", lyricsFont)
+    onLibraryLyricsEnabledChanged: {
+        saveSetting("lyrics/fetchLibrary", libraryLyricsEnabled)
+        libraryLyricsTimer.restart()
+    }
     onLyricsFontWeightChanged: saveSetting("lyrics/fontWeight", lyricsFontWeight)
     onAccentNameChanged: saveSetting("ui/accentName", accentName)
     onCustomAccentColorChanged: saveSetting("ui/customAccentColor", customAccentColor)
@@ -1532,7 +1547,10 @@ ApplicationWindow {
     onCloseToTrayChanged: saveSetting("ui/closeToTray", closeToTray)
     onStartMinimizedToTrayChanged: saveSetting("ui/startMinimizedToTray", startMinimizedToTray)
     onNowPlayingNotificationsChanged: saveSetting("ui/nowPlayingNotifications", nowPlayingNotifications)
-    onSvcLrclibChanged: saveSetting("services/lrclib", svcLrclib)
+    onSvcLrclibChanged: {
+        saveSetting("services/lrclib", svcLrclib)
+        libraryLyricsTimer.restart()
+    }
     onSvcRadioChanged: {
         saveSetting("services/radio", svcRadio)
         if (!svcRadio) services.cancelRadioRequests()
@@ -1627,15 +1645,7 @@ ApplicationWindow {
         phoneRemote.repeatMode = repeatMode
     }
 
-    onInTrayChanged: {
-        if (inTray) {
-            openedPages = []
-            clearLibraryGroups()
-            trayMemoryTimer.restart()
-        } else if (page === "library") {
-            refreshLibraryGroups(library.catalogGroups())
-        }
-    }
+    onInTrayChanged: if (inTray) trayMemoryTimer.restart()
 
     // Runs once the dropped pages are gone, so their memory can go back to the system.
     Timer {
@@ -1764,6 +1774,7 @@ ApplicationWindow {
             "lyrics/fontSize": lyricsFontSize,
             "ui/font": appFont,
             "lyrics/font": lyricsFont,
+            "lyrics/fetchLibrary": libraryLyricsEnabled,
             "lyrics/fontWeight": lyricsFontWeight,
             "player/nowPlayingBackdrop": nowPlayingBackdrop,
             "player/showRemainingTime": showRemainingTime,
@@ -2384,7 +2395,8 @@ ApplicationWindow {
     function refreshLibraryState() {
         const groups = library.catalogGroups()
         refreshHomeGroups(groups)
-        if (pageKept("library")) refreshLibraryGroups(groups)
+        if (page === "library") refreshLibraryGroups(groups)
+        else clearLibraryGroups()
         // Artwork and tag edits also land here; only a changed library gets new picks.
         if (library.trackCount !== homePickedTrackCount) {
             homePickedTrackCount = library.trackCount
@@ -2428,7 +2440,7 @@ ApplicationWindow {
     }
 
     function refreshVisibleLibraryGroups() {
-        if (pageKept("library")) refreshLibraryGroups(library.catalogGroups())
+        if (page === "library") refreshLibraryGroups(library.catalogGroups())
     }
 
     function clearLibraryGroups() {
@@ -2930,6 +2942,7 @@ ApplicationWindow {
                 lyricsFontSize: window.lyricsFontSize,
                 appFont: window.appFont,
                 lyricsFont: window.lyricsFont,
+                libraryLyricsEnabled: window.libraryLyricsEnabled,
                 lyricsFontWeight: window.lyricsFontWeight,
                 lyricsAlignment: window.lyricsAlignment,
                 lyricsActiveStyle: window.lyricsActiveStyle,
@@ -3008,6 +3021,7 @@ ApplicationWindow {
                     if (data.lyricsFontSize) { window.lyricsFontSize = data.lyricsFontSize; appSettings.setValue("lyrics/fontSize", data.lyricsFontSize) }
                     if (data.appFont !== undefined) window.appFont = data.appFont
                     if (data.lyricsFont !== undefined) window.lyricsFont = data.lyricsFont
+                    if (data.libraryLyricsEnabled !== undefined) window.libraryLyricsEnabled = data.libraryLyricsEnabled
                     if (data.lyricsFontWeight) window.lyricsFontWeight = data.lyricsFontWeight
                     if (data.lyricsAlignment) { window.lyricsAlignment = data.lyricsAlignment; appSettings.setValue("lyrics/alignment", data.lyricsAlignment) }
                     if (data.lyricsActiveStyle) { window.lyricsActiveStyle = data.lyricsActiveStyle; appSettings.setValue("lyrics/activeStyle", data.lyricsActiveStyle) }
@@ -3915,7 +3929,7 @@ ApplicationWindow {
                         Layout.fillHeight: true
                         asynchronous: true
                         // Wait for the saved page, or Home is built and discarded when launching elsewhere.
-                        active: settingsInitialized && pageKept("home") && !inTray
+                        active: settingsInitialized && page === "home" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3949,7 +3963,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: pageKept("library") && !inTray
+                        active: page === "library" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -3969,7 +3983,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: pageKept("search") && !inTray
+                        active: page === "search" && !inTray
                         property bool focusOnLoad: false
                         onLoaded: if (focusOnLoad) {
                             focusOnLoad = false
@@ -3995,7 +4009,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: pageKept("radio") && !inTray
+                        active: page === "radio" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -4015,7 +4029,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: pageKept("jellyfin") && !inTray
+                        active: page === "jellyfin" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -4035,7 +4049,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: pageKept("subsonic") && !inTray
+                        active: page === "subsonic" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -4055,7 +4069,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: pageKept("stats") && !inTray
+                        active: page === "stats" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
@@ -4079,7 +4093,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: pageKept("settings") && !inTray
+                        active: page === "settings" && !inTray
 
                         LoadingBar {
                             anchors.fill: parent

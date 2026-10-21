@@ -109,6 +109,37 @@ void SettingsController::setGlobalValue(const QString &key, const QVariant &valu
     settings.sync();
 }
 
+QVariantMap SettingsController::globalGroup(const QString &group) {
+    const auto collect = [&group](QSettings &settings) {
+        QVariantMap values;
+        settings.beginGroup(group);
+        for (const QString &key : settings.childKeys())
+            values.insert(key, settings.value(key));
+        settings.endGroup();
+        return values;
+    };
+    if (s_instance) {
+        QMutexLocker locker(&s_instance->m_mutex);
+        return collect(s_instance->m_settings);
+    }
+    QSettings settings(settingsFilePath(), QSettings::IniFormat);
+    return collect(settings);
+}
+
+void SettingsController::removeGlobalGroup(const QString &group) {
+    const auto remove = [&group](QSettings &settings) {
+        settings.remove(group);
+        settings.sync();
+    };
+    if (s_instance) {
+        QMutexLocker locker(&s_instance->m_mutex);
+        remove(s_instance->m_settings);
+        return;
+    }
+    QSettings settings(settingsFilePath(), QSettings::IniFormat);
+    remove(settings);
+}
+
 void SettingsController::setValue(const QString &key, const QVariant &value) {
     QMutexLocker locker(&m_mutex);
     m_settings.setValue(key, value);

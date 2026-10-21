@@ -36,7 +36,8 @@ When connecting with [CassetteCat for Android](https://github.com/samyyy2311/Cas
 CassetteCat Desktop only makes network requests to external services when directly necessary for the features you use:
 
 1. **Lyrics (LRCLIB):**
-   * When fetching synchronized or plain lyrics, track titles and artist names are queried against the public [LRCLIB](https://lrclib.net) API.
+   * When fetching synchronized or plain lyrics, song titles, artist names and album names are queried against the public [LRCLIB](https://lrclib.net) API.
+   * If you turn on **Find Songs by Their Lyrics**, this happens for each song that doesn't have lyrics yet, one at a time, so search can look through them. The lyrics are kept on your device.
 2. **Metadata & Artwork (MusicBrainz / Cover Art Archive / TheAudioDB / Deezer / iTunes):**
    * Public metadata APIs are queried using artist and album names to fetch album covers and artist biographies.
 3. **Optional Scrobbling (ListenBrainz / Libre.fm):**

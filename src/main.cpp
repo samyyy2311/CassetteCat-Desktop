@@ -426,6 +426,10 @@ int main(int argc, char *argv[]) {
     QSurfaceFormat surfaceFormat = QSurfaceFormat::defaultFormat();
     surfaceFormat.setSwapInterval(1);
     QSurfaceFormat::setDefaultFormat(surfaceFormat);
+    // Free each texture's CPU-side image after upload. The pixmap cache can still rebuild it after the
+    // scene graph is released in the tray.
+    if (!qEnvironmentVariableIsSet("QSG_TRANSIENT_IMAGES"))
+        qputenv("QSG_TRANSIENT_IMAGES", "1");
 
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
@@ -500,6 +504,7 @@ int main(int argc, char *argv[]) {
     StreamingController streaming(settingsFilePath(), &app);
     PlayerController player(&app, &streaming);
     ServicesController services(&app);
+    QObject::connect(&services, &ServicesController::lyricsSaved, &library, &LibraryController::addLyrics);
     SettingsController appSettings(&app);
     loadLanguage(translator, appSettings.value(QStringLiteral("ui/language")).toString());
     QObject::connect(&app, &QCoreApplication::aboutToQuit, [&appSettings]() {

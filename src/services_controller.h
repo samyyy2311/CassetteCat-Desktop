@@ -92,6 +92,7 @@ class ServicesController : public QObject {
     void lyricsFetched(const QString &title, const QString &artist, const QString &lyrics, const QString &provider);
     void lyricsSearchResultsReady(const QVariantList &results);
     void libraryLyricsChanged();
+    void lyricsSaved(const QString &key, const QString &text);
     void coverSearchResultsReady(const QVariantList &results);
     /// \p tags is empty without a confident match. \p problem is "off" when MusicBrainz is turned off or the app is
     /// offline, and "busy" when it kept refusing.

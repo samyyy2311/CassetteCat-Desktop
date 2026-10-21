@@ -504,6 +504,7 @@ int main(int argc, char *argv[]) {
     StreamingController streaming(settingsFilePath(), &app);
     PlayerController player(&app, &streaming);
     ServicesController services(&app);
+    QObject::connect(&services, &ServicesController::lyricsSaved, &library, &LibraryController::addLyrics);
     SettingsController appSettings(&app);
     loadLanguage(translator, appSettings.value(QStringLiteral("ui/language")).toString());
     QObject::connect(&app, &QCoreApplication::aboutToQuit, [&appSettings]() {

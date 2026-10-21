@@ -60,7 +60,10 @@ Item {
     readonly property var matchingArtists: matches((cachedGroups && cachedGroups.artists) || [])
     readonly property var matchingAlbums: matches((cachedGroups && cachedGroups.albums) || [])
     // Lyric matches aren't format-filtered.
-    readonly property var lyricHits: appWindow.activeFormatFilter === "ALL" ? libraryModel.lyricMatches(appWindow.searchQuery) : []
+    readonly property var lyricHits: {
+        libraryModel.lyricsRevision
+        return appWindow.activeFormatFilter === "ALL" ? libraryModel.lyricMatches(appWindow.searchQuery) : []
+    }
 
     function refreshCatalog() {
         if (root.libraryModel && typeof root.libraryModel.catalogGroups === "function") {

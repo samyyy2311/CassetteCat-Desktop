@@ -29,7 +29,9 @@ void ServicesController::cacheLyrics(const QString &title, const QString &artist
     const QString text = !syncedLyrics.trimmed().isEmpty() ? syncedLyrics.trimmed() : plainLyrics.trimmed();
     if (text.isEmpty())
         return;
-    lyrics::save(lyrics::key(title, artist, album), text, provider.isEmpty() ? "LRCLIB" : provider);
+    const QString key = lyrics::key(title, artist, album);
+    if (lyrics::save(key, text, provider.isEmpty() ? "LRCLIB" : provider))
+        emit lyricsSaved(key, text);
 }
 
 void ServicesController::fetchLyrics(const QString &title, const QString &artist, const QString &album,
@@ -122,12 +124,13 @@ void ServicesController::fetchLibraryLyrics(const QVariantList &tracks) {
     m_libraryLyricsTotal = int(tracks.size());
     for (const QVariant &value : tracks) {
         const QVariantMap track = value.toMap();
-        const QString key = lyrics::keyFor(track);
-        if (!track.value("lyrics").toString().trimmed().isEmpty() || !lyrics::load(key).text.isEmpty()) {
+        const bool embedded = !track.value("lyrics").toString().trimmed().isEmpty();
+        const lyrics::Stored stored = embedded ? lyrics::Stored{} : lyrics::load(lyrics::keyFor(track));
+        if (embedded || !stored.text.isEmpty()) {
             ++m_libraryLyricsFound;
             continue;
         }
-        if (track.value("artist").toString().isEmpty() || lyrics::missingRecently(key))
+        if (track.value("artist").toString().isEmpty() || lyrics::missingRecently(stored))
             continue;
         const QString title = track.value("title").toString();
         m_libraryLyricsQueue.append({{"title", title.isEmpty() ? track.value("fileName").toString() : title},
@@ -176,7 +179,8 @@ void ServicesController::fetchNextLibraryLyrics() {
                 return;
             }
         } else if (result == LyricsLookup::Found) {
-            lyrics::save(key, text, "LRCLIB");
+            if (lyrics::save(key, text, "LRCLIB"))
+                emit lyricsSaved(key, text);
             ++m_libraryLyricsFound;
         } else {
             lyrics::markMissing(key);

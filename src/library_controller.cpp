@@ -331,7 +331,11 @@ LibraryController::LibraryController(QObject *parent)
     m_watchDebounce.setSingleShot(true);
     m_watchDebounce.setInterval(750);
     // m_lyrics holds rows of m_tracks.
-    connect(this, &LibraryController::tracksChanged, this, [this] { m_lyricsRead = false; });
+    connect(this, &LibraryController::tracksChanged, this, [this] {
+        m_lyricsRead = false;
+        ++m_lyricsRevision;
+        emit lyricsChanged();
+    });
     connect(&m_folderWatcher, &QFileSystemWatcher::directoryChanged, this, [this] { m_watchDebounce.start(); });
     connect(&m_watchDebounce, &QTimer::timeout, this, &LibraryController::rescanFolder);
     connect(&m_scanProcess, &QProcess::finished, this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
@@ -1374,15 +1378,45 @@ void LibraryController::readLyrics() {
         if (text.trimmed().isEmpty())
             text = lyrics::load(lyrics::keyFor(track)).text;
         const QStringList lines = sungLines(text);
-        if (lines.isEmpty())
-            continue;
-        TrackLyrics song{row, lines, {}};
-        song.folded.reserve(lines.size());
-        for (const QString &line : lines)
-            song.folded.append(foldedForSearch(line));
-        m_lyrics.append(song);
+        if (!lines.isEmpty())
+            m_lyrics.append(indexedLyrics(row, lines));
     }
     m_lyricsRead = true;
+}
+
+LibraryController::TrackLyrics LibraryController::indexedLyrics(int row, const QStringList &lines) {
+    TrackLyrics song{row, lines, {}};
+    song.folded.reserve(lines.size());
+    for (const QString &line : lines)
+        song.folded.append(foldedForSearch(line));
+    return song;
+}
+
+void LibraryController::addLyrics(const QString &key, const QString &text) {
+    const QStringList lines = sungLines(text);
+    if (!m_lyricsRead || lines.isEmpty())
+        return;
+    bool added = false;
+    for (int row = 0; row < m_tracks.size(); ++row) {
+        const QVariantMap track = m_tracks[row].toMap();
+        // Embedded lyrics win over saved ones, as in readLyrics.
+        if (!isAvailable(track) || !track.value("lyrics").toString().trimmed().isEmpty() ||
+            lyrics::keyFor(track) != key)
+            continue;
+        // Kept in row order, which orders equally good matches.
+        qsizetype at = 0;
+        while (at < m_lyrics.size() && m_lyrics[at].row < row)
+            ++at;
+        if (at < m_lyrics.size() && m_lyrics[at].row == row)
+            m_lyrics[at] = indexedLyrics(row, lines);
+        else
+            m_lyrics.insert(at, indexedLyrics(row, lines));
+        added = true;
+    }
+    if (added) {
+        ++m_lyricsRevision;
+        emit lyricsChanged();
+    }
 }
 
 void LibraryController::setFilter(const QString &query, const QString &format, bool strictFormat, bool favoritesOnly,

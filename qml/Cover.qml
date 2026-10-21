@@ -89,6 +89,20 @@ Item {
 
     Component.onCompleted: {
         applyArtworkSource()
+        countLoading()
+    }
+
+    // While a cover is still loading, its page's loading bar stays up instead of showing a blank tile as done.
+    readonly property bool loadingArtwork: hasArtwork && activeImage.status === Image.Loading
+    property bool countedLoading: false
+    onLoadingArtworkChanged: countLoading()
+    Component.onDestruction: if (countedLoading) window.coversLoading--
+
+    function countLoading() {
+        if (typeof window === "undefined" || loadingArtwork === countedLoading)
+            return
+        countedLoading = loadingArtwork
+        window.coversLoading += countedLoading ? 1 : -1
     }
 
     function applyArtworkSource() {

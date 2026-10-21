@@ -62,18 +62,33 @@ ApplicationWindow {
     readonly property color danger: "#FF6B6B"
     readonly property color success: "#34D399"
     readonly property color windowCloseHover: "#E53935"
+    // Buttons drawn over artwork, which stay dark whatever the cover's colours.
+    readonly property color overlayButton: Qt.rgba(0, 0, 0, 0.3)
+    readonly property color overlayButtonHover: Qt.rgba(0, 0, 0, 0.5)
     readonly property color borderSubtle: Qt.rgba(1, 1, 1, 0.05)
     readonly property color borderVariant: Qt.rgba(1, 1, 1, 0.09)
     readonly property color borderCard: borderVariant
 
-    readonly property string displayFont: (typeof displayFontFamily !== "undefined" && displayFontFamily.length > 0) ? displayFontFamily : "Space Grotesk"
-    readonly property string bodyFont: (typeof bodyFontFamily !== "undefined" && bodyFontFamily.length > 0) ? bodyFontFamily : "IBM Plex Sans"
+    // A font chosen in Settings replaces both the display and the body font; empty keeps the bundled ones.
+    property string appFont: ""
+    property string lyricsFont: ""
+    property int lyricsFontWeight: Font.Bold
+    readonly property var fontFamilies: Qt.fontFamilies().filter(family => !family.startsWith("@"))
+    readonly property string displayFont: appFont || ((typeof displayFontFamily !== "undefined" && displayFontFamily.length > 0) ? displayFontFamily : "Space Grotesk")
+    readonly property string bodyFont: appFont || ((typeof bodyFontFamily !== "undefined" && bodyFontFamily.length > 0) ? bodyFontFamily : "IBM Plex Sans")
     readonly property string monoFont: (typeof monoFontFamily !== "undefined" && monoFontFamily.length > 0) ? monoFontFamily : "IBM Plex Mono"
 
     property bool settingsInitialized: false
     property int libraryRevision: 0
+    // Covers on screen that are still loading; the page's loading bar stays up until they're in.
+    property int coversLoading: 0
     property bool appQuitting: false
     property string page: "home"
+    // Pages stay loaded once opened, so going back to one is instant and keeps its place; going to the tray drops them.
+    property var openedPages: []
+    function pageKept(name) {
+        return page === name || openedPages.indexOf(name) >= 0
+    }
     property real homeScrollPosition: 0
     property var libraryScrollPositions: ({})
     property string libraryTab: "songs"
@@ -104,7 +119,6 @@ ApplicationWindow {
     property var catalogDetailHeroTrack: ({})
     property var catalogDetailHistory: []
     property string nowPlayingMode: "controls" // "controls", "lyrics", "queue"
-    property var lyricsListView: null
     property bool nowPlayingLoaded: false
     // Hidden in the tray, no page is on screen, so pages and Now Playing are dropped and rebuilt on return.
     readonly property bool inTray: !window.visible
@@ -635,6 +649,9 @@ ApplicationWindow {
             window.hide()
         }
         lyricsFontSize = appSettings.value("lyrics/fontSize", 28)
+        appFont = appSettings.value("ui/font", "")
+        lyricsFont = appSettings.value("lyrics/font", "")
+        lyricsFontWeight = appSettings.value("lyrics/fontWeight", Font.Bold)
         accentName = appSettings.value("ui/accentName", "recordRed")
         customAccentColor = appSettings.value("ui/customAccentColor", accentPresets[0].base)
         albumArtRadius = appSettings.value("ui/albumArtRadius", 16)
@@ -1336,8 +1353,9 @@ ApplicationWindow {
         catalogDetailOpen = false
         if (settingsInitialized) appSettings.setValue("ui/page", page)
         updateVisibleLibrary()
-        if (page === "library") refreshLibraryGroups(library.catalogGroups())
-        else clearLibraryGroups()
+        if (openedPages.indexOf(page) < 0)
+            openedPages = openedPages.concat([page])
+        if (page === "library" && artists.length === 0) refreshLibraryGroups(library.catalogGroups())
         if (settingsInitialized && page === "radio" && radioStations.length === 0) Qt.callLater(refreshRadio)
         if (page !== "radio") services.cancelRadioRequests()
         dismissSearchFocus(Qt.point(-1, -1))
@@ -1378,13 +1396,20 @@ ApplicationWindow {
         const path = player.currentTrack ? player.currentTrack.filePath || "" : ""
         if (offlineBlackout && (/^(subsonic|jellyfin):/.test(path) || /^https?:/i.test(path))) player.stop()
     }
+    // The desktop may turn the shortcuts down after they were asked for, so the switch follows the controller. Only
+    // a choice made in Settings is saved, so a declined request asks again on the next launch.
+    Connections {
+        target: globalShortcuts
+        function onEnabledChanged() { window.globalShortcutsEnabled = globalShortcuts.enabled }
+    }
     onGlobalShortcutsEnabledChanged: {
         globalShortcuts.setEnabled(globalShortcutsEnabled)
-        if (globalShortcuts.enabled !== globalShortcutsEnabled) {
+        if (globalShortcuts.enabled !== globalShortcutsEnabled)
             globalShortcutsEnabled = globalShortcuts.enabled
-            return
-        }
-        saveSetting("ui/globalShortcutsEnabled", globalShortcutsEnabled)
+    }
+    function chooseGlobalShortcuts(value) {
+        saveSetting("ui/globalShortcutsEnabled", value)
+        globalShortcutsEnabled = value
     }
     onInAppShortcutBindingsChanged: {
         const normalized = normalizeInAppShortcutBindings(inAppShortcutBindings)
@@ -1395,6 +1420,9 @@ ApplicationWindow {
         if (settingsInitialized) saveSetting("ui/inAppShortcuts", JSON.stringify(inAppShortcutBindings))
     }
     onLyricsFontSizeChanged: saveSetting("lyrics/fontSize", lyricsFontSize)
+    onAppFontChanged: saveSetting("ui/font", appFont)
+    onLyricsFontChanged: saveSetting("lyrics/font", lyricsFont)
+    onLyricsFontWeightChanged: saveSetting("lyrics/fontWeight", lyricsFontWeight)
     onAccentNameChanged: saveSetting("ui/accentName", accentName)
     onCustomAccentColorChanged: saveSetting("ui/customAccentColor", customAccentColor)
     onAlbumArtRadiusChanged: saveSetting("ui/albumArtRadius", albumArtRadius)
@@ -1416,8 +1444,15 @@ ApplicationWindow {
     onSleepTimerModeChanged: saveSetting("player/sleepTimerMode", sleepTimerMode)
     onAutoplayEnabledChanged: saveSetting("player/autoplayEnabled", autoplayEnabled)
     onCrossfadeSecondsChanged: saveSetting("player/crossfadeSeconds", crossfadeSeconds)
-    onVolumeLimitEnabledChanged: saveSetting("player/volumeLimitEnabled", volumeLimitEnabled)
-    onMaxVolumePercentChanged: saveSetting("player/maxVolumePercent", maxVolumePercent)
+    // Applied from here, so a limit set in Settings or restored from a backup takes effect at once.
+    onVolumeLimitEnabledChanged: {
+        saveSetting("player/volumeLimitEnabled", volumeLimitEnabled)
+        applyVolumeLimit()
+    }
+    onMaxVolumePercentChanged: {
+        saveSetting("player/maxVolumePercent", maxVolumePercent)
+        applyVolumeLimit()
+    }
     onReplayGainModeChanged: {
         player.setReplayGainMode(replayGainMode)
         saveSetting("player/replayGainMode", replayGainMode)
@@ -1525,7 +1560,15 @@ ApplicationWindow {
         phoneRemote.repeatMode = repeatMode
     }
 
-    onInTrayChanged: if (inTray) trayMemoryTimer.restart()
+    onInTrayChanged: {
+        if (inTray) {
+            openedPages = []
+            clearLibraryGroups()
+            trayMemoryTimer.restart()
+        } else if (page === "library") {
+            refreshLibraryGroups(library.catalogGroups())
+        }
+    }
 
     // Runs once the dropped pages are gone, so their memory can go back to the system.
     Timer {
@@ -1584,16 +1627,18 @@ ApplicationWindow {
         }
     }
 
-    onWidthChanged: if (settingsInitialized && window.visibility !== Window.Maximized && window.width > 400) {
+    // Maximised and full-screen sizes aren't the window's own, so they don't replace the saved one.
+    readonly property bool geometryRestorable: visibility !== Window.Maximized && visibility !== Window.FullScreen
+    onWidthChanged: if (settingsInitialized && window.geometryRestorable && window.width > 400) {
         appSettings.setValue("window/width", window.width)
     }
-    onHeightChanged: if (settingsInitialized && window.visibility !== Window.Maximized && window.height > 300) {
+    onHeightChanged: if (settingsInitialized && window.geometryRestorable && window.height > 300) {
         appSettings.setValue("window/height", window.height)
     }
-    onXChanged: if (settingsInitialized && window.visibility !== Window.Maximized && window.x >= 0) {
+    onXChanged: if (settingsInitialized && window.geometryRestorable && window.x >= 0) {
         appSettings.setValue("window/x", window.x)
     }
-    onYChanged: if (settingsInitialized && window.visibility !== Window.Maximized && window.y >= 0) {
+    onYChanged: if (settingsInitialized && window.geometryRestorable && window.y >= 0) {
         appSettings.setValue("window/y", window.y)
     }
     onClosing: function(close) {
@@ -1612,7 +1657,7 @@ ApplicationWindow {
         finishHistoryTracking()
         libraryTagScan.save()
         persistPlayerState()
-        if (window.visibility !== Window.Maximized) {
+        if (window.geometryRestorable) {
             if (window.width > 400) appSettings.setValue("window/width", window.width)
             if (window.height > 300) appSettings.setValue("window/height", window.height)
             if (window.x >= 0) appSettings.setValue("window/x", window.x)
@@ -1636,7 +1681,6 @@ ApplicationWindow {
             "radio/sortDescending": radioSortDescending,
             "radio/viewMode": radioViewMode,
             "ui/miniPlayerAlwaysOnTop": miniPlayerAlwaysOnTop,
-            "ui/globalShortcutsEnabled": globalShortcutsEnabled,
             "ui/inAppShortcuts": JSON.stringify(inAppShortcutBindings),
             "ui/nowPlayingNotifications": nowPlayingNotifications,
             "player/resumeQueueOnLaunch": resumeQueueOnLaunch,
@@ -1649,6 +1693,9 @@ ApplicationWindow {
             "ui/showFormatBadges": showFormatBadges,
             "library/ignoreShortClips": ignoreShortClips,
             "lyrics/fontSize": lyricsFontSize,
+            "ui/font": appFont,
+            "lyrics/font": lyricsFont,
+            "lyrics/fontWeight": lyricsFontWeight,
             "player/nowPlayingBackdrop": nowPlayingBackdrop,
             "player/showRemainingTime": showRemainingTime,
             "lyrics/alignment": lyricsAlignment,
@@ -1726,6 +1773,19 @@ ApplicationWindow {
         window.showMinimized()
     }
 
+    // Full screen covers the taskbar too; leaving it puts the window back the way it was.
+    function toggleFullScreen() {
+        if (visibility !== Window.FullScreen) showFullScreen()
+        else if (wasMaximized) showMaximized()
+        else showNormal()
+    }
+
+    Shortcut {
+        sequence: inAppShortcut("fullScreen")
+        enabled: shortcutAllowed(sequence)
+        onActivated: toggleFullScreen()
+    }
+
     Shortcut {
         sequence: inAppShortcut("toggleMiniPlayer")
         enabled: shortcutAllowed(sequence)
@@ -1769,7 +1829,10 @@ ApplicationWindow {
         sequence: inAppShortcut("closePlayerView")
         // An open sheet handles Escape itself; two enabled shortcuts on one key would both be ignored as ambiguous.
         enabled: shortcutAllowed(sequence) && !refineSheetOpen && !radioRefineOpen && !trackActionSheet.isOpen
-        onActivated: nowPlayingOpen = false
+        onActivated: {
+            if (visibility === Window.FullScreen) toggleFullScreen()
+            else nowPlayingOpen = false
+        }
     }
 
     Shortcut {
@@ -1969,19 +2032,10 @@ ApplicationWindow {
 
             const m = line.match(/^\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\](.*)$/)
             if (m) {
-                const mins = parseInt(m[1], 10) || 0
-                const secs = parseInt(m[2], 10) || 0
-                let ms = 0
-                if (m[3]) {
-                    const frac = m[3]
-                    if (frac.length === 1) ms = parseInt(frac, 10) * 100
-                    else if (frac.length === 2) ms = parseInt(frac, 10) * 10
-                    else ms = parseInt(frac.substring(0, 3), 10)
-                }
-                const timeMs = Math.max(0, (mins * 60 + secs) * 1000 + ms + lyricsSyncOffsetMs)
-                const text = (m[4] || "").trim()
-                if (text.length > 0) {
-                    result.push({ timeMs: timeMs, text: text })
+                const timeMs = Math.max(0, LyricsText.stampMs(m[1], m[2], m[3]) + lyricsSyncOffsetMs)
+                const timed = LyricsText.timedWords((m[4] || "").trim(), lyricsSyncOffsetMs)
+                if (timed.text.length > 0) {
+                    result.push({ timeMs: timeMs, text: timed.text, words: timed.words, wordsEndMs: timed.endMs })
                 }
             } else {
                 result.push({ timeMs: -1, text: line })
@@ -2030,17 +2084,23 @@ ApplicationWindow {
             const next = lines[i + 1]
             items.push({ type: "line", lineIndex: i, startMs: line.timeMs, text: line.text })
             const words = String(line.text || "").trim().split(/\s+/).filter(word => word.length > 0).length
-            if (next && next.timeMs - line.timeMs >= 8000) {
-                const vocalMs = Math.min(Math.max(1500, Math.min(5000, words * 280 + 600)), Math.max(1500, next.timeMs - line.timeMs - 2000))
-                const gapStart = line.timeMs + vocalMs + 300
+            // How long the line is sung is only a guess, so it's generous: slow singers hold words, and a pause
+            // shown while they're still singing is worse than one shown a little late.
+            const vocalMs = Math.min(8000, Math.max(2500, words * 500 + 1000))
+            if (next && next.timeMs - line.timeMs >= vocalMs + 5000) {
+                const gapStart = line.timeMs + vocalMs
                 const gapEnd = next.timeMs - 150
                 if (gapEnd - gapStart >= 4000) items.push({ type: "gap", startMs: gapStart, endMs: gapEnd })
             } else if (!next && player.duration > 0) {
-                const gapStart = line.timeMs + Math.max(1800, Math.min(4500, words * 260 + 500)) + 400
+                const gapStart = line.timeMs + vocalMs
                 const gapEnd = player.duration - 500
                 if (gapEnd - gapStart >= 6000) items.push({ type: "gap", startMs: gapStart, endMs: gapEnd })
             }
         }
+        // A line is sung until the next line or pause starts, which paces its word fill.
+        items.forEach((item, i) => {
+            if (item.type === "line") item.endMs = i + 1 < items.length ? items[i + 1].startMs : item.startMs + 4000
+        })
         return items
     }
 
@@ -2059,7 +2119,7 @@ ApplicationWindow {
         const pos = player.position
         let idx = -1
         for (let i = 0; i < parsedLyrics.length; i++) {
-            if (pos >= parsedLyrics[i].timeMs - 200) {
+            if (pos >= parsedLyrics[i].timeMs) {
                 idx = i
             } else {
                 break
@@ -2071,17 +2131,7 @@ ApplicationWindow {
             if (pos >= lyricDisplayItems[i].startMs) displayIndex = i
             else break
         }
-        if (displayIndex !== activeLyricDisplayIndex) {
-            activeLyricDisplayIndex = displayIndex
-            if (lyricsListView && displayIndex >= 0) lyricsListView.currentIndex = displayIndex
-        }
-    }
-
-    function karaokeLyricHtml(index, text) {
-        // Checked before reading the position, so only the active line re-renders as the song plays.
-        if (index !== activeLyricIndex) return LyricsText.escape(text)
-        const color = window.lyricsActiveStyle === "accent" ? recordRedHover : Qt.color("#FFFFFF")
-        return LyricsText.karaoke(parsedLyrics, index, activeLyricIndex, player.position, color, text)
+        activeLyricDisplayIndex = displayIndex
     }
 
     function applyLyrics(lyrics, provider) {
@@ -2095,10 +2145,6 @@ ApplicationWindow {
         parsedLyrics = parseLrc(lyrics || "")
         activeLyricIndex = -1
         activeLyricDisplayIndex = -1
-        if (lyricsListView) {
-            lyricsListView.currentIndex = -1
-            lyricsListView.contentY = 0
-        }
         updateActiveLyric()
     }
 
@@ -2187,9 +2233,6 @@ ApplicationWindow {
         if (nowPlayingMode === "lyrics") {
             parsedLyrics = parseLrc(player.currentLyrics)
             updateActiveLyric()
-            if (lyricsListView && activeLyricIndex >= 0) {
-                lyricsListView.currentIndex = activeLyricIndex
-            }
         }
     }
 
@@ -2272,8 +2315,7 @@ ApplicationWindow {
     function refreshLibraryState() {
         const groups = library.catalogGroups()
         refreshHomeGroups(groups)
-        if (page === "library") refreshLibraryGroups(groups)
-        else clearLibraryGroups()
+        if (pageKept("library")) refreshLibraryGroups(groups)
         // Artwork and tag edits also land here; only a changed library gets new picks.
         if (library.trackCount !== homePickedTrackCount) {
             homePickedTrackCount = library.trackCount
@@ -2317,7 +2359,7 @@ ApplicationWindow {
     }
 
     function refreshVisibleLibraryGroups() {
-        if (page === "library") refreshLibraryGroups(library.catalogGroups())
+        if (pageKept("library")) refreshLibraryGroups(library.catalogGroups())
     }
 
     function clearLibraryGroups() {
@@ -2627,7 +2669,8 @@ ApplicationWindow {
     }
 
     function playPrevious() {
-        if (player.position > 5000) {
+        // Past the first 3 seconds Previous restarts the song, as on the phone.
+        if (player.position > 3000) {
             player.seek(0)
             return
         }
@@ -2716,10 +2759,6 @@ ApplicationWindow {
             parsedLyrics = parseLrc(player.currentLyrics)
             activeLyricIndex = -1
             activeLyricDisplayIndex = -1
-            if (lyricsListView) {
-                lyricsListView.currentIndex = -1
-                lyricsListView.contentY = 0
-            }
             updateActiveLyric()
             playerStateDirty = true
             persistPlayerState()
@@ -2818,6 +2857,9 @@ ApplicationWindow {
                 startMinimizedToTray: window.startMinimizedToTray,
                 nowPlayingNotifications: window.nowPlayingNotifications,
                 lyricsFontSize: window.lyricsFontSize,
+                appFont: window.appFont,
+                lyricsFont: window.lyricsFont,
+                lyricsFontWeight: window.lyricsFontWeight,
                 lyricsAlignment: window.lyricsAlignment,
                 lyricsActiveStyle: window.lyricsActiveStyle,
                 preferLocalLyrics: window.preferLocalLyrics,
@@ -2867,7 +2909,7 @@ ApplicationWindow {
                     if (data.excludedFolders) { window.excludedFolders = data.excludedFolders; appSettings.setValue("library/excludedFolders", data.excludedFolders) }
                     if (data.resumeQueueOnLaunch !== undefined) { window.resumeQueueOnLaunch = data.resumeQueueOnLaunch; appSettings.setValue("player/resumeQueueOnLaunch", data.resumeQueueOnLaunch) }
                     if (Array.isArray(data.playlists)) { window.playlists = data.playlists; appSettings.setValue("library/playlists", JSON.stringify(data.playlists)) }
-                    if (data.globalShortcutsEnabled !== undefined) { window.globalShortcutsEnabled = data.globalShortcutsEnabled }
+                    if (data.globalShortcutsEnabled !== undefined) { window.chooseGlobalShortcuts(data.globalShortcutsEnabled) }
                     if (data.globalShortcutBindings) {
                         for (const action in data.globalShortcutBindings) {
                             if (globalShortcuts.setShortcut(action, data.globalShortcutBindings[action])) {
@@ -2892,6 +2934,9 @@ ApplicationWindow {
                     if (data.startMinimizedToTray !== undefined) { window.startMinimizedToTray = data.startMinimizedToTray; appSettings.setValue("ui/startMinimizedToTray", data.startMinimizedToTray) }
                     if (data.nowPlayingNotifications) { window.nowPlayingNotifications = data.nowPlayingNotifications; appSettings.setValue("ui/nowPlayingNotifications", data.nowPlayingNotifications) }
                     if (data.lyricsFontSize) { window.lyricsFontSize = data.lyricsFontSize; appSettings.setValue("lyrics/fontSize", data.lyricsFontSize) }
+                    if (data.appFont !== undefined) window.appFont = data.appFont
+                    if (data.lyricsFont !== undefined) window.lyricsFont = data.lyricsFont
+                    if (data.lyricsFontWeight) window.lyricsFontWeight = data.lyricsFontWeight
                     if (data.lyricsAlignment) { window.lyricsAlignment = data.lyricsAlignment; appSettings.setValue("lyrics/alignment", data.lyricsAlignment) }
                     if (data.lyricsActiveStyle) { window.lyricsActiveStyle = data.lyricsActiveStyle; appSettings.setValue("lyrics/activeStyle", data.lyricsActiveStyle) }
                     if (data.preferLocalLyrics !== undefined) { window.preferLocalLyrics = data.preferLocalLyrics; appSettings.setValue("lyrics/preferLocal", data.preferLocalLyrics) }
@@ -3148,18 +3193,12 @@ ApplicationWindow {
     }
 
     function setPlayerVolume(val) {
-        let v = Math.max(0.0, Math.min(1.0, val))
-        if (volumeLimitEnabled) {
-            const limit = Math.max(0.05, maxVolumePercent / 100.0)
-            if (v > limit) v = limit
-        }
-        player.setVolume(v)
+        player.setVolume(Math.max(0.0, Math.min(1.0, val)))
     }
 
-    function enforceVolumeLimit() {
-        let v = player.volume
-        if (volumeLimitEnabled) v = Math.min(v, Math.max(0.05, maxVolumePercent / 100.0))
-        player.setVolume(v)
+    // The limit is read when the volume is applied, so applying the same volume again picks up a new limit.
+    function applyVolumeLimit() {
+        player.setVolume(player.volume)
     }
 
     Component {
@@ -3178,8 +3217,8 @@ ApplicationWindow {
             lyricsActiveStyle: window.lyricsActiveStyle
             lyricsAlignment: window.lyricsAlignment
             lyricsFontSize: window.lyricsFontSize
-            volumeLimitEnabled: window.volumeLimitEnabled
-            maxVolumePercent: window.maxVolumePercent
+            lyricsFont: window.lyricsFont || window.displayFont
+            lyricsFontWeight: window.lyricsFontWeight
             queueEntries: window.queueEntries
             parsedLyrics: window.parsedLyrics
             activeLyricIndex: window.activeLyricIndex
@@ -3414,8 +3453,58 @@ ApplicationWindow {
             anchors.bottom: parent.bottom
             z: 10
 
+            // On Linux the buttons follow the desktop's own: which ones it shows, in its order, and in its style.
+            Row {
+                visible: windowFrame.linuxButtons.length > 0
+                height: 60
+                rightPadding: 14
+                spacing: 10
+
+                Repeater {
+                    model: windowFrame.linuxButtons
+
+                    ButtonBase {
+                        id: linuxButton
+                        required property string modelData
+                        readonly property bool maximized: window.visibility === Window.Maximized
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: 24
+                        height: 24
+                        enabled: modelData !== "maximize" || !window.nowPlayingOpen
+                        Accessible.name: modelData === "minimize" ? qsTr("Minimize")
+                                       : modelData === "close" ? qsTr("Close")
+                                       : maximized ? qsTr("Restore") : qsTr("Maximize")
+                        onClicked: {
+                            if (modelData === "minimize") window.showMinimized()
+                            else if (modelData === "close") window.close()
+                            else toggleMaximize()
+                        }
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: 12
+                            // GNOME-style desktops fill their buttons; KDE and others show the icon and fill on hover.
+                            color: linuxButton.isPressed ? Qt.alpha(textPrimary, 0.24)
+                                 : linuxButton.isHovered ? (linuxButton.modelData === "close" && !windowFrame.roundButtons ? recordRed : Qt.alpha(textPrimary, 0.16))
+                                 : windowFrame.roundButtons ? Qt.alpha(textPrimary, 0.08) : "transparent"
+                        }
+
+                        LucideIcon {
+                            anchors.centerIn: parent
+                            width: 12
+                            height: 12
+                            icon: linuxButton.modelData === "minimize" ? "minus"
+                                : linuxButton.modelData === "close" ? "x"
+                                : linuxButton.maximized ? "copy" : "square"
+                            color: textPrimary
+                        }
+                    }
+                }
+            }
+
             Row {
                 id: winControlRow
+                visible: windowFrame.linuxButtons.length === 0
                 height: 60
 
                 Rectangle {
@@ -3745,11 +3834,11 @@ ApplicationWindow {
                         Layout.fillHeight: true
                         asynchronous: true
                         // Wait for the saved page, or Home is built and discarded when launching elsewhere.
-                        active: settingsInitialized && page === "home" && !inTray
+                        active: settingsInitialized && pageKept("home") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: homePageLoader.status === Loader.Loading
+                            visible: homePageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3779,11 +3868,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "library" && !inTray
+                        active: pageKept("library") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: libraryPageLoader.status === Loader.Loading
+                            visible: libraryPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3799,7 +3888,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "search" && !inTray
+                        active: pageKept("search") && !inTray
                         property bool focusOnLoad: false
                         onLoaded: if (focusOnLoad) {
                             focusOnLoad = false
@@ -3808,7 +3897,7 @@ ApplicationWindow {
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: searchPageLoader.status === Loader.Loading
+                            visible: searchPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3825,11 +3914,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "radio" && !inTray
+                        active: pageKept("radio") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: radioPageLoader.status === Loader.Loading
+                            visible: radioPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3845,11 +3934,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "jellyfin" && !inTray
+                        active: pageKept("jellyfin") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: jellyfinPageLoader.status === Loader.Loading
+                            visible: jellyfinPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3865,11 +3954,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "subsonic" && !inTray
+                        active: pageKept("subsonic") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: subsonicPageLoader.status === Loader.Loading
+                            visible: subsonicPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3885,11 +3974,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "stats" && !inTray
+                        active: pageKept("stats") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: listeningRecordPageLoader.status === Loader.Loading
+                            visible: listeningRecordPageLoader.status === Loader.Loading || window.coversLoading > 0
                         }
 
                         sourceComponent: Component {
@@ -3899,7 +3988,6 @@ ApplicationWindow {
                                     libraryRevision
                                     return window.availableTracks()
                                 }
-                                playCounts: window.playCounts
                                 playbackHistory: window.playbackHistory
                             }
                         }
@@ -3910,11 +3998,11 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "settings" && !inTray
+                        active: pageKept("settings") && !inTray
 
                         LoadingBar {
                             anchors.fill: parent
-                            visible: settingsLoader.status === Loader.Loading
+                            visible: settingsLoader.status === Loader.Loading || window.coversLoading > 0
                         }
                         sourceComponent: Component {
                             SettingsPage {
@@ -3989,7 +4077,7 @@ ApplicationWindow {
                                 onAddLibraryFolderRequested: folderDialog.open()
                                 onRemoveLibraryFolderRequested: path => library.removeFolder(path)
                                 onResumeQueueOnLaunchSelected: value => window.resumeQueueOnLaunch = value
-                                onGlobalShortcutsEnabledSelected: value => { window.globalShortcutsEnabled = value }
+                                onGlobalShortcutsEnabledSelected: value => window.chooseGlobalShortcuts(value)
                                 onGlobalShortcutSelected: (action, shortcut) => {
                                     if (globalShortcuts.setShortcut(action, shortcut)) {
                                         appSettings.setValue("ui/globalShortcut/" + action, globalShortcuts.shortcuts[action])
@@ -4022,8 +4110,8 @@ ApplicationWindow {
                                 onSleepFadeOutSelected: value => window.sleepFadeOut = value
                                 onAutoplaySelected: value => window.autoplayEnabled = value
                                 onCrossfadeSelected: value => window.crossfadeSeconds = value
-                                onVolumeLimitSelected: value => { window.volumeLimitEnabled = value; window.enforceVolumeLimit() }
-                                onMaxVolumeSelected: value => { window.maxVolumePercent = value; window.enforceVolumeLimit() }
+                                onVolumeLimitSelected: value => window.volumeLimitEnabled = value
+                                onMaxVolumeSelected: value => window.maxVolumePercent = value
                                 onReplayGainModeSelected: value => window.replayGainMode = value
                                 onPreferLocalLyricsSelected: value => window.preferLocalLyrics = value
                                 onLyricsAlignmentSelected: value => window.lyricsAlignment = value
@@ -4624,9 +4712,11 @@ ApplicationWindow {
         }
 
         Item {
+            id: npBackdrop
+            readonly property bool moving: window.nowPlayingBackdrop === "moving"
             anchors.fill: parent
             clip: true
-            opacity: window.nowPlayingBackdrop === "clean" ? 0.0 : 0.35
+            opacity: window.nowPlayingBackdrop === "clean" ? 0.0 : (moving ? 0.9 : 0.35)
 
             Behavior on opacity {
                 NumberAnimation { duration: 240 }
@@ -4635,6 +4725,7 @@ ApplicationWindow {
             // Blurred at 240px and scaled up to cover the window; blurring at window size keeps
             // several window-sized textures alive for the life of the page.
             Cover {
+                visible: !npBackdrop.moving
                 anchors.centerIn: parent
                 width: 240
                 height: 240
@@ -4643,7 +4734,7 @@ ApplicationWindow {
                 keepPreviousArtwork: true
                 cacheArtwork: true
                 stableSourceSize: 280
-                layer.enabled: true
+                layer.enabled: visible
                 layer.smooth: true
                 layer.effect: MultiEffect {
                     blurEnabled: true
@@ -4654,12 +4745,58 @@ ApplicationWindow {
                 }
             }
 
+            // Moving keeps only the cover's main colors: it's shrunk to 4 by 4 pixels, then stretched and blurred
+            // into soft patches. Two of them turn slowly in opposite directions, so the colors drift and mix.
+            Repeater {
+                model: npBackdrop.moving ? 2 : 0
+
+                Item {
+                    required property int index
+                    anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: index * parent.width * 0.25
+                    width: 64
+                    height: 64
+                    scale: Math.max(parent.width, parent.height) * 1.6 / width
+                    opacity: index ? 0.6 : 1.0
+                    layer.enabled: true
+                    layer.smooth: true
+                    layer.effect: MultiEffect {
+                        blurEnabled: true
+                        blur: 1.0
+                        blurMax: 32
+                        saturation: 1.0
+                        brightness: -0.2
+                    }
+
+                    Cover {
+                        width: 4
+                        height: 4
+                        scale: 16
+                        transformOrigin: Item.TopLeft
+                        radius: 0
+                        track: shownPlayer.currentTrack
+                        keepPreviousArtwork: true
+                        cacheArtwork: true
+                        layer.enabled: true
+                        layer.smooth: true
+                    }
+
+                    RotationAnimation on rotation {
+                        running: nowPlayingOpen && window.visibility !== Window.Minimized
+                        from: index ? 360 : 0
+                        to: index ? 0 : 360
+                        duration: index ? 140000 : 100000
+                        loops: Animation.Infinite
+                    }
+                }
+            }
+
             Rectangle {
                 anchors.fill: parent
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: "#50000000" }
-                    GradientStop { position: 0.45; color: Qt.alpha(surfaceDeep, 0.75) }
-                    GradientStop { position: 1.0; color: Qt.alpha(surfaceDeep, 0.97) }
+                    GradientStop { position: 0.45; color: Qt.alpha(surfaceDeep, npBackdrop.moving ? 0.45 : 0.75) }
+                    GradientStop { position: 1.0; color: Qt.alpha(surfaceDeep, npBackdrop.moving ? 0.7 : 0.97) }
                 }
             }
         }
@@ -4690,7 +4827,7 @@ ApplicationWindow {
                 width: Math.min(420, Math.round(parent.width * 0.38))
 
                 readonly property int normalArtSize: Math.min(width - 20, Math.min(parent.height * 0.58, 360))
-                readonly property int lyricsArtSize: 260
+                readonly property int lyricsArtSize: Math.min(width - 20, 320)
                 readonly property bool compactPlayerMode: nowPlayingMode === "lyrics" || nowPlayingMode === "queue"
                 readonly property int currentArtSize: compactPlayerMode ? lyricsArtSize : normalArtSize
                 readonly property int normalArtY: Math.round((parent.height - normalArtSize) / 2)
@@ -4809,9 +4946,12 @@ ApplicationWindow {
                             onRemainingToggled: val => { window.showRemainingTime = val; appSettings.setValue("player/showRemainingTime", val) }
                         }
 
+                        // Shuffle and repeat sit beside the other buttons, evenly spaced, as one centred group.
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 10
+                            spacing: 16
+
+                            Item { Layout.fillWidth: true }
 
                             TransportButton {
                                 Accessible.name: qsTr("Shuffle")
@@ -4821,8 +4961,6 @@ ApplicationWindow {
                                 accented: player.shuffleEnabled
                                 onClicked: toggleQueueShuffle()
                             }
-
-                            Item { Layout.fillWidth: true }
 
                             TransportButton {
                                 Accessible.name: qsTr("Previous track")
@@ -4849,8 +4987,6 @@ ApplicationWindow {
                                 onClicked: shownNext()
                             }
 
-                            Item { Layout.fillWidth: true }
-
                             TransportButton {
                                 Accessible.name: qsTr("Repeat")
                                 visible: !phoneInDock
@@ -4860,6 +4996,8 @@ ApplicationWindow {
                                 iconColor: repeatMode > 0 ? recordRed : textPrimary
                                 onClicked: toggleRepeat()
                             }
+
+                            Item { Layout.fillWidth: true }
                         }
 
                         RowLayout {

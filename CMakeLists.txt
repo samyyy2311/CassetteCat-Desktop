@@ -22,7 +22,7 @@ if(WIN32)
     list(APPEND CassetteCat_PLATFORM_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/app.rc")
 endif()
 if(UNIX AND NOT APPLE)
-    list(APPEND CassetteCat_PLATFORM_SOURCES src/mpris_adaptor.h src/mpris_adaptor.cpp)
+    list(APPEND CassetteCat_PLATFORM_SOURCES src/mpris_adaptor.h src/mpris_adaptor.cpp src/portal_shortcuts.h src/portal_shortcuts.cpp)
 endif()
 if(APPLE)
     enable_language(OBJCXX)
@@ -110,6 +110,7 @@ qt_add_qml_module(CassetteCat
         qml/TrackMetadataDialog.qml
         qml/ExpandableSearchBar.qml
         qml/LucideIcon.qml
+        qml/LyricsList.qml
         qml/HoverMarqueeLabel.qml
         qml/TransportButton.qml
         qml/PressDepthIconButton.qml
@@ -168,6 +169,7 @@ qt_add_qml_module(CassetteCat
         qml/EmptyState.qml
         qml/LoadingBar.qml
         qml/AutoHideScrollBar.qml
+        qml/IndexRail.qml
         qml/SettingsNavigationItem.qml
         qml/SettingCard.qml
         qml/SettingRow.qml
@@ -206,6 +208,7 @@ qt_add_qml_module(CassetteCat
         qml/MiniPlayerSubpageHeader.qml
         qml/MiniPlayerLyricsView.qml
         qml/MiniPlayerVolumePill.qml
+        qml/MiniPlayerControls.qml
     RESOURCES
         CHANGELOG.md
         qml/icons/external-link.svg
@@ -273,6 +276,10 @@ qt_add_qml_module(CassetteCat
         qml/icons/rewind.svg
         qml/icons/command.svg
         qml/icons/maximize-2.svg
+        qml/icons/minimize-2.svg
+        qml/icons/type.svg
+        qml/icons/square.svg
+        qml/icons/copy.svg
         qml/icons/minus.svg
         qml/icons/plus.svg
         qml/icons/jellyfin.svg
@@ -302,8 +309,15 @@ qt_add_qml_module(CassetteCat
         assets/06-calico-player.png
         assets/vinyl_record.svg
         assets/vinyl_tonearm.svg
-        fonts/space_grotesk_variable.ttf
-        fonts/ibm_plex_sans_variable.ttf
+        fonts/space_grotesk_light.ttf
+        fonts/space_grotesk_regular.ttf
+        fonts/space_grotesk_medium.ttf
+        fonts/space_grotesk_semibold.ttf
+        fonts/space_grotesk_bold.ttf
+        fonts/ibm_plex_sans_regular.ttf
+        fonts/ibm_plex_sans_medium.ttf
+        fonts/ibm_plex_sans_semibold.ttf
+        fonts/ibm_plex_sans_bold.ttf
         fonts/ibm_plex_mono_regular.ttf
         fonts/ibm_plex_mono_semibold.ttf
         fonts/silkscreen_regular.ttf
@@ -324,6 +338,26 @@ qt_add_translations(CassetteCat
     RESOURCE_PREFIX /i18n
     LUPDATE_OPTIONS -no-obsolete -locations none
 )
+# Settings offers a language once at least 70% of it is translated, so picking one doesn't leave the app largely in
+# English. Weblate keeps every file current either way.
+set(CASSETTECAT_OFFERED_LANGUAGES "")
+foreach(TS_FILE IN LISTS CASSETTECAT_TS_FILES)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${TS_FILE}")
+    get_filename_component(LANGUAGE "${TS_FILE}" NAME_WE)
+    string(REPLACE "cassettecat_" "" LANGUAGE "${LANGUAGE}")
+    file(STRINGS "${TS_FILE}" ALL_STRINGS REGEX "<translation")
+    file(STRINGS "${TS_FILE}" OPEN_STRINGS REGEX "<translation type=\"unfinished\"")
+    list(LENGTH ALL_STRINGS TOTAL)
+    list(LENGTH OPEN_STRINGS OPEN)
+    math(EXPR DONE_TENTHS "(${TOTAL} - ${OPEN}) * 10")
+    math(EXPR NEEDED_TENTHS "${TOTAL} * 7")
+    if(LANGUAGE STREQUAL "en" OR (TOTAL GREATER 0 AND DONE_TENTHS GREATER_EQUAL NEEDED_TENTHS))
+        list(APPEND CASSETTECAT_OFFERED_LANGUAGES "${LANGUAGE}")
+    endif()
+endforeach()
+list(JOIN CASSETTECAT_OFFERED_LANGUAGES "," CASSETTECAT_OFFERED_LANGUAGES)
+set_source_files_properties(src/app_settings.cpp PROPERTIES
+    COMPILE_DEFINITIONS "CASSETTECAT_OFFERED_LANGUAGES=\"${CASSETTECAT_OFFERED_LANGUAGES}\"")
 
 include(CTest)
 option(CASSETTECAT_BUILD_TESTING "Build CassetteCat tests" ON)

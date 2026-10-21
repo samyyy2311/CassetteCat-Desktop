@@ -145,10 +145,7 @@ void ServicesController::findMusicBrainzTags(const QVariantMap &track) {
     QUrl url(QStringLiteral("https://musicbrainz.org/ws/2/recording"));
     url.setQuery(QUrlQuery{{"fmt", "json"}, {"limit", "25"}, {"query", query}});
 
-    QNetworkRequest request(url);
-    request.setTransferTimeout(services::detail::requestTimeoutMs);
-    request.setHeader(QNetworkRequest::UserAgentHeader,
-                      "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
+    QNetworkRequest request = services::detail::request(url);
     requestMusicBrainzTags(request, track, 0);
 }
 

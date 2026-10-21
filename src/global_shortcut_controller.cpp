@@ -2,12 +2,10 @@
 
 #include <QCoreApplication>
 #include <QGuiApplication>
+#include <QKeyEvent>
+#include <QWindow>
 #include <QStringList>
 #include <iterator>
-
-#ifdef Q_OS_WIN
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 
 namespace {
 
@@ -27,6 +25,18 @@ constexpr Shortcut shortcutDefinitions[] = {
     {Favorite, "favorite", QT_TRANSLATE_NOOP("GlobalShortcutController", "Toggle Favorite")},
     {Search, "search", QT_TRANSLATE_NOOP("GlobalShortcutController", "Focus Search")},
     {MiniPlayer, "miniPlayer", QT_TRANSLATE_NOOP("GlobalShortcutController", "Toggle Mini Player")}};
+
+} // namespace
+
+#ifdef CASSETTECAT_HAVE_DBUS
+#include "portal_shortcuts.h"
+#endif
+
+#ifdef Q_OS_WIN
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
+namespace {
 
 bool parseShortcut(const QString &text, UINT *modifiers, UINT *key) {
     QString normalized = text.trimmed();
@@ -136,17 +146,61 @@ GlobalShortcutController::GlobalShortcutController(QObject *parent) : QObject(pa
     m_altHoldTimer.setSingleShot(true);
     m_altHoldTimer.setInterval(500);
     connect(&m_altHoldTimer, &QTimer::timeout, this, [this] {
-        if (!m_altPressed || QGuiApplication::applicationState() != Qt::ApplicationActive)
+        if (!m_altAlone)
             return;
-        m_accessHintsVisible = true;
-        emit accessHintsRequested(true);
+        m_hintsShownByHold = true;
+        setAccessHintsVisible(true);
     });
     QCoreApplication::instance()->installNativeEventFilter(this);
-#ifdef Q_OS_WIN
-    setStatus(tr("Global shortcuts are off"));
-#else
-    setStatus(tr("Global shortcuts are not available on this platform"));
+    QCoreApplication::instance()->installEventFilter(this);
+#ifdef CASSETTECAT_HAVE_DBUS
+    if (PortalShortcuts::available()) {
+        m_portal = new PortalShortcuts(this);
+        connect(m_portal, &PortalShortcuts::activated, this, [this](const QString &action) {
+            for (const auto &entry : shortcutDefinitions)
+                if (action == QLatin1String(entry.action))
+                    trigger(entry.id);
+        });
+        connect(m_portal, &PortalShortcuts::bound, this, [this](int count) {
+            setStatus(count > 0 ? tr("Global shortcuts are active") : tr("No shortcuts were allowed"));
+        });
+        // Turned down in the desktop's dialog, or the desktop couldn't set them up.
+        connect(m_portal, &PortalShortcuts::failed, this, [this] {
+            m_enabled = false;
+            emit enabledChanged();
+            setStatus(tr("Global shortcuts weren't allowed"));
+        });
+    }
 #endif
+    if (supported())
+        setStatus(tr("Global shortcuts are off"));
+    else
+        setStatus(tr("Global shortcuts are not available on this platform"));
+}
+
+bool GlobalShortcutController::trigger(int id) {
+    switch (id) {
+    case PlayPause:
+        emit playPauseRequested();
+        return true;
+    case Previous:
+        emit previousRequested();
+        return true;
+    case Next:
+        emit nextRequested();
+        return true;
+    case Favorite:
+        emit favoriteRequested();
+        return true;
+    case Search:
+        emit searchRequested();
+        return true;
+    case MiniPlayer:
+        emit miniPlayerRequested();
+        return true;
+    default:
+        return false;
+    }
 }
 
 GlobalShortcutController::~GlobalShortcutController() {
@@ -158,7 +212,7 @@ bool GlobalShortcutController::supported() const {
 #ifdef Q_OS_WIN
     return true;
 #else
-    return false;
+    return m_portal != nullptr;
 #endif
 }
 
@@ -236,12 +290,92 @@ bool GlobalShortcutController::setShortcut(const QString &action, const QString 
     }
     emit shortcutsChanged();
     return true;
+#elif defined(CASSETTECAT_HAVE_DBUS)
+    if (!m_portal || !m_shortcuts.contains(action))
+        return false;
+    QStringList parts = shortcut.split(QLatin1Char('+'), Qt::SkipEmptyParts);
+    // "Ctrl++" splits to just "Ctrl"; its key is the plus, as the portal trigger reads it.
+    if (shortcut.endsWith(QStringLiteral("++")))
+        parts.append(QStringLiteral("Plus"));
+    static const QStringList modifiers{QStringLiteral("Ctrl"), QStringLiteral("Alt"), QStringLiteral("Shift")};
+    if (parts.size() < 2 || modifiers.contains(parts.constLast()) ||
+        (!parts.contains(QStringLiteral("Ctrl")) && !parts.contains(QStringLiteral("Alt")))) {
+        setStatus(tr("Use Ctrl or Alt with a letter, number, arrow, Space, F key, or supported punctuation"));
+        return false;
+    }
+    for (auto it = m_shortcuts.cbegin(); it != m_shortcuts.cend(); ++it) {
+        if (it.key() != action && it.value().toString() == shortcut) {
+            setStatus(tr("Each shortcut must use a different key combination"));
+            return false;
+        }
+    }
+    if (m_shortcuts.value(action).toString() == shortcut)
+        return true;
+    m_shortcuts.insert(action, shortcut);
+    if (m_enabled)
+        registerShortcuts();
+    emit shortcutsChanged();
+    return true;
 #else
     Q_UNUSED(action);
     Q_UNUSED(shortcut);
-    setStatus(tr("Global shortcuts are not available on this platform"));
     return false;
 #endif
+}
+
+// Alt shows the letters that open each page, as Windows apps do, on every platform: holding it shows them after a
+// moment and tapping it shows or hides them. They stay up until a letter, Esc, a click or another key.
+bool GlobalShortcutController::eventFilter(QObject *watched, QEvent *event) {
+    // A key event goes to the window and then on to its items; the window's copy is the one that counts.
+    if (!qobject_cast<QWindow *>(watched))
+        return false;
+    switch (event->type()) {
+    case QEvent::KeyPress: {
+        const auto *key = static_cast<QKeyEvent *>(event);
+        if (key->key() == Qt::Key_Alt) {
+            // Some Linux setups report Alt's own press without Alt among the modifiers.
+            if (!key->isAutoRepeat() && (key->modifiers() & ~Qt::AltModifier) == Qt::NoModifier) {
+                m_altAlone = true;
+                m_hintsShownByHold = false;
+                m_altHoldTimer.start();
+            }
+            return false;
+        }
+        m_altAlone = false;
+        m_altHoldTimer.stop();
+        if (!m_accessHintsVisible)
+            return false;
+        setAccessHintsVisible(false);
+        if (key->key() >= Qt::Key_A && key->key() <= Qt::Key_Z) {
+            emit accessKeyRequested(QString(QChar(u'A' + (key->key() - Qt::Key_A))));
+            return true;
+        }
+        return key->key() == Qt::Key_Escape;
+    }
+    case QEvent::KeyRelease:
+        if (static_cast<QKeyEvent *>(event)->key() == Qt::Key_Alt) {
+            m_altHoldTimer.stop();
+            if (m_altAlone && !m_hintsShownByHold)
+                setAccessHintsVisible(!m_accessHintsVisible);
+            m_altAlone = false;
+        }
+        return false;
+    case QEvent::MouseButtonPress:
+    case QEvent::WindowDeactivate:
+        m_altAlone = false;
+        m_altHoldTimer.stop();
+        setAccessHintsVisible(false);
+        return false;
+    default:
+        return false;
+    }
+}
+
+void GlobalShortcutController::setAccessHintsVisible(bool visible) {
+    if (m_accessHintsVisible == visible)
+        return;
+    m_accessHintsVisible = visible;
+    emit accessHintsRequested(visible);
 }
 
 bool GlobalShortcutController::nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) {
@@ -249,63 +383,11 @@ bool GlobalShortcutController::nativeEventFilter(const QByteArray &eventType, vo
     if (eventType != "windows_generic_MSG")
         return false;
     const auto *msg = static_cast<MSG *>(message);
-    if (msg->message == WM_SYSKEYDOWN && msg->wParam == VK_MENU) {
-        if (m_altPressed)
-            return false;
-        m_altPressed = true;
-        if (m_accessHintsVisible) {
-            m_accessHintsVisible = false;
-            emit accessHintsRequested(false);
-            return false;
-        }
-        m_altHoldTimer.start();
-        return false;
-    }
-    if (msg->message == WM_SYSKEYUP && msg->wParam == VK_MENU) {
-        m_altPressed = false;
-        m_altHoldTimer.stop();
-        if (m_accessHintsVisible) {
-            m_accessHintsVisible = false;
-            emit accessHintsRequested(false);
-        }
-        return false;
-    }
-    if (m_accessHintsVisible && (msg->message == WM_KEYDOWN || msg->message == WM_SYSKEYDOWN)) {
-        m_accessHintsVisible = false;
-        emit accessHintsRequested(false);
-        const UINT key = msg->wParam;
-        if (key >= 'A' && key <= 'Z') {
-            emit accessKeyRequested(QString(QChar(key)));
-            if (result)
-                *result = 0;
-            return true;
-        }
-    }
     if (msg->message != WM_HOTKEY)
         return false;
 
-    switch (msg->wParam) {
-    case PlayPause:
-        emit playPauseRequested();
-        break;
-    case Previous:
-        emit previousRequested();
-        break;
-    case Next:
-        emit nextRequested();
-        break;
-    case Favorite:
-        emit favoriteRequested();
-        break;
-    case Search:
-        emit searchRequested();
-        break;
-    case MiniPlayer:
-        emit miniPlayerRequested();
-        break;
-    default:
+    if (!trigger(int(msg->wParam)))
         return false;
-    }
     if (result)
         *result = 0;
     return true;
@@ -351,6 +433,21 @@ bool GlobalShortcutController::registerShortcuts() {
         setStatus(tr("Global shortcuts are active"));
     }
     return true;
+#elif defined(CASSETTECAT_HAVE_DBUS)
+    if (!m_portal) {
+        setStatus(tr("Global shortcuts are not available on this platform"));
+        return false;
+    }
+    // The desktop may ask first, so the result comes later, through bound() or failed().
+    QList<QPair<QString, QPair<QString, QString>>> shortcuts;
+    for (const auto &entry : shortcutDefinitions) {
+        const QString action = QString::fromLatin1(entry.action);
+        shortcuts.append(
+            {action, {tr(entry.label), PortalShortcuts::portalTrigger(m_shortcuts.value(action).toString())}});
+    }
+    m_portal->bind(shortcuts);
+    setStatus(tr("Waiting for the desktop to allow the shortcuts"));
+    return true;
 #else
     setStatus(tr("Global shortcuts are not available on this platform"));
     return false;
@@ -374,6 +471,12 @@ bool GlobalShortcutController::selfCheck() {
            normalizedShortcut(MOD_CONTROL, VK_OEM_PLUS) == "Ctrl+Equal" &&
            normalizedShortcut(MOD_CONTROL | MOD_SHIFT, VK_OEM_PLUS) == "Ctrl+Shift+Plus" &&
            normalizedShortcut(MOD_CONTROL, VK_OEM_MINUS) == "Ctrl+-";
+#elif defined(CASSETTECAT_HAVE_DBUS)
+    return PortalShortcuts::portalTrigger("Ctrl+Alt+Space") == "CTRL+ALT+space" &&
+           PortalShortcuts::portalTrigger("Ctrl+Alt+Left") == "CTRL+ALT+Left" &&
+           PortalShortcuts::portalTrigger("Ctrl+Shift+F") == "CTRL+SHIFT+f" &&
+           PortalShortcuts::portalTrigger("Ctrl++") == "CTRL+plus" &&
+           PortalShortcuts::portalTrigger("Alt+F5") == "ALT+F5";
 #else
     return true;
 #endif
@@ -385,6 +488,9 @@ void GlobalShortcutController::unregisterShortcuts() {
         UnregisterHotKey(nullptr, id);
     }
     m_registeredIds.clear();
+#elif defined(CASSETTECAT_HAVE_DBUS)
+    if (m_portal)
+        m_portal->close();
 #endif
 }
 

@@ -18,6 +18,16 @@ Item {
     required property var libraryModel
     anchors.fill: parent
     property alias searchBox: libSearchBar
+    // The first index filed under each letter of a list sorted by the names name() gives, for an IndexRail.
+    function letterRows(list, name) {
+        const rows = {}
+        for (let i = 0; i < list.length; ++i) {
+            const letter = library.indexLetter(name(list[i]))
+            if (rows[letter] === undefined)
+                rows[letter] = i
+        }
+        return rows
+    }
     property alias searchInput: libSearchBar.searchInput
     readonly property int selectedTrackCount: Object.keys(root.appWindow.selectedTrackPaths || {}).length
 
@@ -283,25 +293,26 @@ Item {
                     visible: root.appWindow.libraryViewMode === "grid"
                     anchors.fill: parent
                     anchors.leftMargin: 24
-                    anchors.rightMargin: 8
+                    anchors.rightMargin: songRail.visible ? songRail.width + songRail.anchors.rightMargin : 8
                     bottomMargin: 32
                     clip: true
                     model: library
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 180))
                     cellWidth: Math.floor((width - 8) / cols)
-                    cellHeight: 240
+                    // Covers are square, so a row is as tall as a column is wide plus the title and artist lines.
+                    cellHeight: cellWidth + 50
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: FocusScope {
                         width: songsGridView.cellWidth
-                        height: 230
+                        height: songsGridView.cellHeight - 10
 
                         SongCard {
                             focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 14
-                            cardHeight: 220
+                            cardHeight: parent.height - 10
                             track: model.track
                             onClicked: root.appWindow.playTrack(model.track)
                             onFavoriteClicked: root.appWindow.toggleFavorite(model.track.filePath)
@@ -316,7 +327,7 @@ Item {
                     visible: root.appWindow.libraryViewMode === "list"
                     anchors.fill: parent
                     anchors.leftMargin: 24
-                    anchors.rightMargin: 24
+                    anchors.rightMargin: songRail.visible ? songRail.width + songRail.anchors.rightMargin + 6 : 24
                     clip: true
                     model: library
                     spacing: 4
@@ -337,6 +348,29 @@ Item {
                             }
                         }
                         onFavoriteClicked: root.appWindow.toggleFavorite(model.track.filePath)
+                    }
+                }
+
+                IndexRail {
+                    id: songRail
+                    anchors.right: parent.right
+                    // Clear of the window's edge, like the page's other controls. A grid's jump puts the letter's row
+                    // at the top, so its letter is read from the end of that row.
+                    anchors.rightMargin: 22
+                    position: songsListView.visible ? songsListView.indexAt(20, songsListView.contentY + 1)
+                                                    : songsGridView.indexAt(songsGridView.width - 30, songsGridView.contentY + 1)
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 32
+                    rows: library.letterRows()
+                    onJump: index => {
+                        if (songsListView.visible) songsListView.positionViewAtIndex(index, ListView.Beginning)
+                        else songsGridView.positionViewAtIndex(index, GridView.Beginning)
+                    }
+
+                    Connections {
+                        target: library
+                        function onVisibleTracksChanged() { songRail.rows = library.letterRows() }
                     }
                 }
 
@@ -377,31 +411,43 @@ Item {
                     return list;
                 }
 
+                IndexRail {
+                    id: artistRail
+                    anchors.right: parent.right
+                    anchors.rightMargin: 22
+                    position: artistGrid.indexAt(artistGrid.width - 30, artistGrid.contentY + 1)
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 32
+                    rows: root.appWindow.artistSortMetric === "name" ? root.letterRows(parent.curArtists, artist => artist.name) : ({})
+                    onJump: index => artistGrid.positionViewAtIndex(index, GridView.Beginning)
+                }
+
                 AppGridView {
                     id: artistGrid
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
                     anchors.fill: parent
                     anchors.leftMargin: 24
-                    anchors.rightMargin: 8
+                    anchors.rightMargin: artistRail.visible ? artistRail.width + artistRail.anchors.rightMargin : 8
                     bottomMargin: 32
                     clip: true
                     model: parent.curArtists
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 190))
                     cellWidth: Math.floor((width - 8) / cols)
-                    cellHeight: 245
+                    cellHeight: cellWidth + 52
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: FocusScope {
                         width: artistGrid.cellWidth
-                        height: 235
+                        height: artistGrid.cellHeight - 10
 
                         ArtistCard {
                             focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 16
-                            cardHeight: 225
+                            cardHeight: parent.height - 10
                             name: modelData.name
                             count: modelData.count
                             track: modelData.track
@@ -448,31 +494,46 @@ Item {
                     return list;
                 }
 
+                IndexRail {
+                    id: albumRail
+                    anchors.right: parent.right
+                    anchors.rightMargin: 22
+                    position: albumGrid.indexAt(albumGrid.width - 30, albumGrid.contentY + 1)
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.bottomMargin: 32
+                    rows: root.appWindow.albumSortMetric === "album" ? root.letterRows(parent.curAlbums, album => album.name)
+                        : root.appWindow.albumSortMetric === "artist" ? root.letterRows(parent.curAlbums, album => album.track ? album.track.artist : "")
+                        : ({})
+                    onJump: index => albumGrid.positionViewAtIndex(index, GridView.Beginning)
+                }
+
                 AppGridView {
                     id: albumGrid
                     activeFocusOnTab: true
                     onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, GridView.Contain)
                     anchors.fill: parent
                     anchors.leftMargin: 24
-                    anchors.rightMargin: 8
+                    anchors.rightMargin: albumRail.visible ? albumRail.width + albumRail.anchors.rightMargin : 8
                     bottomMargin: 32
                     clip: true
                     model: parent.curAlbums
                     readonly property int cols: Math.max(2, Math.floor((width - 8) / 195))
                     cellWidth: Math.floor((width - 8) / cols)
-                    cellHeight: 255
+                    // Album titles take up to two lines.
+                    cellHeight: cellWidth + 66
                     reuseItems: true
                     ScrollBar.vertical: AutoHideScrollBar {}
 
                     delegate: FocusScope {
                         width: albumGrid.cellWidth
-                        height: 245
+                        height: albumGrid.cellHeight - 10
 
                         AlbumCard {
                             focus: true
                             anchors.centerIn: parent
                             cardWidth: parent.width - 16
-                            cardHeight: 235
+                            cardHeight: parent.height - 10
                             name: modelData.name
                             artist: modelData.track ? modelData.track.artist : qsTr("Various Artists")
                             count: modelData.count

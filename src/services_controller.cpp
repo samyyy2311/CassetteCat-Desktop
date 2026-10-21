@@ -19,6 +19,15 @@
 #include <QTemporaryDir>
 #include <QUrlQuery>
 
+QNetworkRequest services::detail::request(const QUrl &url) {
+    QNetworkRequest request(url);
+    request.setTransferTimeout(requestTimeoutMs);
+    request.setHeader(QNetworkRequest::UserAgentHeader,
+                      QStringLiteral("CassetteCat/%1 (https://github.com/samyyy2311/CassetteCat-Desktop)")
+                          .arg(QCoreApplication::applicationVersion()));
+    return request;
+}
+
 ServicesController::ServicesController(QObject *parent) : QObject(parent), m_net(new QNetworkAccessManager(this)) {
     QSettings s(settingsFilePath(), QSettings::IniFormat);
     s.beginGroup("artist_images");
@@ -173,9 +182,7 @@ void ServicesController::fetchRadioStations(const QString &searchQuery, const QS
         q.addQueryItem("tag", tag.trimmed());
     url.setQuery(q);
 
-    QNetworkRequest req(url);
-    req.setTransferTimeout(services::detail::requestTimeoutMs);
-    req.setHeader(QNetworkRequest::UserAgentHeader, "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
+    QNetworkRequest req = services::detail::request(url);
 
     auto *reply = trackReply(m_net->get(req));
     m_radioReply = reply;
@@ -298,10 +305,8 @@ void ServicesController::checkForUpdates(bool manual) {
     }
 
     const QUrl url(QStringLiteral("https://api.github.com/repos/samyyy2311/CassetteCat-Desktop/releases/latest"));
-    QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::UserAgentHeader, "CassetteCat/" + QCoreApplication::applicationVersion());
+    QNetworkRequest request = services::detail::request(url);
     request.setRawHeader("Accept", "application/vnd.github.v3+json");
-    request.setTransferTimeout(services::detail::requestTimeoutMs);
 
     QNetworkReply *reply = trackReply(m_net->get(request));
     connect(reply, &QNetworkReply::finished, this, [this, reply, manual]() {

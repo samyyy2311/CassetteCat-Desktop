@@ -3,6 +3,7 @@ import QtQml
 QtObject {
     readonly property var inAppActions: [
         { action: "toggleMiniPlayer", label: qsTr("Toggle Mini Player"), defaultKey: "Ctrl+M", icon: "pip" },
+        { action: "fullScreen", label: qsTr("Full Screen"), defaultKey: "F11", icon: "maximize-2" },
         { action: "toggleSidebar", label: qsTr("Toggle Sidebar"), defaultKey: "Ctrl+B", icon: "panel-left" },
         { action: "search", label: qsTr("Search This Page"), defaultKey: "Ctrl+F", icon: "search" },
         { action: "quickSwitcher", label: qsTr("Open Search"), defaultKey: "Ctrl+K", icon: "command" },

@@ -10,7 +10,15 @@
 #include <dwmapi.h>
 #endif
 
-WindowFrame::WindowFrame(QObject *parent) : QObject(parent) {
+#ifdef CASSETTECAT_HAVE_DBUS
+#include <QDBusConnection>
+#include <QDBusMessage>
+#include <QDBusVariant>
+#include <QDir>
+#include <QSettings>
+#endif
+
+WindowFrame::WindowFrame(QObject *parent) : QObject(parent), m_linuxButtons(readLinuxButtons()) {
 #ifdef Q_OS_WIN
     QCoreApplication::instance()->installNativeEventFilter(this);
 #endif
@@ -32,6 +40,71 @@ bool WindowFrame::maximizeHovered() const {
 
 qreal WindowFrame::maximizedMargin() const {
     return m_maximizedMargin;
+}
+
+QStringList WindowFrame::linuxButtons() const {
+    return m_linuxButtons;
+}
+
+bool WindowFrame::roundButtons() const {
+#ifdef CASSETTECAT_HAVE_DBUS
+    const QString desktop = qEnvironmentVariable("XDG_CURRENT_DESKTOP").toUpper();
+    return !desktop.contains(QLatin1String("KDE")) && !desktop.contains(QLatin1String("XFCE")) &&
+           !desktop.contains(QLatin1String("LXQT"));
+#else
+    return false;
+#endif
+}
+
+QStringList WindowFrame::readLinuxButtons() {
+#ifdef CASSETTECAT_HAVE_DBUS
+    const QStringList usual{QStringLiteral("minimize"), QStringLiteral("maximize"), QStringLiteral("close")};
+    QString layout;
+    if (qEnvironmentVariable("XDG_CURRENT_DESKTOP").toUpper().contains(QLatin1String("KDE"))) {
+        // KDE keeps its buttons in KWin's settings as letters: I minimizes, A maximizes, X closes.
+        const QSettings kwin(QDir::homePath() + QStringLiteral("/.config/kwinrc"), QSettings::IniFormat);
+        const QString right =
+            kwin.value(QStringLiteral("org.kde.kdecoration2/ButtonsOnRight"), QStringLiteral("IAX")).toString();
+        const QString left = kwin.value(QStringLiteral("org.kde.kdecoration2/ButtonsOnLeft")).toString();
+        const auto names = [](const QString &letters) {
+            QStringList list;
+            for (const QChar letter : letters)
+                list << (letter == QLatin1Char('I')   ? QStringLiteral("minimize")
+                         : letter == QLatin1Char('A') ? QStringLiteral("maximize")
+                         : letter == QLatin1Char('X') ? QStringLiteral("close")
+                                                      : QString());
+            return list.join(QLatin1Char(','));
+        };
+        layout = names(left) + QLatin1Char(':') + names(right);
+    } else {
+        // GNOME's setting, which GTK desktops such as Cinnamon, MATE and Budgie answer for too, read through the
+        // desktop portal so it also reaches a Flatpak: "appmenu:close", for one.
+        QDBusMessage read = QDBusMessage::createMethodCall(
+            QStringLiteral("org.freedesktop.portal.Desktop"), QStringLiteral("/org/freedesktop/portal/desktop"),
+            QStringLiteral("org.freedesktop.portal.Settings"), QStringLiteral("ReadOne"));
+        read << QStringLiteral("org.gnome.desktop.wm.preferences") << QStringLiteral("button-layout");
+        const QDBusMessage reply = QDBusConnection::sessionBus().call(read, QDBus::Block, 2000);
+        if (reply.type() == QDBusMessage::ReplyMessage && !reply.arguments().isEmpty()) {
+            QVariant value = reply.arguments().constFirst();
+            while (value.canConvert<QDBusVariant>())
+                value = value.value<QDBusVariant>().variant();
+            layout = value.toString();
+        }
+    }
+    if (!layout.contains(QLatin1Char(':')))
+        return usual;
+    QStringList buttons;
+    // Buttons set for the left go on the right too, after the others, rather than over the sidebar.
+    const QStringList sides = layout.split(QLatin1Char(':'));
+    for (const QString &name : (sides.value(1) + QLatin1Char(',') + sides.value(0)).split(QLatin1Char(','))) {
+        const QString button = name.trimmed();
+        if (usual.contains(button) && !buttons.contains(button))
+            buttons << button;
+    }
+    return buttons.isEmpty() ? usual : buttons;
+#else
+    return {};
+#endif
 }
 
 void WindowFrame::setMaximizedMargin(qreal margin) {

@@ -338,6 +338,26 @@ qt_add_translations(CassetteCat
     RESOURCE_PREFIX /i18n
     LUPDATE_OPTIONS -no-obsolete -locations none
 )
+# Settings offers a language once at least 70% of it is translated, so picking one doesn't leave the app largely in
+# English. Weblate keeps every file current either way.
+set(CASSETTECAT_OFFERED_LANGUAGES "")
+foreach(TS_FILE IN LISTS CASSETTECAT_TS_FILES)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${TS_FILE}")
+    get_filename_component(LANGUAGE "${TS_FILE}" NAME_WE)
+    string(REPLACE "cassettecat_" "" LANGUAGE "${LANGUAGE}")
+    file(STRINGS "${TS_FILE}" ALL_STRINGS REGEX "<translation")
+    file(STRINGS "${TS_FILE}" OPEN_STRINGS REGEX "<translation type=\"unfinished\"")
+    list(LENGTH ALL_STRINGS TOTAL)
+    list(LENGTH OPEN_STRINGS OPEN)
+    math(EXPR DONE_TENTHS "(${TOTAL} - ${OPEN}) * 10")
+    math(EXPR NEEDED_TENTHS "${TOTAL} * 7")
+    if(LANGUAGE STREQUAL "en" OR (TOTAL GREATER 0 AND DONE_TENTHS GREATER_EQUAL NEEDED_TENTHS))
+        list(APPEND CASSETTECAT_OFFERED_LANGUAGES "${LANGUAGE}")
+    endif()
+endforeach()
+list(JOIN CASSETTECAT_OFFERED_LANGUAGES "," CASSETTECAT_OFFERED_LANGUAGES)
+set_source_files_properties(src/app_settings.cpp PROPERTIES
+    COMPILE_DEFINITIONS "CASSETTECAT_OFFERED_LANGUAGES=\"${CASSETTECAT_OFFERED_LANGUAGES}\"")
 
 include(CTest)
 option(CASSETTECAT_BUILD_TESTING "Build CassetteCat tests" ON)

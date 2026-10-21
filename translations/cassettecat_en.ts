@@ -3979,9 +3979,9 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message numerus="yes">
         <source>%n song(s) left to check</source>
-        <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+        <translation>
+            <numerusform>%n song left to check</numerusform>
+            <numerusform>%n songs left to check</numerusform>
         </translation>
     </message>
     <message>

@@ -36,7 +36,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "shield"
+            iconName: "wifi-off"
             title: qsTr("Offline Blackout Mode")
             subtitle: root.offlineBlackout
                       ? qsTr("All network connections, metadata lookups, and remote streams are disabled")
@@ -53,7 +53,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "globe"
+            iconName: "server"
             title: qsTr("Streaming Server Integration")
             subtitle: qsTr("Configure credentials, stream audio catalogs, and manage server synchronization")
 

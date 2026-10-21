@@ -34,7 +34,7 @@ ColumnLayout {
 
     SettingCard {
         SettingChoiceGroup {
-            iconName: "plug"
+            iconName: "speaker"
             title: qsTr("Playback Device")
             subtitle: qsTr("Choose where CassetteCat sends audio output")
             forceMenu: true
@@ -74,7 +74,7 @@ ColumnLayout {
         SettingDivider {}
 
         SettingChoiceGroup {
-            iconName: "audio-lines"
+            iconName: "blend"
             title: qsTr("Crossfade")
             subtitle: qsTr("Fade each song into the next as it ends")
             options: [
@@ -152,7 +152,7 @@ ColumnLayout {
 
     SettingCard {
         SettingChoiceGroup {
-            iconName: "clock"
+            iconName: "moon"
             title: qsTr("Sleep Timer")
             subtitle: root.sleepTimerMode === "off" ? qsTr("Stop playback automatically after a duration or track") : qsTr("Active countdown: %1").arg(root.sleepTimerStatus)
             options: [

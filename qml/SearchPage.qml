@@ -301,7 +301,7 @@ Item {
 
             // Match count when filtering
             Label {
-                // Counts title, artist and album matches, so it stays out of the way when only lyrics matched.
+                // Counts title, artist and album matches only, so it's hidden when only lyrics matched.
                 visible: root.filtering && (root.libraryModel.visibleTrackCount > 0 || root.lyricHits.length === 0)
                 text: qsTr("%n track(s) found", "", root.libraryModel.visibleTrackCount)
                 color: silverDim

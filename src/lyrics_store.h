@@ -12,7 +12,6 @@ struct Stored {
     QString provider;
 };
 
-/// Identifies a song's lyrics by its artist, title and album, ignoring case.
 QString key(const QString &title, const QString &artist, const QString &album);
 /// The key for a library track; one without a title goes by its file name, as when its lyrics are fetched.
 QString keyFor(const QVariantMap &track);

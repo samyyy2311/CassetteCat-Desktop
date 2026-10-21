@@ -229,6 +229,35 @@ ApplicationWindow {
     property bool accessHintsVisible: false
     property int lyricsFontSize: 28
     property string defaultLaunchPage: "last"
+    // The pages the sidebar lists, in order, and the ones taken off it. Library always stays, as the page to fall
+    // back to; Settings sits apart at the bottom.
+    readonly property var sidebarPages: ["home", "library", "jellyfin", "subsonic", "radio", "search", "stats"]
+    property var sidebarOrder: sidebarPages
+    property var sidebarHidden: []
+    readonly property var visibleSidebarPages: sidebarOrder.filter(page => !sidebarHidden.includes(page))
+
+    function sidebarPageLabel(page) {
+        switch (page) {
+        case "home": return qsTr("Home")
+        case "library": return qsTr("Library")
+        case "jellyfin": return "Jellyfin"
+        case "subsonic": return "Subsonic"
+        case "radio": return qsTr("Radio")
+        case "search": return qsTr("Search")
+        case "stats": return qsTr("Listening Record")
+        }
+        return page
+    }
+
+    function sidebarPageIcon(page) {
+        return ({ home: "house", library: "music", stats: "clock" })[page] || page
+    }
+
+    function setSidebarPages(order, hidden) {
+        sidebarOrder = order.filter(page => sidebarPages.includes(page))
+            .concat(sidebarPages.filter(page => !order.includes(page)))
+        sidebarHidden = hidden.filter(page => page !== "library" && sidebarPages.includes(page))
+    }
     property string settingsSection: "library"
     property var excludedFolders: []
     property bool ignoreShortClips: false
@@ -661,6 +690,7 @@ ApplicationWindow {
         showFormatBadges = appSettings.value("ui/showFormatBadges", true)
         ignoreShortClips = appSettings.value("library/ignoreShortClips", false)
         defaultLaunchPage = appSettings.value("ui/defaultLaunchPage", "last")
+        setSidebarPages(JSON.parse(appSettings.value("ui/sidebarOrder", "[]")), JSON.parse(appSettings.value("ui/sidebarHidden", "[]")))
         settingsSection = appSettings.value("ui/settingsSection", "library")
         try {
             const exc = appSettings.value("library/excludedFolders", [])
@@ -710,6 +740,9 @@ ApplicationWindow {
         } else {
             page = appSettings.value("ui/page", "home")
         }
+        // A page taken off the sidebar isn't opened at launch, since it couldn't be reached from there.
+        if (sidebarHidden.includes(page))
+            page = "library"
         if (!appSettings.value("ui/setupDone", false) && library.folders.length === 0)
             Qt.callLater(setupSheet.open)
         // After an update, what changed is shown once; a first run starts with setup instead.
@@ -1462,6 +1495,8 @@ ApplicationWindow {
         }
     }
     onDefaultLaunchPageChanged: saveSetting("ui/defaultLaunchPage", defaultLaunchPage)
+    onSidebarOrderChanged: saveSetting("ui/sidebarOrder", JSON.stringify(sidebarOrder))
+    onSidebarHiddenChanged: saveSetting("ui/sidebarHidden", JSON.stringify(sidebarHidden))
     onTrackDensityChanged: saveSetting("ui/trackDensity", trackDensity)
     onShowFormatBadgesChanged: saveSetting("ui/showFormatBadges", showFormatBadges)
     onIgnoreShortClipsChanged: {
@@ -1715,6 +1750,8 @@ ApplicationWindow {
             "ui/closeToTray": closeToTray,
             "ui/startMinimizedToTray": startMinimizedToTray,
             "ui/defaultLaunchPage": defaultLaunchPage,
+            "ui/sidebarOrder": JSON.stringify(sidebarOrder),
+            "ui/sidebarHidden": JSON.stringify(sidebarHidden),
             "ui/settingsSection": settingsSection,
             "ui/trackDensity": trackDensity,
             "ui/showFormatBadges": showFormatBadges,
@@ -2867,6 +2904,8 @@ ApplicationWindow {
                 showFormatBadges: window.showFormatBadges,
                 ignoreShortClips: window.ignoreShortClips,
                 defaultLaunchPage: window.defaultLaunchPage,
+                sidebarOrder: window.sidebarOrder,
+                sidebarHidden: window.sidebarHidden,
                 excludedFolders: window.excludedFolders,
                 resumeQueueOnLaunch: window.resumeQueueOnLaunch,
                 globalShortcutsEnabled: window.globalShortcutsEnabled,
@@ -2933,6 +2972,7 @@ ApplicationWindow {
                     if (data.showFormatBadges !== undefined) { window.showFormatBadges = data.showFormatBadges; appSettings.setValue("ui/showFormatBadges", data.showFormatBadges) }
                     if (data.ignoreShortClips !== undefined) { window.ignoreShortClips = data.ignoreShortClips; appSettings.setValue("library/ignoreShortClips", data.ignoreShortClips) }
                     if (data.defaultLaunchPage) { window.defaultLaunchPage = data.defaultLaunchPage; appSettings.setValue("ui/defaultLaunchPage", data.defaultLaunchPage) }
+                    if (data.sidebarOrder) window.setSidebarPages(data.sidebarOrder, data.sidebarHidden || [])
                     if (data.excludedFolders) { window.excludedFolders = data.excludedFolders; appSettings.setValue("library/excludedFolders", data.excludedFolders) }
                     if (data.resumeQueueOnLaunch !== undefined) { window.resumeQueueOnLaunch = data.resumeQueueOnLaunch; appSettings.setValue("player/resumeQueueOnLaunch", data.resumeQueueOnLaunch) }
                     if (Array.isArray(data.playlists)) { window.playlists = data.playlists; appSettings.setValue("library/playlists", JSON.stringify(data.playlists)) }
@@ -3745,13 +3785,22 @@ ApplicationWindow {
                     anchors.right: parent.right
                     spacing: 4
 
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "home"; iconName: "house"; label: qsTr("Home"); accessHintsVisible: window.accessHintsVisible; accessKey: "H" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "library"; iconName: "music"; label: qsTr("Library"); accessHintsVisible: window.accessHintsVisible; accessKey: "L" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "jellyfin"; iconName: "jellyfin"; label: "Jellyfin"; preserveIconColor: true; accessHintsVisible: window.accessHintsVisible; accessKey: "J" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "subsonic"; iconName: "subsonic"; label: "Subsonic"; preserveIconColor: true; accessHintsVisible: window.accessHintsVisible; accessKey: "U" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "radio"; iconName: "radio"; label: qsTr("Radio"); accessHintsVisible: window.accessHintsVisible; accessKey: "R" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "search"; iconName: "search"; label: qsTr("Search"); accessHintsVisible: window.accessHintsVisible; accessKey: "S" }
-                    NavItem { appWindow: window; sidebarWidth: sidebarPanel.width; sidebarCollapsed: window.sidebarCollapsed; destination: "stats"; iconName: "clock"; label: qsTr("Listening Record"); accessHintsVisible: window.accessHintsVisible; accessKey: "I" }
+                    Repeater {
+                        model: window.visibleSidebarPages
+
+                        NavItem {
+                            required property string modelData
+                            appWindow: window
+                            sidebarWidth: sidebarPanel.width
+                            sidebarCollapsed: window.sidebarCollapsed
+                            destination: modelData
+                            iconName: window.sidebarPageIcon(modelData)
+                            label: window.sidebarPageLabel(modelData)
+                            preserveIconColor: modelData === "jellyfin" || modelData === "subsonic"
+                            accessHintsVisible: window.accessHintsVisible
+                            accessKey: ({ home: "H", library: "L", jellyfin: "J", subsonic: "U", radio: "R", search: "S", stats: "I" })[modelData]
+                        }
+                    }
                 }
 
                 Column {

@@ -459,6 +459,11 @@ Item {
                                 visible: root.shownSection === "desktop"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 defaultLaunchPage: root.defaultLaunchPage
+                                sidebarOrder: root.appWindow.sidebarOrder
+                                sidebarHidden: root.appWindow.sidebarHidden
+                                sidebarPageLabel: root.appWindow.sidebarPageLabel
+                                sidebarPageIcon: root.appWindow.sidebarPageIcon
+                                onSidebarPagesSelected: (order, hidden) => root.appWindow.setSidebarPages(order, hidden)
                                 closeToTray: root.closeToTray
                                 startMinimizedToTray: root.startMinimizedToTray
                                 nowPlayingNotifications: root.nowPlayingNotifications

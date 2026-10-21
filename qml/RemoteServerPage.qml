@@ -29,7 +29,12 @@ Item {
     readonly property bool quickConnecting: protocol === "jellyfin" && streamingController.jellyfinQuickConnecting
     readonly property string quickConnectCode: protocol === "jellyfin" ? streamingController.jellyfinQuickConnectCode : ""
 
-    property string searchQuery: ""
+    // Kept in Main.qml, since the page is rebuilt on each visit.
+    readonly property string searchQuery: appWindow.serverSearchQueries[protocol] || ""
+
+    function setSearchQuery(text) {
+        appWindow.serverSearchQueries = Object.assign({}, appWindow.serverSearchQueries, { [protocol]: text })
+    }
     property alias searchVisible: searchBar.expanded
     property alias searchBox: searchBar
     property alias searchInput: searchBar.searchInput
@@ -386,8 +391,9 @@ Item {
                 iconSize: 16
                 expandedWidth: 175
                 placeholder: qsTr("Search...")
-                onTextChanged: root.searchQuery = text
-                onCleared: root.searchQuery = ""
+                text: root.searchQuery
+                onTextChanged: root.setSearchQuery(text)
+                onCleared: root.setSearchQuery("")
             }
 
             PressDepthIconButton {
@@ -796,7 +802,7 @@ Item {
         onSortDirectionToggled: root.toggleSortDirectionForActiveTab()
         onResetRequested: {
             root.formatFilter = "ALL"
-            root.searchQuery = ""
+            root.setSearchQuery("")
             root.searchInput.text = ""
             root.songSortMetric = "title"
             root.songSortAscending = true

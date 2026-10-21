@@ -150,7 +150,8 @@ SettingRow {
                             color: optItem.isSelected
                                 ? textPrimary
                                 : (optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus) ? textPrimary : textSecondary)
-                            font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
+                            font.family: (modelData && typeof modelData === "object" && modelData.font)
+                                || (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
                             font.pixelSize: 12
                             font.weight: optItem.isSelected ? Font.DemiBold : Font.Normal
                             elide: Text.ElideRight

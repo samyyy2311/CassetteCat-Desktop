@@ -94,7 +94,7 @@ ColumnLayout {
         SettingRow {
             iconName: "shield"
             title: qsTr("Volume Limit")
-            subtitle: qsTr("Cap the maximum output level to protect your hearing")
+            subtitle: qsTr("Turns all playback down, to protect your hearing")
 
             SettingSwitch {
                 checked: root.volumeLimitEnabled
@@ -112,7 +112,7 @@ ColumnLayout {
             SettingChoiceGroup {
                 iconName: "volume-2"
                 title: qsTr("Maximum Volume Limit")
-                subtitle: qsTr("Ceiling threshold applied to the master volume slider")
+                subtitle: qsTr("How loud full volume plays")
                 options: [
                     { value: 50, label: "50%" },
                     { value: 60, label: "60%" },

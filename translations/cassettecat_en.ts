@@ -546,6 +546,14 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>No shortcuts were allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Global shortcuts weren&apos;t allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Global shortcuts are off</source>
         <translation type="unfinished"></translation>
     </message>
@@ -571,6 +579,10 @@
             <numerusform>Active, but %n shortcut unavailable: %1</numerusform>
             <numerusform>Active, but %n shortcuts unavailable: %1</numerusform>
         </translation>
+    </message>
+    <message>
+        <source>Waiting for the desktop to allow the shortcuts</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Global shortcuts are active</source>
@@ -701,6 +713,13 @@
     <name>HomeSongCard</name>
     <message>
         <source>Unknown Artist</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>IndexRail</name>
+    <message>
+        <source>Jump to letter</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1278,10 +1297,6 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>based on qualified listens</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Total Plays</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1321,6 +1336,10 @@
     </message>
     <message>
         <source>%1 on repeat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>every minute you listened</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
@@ -2087,6 +2106,9 @@ Try the track title, or add custom lyrics</source>
         <source>Close miniplayer</source>
         <translation type="unfinished"></translation>
     </message>
+</context>
+<context>
+    <name>MiniPlayerControls</name>
     <message>
         <source>Volume</source>
         <translation type="unfinished"></translation>
@@ -2231,70 +2253,6 @@ Try the track title, or add custom lyrics</source>
         <source>Select folder</source>
         <translation type="unfinished"></translation>
     </message>
-    <message>
-        <source>Switch to duration</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Switch to remaining time</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Volume</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Remove from favorites</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Add to favorites</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Shuffle On</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Shuffle Off</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Previous</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Pause</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Play</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Next</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Repeat Track</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Repeat All</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Repeat Off</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Lyrics</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Queue</source>
-        <translation type="unfinished"></translation>
-    </message>
 </context>
 <context>
     <name>NowPlayingDeckControls</name>
@@ -2426,6 +2384,14 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Track options</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Full screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -3192,6 +3158,22 @@ Try the track title, or add custom lyrics</source>
 <context>
     <name>SettingsAppearanceSection</name>
     <message>
+        <source>Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>App Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Any font installed on this computer, for all of CassetteCat&apos;s text</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Default</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Color Scheme</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3236,11 +3218,15 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Visual style of the expanded player backdrop</source>
+        <source>Moving slowly shifts the cover&apos;s colors, and uses more graphics memory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Tinted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Moving</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -3861,7 +3847,7 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Show FLAC, MP3, and AAC badges on track rows</source>
+        <source>Show FLAC, MP3, and AAC badges on track rows and in Now Playing</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3921,6 +3907,42 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>White</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lyrics Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Any font installed on this computer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Same as App</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lyrics Weight</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How bold the lyric lines are</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Regular</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Medium</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>SemiBold</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bold</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4274,15 +4296,15 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Cap the maximum output level to protect your hearing</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Maximum Volume Limit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Ceiling threshold applied to the master volume slider</source>
+        <source>Turns all playback down, to protect your hearing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How loud full volume plays</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4592,6 +4614,10 @@ Try the track title, or add custom lyrics</source>
     <name>ShortcutDefinitions</name>
     <message>
         <source>Toggle Mini Player</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Full Screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

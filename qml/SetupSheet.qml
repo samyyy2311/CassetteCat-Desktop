@@ -147,6 +147,9 @@ AppDialog {
                 albumArtRadius: root.appWindow.albumArtRadius
                 nowPlayingBackdrop: root.appWindow.nowPlayingBackdrop
                 showRemainingTime: root.appWindow.showRemainingTime
+                appFont: root.appWindow.appFont
+                fontFamilies: root.appWindow.fontFamilies
+                onAppFontSelected: value => root.appWindow.appFont = value
                 onAccentSelected: value => root.appWindow.accentName = value
                 onCustomAccentSelected: hex => {
                     root.appWindow.customAccentColor = hex

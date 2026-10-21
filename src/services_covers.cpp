@@ -142,10 +142,7 @@ void ServicesController::searchAlbumCovers(const QString &album, const QString &
     query.addQueryItem("limit", "25");
     url.setQuery(query);
 
-    QNetworkRequest request(url);
-    request.setTransferTimeout(services::detail::requestTimeoutMs);
-    request.setHeader(QNetworkRequest::UserAgentHeader,
-                      "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
+    QNetworkRequest request = services::detail::request(url);
 
     auto *reply = trackReply(m_net->get(request));
     connect(reply, &QNetworkReply::finished, this, [this, reply, requestToken, term, album, artist]() {
@@ -174,9 +171,7 @@ void ServicesController::searchDeezerCovers(quint64 requestToken, const QString 
     deezerQuery.addQueryItem("limit", "15");
     deezerUrl.setQuery(deezerQuery);
 
-    QNetworkRequest deezerReq(deezerUrl);
-    deezerReq.setTransferTimeout(services::detail::requestTimeoutMs);
-    deezerReq.setHeader(QNetworkRequest::UserAgentHeader, "CassetteCat/2.0.0");
+    QNetworkRequest deezerReq = services::detail::request(deezerUrl);
 
     auto *deezerReply = trackReply(m_net->get(deezerReq));
     connect(deezerReply, &QNetworkReply::finished, this,
@@ -222,10 +217,7 @@ void ServicesController::searchArchiveCovers(quint64 requestToken, const QString
         mbQuery.addQueryItem("query", queryStr);
         mbUrl.setQuery(mbQuery);
 
-        QNetworkRequest mbReq(mbUrl);
-        mbReq.setTransferTimeout(services::detail::requestTimeoutMs);
-        mbReq.setHeader(QNetworkRequest::UserAgentHeader,
-                        "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
+        QNetworkRequest mbReq = services::detail::request(mbUrl);
 
         auto *mbReply = trackReply(m_net->get(mbReq));
         connect(mbReply, &QNetworkReply::finished, this,
@@ -258,10 +250,7 @@ void ServicesController::applyAlbumCover(const QString &album, const QString &ar
         return;
 
     QUrl url(imageUrl.trimmed());
-    QNetworkRequest request(url);
-    request.setTransferTimeout(services::detail::requestTimeoutMs);
-    request.setHeader(QNetworkRequest::UserAgentHeader,
-                      "CassetteCat/2.0.0 (https://github.com/samyyy2311/CassetteCat)");
+    QNetworkRequest request = services::detail::request(url);
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
 
     auto *reply = trackReply(m_net->get(request));

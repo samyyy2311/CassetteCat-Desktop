@@ -229,8 +229,7 @@ ApplicationWindow {
     property bool accessHintsVisible: false
     property int lyricsFontSize: 28
     property string defaultLaunchPage: "last"
-    // The pages the sidebar lists, in order, and the ones taken off it. Library always stays, as the page to fall
-    // back to; Settings sits apart at the bottom.
+    // Library can't be hidden: it's the fallback page. Settings isn't listed; it's pinned at the bottom.
     readonly property var sidebarPages: ["home", "library", "jellyfin", "subsonic", "radio", "search", "stats"]
     property var sidebarOrder: sidebarPages
     property var sidebarHidden: []
@@ -740,7 +739,7 @@ ApplicationWindow {
         } else {
             page = appSettings.value("ui/page", "home")
         }
-        // A page taken off the sidebar isn't opened at launch, since it couldn't be reached from there.
+        // Don't launch into a page that's off the sidebar.
         if (sidebarHidden.includes(page))
             page = "library"
         if (!appSettings.value("ui/setupDone", false) && library.folders.length === 0)

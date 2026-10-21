@@ -100,7 +100,7 @@ ColumnLayout {
                         onClicked: root.moveSidebarPage(sidebarEntry.index, 1)
                     }
 
-                    // Kept in place without showing, so Library's arrows line up with the other rows'.
+                    // Invisible for Library, but keeps the arrows aligned.
                     SettingSwitch {
                         opacity: sidebarEntry.modelData === "library" ? 0 : 1
                         enabled: sidebarEntry.modelData !== "library"

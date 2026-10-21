@@ -76,15 +76,16 @@ Item {
     readonly property var categories: [
         { id: "library", label: qsTr("Music Library"), icon: "library" },
         { id: "health", label: qsTr("Library Health"), icon: "list-music" },
-        { id: "appearance", label: qsTr("Appearance"), icon: "sliders-horizontal" },
-        { id: "playback", label: qsTr("Playback & Audio"), icon: "play" },
+        { id: "appearance", label: qsTr("Look & Feel"), icon: "sliders-horizontal" },
+        { id: "sound", label: qsTr("Sound"), icon: "speaker" },
+        { id: "playback", label: qsTr("Playback"), icon: "play" },
         { id: "shortcuts", label: qsTr("Keyboard Shortcuts"), icon: "keyboard" },
         { id: "desktop", label: qsTr("General & System"), icon: "settings" },
-        { id: "lyrics", label: qsTr("Lyrics"), icon: "mic" },
+        { id: "lyrics", label: qsTr("Lyrics"), icon: "quote" },
         { id: "scrobble", label: qsTr("Scrobbling"), icon: "audio-lines" },
         { id: "network", label: qsTr("Network & Services"), icon: "globe" },
         { id: "phone", label: qsTr("Phone Remote"), icon: "smartphone" },
-        { id: "data", label: qsTr("Backup & Diagnostics"), icon: "refresh-cw" },
+        { id: "data", label: qsTr("Backup & Diagnostics"), icon: "save" },
         { id: "credits", label: qsTr("Credits & Legal"), icon: "info" }
     ]
 
@@ -93,6 +94,7 @@ Item {
             case "library": return secLibrary.implicitHeight
             case "health": return secHealth.implicitHeight
             case "appearance": return secAppearance.implicitHeight
+            case "sound": return secSound.implicitHeight
             case "playback": return secPlayback.implicitHeight
             case "shortcuts": return secShortcuts.implicitHeight
             case "desktop": return secDesktop.implicitHeight
@@ -167,7 +169,7 @@ Item {
     readonly property var searchResults: findSettings(searchQuery)
     // Library Health lists songs and Credits lists projects, so those two are found by their names only.
     readonly property var searchableSections: ({
-        library: secLibrary, appearance: secAppearance, playback: secPlayback, shortcuts: secShortcuts,
+        library: secLibrary, appearance: secAppearance, sound: secSound, playback: secPlayback, shortcuts: secShortcuts,
         desktop: secDesktop, lyrics: secLyrics, scrobble: secScrobble, network: secNetwork,
         phone: secPhoneRemote, data: secBackup
     })
@@ -280,7 +282,7 @@ Item {
                     }
                 }
 
-                Column {
+                AppFlickable {
                     id: navigation
                     visible: !parent.compact
                     anchors.top: parent.top
@@ -289,17 +291,25 @@ Item {
                     anchors.topMargin: 4
                     anchors.bottomMargin: 8
                     width: 184
-                    spacing: 6
+                    contentHeight: navigationColumn.implicitHeight
+                    clip: true
+                    ScrollBar.vertical: AutoHideScrollBar {}
 
-                    Repeater {
-                        model: root.categories
+                    Column {
+                        id: navigationColumn
+                        width: navigation.width
+                        spacing: 6
 
-                        delegate: SettingsNavigationItem {
-                            width: navigation.width
-                            label: modelData.label
-                            iconName: modelData.icon
-                            selected: root.currentSection === modelData.id
-                            onClicked: root.chooseSection(modelData.id)
+                        Repeater {
+                            model: root.categories
+
+                            delegate: SettingsNavigationItem {
+                                width: navigationColumn.width
+                                label: modelData.label
+                                iconName: modelData.icon
+                                selected: root.currentSection === modelData.id
+                                onClicked: root.chooseSection(modelData.id)
+                            }
                         }
                     }
                 }
@@ -372,16 +382,12 @@ Item {
                                 excludedFolders: root.excludedFolders
                                 ignoreShortClips: root.ignoreShortClips
                                 songSortMetric: root.songSortMetric
-                                trackDensity: root.trackDensity
-                                showFormatBadges: root.showFormatBadges
                                 onAddLibraryFolderRequested: root.addLibraryFolderRequested()
                                 onRemoveLibraryFolderRequested: path => root.removeLibraryFolderRequested(path)
                                 onAddExcludeRequested: root.addExcludeRequested()
                                 onRemoveExcludeRequested: path => root.removeExcludeRequested(path)
                                 onIgnoreShortClipsSelected: value => root.ignoreShortClipsSelected(value)
                                 onSongSortSelected: value => root.songSortSelected(value)
-                                onTrackDensitySelected: value => root.trackDensitySelected(value)
-                                onShowFormatBadgesSelected: value => root.showFormatBadgesSelected(value)
                             }
 
                             SettingsLibraryHealthSection {
@@ -403,7 +409,11 @@ Item {
                                 showRemainingTime: root.showRemainingTime
                                 appFont: root.appWindow.appFont
                                 fontFamilies: root.appWindow.fontFamilies
+                                trackDensity: root.trackDensity
+                                showFormatBadges: root.showFormatBadges
                                 onAppFontSelected: value => root.appWindow.appFont = value
+                                onTrackDensitySelected: value => root.trackDensitySelected(value)
+                                onShowFormatBadgesSelected: value => root.showFormatBadgesSelected(value)
                                 onAccentSelected: value => root.accentSelected(value)
                                 onCustomAccentSelected: value => root.customAccentSelected(value)
                                 onAlbumArtRadiusSelected: value => root.albumArtRadiusSelected(value)
@@ -411,31 +421,37 @@ Item {
                                 onShowRemainingTimeSelected: value => root.showRemainingTimeSelected(value)
                             }
 
-                            SettingsPlaybackSection {
-                                id: secPlayback
-                                visible: root.shownSection === "playback"
+                            SettingsSoundSection {
+                                id: secSound
+                                visible: root.shownSection === "sound"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 audioOutputs: root.audioOutputs
                                 audioDeviceId: root.audioDeviceId
-                                resumeQueueOnLaunch: root.resumeQueueOnLaunch
-                                autoplayEnabled: root.autoplayEnabled
                                 crossfadeSeconds: root.crossfadeSeconds
-                                sleepTimerMode: root.sleepTimerMode
-                                sleepTimerStatus: root.sleepTimerStatus
-                                sleepFadeOut: root.sleepFadeOut
                                 volumeLimitEnabled: root.volumeLimitEnabled
                                 maxVolumePercent: root.maxVolumePercent
                                 replayGainMode: root.replayGainMode
                                 onAudioDeviceSelected: value => root.audioDeviceSelected(value)
-                                onResumeQueueOnLaunchSelected: value => root.resumeQueueOnLaunchSelected(value)
-                                onAutoplaySelected: value => root.autoplaySelected(value)
                                 onCrossfadeSelected: value => root.crossfadeSelected(value)
-                                onSleepTimerSelected: value => root.sleepTimerSelected(value)
-                                onSleepTimerCancelled: root.sleepTimerCancelled()
-                                onSleepFadeOutSelected: value => root.sleepFadeOutSelected(value)
                                 onVolumeLimitSelected: value => root.volumeLimitSelected(value)
                                 onMaxVolumeSelected: value => root.maxVolumeSelected(value)
                                 onReplayGainModeSelected: value => root.replayGainModeSelected(value)
+                            }
+
+                            SettingsPlaybackSection {
+                                id: secPlayback
+                                visible: root.shownSection === "playback"
+                                Layout.preferredHeight: visible ? implicitHeight : 0
+                                resumeQueueOnLaunch: root.resumeQueueOnLaunch
+                                autoplayEnabled: root.autoplayEnabled
+                                sleepTimerMode: root.sleepTimerMode
+                                sleepTimerStatus: root.sleepTimerStatus
+                                sleepFadeOut: root.sleepFadeOut
+                                onResumeQueueOnLaunchSelected: value => root.resumeQueueOnLaunchSelected(value)
+                                onAutoplaySelected: value => root.autoplaySelected(value)
+                                onSleepTimerSelected: value => root.sleepTimerSelected(value)
+                                onSleepTimerCancelled: root.sleepTimerCancelled()
+                                onSleepFadeOutSelected: value => root.sleepFadeOutSelected(value)
                             }
 
                             SettingsShortcutsSection {
@@ -459,6 +475,11 @@ Item {
                                 visible: root.shownSection === "desktop"
                                 Layout.preferredHeight: visible ? implicitHeight : 0
                                 defaultLaunchPage: root.defaultLaunchPage
+                                sidebarOrder: root.appWindow.sidebarOrder
+                                sidebarHidden: root.appWindow.sidebarHidden
+                                sidebarPageLabel: root.appWindow.sidebarPageLabel
+                                sidebarPageIcon: root.appWindow.sidebarPageIcon
+                                onSidebarPagesSelected: (order, hidden) => root.appWindow.setSidebarPages(order, hidden)
                                 closeToTray: root.closeToTray
                                 startMinimizedToTray: root.startMinimizedToTray
                                 nowPlayingNotifications: root.nowPlayingNotifications

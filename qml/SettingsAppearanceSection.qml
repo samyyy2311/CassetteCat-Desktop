@@ -11,6 +11,8 @@ ColumnLayout {
     property bool showRemainingTime: true
     property string appFont
     property var fontFamilies: []
+    property string trackDensity: "comfortable"
+    property bool showFormatBadges: true
 
     signal accentSelected(string value)
     signal customAccentSelected(string hexColor)
@@ -18,6 +20,8 @@ ColumnLayout {
     signal nowPlayingBackdropSelected(string value)
     signal showRemainingTimeSelected(bool value)
     signal appFontSelected(string value)
+    signal trackDensitySelected(string value)
+    signal showFormatBadgesSelected(bool value)
 
     Layout.fillWidth: true
     spacing: 16
@@ -41,7 +45,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "pencil"
+            iconName: "palette"
             title: qsTr("Accent Colour")
             subtitle: qsTr("Applied to active navigation, selected controls, playback, seek bars, and volume")
         }
@@ -79,7 +83,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "disc"
+            iconName: "square"
             title: qsTr("Album Art Corners")
             subtitle: qsTr("Corner roundness for artwork thumbnails and cards")
 
@@ -97,7 +101,7 @@ ColumnLayout {
         SettingDivider {}
 
         SettingRow {
-            iconName: "maximize-2"
+            iconName: "image"
             title: qsTr("Now Playing Backdrop")
             subtitle: qsTr("Moving slowly shifts the cover's colors, and uses more graphics memory")
 
@@ -109,6 +113,38 @@ ColumnLayout {
                 ]
                 selectedValue: root.nowPlayingBackdrop
                 onOptionSelected: val => root.nowPlayingBackdropSelected(val)
+            }
+        }
+    }
+
+    SectionLabel { text: qsTr("Track Lists") }
+
+    SettingCard {
+        SettingRow {
+            iconName: "list"
+            title: qsTr("Track Row Density")
+            subtitle: qsTr("Vertical spacing for song rows in track lists")
+
+            SettingSegmentedControl {
+                options: [
+                    { value: "comfortable", label: qsTr("Comfortable") },
+                    { value: "compact", label: qsTr("Compact") }
+                ]
+                selectedValue: root.trackDensity
+                onOptionSelected: val => root.trackDensitySelected(String(val))
+            }
+        }
+
+        SettingDivider {}
+
+        SettingRow {
+            iconName: "file-audio"
+            title: qsTr("Audio Format Badges")
+            subtitle: qsTr("Show FLAC, MP3, and AAC badges on track rows and in Now Playing")
+
+            SettingSwitch {
+                checked: root.showFormatBadges
+                onToggled: val => root.showFormatBadgesSelected(val)
             }
         }
     }

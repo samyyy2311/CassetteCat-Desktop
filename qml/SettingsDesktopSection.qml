@@ -5,6 +5,10 @@ import QtQuick.Layouts
 ColumnLayout {
     id: root
     property string defaultLaunchPage: "last"
+    property var sidebarOrder: []
+    property var sidebarHidden: []
+    property var sidebarPageLabel: page => page
+    property var sidebarPageIcon: page => page
     property bool closeToTray: true
     property bool startMinimizedToTray: false
     property string nowPlayingNotifications: "minimized"
@@ -16,12 +20,24 @@ ColumnLayout {
     property string updateUrl: ""
 
     signal defaultLaunchPageSelected(string value)
+    signal sidebarPagesSelected(var order, var hidden)
     signal closeToTraySelected(bool value)
     signal startMinimizedToTraySelected(bool value)
     signal nowPlayingNotificationsSelected(string value)
     signal miniPlayerAlwaysOnTopSelected(bool value)
     signal checkUpdatesRequested()
     signal downloadUpdateRequested()
+
+    function moveSidebarPage(index, offset) {
+        const order = root.sidebarOrder.slice()
+        order.splice(index + offset, 0, order.splice(index, 1)[0])
+        root.sidebarPagesSelected(order, root.sidebarHidden)
+    }
+
+    function showSidebarPage(page, shown) {
+        const hidden = root.sidebarHidden.filter(other => other !== page)
+        root.sidebarPagesSelected(root.sidebarOrder, shown ? hidden : hidden.concat([page]))
+    }
 
     Layout.fillWidth: true
     spacing: 16
@@ -46,6 +62,56 @@ ColumnLayout {
         }
     }
 
+    SectionLabel { text: qsTr("Sidebar") }
+
+    SettingCard {
+        Repeater {
+            model: root.sidebarOrder
+
+            delegate: ColumnLayout {
+                id: sidebarEntry
+                required property string modelData
+                required property int index
+                readonly property string label: root.sidebarPageLabel(modelData)
+                Layout.fillWidth: true
+                spacing: 0
+
+                SettingDivider { visible: sidebarEntry.index > 0 }
+
+                SettingRow {
+                    iconName: root.sidebarPageIcon(sidebarEntry.modelData)
+                    preserveIconColor: sidebarEntry.modelData === "jellyfin" || sidebarEntry.modelData === "subsonic"
+                    title: sidebarEntry.label
+                    subtitle: sidebarEntry.modelData === "library" ? qsTr("Always shown") : ""
+
+                    SettingButton {
+                        iconName: "arrow-up"
+                        accessibleName: qsTr("Move %1 up").arg(sidebarEntry.label)
+                        enabled: sidebarEntry.index > 0
+                        opacity: enabled ? 1 : 0.35
+                        onClicked: root.moveSidebarPage(sidebarEntry.index, -1)
+                    }
+
+                    SettingButton {
+                        iconName: "arrow-down"
+                        accessibleName: qsTr("Move %1 down").arg(sidebarEntry.label)
+                        enabled: sidebarEntry.index < root.sidebarOrder.length - 1
+                        opacity: enabled ? 1 : 0.35
+                        onClicked: root.moveSidebarPage(sidebarEntry.index, 1)
+                    }
+
+                    // Invisible for Library, but keeps the arrows aligned.
+                    SettingSwitch {
+                        opacity: sidebarEntry.modelData === "library" ? 0 : 1
+                        enabled: sidebarEntry.modelData !== "library"
+                        checked: !root.sidebarHidden.includes(sidebarEntry.modelData)
+                        onToggled: val => root.showSidebarPage(sidebarEntry.modelData, val)
+                    }
+                }
+            }
+        }
+    }
+
     SectionLabel { text: qsTr("Language") }
 
     SettingCard {
@@ -54,7 +120,7 @@ ColumnLayout {
             // A list that grows with every translation, so always a menu.
             forceMenu: true
             property string language: appSettings.value("ui/language", "")
-            iconName: "globe"
+            iconName: "languages"
             title: qsTr("Language")
             subtitle: qsTr("The language CassetteCat's menus and messages use")
             options: [{ value: "", label: qsTr("System Default") }].concat(
@@ -71,7 +137,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "shield"
+            iconName: "monitor-down"
             title: qsTr("Close to System Tray")
             subtitle: qsTr("Keep CassetteCat running in the background when the window is closed")
 
@@ -101,7 +167,7 @@ ColumnLayout {
 
     SettingCard {
         SettingRow {
-            iconName: "disc"
+            iconName: "bell"
             title: qsTr("Now-Playing Notifications")
             subtitle: qsTr("Show native system notification when the track changes")
 

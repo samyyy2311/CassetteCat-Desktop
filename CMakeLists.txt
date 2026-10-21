@@ -190,6 +190,7 @@ qt_add_qml_module(CassetteCat
         qml/SettingsLibrarySection.qml
         qml/SettingsAppearanceSection.qml
         qml/SettingsPlaybackSection.qml
+        qml/SettingsSoundSection.qml
         qml/SettingsEqualizerCard.qml
         qml/SettingsShortcutsSection.qml
         qml/SettingsDesktopSection.qml
@@ -223,6 +224,22 @@ qt_add_qml_module(CassetteCat
         qml/icons/smartphone.svg
         qml/icons/laptop.svg
         qml/icons/zap.svg
+        qml/icons/a-large-small.svg
+        qml/icons/align-left.svg
+        qml/icons/bell.svg
+        qml/icons/blend.svg
+        qml/icons/bold.svg
+        qml/icons/file-audio.svg
+        qml/icons/file-text.svg
+        qml/icons/image.svg
+        qml/icons/languages.svg
+        qml/icons/monitor-down.svg
+        qml/icons/moon.svg
+        qml/icons/palette.svg
+        qml/icons/save.svg
+        qml/icons/server.svg
+        qml/icons/speaker.svg
+        qml/icons/wifi-off.svg
         qml/icons/compass.svg
         qml/icons/sliders-horizontal.svg
         qml/icons/grid-2x2.svg

@@ -54,7 +54,6 @@ ColumnLayout {
             }
         }
 
-        // In-Place Volume Slider (replaces left group when open, never collides with Prev)
         MiniPlayerVolumePill {
             id: inlineVolPill
             onCloseRequested: root.miniPlayer.volumePillVisible = false

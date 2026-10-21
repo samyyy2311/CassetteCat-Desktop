@@ -268,7 +268,6 @@ template <typename Interface, const GUID &InterfaceId> class ComHandler : public
     LONG m_ref = 1;
 };
 
-// Button handler COM implementation
 class ButtonHandler final : public ComHandler<ITypedEventHandler_ButtonPressed, IID_ITypedEventHandler_ButtonPressed> {
   public:
     explicit ButtonHandler(SmtcController *parent) : m_parent(parent) {}

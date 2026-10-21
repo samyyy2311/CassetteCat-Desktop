@@ -20,6 +20,7 @@ class QAudioSink;
 /// thread, so a busy interface can't leave it without audio.
 class AudioPipeline final : public QObject {
     Q_OBJECT
+
   public:
     static constexpr int kBandCount = 10;
     /// Centre frequencies of the graphic equalizer, the same ten bands AutoEq profiles use.

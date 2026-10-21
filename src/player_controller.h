@@ -36,6 +36,7 @@ class PlayerController final : public QObject {
     Q_PROPERTY(QVariantMap equalizer READ equalizer NOTIFY equalizerChanged)
     /// How long the next track fades in over the end of the current one; 0 turns crossfade off.
     Q_PROPERTY(int crossfadeMs MEMBER m_crossfadeMs)
+
   public:
     /// Creates a player backed by \p streaming for authenticated remote tracks.
     explicit PlayerController(QObject *parent = nullptr, StreamingController *streaming = nullptr);

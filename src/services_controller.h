@@ -31,6 +31,7 @@ class ServicesController : public QObject {
     Q_PROPERTY(int libraryLyricsFound READ libraryLyricsFound NOTIFY libraryLyricsChanged)
     Q_PROPERTY(int libraryLyricsTotal READ libraryLyricsTotal NOTIFY libraryLyricsChanged)
     Q_PROPERTY(int libraryLyricsLeft READ libraryLyricsLeft NOTIFY libraryLyricsChanged)
+
   public:
     explicit ServicesController(QObject *parent = nullptr);
     /// Runs deterministic checks for service configuration and cancellation.

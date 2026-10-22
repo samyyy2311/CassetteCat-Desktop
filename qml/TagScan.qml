@@ -33,7 +33,7 @@ QtObject {
     readonly property bool hasResults: details.length > 0 || covers.length > 0
 
     Component.onCompleted: {
-        const saved = JSON.parse(appSettings.value("libraryHealth/tagScan", "{}") || "{}")
+        const saved = JSON.parse(appSettings.loadData("tag-scan", "libraryHealth/tagScan") || "{}")
         songPaths = saved.songPaths || []
         checkedCount = saved.checkedCount || 0
         details = saved.details || []
@@ -44,10 +44,10 @@ QtObject {
     }
 
     function save() {
-        appSettings.setValue("libraryHealth/tagScan", JSON.stringify({
+        appSettings.saveData("tag-scan", JSON.stringify({
             songPaths: songPaths, checkedCount: checkedCount, details: details, covers: covers,
             skippedDetails: skippedDetails, skippedCovers: skippedCovers, checkedBefore: checkedBefore
-        }))
+        }), "libraryHealth/tagScan")
     }
 
     // Only what the review shows and applies is kept for a song.

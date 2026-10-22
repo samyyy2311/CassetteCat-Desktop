@@ -810,8 +810,8 @@ ApplicationWindow {
             radioCustomStations = []
         }
         restorePlaylists()
-        playCounts = numberMapFromSetting("library/playCounts")
-        seenAt = numberMapFromSetting("library/seenAt")
+        playCounts = numberMapFromData("play-counts", "library/playCounts")
+        seenAt = numberMapFromData("seen-at", "library/seenAt")
         settingsInitialized = true
         checkForUpdatesOnLaunch()
         reconcileLibraryMaps()
@@ -866,7 +866,6 @@ ApplicationWindow {
             "player/lastTrack": player.currentTrack.filePath,
             "player/lastPosition": Math.max(0, player.position)
         })
-        appSettings.sync()
     }
 
     function restorePlaybackHistory() {
@@ -1153,9 +1152,9 @@ ApplicationWindow {
         return result
     }
 
-    function numberMapFromSetting(key) {
+    function numberMapFromData(name, legacyKey) {
         try {
-            return numberMap(JSON.parse(appSettings.value(key, "{}") || "{}"))
+            return numberMap(JSON.parse(appSettings.loadData(name, legacyKey) || "{}"))
         } catch (e) {
             return {}
         }
@@ -1620,11 +1619,11 @@ ApplicationWindow {
         if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
     }
     onPlayCountsChanged: {
-        if (settingsInitialized) appSettings.setValue("library/playCounts", JSON.stringify(playCounts))
+        if (settingsInitialized) appSettings.saveData("play-counts", JSON.stringify(playCounts), "library/playCounts")
         refreshHomeActivity()
     }
     onSeenAtChanged: {
-        if (settingsInitialized) appSettings.setValue("library/seenAt", JSON.stringify(seenAt))
+        if (settingsInitialized) appSettings.saveData("seen-at", JSON.stringify(seenAt), "library/seenAt")
         refreshHomeActivity()
     }
     onExcludedFoldersChanged: {

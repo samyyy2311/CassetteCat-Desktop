@@ -17,13 +17,20 @@ class SettingsController final : public QObject {
     static QVariant globalValue(const QString &key, const QVariant &defaultValue = QVariant());
     static void setGlobalValue(const QString &key, const QVariant &value);
     static QVariantMap globalGroup(const QString &group);
-    static void removeGlobalGroup(const QString &group);
+    /// Removes a key, or a whole group.
+    static void removeGlobal(const QString &key);
+    /// Larger data kept in its own file, since settings.ini is rewritten whole on every change. The first time it's
+    /// read, it moves over from \p legacyKey in settings.ini.
+    static QString loadDataFile(const QString &name, const QString &legacyKey);
+    static bool saveDataFile(const QString &name, const QString &text, const QString &legacyKey);
     static bool selfCheck();
 
     Q_INVOKABLE void setValue(const QString &key, const QVariant &value);
     Q_INVOKABLE void setValues(const QVariantMap &values);
     Q_INVOKABLE QVariant value(const QString &key, const QVariant &defaultValue = QVariant()) const;
     Q_INVOKABLE void sync();
+    Q_INVOKABLE QString loadData(const QString &name, const QString &legacyKey) const;
+    Q_INVOKABLE bool saveData(const QString &name, const QString &text, const QString &legacyKey);
 
     Q_INVOKABLE bool exportTextFile(const QUrl &url, const QString &text);
     Q_INVOKABLE QString readTextFile(const QUrl &url) const;

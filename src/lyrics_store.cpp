@@ -90,8 +90,8 @@ void moveFromSettings() {
         qWarning() << "Could not move every saved lyric out of settings; trying again next start";
         return;
     }
-    SettingsController::removeGlobalGroup("lyrics/cache");
-    SettingsController::removeGlobalGroup("lyrics/provider");
+    SettingsController::removeGlobal("lyrics/cache");
+    SettingsController::removeGlobal("lyrics/provider");
 }
 
 } // namespace lyrics

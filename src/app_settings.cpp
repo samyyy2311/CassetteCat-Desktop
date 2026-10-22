@@ -14,10 +14,15 @@
 #include <QGuiApplication>
 #include <QProcess>
 #include <QSaveFile>
+#include <QStandardPaths>
 #include <QTextStream>
 #include <QMutexLocker>
 
 namespace {
+
+QString dataFilePath(const QString &name) {
+    return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/" + name + ".json";
+}
 
 QVariant coerceSettingsValue(const QVariant &val, const QVariant &defaultValue) {
     if (!val.isValid()) {
@@ -126,9 +131,9 @@ QVariantMap SettingsController::globalGroup(const QString &group) {
     return collect(settings);
 }
 
-void SettingsController::removeGlobalGroup(const QString &group) {
-    const auto remove = [&group](QSettings &settings) {
-        settings.remove(group);
+void SettingsController::removeGlobal(const QString &key) {
+    const auto remove = [&key](QSettings &settings) {
+        settings.remove(key);
         settings.sync();
     };
     if (s_instance) {
@@ -138,6 +143,36 @@ void SettingsController::removeGlobalGroup(const QString &group) {
     }
     QSettings settings(settingsFilePath(), QSettings::IniFormat);
     remove(settings);
+}
+
+QString SettingsController::loadDataFile(const QString &name, const QString &legacyKey) {
+    QFile file(dataFilePath(name));
+    if (file.open(QIODevice::ReadOnly))
+        return QString::fromUtf8(file.readAll());
+    const QString legacy = globalValue(legacyKey).toString();
+    if (!legacy.isEmpty())
+        saveDataFile(name, legacy, legacyKey);
+    return legacy;
+}
+
+bool SettingsController::saveDataFile(const QString &name, const QString &text, const QString &legacyKey) {
+    QDir().mkpath(QFileInfo(dataFilePath(name)).absolutePath());
+    QSaveFile file(dataFilePath(name));
+    if (!file.open(QIODevice::WriteOnly) || file.write(text.toUtf8()) < 0 || !file.commit()) {
+        qWarning() << "Could not save" << name << file.errorString();
+        return false;
+    }
+    if (globalValue(legacyKey).isValid())
+        removeGlobal(legacyKey);
+    return true;
+}
+
+QString SettingsController::loadData(const QString &name, const QString &legacyKey) const {
+    return loadDataFile(name, legacyKey);
+}
+
+bool SettingsController::saveData(const QString &name, const QString &text, const QString &legacyKey) {
+    return saveDataFile(name, text, legacyKey);
 }
 
 void SettingsController::setValue(const QString &key, const QVariant &value) {

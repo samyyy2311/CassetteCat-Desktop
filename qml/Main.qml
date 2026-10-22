@@ -73,6 +73,8 @@ ApplicationWindow {
     readonly property color capBottom: "#000000"
     readonly property color capBorder: "#3A3835"
     readonly property color capBorderHover: "#6E6C68"
+    readonly property color menuTop: "#1C1A18"
+    readonly property color menuBottom: "#121110"
 
     // A font chosen in Settings replaces both the display and the body font; empty keeps the bundled ones.
     property string appFont: ""

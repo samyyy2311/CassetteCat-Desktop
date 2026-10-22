@@ -16,7 +16,8 @@ Rectangle {
     readonly property color accentColor: recordRed
     readonly property color accentHoverColor: recordRedHover
 
-    implicitWidth: contentRow.implicitWidth + 22
+    // With only an icon it's round, like the other icon buttons.
+    implicitWidth: text ? contentRow.implicitWidth + 22 : implicitHeight
     implicitHeight: 32
     radius: height / 2
     // A main action has an accent border and text, a destructive one a red border and text.

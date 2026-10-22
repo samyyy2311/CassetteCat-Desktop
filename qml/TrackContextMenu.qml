@@ -7,15 +7,9 @@ Menu {
     property var track: ({})
 
     implicitWidth: 190
-    topPadding: 4
-    bottomPadding: 4
+    padding: 6
 
-    background: Rectangle {
-        radius: 8
-        color: root.appWindow.surfaceElevated
-        border.width: 1
-        border.color: root.appWindow.borderVariant
-    }
+    background: MenuSurface {}
 
     component TrackMenuItem: MenuItem {
         id: item
@@ -50,9 +44,8 @@ Menu {
             }
         }
 
-        background: Rectangle {
-            color: item.highlighted ? root.appWindow.surfaceCardHover : "transparent"
-            radius: 5
+        background: MenuHighlight {
+            highlighted: item.highlighted
             anchors.fill: parent
             anchors.margins: 2
         }

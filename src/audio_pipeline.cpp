@@ -93,9 +93,11 @@ QAudioBufferOutput *AudioPipeline::addSource() {
         QMutexLocker lock(&m_mutex);
         m_sources.push_back({output});
     }
-    // Queued on this thread, like clear(), so audio from before a seek or a new song never arrives after it.
-    connect(output, &QAudioBufferOutput::audioBufferReceived, this,
-            [this, output](const QAudioBuffer &buffer) { append(output, buffer); });
+    // Straight from the decoder's thread: queued through the interface thread, audio waited while a page was built
+    // and the output ran dry, so the song stuttered.
+    connect(
+        output, &QAudioBufferOutput::audioBufferReceived, this,
+        [this, output](const QAudioBuffer &buffer) { append(output, buffer); }, Qt::DirectConnection);
     return output;
 }
 

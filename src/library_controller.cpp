@@ -128,8 +128,13 @@ QString sortKey(const QString &value) {
                                                    QRegularExpression::CaseInsensitiveOption);
     static const QRegularExpression edgePunctuation(QStringLiteral(R"(^[\s'"\[\](){}#._-]+|[\s'"\[\](){}#._-]+$)"),
                                                     QRegularExpression::UseUnicodePropertiesOption);
+    // Sorting compares each name many times, and the expressions above are the slow part, so each key is made once.
+    static thread_local QHash<QString, QString> keys;
+    const auto known = keys.constFind(value);
+    if (known != keys.cend())
+        return *known;
     const QString lower = QString(value).remove(leadingArticle).remove(edgePunctuation).toLower();
-    return lower.isEmpty() ? value.toLower() : lower;
+    return keys.insert(value, lower.isEmpty() ? value.toLower() : lower).value();
 }
 
 int symbolOrNumberCategory(const QString &key) {

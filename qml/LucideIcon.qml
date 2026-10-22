@@ -17,6 +17,9 @@ Item {
         sourceSize.width: Math.max(1, root.width * 2)
         sourceSize.height: Math.max(1, root.height * 2)
         fillMode: Image.PreserveAspectFit
+        // With QSG_TRANSIENT_IMAGES a cached icon keeps no pixels once the main window has uploaded it, so the
+        // same icon in another window, such as the mini player, would draw blank. Those load their own copy.
+        cache: !Window.window || Window.window === window
         smooth: true
         visible: true
         opacity: root.preserveColor ? 1 : 0

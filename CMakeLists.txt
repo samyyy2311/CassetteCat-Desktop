@@ -141,6 +141,7 @@ qt_add_qml_module(CassetteCat
         qml/AppListView.qml
         qml/CardBase.qml
         qml/ButtonBase.qml
+        qml/ButtonFace.qml
         qml/ColorSwatch.qml
         qml/DialogHeader.qml
         qml/EnterAnimation.qml

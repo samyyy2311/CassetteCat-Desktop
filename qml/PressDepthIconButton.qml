@@ -26,23 +26,17 @@ ButtonBase {
         Behavior on y { NumberAnimation { duration: 80; easing.type: Easing.Linear } }
     }
 
-    Rectangle {
+    ButtonFace {
         anchors.fill: parent
         radius: root.cornerRadius
+        hovered: root.isHovered
+        accented: root.highlighted
+        flat: !root.face
         color: root.isHovered ? root.hoverBackgroundColor : root.backgroundColor
-        gradient: root.face ? capFace : null
-        border.width: root.highlighted ? 1.5 : 1.0
         border.color: root.highlighted ? (root.isHovered ? recordRedHover : recordRed)
                                        : (root.isHovered ? root.hoverBorderColor : root.borderColor)
 
         Behavior on color { ColorAnimation { duration: 130 } }
-        Behavior on border.color { ColorAnimation { duration: 130 } }
-
-        Gradient {
-            id: capFace
-            GradientStop { position: 0; color: capTop }
-            GradientStop { position: 1; color: capBottom }
-        }
     }
 
     Item {

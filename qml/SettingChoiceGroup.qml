@@ -63,7 +63,13 @@ SettingRow {
                     ? Math.max(10, pt.y - height - 4)
                     : pt.y + menuButton.height + 4) - pt.y
             }
-            onAboutToShow: reposition()
+            // The choices are built the first time it opens. Built with the page, every dropdown's rows were
+            // made up front, and the font list alone draws a row in each installed font.
+            property bool listBuilt: false
+            onAboutToShow: {
+                listBuilt = true
+                reposition()
+            }
             width: Math.max(menuButton ? menuButton.width : 160, 220)
             implicitHeight: Math.min(260, Math.max(48, (root.options ? root.options.length * 38 : 0) + 12))
             padding: 6
@@ -94,7 +100,7 @@ SettingRow {
                 id: optionList
                 implicitHeight: contentHeight
                 clip: true
-                model: root.options
+                model: choicePopup.listBuilt ? root.options : []
                 spacing: 2
                 boundsBehavior: Flickable.StopAtBounds
                 focus: true

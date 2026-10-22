@@ -470,15 +470,18 @@ int main(int argc, char *argv[]) {
     SetLastError(0);
     const HANDLE instanceMutex = CreateMutexW(nullptr, FALSE, kInstanceMutexName);
     if (instanceMutex && GetLastError() == ERROR_ALREADY_EXISTS) {
+        // Windows only lets the running instance come to the front if the foreground process allows it.
+        AllowSetForegroundWindow(ASFW_ANY);
         bool handedOff = false;
-        constexpr int maxHandoffRetries = 5;
+        // The running instance answers once its event loop is free, which can take seconds while it starts up.
+        constexpr int maxHandoffRetries = 20;
         for (int attempt = 0; attempt < maxHandoffRetries; ++attempt) {
             if (notifyRunningInstance(QString::fromLatin1(kInstanceServerName), openPath)) {
                 handedOff = true;
                 break;
             }
             if (attempt + 1 < maxHandoffRetries)
-                QThread::msleep(100);
+                QThread::msleep(250);
         }
         if (!handedOff) {
             qWarning() << "Existing instance detected, but handoff notification failed.";

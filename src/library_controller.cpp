@@ -376,11 +376,15 @@ LibraryController::LibraryController(QObject *parent)
             }
         }
 
+        updateFolderWatch();
+        // A scan usually finds what the cache already restored; announcing it anyway rebuilt every page.
+        if (tracks == m_tracks)
+            return;
+
         beginResetModel();
         m_tracks = tracks;
         rebuildVisibleRows();
         endResetModel();
-        updateFolderWatch();
         saveLibraryCache();
         emit changed();
         emit tracksChanged();

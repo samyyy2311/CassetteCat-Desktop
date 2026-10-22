@@ -175,10 +175,11 @@ bool SettingsController::saveData(const QString &name, const QString &text, cons
     return saveDataFile(name, text, legacyKey);
 }
 
+// QSettings writes the file itself once the event loop is idle, so changes made together are saved in one write.
+// Forcing a write for every value rewrote the whole file each time, which stalled resizing and song changes.
 void SettingsController::setValue(const QString &key, const QVariant &value) {
     QMutexLocker locker(&m_mutex);
     m_settings.setValue(key, value);
-    m_settings.sync();
 }
 
 void SettingsController::setValues(const QVariantMap &values) {
@@ -186,7 +187,6 @@ void SettingsController::setValues(const QVariantMap &values) {
     for (auto it = values.cbegin(); it != values.cend(); ++it) {
         m_settings.setValue(it.key(), it.value());
     }
-    m_settings.sync();
 }
 
 QVariant SettingsController::value(const QString &key, const QVariant &defaultValue) const {

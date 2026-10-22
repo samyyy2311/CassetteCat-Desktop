@@ -516,7 +516,7 @@ ApplicationWindow {
             entries.push({ type: "current", track: player.currentTrack, title: player.currentTrack.title, fileName: player.currentTrack.fileName, filePath: player.currentTrack.filePath, artist: player.currentTrack.artist, album: player.currentTrack.album, duration: player.currentTrack.duration })
         }
         const queue = activePlaybackQueue()
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         const upcoming = currentIndex >= 0 ? queue.slice(currentIndex + 1) : queue
         if (upcoming.length) {
             entries.push({ type: "header", title: qsTr("UP NEXT") })
@@ -1665,11 +1665,12 @@ ApplicationWindow {
     }
     onPlayCountsChanged: {
         if (settingsInitialized) appSettings.saveData("play-counts", JSON.stringify(playCounts), "library/playCounts")
-        refreshHomeActivity()
+        // Play counts, seen times and history change together when a song starts; this refreshes Home once for all.
+        Qt.callLater(refreshHomeActivity)
     }
     onSeenAtChanged: {
         if (settingsInitialized) appSettings.saveData("seen-at", JSON.stringify(seenAt), "library/seenAt")
-        refreshHomeActivity()
+        Qt.callLater(refreshHomeActivity)
     }
     onExcludedFoldersChanged: {
         saveSetting("library/excludedFolders", excludedFolders)
@@ -1679,7 +1680,7 @@ ApplicationWindow {
     onOriginalPlaybackQueueChanged: if (settingsInitialized) appSettings.setValue("player/originalQueue", savedTrackPaths(originalPlaybackQueue))
     onPlaybackHistoryChanged: {
         if (settingsInitialized) appSettings.setValue("player/history", savedTrackPaths(playbackHistory))
-        refreshHomeActivity()
+        Qt.callLater(refreshHomeActivity)
     }
     onRepeatModeChanged: {
         if (settingsInitialized) appSettings.setValue("player/repeatMode", repeatMode)
@@ -2684,7 +2685,7 @@ ApplicationWindow {
 
     function remoteUpNext() {
         const queue = activePlaybackQueue()
-        const start = currentQueueIndex() + 1
+        const start = currentQueueIndex(queue) + 1
         return queue.slice(start, start + 30).map((track, offset) => ({
             index: start + offset,
             title: track.title || track.fileName || "",
@@ -2695,8 +2696,8 @@ ApplicationWindow {
         }))
     }
 
-    function currentQueueIndex() {
-        const queue = activePlaybackQueue()
+    // Callers that already have the queue pass it; building it from the library takes tens of milliseconds.
+    function currentQueueIndex(queue = activePlaybackQueue()) {
         const filePath = player.currentTrack ? player.currentTrack.filePath : ""
         return queue.findIndex(track => track.filePath === filePath)
     }
@@ -2725,7 +2726,7 @@ ApplicationWindow {
         if (!track || !track.filePath) return
         const queue = activePlaybackQueue()
         const index = queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(track))
-        if (index < 0 || index <= currentQueueIndex()) return
+        if (index < 0 || index <= currentQueueIndex(queue)) return
         const nextQueue = queue.slice()
         nextQueue.splice(index, 1)
         if (player.currentTrack && player.currentTrack.format === "STREAM") {
@@ -2741,7 +2742,7 @@ ApplicationWindow {
     function moveQueuedTrackNext(track) {
         if (!track || !track.filePath) return
         const queue = activePlaybackQueue()
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         const index = queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(track))
         if (index < 0 || index <= currentIndex + 1) return
         const nextQueue = queue.slice()
@@ -2755,7 +2756,7 @@ ApplicationWindow {
     function reorderQueuedTrack(sourceTrack, targetTrack, sourceIndex, targetIndex) {
         if (!sourceTrack || !targetTrack) return
         const queue = activePlaybackQueue()
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         let fromIdx = (sourceIndex !== undefined && sourceIndex >= 0) ? sourceIndex : queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(sourceTrack))
         let toIdx = (targetIndex !== undefined && targetIndex >= 0) ? targetIndex : queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(targetTrack))
         if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx || fromIdx <= currentIndex || toIdx <= currentIndex) return
@@ -2771,7 +2772,7 @@ ApplicationWindow {
         const radioQueue = player.currentTrack && player.currentTrack.format === "STREAM"
         const queue = activePlaybackQueue()
         if (queue.length < 2) return
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         player.toggleShuffle()
         if (currentIndex < 0) return
 
@@ -2790,7 +2791,7 @@ ApplicationWindow {
     function playNext() {
         const queue = activePlaybackQueue()
         if (!queue.length) return
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         if (currentIndex < 0) {
             playQueuedTrack(queue[0])
         } else if (currentIndex < queue.length - 1) {
@@ -2817,7 +2818,7 @@ ApplicationWindow {
             return
         }
         const queue = activePlaybackQueue()
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         if (currentIndex > 0) playQueuedTrack(queue[currentIndex - 1])
         else player.seek(0)
     }
@@ -5193,246 +5194,254 @@ ApplicationWindow {
         }
     }
 
-    AppDialog {
-        id: lyricSearchPopup
-        visible: lyricSearchOpen
-        maxWidth: 620
-        height: lyricCustomEditorOpen
-            ? Math.min(parent.height - 100, 560)
-            : Math.min(parent.height - 100, lyricSearchLoading || lyricSearchResults.length ? 560 : 300)
-        padding: 0
-        onClosed: {
-            lyricSearchOpen = false
-            lyricsSelectionCallback = null
-        }
+    // Built the first time lyric search opens, then kept so it can animate closed.
+    Loader {
+        property bool used: false
+        active: used || lyricSearchOpen
+        onLoaded: used = true
+        sourceComponent: Component {
+            AppDialog {
+                id: lyricSearchPopup
+                visible: lyricSearchOpen
+                maxWidth: 620
+                height: lyricCustomEditorOpen
+                    ? Math.min(parent.height - 100, 560)
+                    : Math.min(parent.height - 100, lyricSearchLoading || lyricSearchResults.length ? 560 : 300)
+                padding: 0
+                onClosed: {
+                    lyricSearchOpen = false
+                    lyricsSelectionCallback = null
+                }
 
-        contentItem: ColumnLayout {
-            spacing: 0
+                contentItem: ColumnLayout {
+                    spacing: 0
 
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 18
-                Layout.rightMargin: 18
-                Layout.topMargin: 16
-                Layout.bottomMargin: 10
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-                    Label {
-                        text: lyricSearchLoading ? qsTr("Searching LRCLIB…") : qsTr("Choose lyrics")
-                        color: textPrimary
-                        font.family: displayFont
-                        font.pixelSize: 18
-                        font.weight: Font.DemiBold
-                    }
-                    Label {
+                    RowLayout {
                         Layout.fillWidth: true
-                        visible: !lyricCustomEditorOpen
-                        text: (player.currentTrack.title || player.currentTrack.fileName || "") + (player.currentTrack.artist ? " • " + player.currentTrack.artist : "")
-                        color: textSecondary
-                        font.family: bodyFont
-                        font.pixelSize: 11
-                        elide: Text.ElideRight
-                    }
-                }
-                Label {
-                    visible: !lyricCustomEditorOpen
-                    text: qsTr("Add custom")
-                    color: accentText
-                    font.family: displayFont
-                    font.pixelSize: 12
-                    font.weight: Font.DemiBold
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = true }
-                }
-                TransportButton {
-                    Accessible.name: qsTr("Close lyrics search")
-                    buttonSize: 30
-                    iconName: "x"
-                    onClicked: lyricSearchOpen = false
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 18
-                Layout.rightMargin: 18
-                Layout.bottomMargin: 12
-                visible: !lyricCustomEditorOpen
-
-                RefineTextInput {
-                    Layout.fillWidth: true
-                    placeholder: qsTr("Track title")
-                    text: lyricSearchQuery
-                    onEdited: lyricSearchQuery = text
-                    onSubmitted: searchLyricsOnline()
-                }
-                TransportButton {
-                    Accessible.name: qsTr("Search lyrics online")
-                    buttonSize: 36
-                    iconName: "search"
-                    accented: true
-                    onClicked: searchLyricsOnline()
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 18
-                Layout.rightMargin: 18
-                Layout.bottomMargin: 8
-                visible: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length > 0
-
-                Label {
-                    Layout.fillWidth: true
-                    text: qsTr("%n version(s) found", "", lyricSearchResults.length)
-                    color: accentText
-                    font.family: monoFont
-                    font.pixelSize: 10
-                    font.weight: Font.Bold
-                }
-                Label {
-                    text: qsTr("Choose the closest match")
-                    color: silverDim
-                    font.family: bodyFont
-                    font.pixelSize: 10
-                }
-            }
-
-            AppListView {
-                Layout.fillWidth: true
-                Layout.fillHeight: !lyricCustomEditorOpen && (lyricSearchLoading || lyricSearchResults.length > 0)
-                clip: true
-                visible: !lyricCustomEditorOpen
-                model: lyricSearchResults
-                spacing: 4
-                reuseItems: true
-                ScrollBar.vertical: AutoHideScrollBar {}
-
-                delegate: Item {
-                    width: ListView.view.width
-                    height: 82
-
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        anchors.topMargin: 4
-                        anchors.bottomMargin: 4
-                        radius: 8
-                        color: resultMouse.containsMouse ? surfaceElevated : "transparent"
-                        border.width: 0
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 4
-
-                            Row {
-                                width: parent.width
-                                spacing: 7
-                                Label { width: parent.width - lyricType.implicitWidth - parent.spacing; text: modelData.title || qsTr("Unknown track"); color: textPrimary; font.family: displayFont; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight }
-                                Label { id: lyricType; text: modelData.syncedLyrics ? qsTr("SYNCED") : qsTr("PLAIN"); color: modelData.syncedLyrics ? recordRedHover : textSecondary; font.family: monoFont; font.pixelSize: 9; font.weight: Font.Bold }
-                            }
-                            Label { width: parent.width; text: (modelData.artist || qsTr("Unknown artist")) + (modelData.album ? " • " + modelData.album : ""); color: textSecondary; font.family: bodyFont; font.pixelSize: 11; elide: Text.ElideRight }
+                        Layout.leftMargin: 18
+                        Layout.rightMargin: 18
+                        Layout.topMargin: 16
+                        Layout.bottomMargin: 10
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
                             Label {
-                                width: parent.width
-                                height: 16
-                                text: parseLrc(modelData.syncedLyrics || modelData.plainLyrics || "").slice(0, 1).map(line => line.text).join("") || (modelData.plainLyrics || "").split(/\r?\n/).filter(line => line.trim().length).slice(0, 1).join("")
-                                color: silverDim
+                                text: lyricSearchLoading ? qsTr("Searching LRCLIB…") : qsTr("Choose lyrics")
+                                color: textPrimary
+                                font.family: displayFont
+                                font.pixelSize: 18
+                                font.weight: Font.DemiBold
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: !lyricCustomEditorOpen
+                                text: (player.currentTrack.title || player.currentTrack.fileName || "") + (player.currentTrack.artist ? " • " + player.currentTrack.artist : "")
+                                color: textSecondary
                                 font.family: bodyFont
-                                font.pixelSize: 10
-                                wrapMode: Text.NoWrap
-                                maximumLineCount: 1
+                                font.pixelSize: 11
                                 elide: Text.ElideRight
                             }
                         }
-
-                    }
-                    MouseArea {
-                        id: resultMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            const lyrics = modelData.syncedLyrics || modelData.plainLyrics || ""
-                            services.cacheLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", modelData.syncedLyrics || "", modelData.plainLyrics || "", "LRCLIB")
-                            applyLyrics(lyrics, "LRCLIB")
-                            lyricSearchOpen = false
+                        Label {
+                            visible: !lyricCustomEditorOpen
+                            text: qsTr("Add custom")
+                            color: accentText
+                            font.family: displayFont
+                            font.pixelSize: 12
+                            font.weight: Font.DemiBold
+                            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = true }
+                        }
+                        TransportButton {
+                            Accessible.name: qsTr("Close lyrics search")
+                            buttonSize: 30
+                            iconName: "x"
+                            onClicked: lyricSearchOpen = false
                         }
                     }
-                }
-            }
 
-            Label {
-                Layout.fillWidth: true
-                Layout.fillHeight: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length === 0
-                Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
-                visible: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length === 0
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                text: qsTr("No lyrics found\nTry the track title, or add custom lyrics")
-                color: textSecondary
-                font.family: bodyFont
-                font.pixelSize: 14
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = true }
-            }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 18
+                        Layout.rightMargin: 18
+                        Layout.bottomMargin: 12
+                        visible: !lyricCustomEditorOpen
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: lyricCustomEditorOpen
-                Layout.margins: 18
-                visible: lyricCustomEditorOpen
-                spacing: 12
-
-                Label {
-                    Layout.fillWidth: true
-                    text: (player.currentTrack.title || "") + " • " + (player.currentTrack.artist || "")
-                    color: textSecondary
-                    font.family: bodyFont
-                    font.pixelSize: 12
-                    elide: Text.ElideRight
-                }
-                TextArea {
-                    id: lyricCustomInput
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    text: lyricCustomText
-                    placeholderText: qsTr("Paste synchronized LRC or plain lyrics…")
-                    wrapMode: TextArea.Wrap
-                    color: textPrimary
-                    font.family: monoFont
-                    font.pixelSize: 12
-                    selectByMouse: true
-                    onTextChanged: lyricCustomText = text
-                    background: Rectangle { radius: 10; color: surfaceInput; border.width: 1; border.color: lyricCustomInput.activeFocus ? recordRed : borderSubtle }
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    Label { Layout.fillWidth: true; text: qsTr("Timestamped LRC becomes synced lyrics."); color: silverDim; font.family: bodyFont; font.pixelSize: 11 }
-                    Label {
-                        text: qsTr("Cancel")
-                        color: textSecondary
-                        font.family: displayFont
-                        font.pixelSize: 13
-                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = false }
+                        RefineTextInput {
+                            Layout.fillWidth: true
+                            placeholder: qsTr("Track title")
+                            text: lyricSearchQuery
+                            onEdited: lyricSearchQuery = text
+                            onSubmitted: searchLyricsOnline()
+                        }
+                        TransportButton {
+                            Accessible.name: qsTr("Search lyrics online")
+                            buttonSize: 36
+                            iconName: "search"
+                            accented: true
+                            onClicked: searchLyricsOnline()
+                        }
                     }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 18
+                        Layout.rightMargin: 18
+                        Layout.bottomMargin: 8
+                        visible: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length > 0
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: qsTr("%n version(s) found", "", lyricSearchResults.length)
+                            color: accentText
+                            font.family: monoFont
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                        }
+                        Label {
+                            text: qsTr("Choose the closest match")
+                            color: silverDim
+                            font.family: bodyFont
+                            font.pixelSize: 10
+                        }
+                    }
+
+                    AppListView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: !lyricCustomEditorOpen && (lyricSearchLoading || lyricSearchResults.length > 0)
+                        clip: true
+                        visible: !lyricCustomEditorOpen
+                        model: lyricSearchResults
+                        spacing: 4
+                        reuseItems: true
+                        ScrollBar.vertical: AutoHideScrollBar {}
+
+                        delegate: Item {
+                            width: ListView.view.width
+                            height: 82
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                anchors.topMargin: 4
+                                anchors.bottomMargin: 4
+                                radius: 8
+                                color: resultMouse.containsMouse ? surfaceElevated : "transparent"
+                                border.width: 0
+
+                                Behavior on color { ColorAnimation { duration: 120 } }
+
+                                Column {
+                                    anchors.fill: parent
+                                    anchors.margins: 12
+                                    spacing: 4
+
+                                    Row {
+                                        width: parent.width
+                                        spacing: 7
+                                        Label { width: parent.width - lyricType.implicitWidth - parent.spacing; text: modelData.title || qsTr("Unknown track"); color: textPrimary; font.family: displayFont; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight }
+                                        Label { id: lyricType; text: modelData.syncedLyrics ? qsTr("SYNCED") : qsTr("PLAIN"); color: modelData.syncedLyrics ? recordRedHover : textSecondary; font.family: monoFont; font.pixelSize: 9; font.weight: Font.Bold }
+                                    }
+                                    Label { width: parent.width; text: (modelData.artist || qsTr("Unknown artist")) + (modelData.album ? " • " + modelData.album : ""); color: textSecondary; font.family: bodyFont; font.pixelSize: 11; elide: Text.ElideRight }
+                                    Label {
+                                        width: parent.width
+                                        height: 16
+                                        text: parseLrc(modelData.syncedLyrics || modelData.plainLyrics || "").slice(0, 1).map(line => line.text).join("") || (modelData.plainLyrics || "").split(/\r?\n/).filter(line => line.trim().length).slice(0, 1).join("")
+                                        color: silverDim
+                                        font.family: bodyFont
+                                        font.pixelSize: 10
+                                        wrapMode: Text.NoWrap
+                                        maximumLineCount: 1
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                            }
+                            MouseArea {
+                                id: resultMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    const lyrics = modelData.syncedLyrics || modelData.plainLyrics || ""
+                                    services.cacheLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", modelData.syncedLyrics || "", modelData.plainLyrics || "", "LRCLIB")
+                                    applyLyrics(lyrics, "LRCLIB")
+                                    lyricSearchOpen = false
+                                }
+                            }
+                        }
+                    }
+
                     Label {
-                        text: qsTr("Save & apply")
-                        color: lyricCustomText.trim().length ? recordRedHover : silverDim
-                        font.family: displayFont
-                        font.pixelSize: 13
-                        font.weight: Font.DemiBold
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: lyricCustomText.trim().length > 0
-                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            onClicked: {
-                                const synced = parseLrc(lyricCustomText).length > 0
-                                services.cacheLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", synced ? lyricCustomText : "", synced ? "" : lyricCustomText, synced ? "Custom LRC" : "Custom plain")
-                                applyLyrics(lyricCustomText, synced ? "Custom LRC" : "Custom plain")
-                                lyricSearchOpen = false
+                        Layout.fillWidth: true
+                        Layout.fillHeight: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length === 0
+                        Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+                        visible: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length === 0
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        text: qsTr("No lyrics found\nTry the track title, or add custom lyrics")
+                        color: textSecondary
+                        font.family: bodyFont
+                        font.pixelSize: 14
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = true }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: lyricCustomEditorOpen
+                        Layout.margins: 18
+                        visible: lyricCustomEditorOpen
+                        spacing: 12
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: (player.currentTrack.title || "") + " • " + (player.currentTrack.artist || "")
+                            color: textSecondary
+                            font.family: bodyFont
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
+                        }
+                        TextArea {
+                            id: lyricCustomInput
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            text: lyricCustomText
+                            placeholderText: qsTr("Paste synchronized LRC or plain lyrics…")
+                            wrapMode: TextArea.Wrap
+                            color: textPrimary
+                            font.family: monoFont
+                            font.pixelSize: 12
+                            selectByMouse: true
+                            onTextChanged: lyricCustomText = text
+                            background: Rectangle { radius: 10; color: surfaceInput; border.width: 1; border.color: lyricCustomInput.activeFocus ? recordRed : borderSubtle }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label { Layout.fillWidth: true; text: qsTr("Timestamped LRC becomes synced lyrics."); color: silverDim; font.family: bodyFont; font.pixelSize: 11 }
+                            Label {
+                                text: qsTr("Cancel")
+                                color: textSecondary
+                                font.family: displayFont
+                                font.pixelSize: 13
+                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = false }
+                            }
+                            Label {
+                                text: qsTr("Save & apply")
+                                color: lyricCustomText.trim().length ? recordRedHover : silverDim
+                                font.family: displayFont
+                                font.pixelSize: 13
+                                font.weight: Font.DemiBold
+                                MouseArea {
+                                    anchors.fill: parent
+                                    enabled: lyricCustomText.trim().length > 0
+                                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                    onClicked: {
+                                        const synced = parseLrc(lyricCustomText).length > 0
+                                        services.cacheLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", synced ? lyricCustomText : "", synced ? "" : lyricCustomText, synced ? "Custom LRC" : "Custom plain")
+                                        applyLyrics(lyricCustomText, synced ? "Custom LRC" : "Custom plain")
+                                        lyricSearchOpen = false
+                                    }
+                                }
                             }
                         }
                     }
@@ -5580,20 +5589,45 @@ ApplicationWindow {
         onClosed: appSettings.setValue("updates/promptedVersion", version)
     }
 
-    TrackMetadataDialog {
+    // Built the first time it opens; building it with the window added about 300 ms to startup.
+    Loader {
         id: metadataDialog
-        appWindow: window
+        active: false
+        sourceComponent: Component {
+            TrackMetadataDialog { appWindow: window }
+        }
+
+        function openFor(track) {
+            active = true
+            item.openFor(track)
+        }
+
+        function openForMany(tracks) {
+            active = true
+            item.openForMany(tracks)
+        }
     }
 
     WhatsNewSheet {
         id: whatsNewSheet
     }
 
-    SetupSheet {
+    // Only a first run opens it, so it isn't built otherwise; it lists every installed font.
+    Loader {
         id: setupSheet
-        appWindow: window
-        onAddFolderRequested: folderDialog.open()
-        onFinished: appSettings.setValue("ui/setupDone", true)
+        active: false
+        sourceComponent: Component {
+            SetupSheet {
+                appWindow: window
+                onAddFolderRequested: folderDialog.open()
+                onFinished: appSettings.setValue("ui/setupDone", true)
+            }
+        }
+
+        function open() {
+            active = true
+            item.open()
+        }
     }
 
     // The phone gets a smart playlist as its current songs, kept up to date as the library and likes change.

@@ -2893,9 +2893,13 @@ ApplicationWindow {
                 playbackPending = false
                 resumeHistoryTracking()
             } else {
+                playbackPending = false
                 pauseHistoryTracking()
                 persistPlayerState()
             }
+        }
+        function onPaused() {
+            playbackPending = false
         }
         function onVolumeChanged() {
             if (settingsInitialized && !fadeOutTimer.running) appSettings.setValue("player/volume", player.volume)

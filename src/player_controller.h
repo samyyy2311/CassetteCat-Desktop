@@ -100,6 +100,8 @@ class PlayerController final : public QObject {
     void currentTrackChanged();
     void currentLyricsChanged();
     void isPlayingChanged();
+    /// Also sent when a song is paused before it started, which leaves isPlaying unchanged.
+    void paused();
     void positionChanged();
     void durationChanged();
     void volumeChanged();

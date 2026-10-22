@@ -11,14 +11,18 @@ Item {
     property real stableSourceSize: 0
     property bool showTonearm: false
     property int fillMode: Image.PreserveAspectCrop
+    // Sizes go up in steps, so resizing the window doesn't reload every cover at each pixel.
+    function sizeStep(size) {
+        return Math.ceil(size / 64) * 64
+    }
     readonly property int requestedLongEdge: {
         const rawDim = stableSourceSize > 0 ? stableSourceSize : Math.max(width, height)
         const target = (rawDim > 10 ? rawDim : 256) * (Screen.devicePixelRatio || 1)
-        return Math.max(32, Math.min(1536, Math.ceil(target)))
+        return Math.max(64, Math.min(1536, sizeStep(target)))
     }
     readonly property size requestedSourceSize: providerRounded && width > 0 && height > 0
-        ? Qt.size(Math.ceil(requestedLongEdge * width / Math.max(width, height)),
-                  Math.ceil(requestedLongEdge * height / Math.max(width, height)))
+        ? Qt.size(sizeStep(requestedLongEdge * width / Math.max(width, height)),
+                  sizeStep(requestedLongEdge * height / Math.max(width, height)))
         : Qt.size(requestedLongEdge, requestedLongEdge)
 
     function normalizeUrl(val) {
@@ -40,8 +44,9 @@ Item {
     readonly property url artworkSource: {
         const src = rawArtworkSource.toString()
         if (!providerRounded) return src
-        const shortSide = Math.min(width, height)
-        if (shortSide < 1) return ""
+        if (Math.min(width, height) < 1) return ""
+        // Rounded to 16 px for the same reason; the corner is off by under a pixel.
+        const shortSide = Math.max(16, Math.round(Math.min(width, height) / 16) * 16)
         const fraction = Math.min(0.5, radius / shortSide).toFixed(3)
         return src.startsWith("image://cover/")
             ? "image://cover/" + fraction + src.slice(src.indexOf("/", 14))

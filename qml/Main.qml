@@ -1739,28 +1739,30 @@ ApplicationWindow {
             const isMax = (window.visibility === Window.Maximized)
             wasMaximized = isMax
             appSettings.setValue("window/maximized", isMax)
-            if (!isMax && window.width > 400 && window.height > 300) {
-                appSettings.setValue("window/width", window.width)
-                appSettings.setValue("window/height", window.height)
-                if (window.x >= 0) appSettings.setValue("window/x", window.x)
-                if (window.y >= 0) appSettings.setValue("window/y", window.y)
-            }
+            if (!isMax && window.width > 400 && window.height > 300) saveWindowGeometry()
         }
     }
 
     // Maximised and full-screen sizes aren't the window's own, so they don't replace the saved one.
     readonly property bool geometryRestorable: visibility !== Window.Maximized && visibility !== Window.FullScreen
-    onWidthChanged: if (settingsInitialized && window.geometryRestorable && window.width > 400) {
-        appSettings.setValue("window/width", window.width)
+    // Each save rewrites the settings file, so a drag or resize saves once it settles rather than at every step.
+    Timer {
+        id: geometrySaveTimer
+        interval: 500
+        onTriggered: if (window.geometryRestorable) window.saveWindowGeometry()
     }
-    onHeightChanged: if (settingsInitialized && window.geometryRestorable && window.height > 300) {
-        appSettings.setValue("window/height", window.height)
-    }
-    onXChanged: if (settingsInitialized && window.geometryRestorable && window.x >= 0) {
-        appSettings.setValue("window/x", window.x)
-    }
-    onYChanged: if (settingsInitialized && window.geometryRestorable && window.y >= 0) {
-        appSettings.setValue("window/y", window.y)
+    onWidthChanged: if (settingsInitialized) geometrySaveTimer.restart()
+    onHeightChanged: if (settingsInitialized) geometrySaveTimer.restart()
+    onXChanged: if (settingsInitialized) geometrySaveTimer.restart()
+    onYChanged: if (settingsInitialized) geometrySaveTimer.restart()
+
+    function saveWindowGeometry() {
+        const geometry = {}
+        if (window.width > 400) geometry["window/width"] = window.width
+        if (window.height > 300) geometry["window/height"] = window.height
+        if (window.x >= 0) geometry["window/x"] = window.x
+        if (window.y >= 0) geometry["window/y"] = window.y
+        appSettings.setValues(geometry)
     }
     onClosing: function(close) {
         persistBeforeExit()
@@ -1782,12 +1784,7 @@ ApplicationWindow {
         finishHistoryTracking()
         libraryTagScan.save()
         persistPlayerState()
-        if (window.geometryRestorable) {
-            if (window.width > 400) appSettings.setValue("window/width", window.width)
-            if (window.height > 300) appSettings.setValue("window/height", window.height)
-            if (window.x >= 0) appSettings.setValue("window/x", window.x)
-            if (window.y >= 0) appSettings.setValue("window/y", window.y)
-        }
+        if (window.geometryRestorable) saveWindowGeometry()
         appSettings.setValue("window/maximized", wasMaximized)
         appSettings.setValues({
             "ui/page": page,

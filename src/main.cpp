@@ -421,6 +421,9 @@ int main(int argc, char *argv[]) {
 
 #ifdef Q_OS_WIN
     SetCurrentProcessExplicitAppUserModelID(kAppUserModelId);
+    // A flip-model swap chain waits on the compositor at every size change, so dragging the window's edge stutters.
+    if (!qEnvironmentVariableIsSet("QT_D3D_NO_FLIP"))
+        qputenv("QT_D3D_NO_FLIP", "1");
 #endif
 
     QSurfaceFormat surfaceFormat = QSurfaceFormat::defaultFormat();

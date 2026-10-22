@@ -2580,15 +2580,33 @@ ApplicationWindow {
         startPlayback(source, index >= 0 ? index : 0, player.shuffleEnabled)
     }
 
+    // An even shuffle often plays one artist several times in a row, which doesn't sound random. Each artist's songs are
+    // shuffled, then spread evenly through the queue from a random starting point, with a little jitter.
     function shuffledTracks(source) {
-        const result = source.slice()
-        for (let i = result.length - 1; i > 0; --i) {
-            const j = Math.floor(Math.random() * (i + 1))
-            const item = result[i]
-            result[i] = result[j]
-            result[j] = item
+        const shuffle = list => {
+            for (let i = list.length - 1; i > 0; --i) {
+                const j = Math.floor(Math.random() * (i + 1))
+                const item = list[i]
+                list[i] = list[j]
+                list[j] = item
+            }
+            return list
         }
-        return result
+        const byArtist = {}
+        source.forEach(track => {
+            const artist = splitArtists(track.artist || "")[0].toLowerCase()
+            if (!byArtist[artist]) byArtist[artist] = []
+            byArtist[artist].push(track)
+        })
+        const placed = []
+        Object.keys(byArtist).forEach(artist => {
+            const songs = shuffle(byArtist[artist])
+            const step = 1 / songs.length
+            const start = Math.random() * step
+            songs.forEach((track, i) => placed.push({ track: track, at: start + i * step + (Math.random() - 0.5) * step * 0.2 }))
+        })
+        placed.sort((a, b) => a.at - b.at)
+        return placed.map(entry => entry.track)
     }
 
     function startPlayback(source, startIndex, shuffle) {

@@ -41,6 +41,7 @@ Item {
             QueueModel {
                 id: queueModel
                 entries: miniPlayer.queueEntries
+                onRebuilt: if (root.visible) Qt.callLater(root.scrollToCurrentTrack)
             }
 
             AppListView {

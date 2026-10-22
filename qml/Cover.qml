@@ -111,9 +111,13 @@ Item {
 
         if (next === curr && activeImage.status === Image.Ready) return
 
+        // Sources are cleared too: a hidden image left on its old source would be taken as already shown when that
+        // source comes back.
         if (!next) {
             imageA.opacity = 0
             imageB.opacity = 0
+            imageA.source = ""
+            imageB.source = ""
             return
         }
 

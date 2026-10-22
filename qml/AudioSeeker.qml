@@ -56,12 +56,26 @@ Item {
     readonly property int currentPosMs: isDragging ? dragPositionMs : (pendingSeek ? pendingSeekPos : root.position)
     readonly property real progressFraction: (root.duration > 0) ? Math.min(1.0, Math.max(0.0, currentPosMs / root.duration)) : 0.0
 
+    // The font is monospaced, so slots sized to this track's length hug the bar without shifting it as time runs.
+    TextMetrics {
+        id: durationMetrics
+        font.family: root.monoFont
+        font.pixelSize: 11
+        font.weight: Font.Medium
+        text: root.formatTime(root.duration)
+    }
+    TextMetrics {
+        id: remainingMetrics
+        font: durationMetrics.font
+        text: "-" + durationMetrics.text
+    }
+
     RowLayout {
         anchors.fill: parent
         spacing: 10
 
         Label {
-            Layout.preferredWidth: 42
+            Layout.preferredWidth: Math.ceil(durationMetrics.advanceWidth)
             Layout.alignment: Qt.AlignVCenter
             text: root.formatTime(root.currentPosMs)
             color: (trackMouse.containsMouse || root.isDragging) ? textPrimary : silverDim
@@ -199,7 +213,7 @@ Item {
         }
 
         Label {
-            Layout.preferredWidth: 46
+            Layout.preferredWidth: Math.ceil(remainingMetrics.advanceWidth)
             Layout.alignment: Qt.AlignVCenter
             text: root.showRemainingTime
                 ? root.formatRemaining(root.currentPosMs, root.duration)

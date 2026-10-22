@@ -23,6 +23,7 @@ Item {
     QueueModel {
         id: queueModel
         entries: root.appWindow.queueEntries
+        onRebuilt: if (root.visible) Qt.callLater(root.scrollToCurrentTrack)
     }
 
     function scrollToCurrentTrack() {

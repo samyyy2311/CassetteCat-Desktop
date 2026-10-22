@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Controls
 
 Item {
@@ -20,7 +21,7 @@ Item {
     readonly property bool selected: appWindow.page === destination && !appWindow.nowPlayingOpen
     readonly property bool highlighted: navMouse.containsMouse || (activeFocus && !mouseFocused)
     property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+    onActiveFocusChanged: if (!activeFocus && Window.active) mouseFocused = false
 
     function activate() {
         appWindow.nowPlayingOpen = false

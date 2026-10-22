@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 import "TrackTitles.js" as TrackTitles
@@ -35,7 +36,7 @@ Rectangle {
 
     readonly property bool highlighted: rowMouse.containsMouse || (activeFocus && !mouseFocused)
     property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+    onActiveFocusChanged: if (!activeFocus && Window.active) mouseFocused = false
 
     Accessible.role: Accessible.ListItem
     Accessible.name: root.track ? (root.track.title || root.track.fileName || "") : ""

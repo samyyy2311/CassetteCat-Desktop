@@ -18,25 +18,25 @@ ButtonBase {
     Rectangle {
         id: cap
         anchors.fill: parent
-        y: root.isPressed ? 1.5 : 0
+        y: root.isPressed ? 2 : 0
         radius: width / 2
-        color: root.isPressed 
-            ? surfaceDock 
-            : (root.isHovered 
-                ? surfaceElevated 
-                : (root.filled ? surfaceCardHover : "transparent"))
+        color: "transparent"
+        gradient: root.filled ? face : null
+
+        Gradient {
+            id: face
+            GradientStop { position: 0; color: capTop }
+            GradientStop { position: 1; color: capBottom }
+        }
 
         Behavior on y {
             NumberAnimation { duration: 80; easing.type: Easing.Linear }
         }
-        Behavior on color {
-            ColorAnimation { duration: 150 }
-        }
 
-        border.width: root.accented ? 1.2 : (root.isHovered ? 1.0 : 0)
+        border.width: root.accented ? 1.5 : (root.filled || root.isHovered ? 1 : 0)
         border.color: root.accented
             ? (root.isHovered ? root.recordRedHover : root.recordRed)
-            : (root.isHovered ? "#35FFFFFF" : "transparent")
+            : (root.isHovered ? capBorderHover : capBorder)
 
         Behavior on border.color { ColorAnimation { duration: 150 } }
 

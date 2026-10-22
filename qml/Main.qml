@@ -68,6 +68,11 @@ ApplicationWindow {
     readonly property color borderSubtle: Qt.rgba(1, 1, 1, 0.05)
     readonly property color borderVariant: Qt.rgba(1, 1, 1, 0.09)
     readonly property color borderCard: borderVariant
+    // Button faces, the same as the website's.
+    readonly property color capTop: "#232120"
+    readonly property color capBottom: "#000000"
+    readonly property color capBorder: "#3A3835"
+    readonly property color capBorderHover: "#6E6C68"
 
     // A font chosen in Settings replaces both the display and the body font; empty keeps the bundled ones.
     property string appFont: ""
@@ -4676,7 +4681,7 @@ ApplicationWindow {
                                 readonly property bool phoneConnected: phoneRemote.controllerName !== "" || !!phoneRemote.phonePlayback.name
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 34
-                                backgroundColor: "transparent"
+                                face: false
                                 borderColor: "transparent"
                                 iconSize: 17
                                 iconName: "smartphone"
@@ -4701,7 +4706,7 @@ ApplicationWindow {
                             PressDepthIconButton {
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 34
-                                backgroundColor: "transparent"
+                                face: false
                                 borderColor: "transparent"
                                 iconSize: 17
                                 iconName: "quote"
@@ -4721,7 +4726,7 @@ ApplicationWindow {
                             PressDepthIconButton {
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 34
-                                backgroundColor: "transparent"
+                                face: false
                                 borderColor: "transparent"
                                 iconSize: 17
                                 iconName: "list"
@@ -4741,7 +4746,7 @@ ApplicationWindow {
                             PressDepthIconButton {
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 34
-                                backgroundColor: "transparent"
+                                face: false
                                 borderColor: "transparent"
                                 iconSize: 17
                                 iconName: "pip"
@@ -4753,7 +4758,7 @@ ApplicationWindow {
                             PressDepthIconButton {
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 34
-                                backgroundColor: "transparent"
+                                face: false
                                 borderColor: "transparent"
                                 iconSize: 17
                                 iconName: nowPlayingOpen ? "chevron-down" : "audio-lines"

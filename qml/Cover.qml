@@ -150,10 +150,11 @@ Item {
         radius: root.radius
         color: surfaceCard
 
-        // Built only for covers without art; held on every cover, it kept three images per card.
+        // Built only for covers without art; held on every cover, it kept three images per card. Until a cover has a
+        // size its artwork can't be asked for, so waiting for one keeps it from being built for every new card.
         Loader {
             anchors.fill: parent
-            active: root.showingFallback
+            active: root.showingFallback && root.width > 0 && root.height > 0
             sourceComponent: VinylFallback {
                 showTonearm: root.showTonearm
                 playing: root.currentTrackPlaying && root.showingFallback

@@ -1428,7 +1428,7 @@ ApplicationWindow {
     onPageChanged: {
         catalogDetailOpen = false
         if (settingsInitialized) appSettings.setValue("ui/page", page)
-        updateVisibleLibrary()
+        if (page === "library" || page === "search") updateVisibleLibrary()
         if (page === "library") refreshLibraryGroups(library.catalogGroups())
         else clearLibraryGroups()
         if (settingsInitialized && page === "radio" && radioStations.length === 0) Qt.callLater(refreshRadio)
@@ -2431,15 +2431,15 @@ ApplicationWindow {
         const albumGroups = groups.albums || []
         artistCount = artistGroups.length
         albumCount = albumGroups.length
-        artistsRotation = artistGroups.slice().sort((a, b) => (b.count - a.count) || compareSortKey(a.name, b.name)).slice(0, 12)
-        albumsRotation = albumGroups.slice().sort((a, b) => (b.count - a.count) || compareSortKey(a.name, b.name)).slice(0, 12)
+        artistsRotation = artistGroups.slice().sort((a, b) => (b.count - a.count) || (a.rank - b.rank)).slice(0, 12)
+        albumsRotation = albumGroups.slice().sort((a, b) => (b.count - a.count) || (a.rank - b.rank)).slice(0, 12)
     }
 
     function refreshLibraryGroups(groups) {
-        artists = (groups.artists || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
-        albums = (groups.albums || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
-        genreGroups = (groups.genres || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
-        folderGroups = (groups.folders || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
+        artists = groups.artists || []
+        albums = groups.albums || []
+        genreGroups = groups.genres || []
+        folderGroups = groups.folders || []
     }
 
     function refreshVisibleLibraryGroups() {
@@ -2878,8 +2878,10 @@ ApplicationWindow {
         }
     }
 
+    // Writing settings stalls the interface briefly, so while playing the position is only saved now and then. Pausing,
+    // changing songs and quitting save it straight away.
     Timer {
-        interval: 2000
+        interval: 15000
         repeat: true
         running: playerStateDirty
         onTriggered: {

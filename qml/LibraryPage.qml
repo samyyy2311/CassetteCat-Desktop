@@ -402,9 +402,9 @@ Item {
                     list.sort((a, b) => {
                         let res;
                         if (sortM === "count") {
-                            res = (a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name);
+                            res = (a.count - b.count) || (a.rank - b.rank);
                         } else {
-                            res = root.appWindow.compareSortKey(a.name, b.name);
+                            res = a.rank - b.rank;
                         }
                         return asc ? res : -res;
                     });
@@ -481,13 +481,11 @@ Item {
                     list.sort((a, b) => {
                         let res;
                         if (sortM === "artist") {
-                            const artistA = a.track ? a.track.artist : "";
-                            const artistB = b.track ? b.track.artist : "";
-                            res = root.appWindow.compareSortKey(artistA, artistB) || root.appWindow.compareSortKey(a.name, b.name);
+                            res = a.artistRank - b.artistRank;
                         } else if (sortM === "count") {
-                            res = (a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name);
+                            res = (a.count - b.count) || (a.rank - b.rank);
                         } else {
-                            res = root.appWindow.compareSortKey(a.name, b.name);
+                            res = a.rank - b.rank;
                         }
                         return asc ? res : -res;
                     });
@@ -567,8 +565,8 @@ Item {
                     }
                     list.sort((a, b) => {
                         let res = sortM === "count"
-                            ? ((a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name))
-                            : root.appWindow.compareSortKey(a.name, b.name);
+                            ? ((a.count - b.count) || (a.rank - b.rank))
+                            : (a.rank - b.rank);
                         return asc ? res : -res;
                     });
                     return list;
@@ -631,8 +629,8 @@ Item {
                     }
                     list.sort((a, b) => {
                         let res = sortM === "count"
-                            ? ((a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name))
-                            : root.appWindow.compareSortKey(a.name, b.name);
+                            ? ((a.count - b.count) || (a.rank - b.rank))
+                            : (a.rank - b.rank);
                         return asc ? res : -res;
                     });
                     return list;

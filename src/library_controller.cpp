@@ -28,6 +28,7 @@
 #include <QTimer>
 
 #include <algorithm>
+#include <numeric>
 #include <utility>
 
 namespace {
@@ -1290,17 +1291,38 @@ QVariantMap LibraryController::catalogGroups() const {
         add(folders, folderPath, track, {{"name", folderName}, {"path", folderPath}});
     }
 
-    const auto values = [](const QHash<QString, QVariantMap> &groups) {
+    // Sorted here, with each group's place in name order as "rank", so the pages can order them by comparing
+    // numbers instead of calling back for every pair of names.
+    const auto byName = [](const QHash<QString, QVariantMap> &groups) {
+        QList<QVariantMap> list = groups.values();
+        std::sort(list.begin(), list.end(), [](const QVariantMap &a, const QVariantMap &b) {
+            return compareSortKeys(a.value("name").toString(), b.value("name").toString()) < 0;
+        });
+        for (int i = 0; i < list.size(); ++i)
+            list[i].insert("rank", i);
+        return list;
+    };
+    const auto toList = [](const QList<QVariantMap> &groups) {
         QVariantList result;
         result.reserve(groups.size());
-        for (auto it = groups.cbegin(); it != groups.cend(); ++it)
-            result.append(it.value());
+        for (const QVariantMap &group : groups)
+            result.append(group);
         return result;
     };
-    return {{"artists", values(artists)},
-            {"albums", values(albums)},
-            {"genres", values(genres)},
-            {"folders", values(folders)},
+    QList<QVariantMap> albumList = byName(albums);
+    QList<int> byArtist(albumList.size());
+    std::iota(byArtist.begin(), byArtist.end(), 0);
+    const auto artistOf = [&albumList](int i) {
+        return albumList[i].value("track").toMap().value("artist").toString();
+    };
+    std::stable_sort(byArtist.begin(), byArtist.end(),
+                     [&artistOf](int a, int b) { return compareSortKeys(artistOf(a), artistOf(b)) < 0; });
+    for (int i = 0; i < byArtist.size(); ++i)
+        albumList[byArtist[i]].insert("artistRank", i);
+    return {{"artists", toList(byName(artists))},
+            {"albums", toList(albumList)},
+            {"genres", toList(byName(genres))},
+            {"folders", toList(byName(folders))},
             {"formats", QVariantMap{{"ALL", allFormats}, {"FLAC", lossless}, {"MP3", mp3}, {"AAC", aac}}}};
 }
 

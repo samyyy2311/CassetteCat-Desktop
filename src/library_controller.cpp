@@ -331,8 +331,9 @@ LibraryController::LibraryController(QObject *parent)
     : QAbstractListModel(parent), m_folderWatcher(this), m_watchDebounce(this), m_scanProcess(this) {
     m_watchDebounce.setSingleShot(true);
     m_watchDebounce.setInterval(750);
-    // m_lyrics holds rows of m_tracks.
+    // m_lyrics holds rows of m_tracks, and the groups are built from them.
     connect(this, &LibraryController::tracksChanged, this, [this] {
+        m_catalogGroups.clear();
         m_lyricsRead = false;
         ++m_lyricsRevision;
         emit lyricsChanged();
@@ -1234,6 +1235,9 @@ QVariantList LibraryController::similarTracks(const QVariantMap &seed, const QSt
 }
 
 QVariantMap LibraryController::catalogGroups() const {
+    // Kept until the tracks change, since the Library and Search pages ask for them each time they open.
+    if (!m_catalogGroups.isEmpty())
+        return m_catalogGroups;
     QHash<QString, QVariantMap> artists;
     QHash<QString, QVariantMap> albums;
     QHash<QString, QVariantMap> genres;
@@ -1319,11 +1323,12 @@ QVariantMap LibraryController::catalogGroups() const {
                      [&artistOf](int a, int b) { return compareSortKeys(artistOf(a), artistOf(b)) < 0; });
     for (int i = 0; i < byArtist.size(); ++i)
         albumList[byArtist[i]].insert("artistRank", i);
-    return {{"artists", toList(byName(artists))},
-            {"albums", toList(albumList)},
-            {"genres", toList(byName(genres))},
-            {"folders", toList(byName(folders))},
-            {"formats", QVariantMap{{"ALL", allFormats}, {"FLAC", lossless}, {"MP3", mp3}, {"AAC", aac}}}};
+    m_catalogGroups = {{"artists", toList(byName(artists))},
+                       {"albums", toList(albumList)},
+                       {"genres", toList(byName(genres))},
+                       {"folders", toList(byName(folders))},
+                       {"formats", QVariantMap{{"ALL", allFormats}, {"FLAC", lossless}, {"MP3", mp3}, {"AAC", aac}}}};
+    return m_catalogGroups;
 }
 
 QVariantList LibraryController::visibleTracks() const {

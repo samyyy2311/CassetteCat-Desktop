@@ -148,6 +148,7 @@ class LibraryController final : public QAbstractListModel {
     QVariantList m_tracks;
     QList<TrackLyrics> m_lyrics;
     bool m_lyricsRead = false;
+    mutable QVariantMap m_catalogGroups;
     int m_lyricsRevision = 0;
     QVector<int> m_visibleRows;
     QString m_query;

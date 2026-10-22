@@ -85,6 +85,43 @@ ApplicationWindow {
     property int coversLoading: 0
     property bool appQuitting: false
     property string page: "home"
+    // The page on screen. It catches up with page once the new one is built and most of its covers have loaded, so a
+    // page never appears half-built; the old one stays, with the loading bar over it, until then.
+    property string shownPage: ""
+    readonly property var pageLoader: ({ home: homePageLoader, library: libraryPageLoader, search: searchPageLoader,
+                                         radio: radioPageLoader, jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader,
+                                         stats: listeningRecordPageLoader, settings: settingsLoader })[page] || null
+    readonly property bool pageBuilt: pageLoader !== null && pageLoader.status === Loader.Ready
+    onPageBuiltChanged: settlePage()
+    onShownPageChanged: if (shownPage === "search" && searchPageLoader.focusOnShow) {
+        searchPageLoader.focusOnShow = false
+        focusSearchInput()
+    }
+
+    function settlePage() {
+        if (pageBuilt && page !== shownPage) {
+            pageSettleTimer.ticks = 0
+            pageSettleTimer.restart()
+        } else {
+            pageSettleTimer.stop()
+        }
+    }
+
+    Timer {
+        id: pageSettleTimer
+        interval: 50
+        repeat: true
+        property int ticks: 0
+        // A page's rows, and their covers, are made just after the page itself, so a few ticks pass before no covers
+        // loading counts as done. A slow cover stops holding the page back after a second or so.
+        onTriggered: {
+            ticks++
+            if ((ticks >= 3 && window.coversLoading === 0) || ticks >= 24) {
+                stop()
+                window.shownPage = window.page
+            }
+        }
+    }
     property real homeScrollPosition: 0
     property var libraryScrollPositions: ({})
     property string libraryTab: "songs"
@@ -1426,6 +1463,7 @@ ApplicationWindow {
     }
 
     onPageChanged: {
+        settlePage()
         catalogDetailOpen = false
         if (settingsInitialized) appSettings.setValue("ui/page", page)
         if (page === "library" || page === "search") updateVisibleLibrary()
@@ -1885,8 +1923,8 @@ ApplicationWindow {
         nowPlayingOpen = false
         catalogDetailOpen = false
         page = "search"
-        if (searchPageLoader.item) focusSearchInput()
-        else searchPageLoader.focusOnLoad = true
+        if (shownPage === "search") focusSearchInput()
+        else searchPageLoader.focusOnShow = true
     }
 
     Shortcut {
@@ -3469,7 +3507,7 @@ ApplicationWindow {
                 anchors.rightMargin: 16
 
                 Label {
-                    text: page === "home" ? qsTr("Home") : page === "library" ? qsTr("Library") : page === "radio" ? qsTr("Radio") : page === "search" ? qsTr("Search") : page === "stats" ? qsTr("Listening Record") : page === "jellyfin" ? "Jellyfin" : page === "subsonic" ? "Subsonic" : qsTr("Settings")
+                    text: shownPage === "home" ? qsTr("Home") : shownPage === "library" ? qsTr("Library") : shownPage === "radio" ? qsTr("Radio") : shownPage === "search" ? qsTr("Search") : shownPage === "stats" ? qsTr("Listening Record") : shownPage === "jellyfin" ? "Jellyfin" : shownPage === "subsonic" ? "Subsonic" : shownPage === "settings" ? qsTr("Settings") : ""
                     color: textPrimary
                     font.family: displayFont
                     font.pixelSize: 22
@@ -3481,7 +3519,7 @@ ApplicationWindow {
                 Label {
                     readonly property var pageItem: ({ library: libraryPageLoader, search: searchPageLoader, radio: radioPageLoader,
                                                        jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader,
-                                                       stats: listeningRecordPageLoader })[page]
+                                                       stats: listeningRecordPageLoader })[shownPage]
                     Layout.leftMargin: 12
                     Layout.alignment: Qt.AlignBaseline
                     text: pageItem && pageItem.item ? pageItem.item.countText : ""
@@ -3494,7 +3532,7 @@ ApplicationWindow {
 
                 ExpandableSearchBar {
                     id: settingsSearchBar
-                    visible: page === "settings"
+                    visible: shownPage === "settings"
                     alwaysOpen: true
                     boxSize: 34
                     iconSize: 16
@@ -3920,7 +3958,7 @@ ApplicationWindow {
                 StackLayout {
                     id: mainStack
                     anchors.fill: parent
-                    currentIndex: page === "home" ? 0 : (page === "library" ? 1 : (page === "search" ? 2 : (page === "radio" ? 3 : (page === "jellyfin" ? 4 : (page === "subsonic" ? 5 : (page === "stats" ? 6 : 7))))))
+                    currentIndex: ["home", "library", "search", "radio", "jellyfin", "subsonic", "stats", "settings"].indexOf(shownPage)
 
                     transform: Translate { id: pageTranslate }
                     onCurrentIndexChanged: pageEnter.restart()
@@ -3937,12 +3975,7 @@ ApplicationWindow {
                         Layout.fillHeight: true
                         asynchronous: true
                         // Wait for the saved page, or Home is built and discarded when launching elsewhere.
-                        active: settingsInitialized && page === "home" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: homePageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: settingsInitialized && (page === "home" || shownPage === "home") && !inTray
 
                         sourceComponent: Component {
                             HomePage {
@@ -3971,12 +4004,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "library" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: libraryPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "library" || shownPage === "library") && !inTray
 
                         sourceComponent: Component {
                             LibraryPage {
@@ -3991,17 +4019,8 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "search" && !inTray
-                        property bool focusOnLoad: false
-                        onLoaded: if (focusOnLoad) {
-                            focusOnLoad = false
-                            focusSearchInput()
-                        }
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: searchPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "search" || shownPage === "search") && !inTray
+                        property bool focusOnShow: false
 
                         sourceComponent: Component {
                             SearchPage {
@@ -4017,12 +4036,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "radio" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: radioPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "radio" || shownPage === "radio") && !inTray
 
                         sourceComponent: Component {
                             RadioPage {
@@ -4037,12 +4051,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "jellyfin" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: jellyfinPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "jellyfin" || shownPage === "jellyfin") && !inTray
 
                         sourceComponent: Component {
                             JellyfinPage {
@@ -4057,12 +4066,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "subsonic" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: subsonicPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "subsonic" || shownPage === "subsonic") && !inTray
 
                         sourceComponent: Component {
                             SubsonicPage {
@@ -4077,12 +4081,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "stats" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: listeningRecordPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "stats" || shownPage === "stats") && !inTray
 
                         sourceComponent: Component {
                             ListeningRecordPage {
@@ -4101,12 +4100,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "settings" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: settingsLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "settings" || shownPage === "settings") && !inTray
                         sourceComponent: Component {
                             SettingsPage {
                                 id: settingsRoot
@@ -4271,6 +4265,13 @@ ApplicationWindow {
                             }
                         }
                     }
+                }
+
+                // Runs while a page is built out of sight, or the one on screen is still loading covers.
+                LoadingBar {
+                    anchors.fill: parent
+                    visible: window.page !== window.shownPage || window.coversLoading > 0
+                        || (window.pageLoader !== null && window.pageLoader.status === Loader.Loading)
                 }
             }
         }

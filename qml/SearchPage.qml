@@ -194,7 +194,17 @@ Item {
                     font.weight: Font.Medium
                     selectByMouse: true
                     text: root.appWindow.searchQuery
-                    onTextChanged: root.appWindow.searchQuery = text
+                    // Each search rebuilds every result row, so it waits for a pause in typing.
+                    onTextChanged: {
+                        if (text) queryTimer.restart()
+                        else root.appWindow.searchQuery = ""
+                    }
+
+                    Timer {
+                        id: queryTimer
+                        interval: 150
+                        onTriggered: root.appWindow.searchQuery = pageSearchInput.text
+                    }
                     Keys.onEscapePressed: {
                         if (text) text = ""
                         else focus = false

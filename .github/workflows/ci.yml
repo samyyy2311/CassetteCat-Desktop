@@ -33,6 +33,8 @@ jobs:
           version: "6.11.2"
           target: desktop
           arch: win64_msvc2022_64
+          # aqtinstall 3.3.0 can't read Qt 6.11's Windows repository; the fix is unreleased. Back to the release once 3.4.0 is out.
+          aqtsource: git+https://github.com/miurahr/aqtinstall.git@076e1659807d0b362a3ed684d54c2e9c775eb9c7
           modules: qtmultimedia qtquickeffectmaker
           tools: 'tools_opensslv3_x64,qt.tools.opensslv3.win_x64'
           cache: true

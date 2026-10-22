@@ -183,9 +183,11 @@ qt_add_qml_module(CassetteCat
         qml/SettingChoiceGroup.qml
         qml/SettingButton.qml
         qml/AppDialog.qml
+        qml/AppMenuItem.qml
         qml/ConfirmPopup.qml
         qml/FilterChip.qml
         qml/PageTabs.qml
+        qml/PageToolbar.qml
         qml/SeeAllLink.qml
         qml/SettingColorPicker.qml
         qml/SettingDivider.qml

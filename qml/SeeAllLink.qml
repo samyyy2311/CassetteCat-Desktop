@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-RowLayout {
+Item {
     id: root
     property int count: 0
 
@@ -10,25 +10,32 @@ RowLayout {
 
     readonly property color tint: linkMouse.containsMouse ? recordRedHover : textSecondary
 
-    spacing: 4
+    implicitWidth: content.implicitWidth
+    implicitHeight: content.implicitHeight
 
     Accessible.role: Accessible.Link
     Accessible.name: qsTr("See all %1").arg(count)
     Accessible.onPressAction: root.clicked()
 
-    Label {
-        text: qsTr("See all %1").arg(root.count)
-        color: root.tint
-        font.family: bodyFont
-        font.pixelSize: 13
-        font.weight: Font.DemiBold
-    }
+    RowLayout {
+        id: content
+        anchors.fill: parent
+        spacing: 4
 
-    LucideIcon {
-        icon: "chevron-right"
-        Layout.preferredWidth: 14
-        Layout.preferredHeight: 14
-        color: root.tint
+        Label {
+            text: qsTr("See all %1").arg(root.count)
+            color: root.tint
+            font.family: bodyFont
+            font.pixelSize: 13
+            font.weight: Font.DemiBold
+        }
+
+        LucideIcon {
+            icon: "chevron-right"
+            Layout.preferredWidth: 14
+            Layout.preferredHeight: 14
+            color: root.tint
+        }
     }
 
     MouseArea {

@@ -16,19 +16,16 @@ Rectangle {
 
     implicitWidth: compact ? content.implicitWidth + 22 : 184
     implicitHeight: compact ? 34 : 40
-    radius: compact ? 17 : 8
-    color: selected
-        ? (compact ? root.accentColor : surfaceElevated)
-        : (mouse.containsMouse ? surfaceCardHover : "transparent")
-    border.width: 0
-    border.color: "transparent"
+    radius: 8
+    // Narrow, the sections sit in a row and look like page tabs.
+    color: compact || !(selected || mouse.containsMouse) ? "transparent"
+        : selected ? surfaceElevated : surfaceCardHover
     Accessible.role: Accessible.Button
     Accessible.name: label
     Accessible.checked: selected
     Accessible.onPressAction: root.clicked()
 
     Behavior on color { ColorAnimation { duration: 120 } }
-    Behavior on border.color { ColorAnimation { duration: 120 } }
 
     Rectangle {
         visible: root.selected && !root.compact
@@ -38,6 +35,16 @@ Rectangle {
         width: 3
         height: 16
         radius: 1.5
+        color: root.accentColor
+    }
+
+    Rectangle {
+        visible: root.selected && root.compact
+        anchors.bottom: parent.bottom
+        anchors.left: content.left
+        anchors.right: content.right
+        height: 2.5
+        radius: 1.25
         color: root.accentColor
     }
 
@@ -53,7 +60,7 @@ Rectangle {
             Layout.preferredHeight: 18
             icon: root.iconName
             color: root.selected
-                ? (root.compact ? "white" : root.accentHoverColor)
+                ? root.accentHoverColor
                 : (mouse.containsMouse ? textPrimary : silverDim)
 
             Behavior on color { ColorAnimation { duration: 120 } }
@@ -63,7 +70,7 @@ Rectangle {
             Layout.fillWidth: !root.compact
             text: root.label
             color: root.selected
-                ? (root.compact ? "white" : textPrimary)
+                ? textPrimary
                 : (mouse.containsMouse ? textPrimary : textSecondary)
             font.family: displayFont
             font.pixelSize: 13

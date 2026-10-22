@@ -50,32 +50,17 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        RowLayout {
-            z: 100
-            Layout.fillWidth: true
-            Layout.leftMargin: 28
-            Layout.rightMargin: 28
-            Layout.topMargin: 16
-            Layout.bottomMargin: 14
-            spacing: 16
-
-            PageTabs {
-                tabs: [
-                    { id: "songs", label: qsTr("Songs") },
-                    { id: "artists", label: qsTr("Artists") },
-                    { id: "albums", label: qsTr("Albums") },
-                    { id: "genres", label: qsTr("Genres") },
-                    { id: "folders", label: qsTr("Folders") },
-                    { id: "playlists", label: qsTr("Playlists") }
-                ]
-                current: root.appWindow.libraryTab
-                onSelected: id => root.appWindow.libraryTab = id
-            }
-
-
-            Item {
-                Layout.fillWidth: true
-            }
+        PageToolbar {
+            tabs: [
+                { id: "songs", label: qsTr("Songs") },
+                { id: "artists", label: qsTr("Artists") },
+                { id: "albums", label: qsTr("Albums") },
+                { id: "genres", label: qsTr("Genres") },
+                { id: "folders", label: qsTr("Folders") },
+                { id: "playlists", label: qsTr("Playlists") }
+            ]
+            current: root.appWindow.libraryTab
+            onSelected: id => root.appWindow.libraryTab = id
 
             Row {
                 spacing: 8

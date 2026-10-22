@@ -4432,10 +4432,13 @@ ApplicationWindow {
             }
 
             RowLayout {
+                id: dockRow
+                // Too narrow for everything: the volume slider gives way, as volume is also in the Now Playing deck.
+                readonly property bool compact: width < 860
                 anchors.fill: parent
                 anchors.leftMargin: 24
                 anchors.rightMargin: 20
-                spacing: 20
+                spacing: compact ? 12 : 20
 
                 RowLayout {
                     Layout.preferredWidth: 340
@@ -4480,7 +4483,7 @@ ApplicationWindow {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.minimumWidth: 0
+                        Layout.minimumWidth: 90
                         spacing: 2
 
                         Label {
@@ -4769,6 +4772,7 @@ ApplicationWindow {
                         Layout.alignment: Qt.AlignVCenter
                         Layout.leftMargin: 2
                         Layout.rightMargin: 4
+                        visible: !dockRow.compact
                         width: 1
                         height: 18
                         color: borderSubtle
@@ -4777,6 +4781,7 @@ ApplicationWindow {
                     VolumeControl {
                         Layout.alignment: Qt.AlignVCenter
                         Layout.preferredWidth: 135
+                        visible: !dockRow.compact
                         enabled: !phoneInDock || phonePlayback.volumePercent >= 0
                         showPercentage: false
                         volume: shownPlayer.volume

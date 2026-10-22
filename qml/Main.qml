@@ -1724,6 +1724,10 @@ ApplicationWindow {
             close.accepted = false
             window.hide()
             tray.notifyHidden()
+        } else if (!appQuitting && miniPlayerWindow && miniPlayerWindow.visible) {
+            // The mini player keeps playing, and going back to the full player brings this window back.
+            close.accepted = false
+            window.hide()
         } else if (!appQuitting) {
             appQuitting = true
             Qt.quit()
@@ -3322,6 +3326,9 @@ ApplicationWindow {
             }
             onCloseRequested: {
                 miniPlayerWindow.visible = false
+                // With the full player already closed, this was the last window, so it closes the app the usual way.
+                if (!window.visible)
+                    window.close()
             }
             onPlayPrevious: window.playPrevious()
             onPlayNext: window.playNext()

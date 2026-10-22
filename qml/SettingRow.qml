@@ -56,7 +56,7 @@ RowLayout {
         }
     }
 
-    Row {
+    RowLayout {
         id: trailing
         Layout.alignment: Qt.AlignVCenter
         spacing: 8

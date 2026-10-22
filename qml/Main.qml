@@ -2404,14 +2404,6 @@ ApplicationWindow {
     property var genreGroups: []
     property var folderGroups: []
 
-    function refreshSpotlight(candidates) {
-        if (candidates.length > 0) {
-            spotlightTrack = candidates[Math.floor(Math.random() * candidates.length)]
-        } else {
-            spotlightTrack = null
-        }
-    }
-
     function refreshHomeRecommendations() {
         const home = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory)
         spotlightTrack = home.spotlight.filePath ? home.spotlight : null
@@ -2423,11 +2415,14 @@ ApplicationWindow {
     }
 
     // Listening updates the activity rows only, so the picks don't reshuffle mid-session.
+    // A row is replaced only when its tracks changed, since a new model rebuilds every card in it.
     function refreshHomeActivity() {
         const home = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory)
-        heavyRotation = home.heavyRotation
-        recentlyPlayed = home.recentlyPlayed
-        forgottenFavs = home.forgottenFavs
+        const changed = (current, next) => current.length !== next.length
+            || next.some((track, i) => track.filePath !== current[i].filePath)
+        if (changed(heavyRotation, home.heavyRotation)) heavyRotation = home.heavyRotation
+        if (changed(recentlyPlayed, home.recentlyPlayed)) recentlyPlayed = home.recentlyPlayed
+        if (changed(forgottenFavs, home.forgottenFavs)) forgottenFavs = home.forgottenFavs
     }
 
     property int homePickedTrackCount: -1
@@ -2437,6 +2432,9 @@ ApplicationWindow {
         const fresh = tracks => tracksForPaths(tracks.map(track => track.filePath)).filter(track => !!track)
         quickPicks = fresh(quickPicks)
         recentlyAdded = fresh(recentlyAdded)
+        heavyRotation = fresh(heavyRotation)
+        recentlyPlayed = fresh(recentlyPlayed)
+        forgottenFavs = fresh(forgottenFavs)
         if (spotlightTrack) spotlightTrack = fresh([spotlightTrack])[0] || null
     }
 
@@ -2831,7 +2829,6 @@ ApplicationWindow {
         const queue = uniqueTracks(availableTracks())
         if (!queue.length) return
         shufflePlayback(queue)
-        refreshSpotlight(queue)
     }
 
     Connections {

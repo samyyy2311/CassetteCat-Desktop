@@ -60,6 +60,7 @@ Rectangle {
         }
 
         Label {
+            visible: root.text.length > 0
             text: root.text
             color: root.contentColor
             font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")

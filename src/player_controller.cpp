@@ -223,6 +223,12 @@ float PlayerController::volume() const {
 QString PlayerController::replayGainMode() const {
     return m_replayGainMode;
 }
+PlayerController::~PlayerController() {
+    // The players hand audio to the pipeline from their own threads, so they go before it does.
+    delete m_fadingPlayer;
+    delete m_player;
+}
+
 QVariantList PlayerController::audioOutputs() const {
     QVariantList outputs;
     QVariantMap defaultDevice;

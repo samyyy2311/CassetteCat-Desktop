@@ -4661,112 +4661,90 @@ ApplicationWindow {
                     Layout.alignment: Qt.AlignRight
                     spacing: 8
 
-                    // The tools share one background, so they read as a group rather than five separate buttons.
-                    Rectangle {
+                    RowLayout {
                         Layout.alignment: Qt.AlignVCenter
-                        implicitWidth: dockTools.implicitWidth + 8
-                        implicitHeight: 42
-                        radius: height / 2
-                        color: surfaceCard
-                        border.width: 1
-                        border.color: borderSubtle
+                        spacing: 6
 
-                        RowLayout {
-                            id: dockTools
-                            anchors.centerIn: parent
-                            spacing: 2
+                    PressDepthIconButton {
+                        readonly property bool phoneConnected: phoneRemote.controllerName !== "" || !!phoneRemote.phonePlayback.name
+                        Layout.alignment: Qt.AlignVCenter
+                        boxSize: 34
+                        iconSize: 17
+                        iconName: "smartphone"
+                        tint: silverDim
+                        tooltipText: phoneInDock ? qsTr("Playing on %1").arg(phonePlayback.name) : phoneRemote.controllerName !== "" ? qsTr("Controlled from %1").arg(phoneRemote.controllerName) : qsTr("Phone Remote")
+                        onClicked: phoneRemoteSheet.open()
 
-                            PressDepthIconButton {
-                                readonly property bool phoneConnected: phoneRemote.controllerName !== "" || !!phoneRemote.phonePlayback.name
-                                Layout.alignment: Qt.AlignVCenter
-                                boxSize: 34
-                                face: false
-                                borderColor: "transparent"
-                                iconSize: 17
-                                iconName: "smartphone"
-                                tint: silverDim
-                                tooltipText: phoneInDock ? qsTr("Playing on %1").arg(phonePlayback.name) : phoneRemote.controllerName !== "" ? qsTr("Controlled from %1").arg(phoneRemote.controllerName) : qsTr("Phone Remote")
-                                onClicked: phoneRemoteSheet.open()
+                        // Marks a connected phone without making the button look switched on.
+                        Rectangle {
+                            visible: parent.phoneConnected
+                            x: parent.width / 2 + 3
+                            y: parent.height / 2 - 10
+                            width: 7
+                            height: 7
+                            radius: 3.5
+                            color: recordRed
+                            border.width: 1.5
+                            border.color: capBottom
+                        }
+                    }
 
-                                // Marks a connected phone without making the button look switched on.
-                                Rectangle {
-                                    visible: parent.phoneConnected
-                                    x: parent.width / 2 + 3
-                                    y: parent.height / 2 - 10
-                                    width: 7
-                                    height: 7
-                                    radius: 3.5
-                                    color: recordRed
-                                    border.width: 1.5
-                                    border.color: surfaceCard
-                                }
-                            }
-
-                            PressDepthIconButton {
-                                Layout.alignment: Qt.AlignVCenter
-                                boxSize: 34
-                                face: false
-                                borderColor: "transparent"
-                                iconSize: 17
-                                iconName: "quote"
-                                tint: (nowPlayingOpen && nowPlayingMode === "lyrics") ? recordRed : silverDim
-                                highlighted: nowPlayingOpen && nowPlayingMode === "lyrics"
-                                tooltipText: (nowPlayingOpen && nowPlayingMode === "lyrics") ? qsTr("Hide Lyrics") : qsTr("Lyrics")
-                                onClicked: {
-                                    if (nowPlayingOpen && nowPlayingMode === "lyrics") {
-                                        nowPlayingOpen = false
-                                    } else {
-                                        nowPlayingMode = "lyrics"
-                                        nowPlayingOpen = true
-                                    }
-                                }
-                            }
-
-                            PressDepthIconButton {
-                                Layout.alignment: Qt.AlignVCenter
-                                boxSize: 34
-                                face: false
-                                borderColor: "transparent"
-                                iconSize: 17
-                                iconName: "list"
-                                tint: (nowPlayingOpen && nowPlayingMode === "queue") ? recordRed : silverDim
-                                highlighted: nowPlayingOpen && nowPlayingMode === "queue"
-                                tooltipText: (nowPlayingOpen && nowPlayingMode === "queue") ? qsTr("Hide Queue") : qsTr("Queue")
-                                onClicked: {
-                                    if (nowPlayingOpen && nowPlayingMode === "queue") {
-                                        nowPlayingOpen = false
-                                    } else {
-                                        nowPlayingMode = "queue"
-                                        nowPlayingOpen = true
-                                    }
-                                }
-                            }
-
-                            PressDepthIconButton {
-                                Layout.alignment: Qt.AlignVCenter
-                                boxSize: 34
-                                face: false
-                                borderColor: "transparent"
-                                iconSize: 17
-                                iconName: "pip"
-                                tint: silverDim
-                                tooltipText: qsTr("Mini Player (Ctrl+M)")
-                                onClicked: toggleMiniPlayer()
-                            }
-
-                            PressDepthIconButton {
-                                Layout.alignment: Qt.AlignVCenter
-                                boxSize: 34
-                                face: false
-                                borderColor: "transparent"
-                                iconSize: 17
-                                iconName: nowPlayingOpen ? "chevron-down" : "audio-lines"
-                                tint: nowPlayingOpen ? recordRed : silverDim
-                                highlighted: nowPlayingOpen
-                                tooltipText: nowPlayingOpen ? qsTr("Collapse Now Playing") : qsTr("Now Playing Deck")
-                                onClicked: nowPlayingOpen = !nowPlayingOpen
+                    PressDepthIconButton {
+                        Layout.alignment: Qt.AlignVCenter
+                        boxSize: 34
+                        iconSize: 17
+                        iconName: "quote"
+                        tint: (nowPlayingOpen && nowPlayingMode === "lyrics") ? recordRed : silverDim
+                        highlighted: nowPlayingOpen && nowPlayingMode === "lyrics"
+                        tooltipText: (nowPlayingOpen && nowPlayingMode === "lyrics") ? qsTr("Hide Lyrics") : qsTr("Lyrics")
+                        onClicked: {
+                            if (nowPlayingOpen && nowPlayingMode === "lyrics") {
+                                nowPlayingOpen = false
+                            } else {
+                                nowPlayingMode = "lyrics"
+                                nowPlayingOpen = true
                             }
                         }
+                    }
+
+                    PressDepthIconButton {
+                        Layout.alignment: Qt.AlignVCenter
+                        boxSize: 34
+                        iconSize: 17
+                        iconName: "list"
+                        tint: (nowPlayingOpen && nowPlayingMode === "queue") ? recordRed : silverDim
+                        highlighted: nowPlayingOpen && nowPlayingMode === "queue"
+                        tooltipText: (nowPlayingOpen && nowPlayingMode === "queue") ? qsTr("Hide Queue") : qsTr("Queue")
+                        onClicked: {
+                            if (nowPlayingOpen && nowPlayingMode === "queue") {
+                                nowPlayingOpen = false
+                            } else {
+                                nowPlayingMode = "queue"
+                                nowPlayingOpen = true
+                            }
+                        }
+                    }
+
+                    PressDepthIconButton {
+                        Layout.alignment: Qt.AlignVCenter
+                        boxSize: 34
+                        iconSize: 17
+                        iconName: "pip"
+                        tint: silverDim
+                        tooltipText: qsTr("Mini Player (Ctrl+M)")
+                        onClicked: toggleMiniPlayer()
+                    }
+
+                    PressDepthIconButton {
+                        Layout.alignment: Qt.AlignVCenter
+                        boxSize: 34
+                        iconSize: 17
+                        iconName: nowPlayingOpen ? "chevron-down" : "audio-lines"
+                        tint: nowPlayingOpen ? recordRed : silverDim
+                        highlighted: nowPlayingOpen
+                        tooltipText: nowPlayingOpen ? qsTr("Collapse Now Playing") : qsTr("Now Playing Deck")
+                        onClicked: nowPlayingOpen = !nowPlayingOpen
+                    }
                     }
 
                     Rectangle {

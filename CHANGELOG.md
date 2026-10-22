@@ -4,6 +4,14 @@ All notable changes to CassetteCat Desktop are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.2] - 2026-10-22
+
+### Fixed
+* Music no longer crackles on Windows while you change the system volume.
+* The mini player shows its shuffle, repeat, favourite and play icons again.
+
+---
+
 ## [1.0.1] - 2026-10-22
 
 ### Added

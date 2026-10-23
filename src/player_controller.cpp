@@ -86,10 +86,13 @@ void PlayerController::connectPlayer(QMediaPlayer *player) {
         // Between two songs the player stops for a moment; that only counts as stopping if no song follows.
         const bool naturalEnd =
             state == QMediaPlayer::StoppedState && m_player->mediaStatus() == QMediaPlayer::EndOfMedia;
-        if (playing)
+        // A pause ends a song change too, or pausing while the next song opened kept it showing as playing.
+        if (playing || state == QMediaPlayer::PausedState)
             m_switchingTrack = false;
         if (!m_switchingTrack && !naturalEnd)
             setPlaying(playing);
+        if (state == QMediaPlayer::PausedState)
+            emit paused();
         if (playing) {
             m_pipeline->setPaused(false);
         } else if (m_switchingTrack) {
@@ -223,6 +226,12 @@ float PlayerController::volume() const {
 QString PlayerController::replayGainMode() const {
     return m_replayGainMode;
 }
+PlayerController::~PlayerController() {
+    // The players hand audio to the pipeline from their own threads, so they go before it does.
+    delete m_fadingPlayer;
+    delete m_player;
+}
+
 QVariantList PlayerController::audioOutputs() const {
     QVariantList outputs;
     QVariantMap defaultDevice;

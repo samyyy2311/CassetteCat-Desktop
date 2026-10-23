@@ -187,7 +187,6 @@ Item {
             font.family: root.monoFont
             font.pixelSize: 11
             font.weight: Font.Medium
-            horizontalAlignment: Text.AlignRight
 
             MouseArea {
                 id: pctMouse

@@ -1,6 +1,7 @@
 #include "streaming.h"
 
 #include "app_paths.h"
+#include "app_settings.h"
 #include "remote_track_model.h"
 #include "credential_vault.h"
 #include "image_cache.h"
@@ -57,7 +58,7 @@ StreamingController::StreamingController(const QString &settingsPath, QObject *p
         m_jellyfinConnected = false;
     }
     const QJsonDocument cachedDocument =
-        QJsonDocument::fromJson(settings.value("stream/cachedTracks").toString().toUtf8());
+        QJsonDocument::fromJson(SettingsController::loadDataFile("server-tracks", "stream/cachedTracks").toUtf8());
     if (cachedDocument.isArray()) {
         m_remoteTracks = cachedDocument.array().toVariantList();
         m_jellyfinModel->setTracks(m_remoteTracks);
@@ -71,8 +72,7 @@ bool StreamingController::isRemotePath(const QString &filePath) {
 }
 
 bool StreamingController::blackoutEnabled() const {
-    QSettings settings(m_settingsPath, QSettings::IniFormat);
-    return settings.value("network/offlineBlackout", false).toBool();
+    return SettingsController::globalValue("network/offlineBlackout", false).toBool();
 }
 
 QString StreamingController::deviceId() {
@@ -88,10 +88,9 @@ QString StreamingController::deviceId() {
 
 void StreamingController::setRemoteTracks(const QVariantList &tracks) {
     m_remoteTracks = tracks;
-    QSettings settings(m_settingsPath, QSettings::IniFormat);
-    settings.setValue("stream/cachedTracks",
-                      QString::fromUtf8(QJsonDocument::fromVariant(tracks).toJson(QJsonDocument::Compact)));
-    settings.sync();
+    SettingsController::saveDataFile(
+        "server-tracks", QString::fromUtf8(QJsonDocument::fromVariant(tracks).toJson(QJsonDocument::Compact)),
+        "stream/cachedTracks");
     m_jellyfinModel->setTracks(tracks);
     m_subsonicModel->setTracks(tracks);
     emit remoteTracksChanged();

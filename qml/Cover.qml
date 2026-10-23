@@ -11,14 +11,18 @@ Item {
     property real stableSourceSize: 0
     property bool showTonearm: false
     property int fillMode: Image.PreserveAspectCrop
+    // Sizes go up in steps, so resizing the window doesn't reload every cover at each pixel.
+    function sizeStep(size) {
+        return Math.ceil(size / 64) * 64
+    }
     readonly property int requestedLongEdge: {
         const rawDim = stableSourceSize > 0 ? stableSourceSize : Math.max(width, height)
         const target = (rawDim > 10 ? rawDim : 256) * (Screen.devicePixelRatio || 1)
-        return Math.max(32, Math.min(1536, Math.ceil(target)))
+        return Math.max(64, Math.min(1536, sizeStep(target)))
     }
     readonly property size requestedSourceSize: providerRounded && width > 0 && height > 0
-        ? Qt.size(Math.ceil(requestedLongEdge * width / Math.max(width, height)),
-                  Math.ceil(requestedLongEdge * height / Math.max(width, height)))
+        ? Qt.size(sizeStep(requestedLongEdge * width / Math.max(width, height)),
+                  sizeStep(requestedLongEdge * height / Math.max(width, height)))
         : Qt.size(requestedLongEdge, requestedLongEdge)
 
     function normalizeUrl(val) {
@@ -40,8 +44,9 @@ Item {
     readonly property url artworkSource: {
         const src = rawArtworkSource.toString()
         if (!providerRounded) return src
-        const shortSide = Math.min(width, height)
-        if (shortSide < 1) return ""
+        if (Math.min(width, height) < 1) return ""
+        // Rounded to 16 px for the same reason; the corner is off by under a pixel.
+        const shortSide = Math.max(16, Math.round(Math.min(width, height) / 16) * 16)
         const fraction = Math.min(0.5, radius / shortSide).toFixed(3)
         return src.startsWith("image://cover/")
             ? "image://cover/" + fraction + src.slice(src.indexOf("/", 14))
@@ -63,13 +68,6 @@ Item {
 
     property bool useB: false
     readonly property var activeImage: useB ? imageB : imageA
-    readonly property var previousImage: useB ? imageA : imageB
-
-    readonly property real artworkImplicitWidth: activeImage ? activeImage.implicitWidth : 0
-    readonly property real artworkImplicitHeight: activeImage ? activeImage.implicitHeight : 0
-    readonly property real artworkAspectRatio: (artworkImplicitHeight > 0 && artworkImplicitWidth > 0)
-        ? (artworkImplicitWidth / artworkImplicitHeight)
-        : 1.0
 
     readonly property bool hasArtwork: artworkSource.toString() !== ""
     // The cover image provider answers "no artwork" with a 1x1 image instead of an error.
@@ -111,9 +109,13 @@ Item {
 
         if (next === curr && activeImage.status === Image.Ready) return
 
+        // Sources are cleared too: a hidden image left on its old source would be taken as already shown when that
+        // source comes back.
         if (!next) {
             imageA.opacity = 0
             imageB.opacity = 0
+            imageA.source = ""
+            imageB.source = ""
             return
         }
 
@@ -150,10 +152,11 @@ Item {
         radius: root.radius
         color: surfaceCard
 
-        // Built only for covers without art; held on every cover, it kept three images per card.
+        // Built only for covers without art; held on every cover, it kept three images per card. Until a cover has a
+        // size its artwork can't be asked for, so waiting for one keeps it from being built for every new card.
         Loader {
             anchors.fill: parent
-            active: root.showingFallback
+            active: root.showingFallback && root.width > 0 && root.height > 0
             sourceComponent: VinylFallback {
                 showTonearm: root.showTonearm
                 playing: root.currentTrackPlaying && root.showingFallback

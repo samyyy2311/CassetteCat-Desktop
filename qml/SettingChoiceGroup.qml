@@ -63,7 +63,13 @@ SettingRow {
                     ? Math.max(10, pt.y - height - 4)
                     : pt.y + menuButton.height + 4) - pt.y
             }
-            onAboutToShow: reposition()
+            // The choices are built the first time it opens. Built with the page, every dropdown's rows were
+            // made up front, and the font list alone draws a row in each installed font.
+            property bool listBuilt: false
+            onAboutToShow: {
+                listBuilt = true
+                reposition()
+            }
             width: Math.max(menuButton ? menuButton.width : 160, 220)
             implicitHeight: Math.min(260, Math.max(48, (root.options ? root.options.length * 38 : 0) + 12))
             padding: 6
@@ -88,18 +94,13 @@ SettingRow {
                 optionList.forceActiveFocus()
             }
 
-            background: Rectangle {
-                color: surfaceElevated
-                radius: 10
-                border.width: 1
-                border.color: Qt.rgba(255, 255, 255, 0.08)
-            }
+            background: MenuSurface {}
 
             contentItem: ListView {
                 id: optionList
                 implicitHeight: contentHeight
                 clip: true
-                model: root.options
+                model: choicePopup.listBuilt ? root.options : []
                 spacing: 2
                 boundsBehavior: Flickable.StopAtBounds
                 focus: true
@@ -119,11 +120,7 @@ SettingRow {
                     }
                 }
 
-                ScrollBar.vertical: AutoHideScrollBar {
-                    visible: optionList.contentHeight > optionList.height
-                }
-
-                delegate: Rectangle {
+                delegate: MenuHighlight {
                     id: optItem
                     readonly property var optionValue: (modelData && typeof modelData === "object" && "value" in modelData) ? modelData.value : modelData
                     readonly property string optionLabel: (modelData && typeof modelData === "object" && "label" in modelData) ? modelData.label : String(modelData)
@@ -132,24 +129,18 @@ SettingRow {
 
                     width: optionList.width
                     height: 36
-                    radius: 7
-                    color: isSelected
-                        ? surfaceElevated
-                        : (optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus) ? surfaceCardHover : "transparent")
-                    border.width: 0
+                    highlighted: optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus)
 
                     RowLayout {
                         anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 10
+                        anchors.leftMargin: 14
+                        anchors.rightMargin: 14
                         spacing: 8
 
                         Label {
                             Layout.fillWidth: true
                             text: optItem.optionLabel
-                            color: optItem.isSelected
-                                ? textPrimary
-                                : (optMouse.containsMouse || (optItem.isCurrent && optionList.activeFocus) ? textPrimary : textSecondary)
+                            color: optItem.isSelected ? accentText : (optItem.highlighted ? textPrimary : textSecondary)
                             font.family: (modelData && typeof modelData === "object" && modelData.font)
                                 || (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
                             font.pixelSize: 12

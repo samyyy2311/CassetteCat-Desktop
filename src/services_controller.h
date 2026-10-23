@@ -163,6 +163,9 @@ class ServicesController : public QObject {
     int m_libraryLyricsFailures = 0;
     int m_libraryLyricsFound = 0;
     int m_libraryLyricsTotal = 0;
+    quint64 m_libraryLyricsScan = 0;
+    // Songs looked up while a scan runs, and whether lyrics were found; the scan may have read them beforehand.
+    QHash<QString, bool> m_libraryLyricsHandled;
     quint64 m_coverRequestToken = 0;
     qint64 m_nextMusicBrainzRequestMs = 0;
     QString m_listenBrainzToken;

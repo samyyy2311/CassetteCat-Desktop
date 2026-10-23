@@ -28,6 +28,7 @@
 #include <QTimer>
 
 #include <algorithm>
+#include <numeric>
 #include <utility>
 
 namespace {
@@ -127,8 +128,13 @@ QString sortKey(const QString &value) {
                                                    QRegularExpression::CaseInsensitiveOption);
     static const QRegularExpression edgePunctuation(QStringLiteral(R"(^[\s'"\[\](){}#._-]+|[\s'"\[\](){}#._-]+$)"),
                                                     QRegularExpression::UseUnicodePropertiesOption);
+    // Sorting compares each name many times, and the expressions above are the slow part, so each key is made once.
+    static thread_local QHash<QString, QString> keys;
+    const auto known = keys.constFind(value);
+    if (known != keys.cend())
+        return *known;
     const QString lower = QString(value).remove(leadingArticle).remove(edgePunctuation).toLower();
-    return lower.isEmpty() ? value.toLower() : lower;
+    return keys.insert(value, lower.isEmpty() ? value.toLower() : lower).value();
 }
 
 int symbolOrNumberCategory(const QString &key) {
@@ -330,8 +336,9 @@ LibraryController::LibraryController(QObject *parent)
     : QAbstractListModel(parent), m_folderWatcher(this), m_watchDebounce(this), m_scanProcess(this) {
     m_watchDebounce.setSingleShot(true);
     m_watchDebounce.setInterval(750);
-    // m_lyrics holds rows of m_tracks.
+    // m_lyrics holds rows of m_tracks, and the groups are built from them.
     connect(this, &LibraryController::tracksChanged, this, [this] {
+        m_catalogGroups.clear();
         m_lyricsRead = false;
         ++m_lyricsRevision;
         emit lyricsChanged();
@@ -369,11 +376,15 @@ LibraryController::LibraryController(QObject *parent)
             }
         }
 
+        updateFolderWatch();
+        // A scan usually finds what the cache already restored; announcing it anyway rebuilt every page.
+        if (tracks == m_tracks)
+            return;
+
         beginResetModel();
         m_tracks = tracks;
         rebuildVisibleRows();
         endResetModel();
-        updateFolderWatch();
         saveLibraryCache();
         emit changed();
         emit tracksChanged();
@@ -1233,6 +1244,9 @@ QVariantList LibraryController::similarTracks(const QVariantMap &seed, const QSt
 }
 
 QVariantMap LibraryController::catalogGroups() const {
+    // Kept until the tracks change, since the Library and Search pages ask for them each time they open.
+    if (!m_catalogGroups.isEmpty())
+        return m_catalogGroups;
     QHash<QString, QVariantMap> artists;
     QHash<QString, QVariantMap> albums;
     QHash<QString, QVariantMap> genres;
@@ -1290,18 +1304,40 @@ QVariantMap LibraryController::catalogGroups() const {
         add(folders, folderPath, track, {{"name", folderName}, {"path", folderPath}});
     }
 
-    const auto values = [](const QHash<QString, QVariantMap> &groups) {
+    // Sorted here, with each group's place in name order as "rank", so the pages can order them by comparing
+    // numbers instead of calling back for every pair of names.
+    const auto byName = [](const QHash<QString, QVariantMap> &groups) {
+        QList<QVariantMap> list = groups.values();
+        std::sort(list.begin(), list.end(), [](const QVariantMap &a, const QVariantMap &b) {
+            return compareSortKeys(a.value("name").toString(), b.value("name").toString()) < 0;
+        });
+        for (int i = 0; i < list.size(); ++i)
+            list[i].insert("rank", i);
+        return list;
+    };
+    const auto toList = [](const QList<QVariantMap> &groups) {
         QVariantList result;
         result.reserve(groups.size());
-        for (auto it = groups.cbegin(); it != groups.cend(); ++it)
-            result.append(it.value());
+        for (const QVariantMap &group : groups)
+            result.append(group);
         return result;
     };
-    return {{"artists", values(artists)},
-            {"albums", values(albums)},
-            {"genres", values(genres)},
-            {"folders", values(folders)},
-            {"formats", QVariantMap{{"ALL", allFormats}, {"FLAC", lossless}, {"MP3", mp3}, {"AAC", aac}}}};
+    QList<QVariantMap> albumList = byName(albums);
+    QList<int> byArtist(albumList.size());
+    std::iota(byArtist.begin(), byArtist.end(), 0);
+    const auto artistOf = [&albumList](int i) {
+        return albumList[i].value("track").toMap().value("artist").toString();
+    };
+    std::stable_sort(byArtist.begin(), byArtist.end(),
+                     [&artistOf](int a, int b) { return compareSortKeys(artistOf(a), artistOf(b)) < 0; });
+    for (int i = 0; i < byArtist.size(); ++i)
+        albumList[byArtist[i]].insert("artistRank", i);
+    m_catalogGroups = {{"artists", toList(byName(artists))},
+                       {"albums", toList(albumList)},
+                       {"genres", toList(byName(genres))},
+                       {"folders", toList(byName(folders))},
+                       {"formats", QVariantMap{{"ALL", allFormats}, {"FLAC", lossless}, {"MP3", mp3}, {"AAC", aac}}}};
+    return m_catalogGroups;
 }
 
 QVariantList LibraryController::visibleTracks() const {

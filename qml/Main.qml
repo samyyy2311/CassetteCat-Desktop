@@ -68,6 +68,13 @@ ApplicationWindow {
     readonly property color borderSubtle: Qt.rgba(1, 1, 1, 0.05)
     readonly property color borderVariant: Qt.rgba(1, 1, 1, 0.09)
     readonly property color borderCard: borderVariant
+    // Button faces, the same as the website's.
+    readonly property color capTop: "#232120"
+    readonly property color capBottom: "#000000"
+    readonly property color capBorder: "#3A3835"
+    readonly property color capBorderHover: "#6E6C68"
+    readonly property color menuTop: "#1C1A18"
+    readonly property color menuBottom: "#121110"
 
     // A font chosen in Settings replaces both the display and the body font; empty keeps the bundled ones.
     property string appFont: ""
@@ -85,6 +92,43 @@ ApplicationWindow {
     property int coversLoading: 0
     property bool appQuitting: false
     property string page: "home"
+    // The page on screen. It catches up with page once the new one is built and most of its covers have loaded, so a
+    // page never appears half-built; the old one stays, with the loading bar over it, until then.
+    property string shownPage: ""
+    readonly property var pageLoader: ({ home: homePageLoader, library: libraryPageLoader, search: searchPageLoader,
+                                         radio: radioPageLoader, jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader,
+                                         stats: listeningRecordPageLoader, settings: settingsLoader })[page] || null
+    readonly property bool pageBuilt: pageLoader !== null && pageLoader.status === Loader.Ready
+    onPageBuiltChanged: settlePage()
+    onShownPageChanged: if (shownPage === "search" && searchPageLoader.focusOnShow) {
+        searchPageLoader.focusOnShow = false
+        focusSearchInput()
+    }
+
+    function settlePage() {
+        if (pageBuilt && page !== shownPage) {
+            pageSettleTimer.ticks = 0
+            pageSettleTimer.restart()
+        } else {
+            pageSettleTimer.stop()
+        }
+    }
+
+    Timer {
+        id: pageSettleTimer
+        interval: 50
+        repeat: true
+        property int ticks: 0
+        // A page's rows, and their covers, are made just after the page itself, so a few ticks pass before no covers
+        // loading counts as done. A slow cover stops holding the page back after a second or so.
+        onTriggered: {
+            ticks++
+            if ((ticks >= 3 && window.coversLoading === 0) || ticks >= 24) {
+                stop()
+                window.shownPage = window.page
+            }
+        }
+    }
     property real homeScrollPosition: 0
     property var libraryScrollPositions: ({})
     property string libraryTab: "songs"
@@ -102,7 +146,6 @@ ApplicationWindow {
     property bool folderSortAscending: true
     property bool refineSheetOpen: false
     property string libSearchQuery: ""
-    property bool libSearchVisible: false
     property string searchQuery: ""
     property string activeFormatFilter: "ALL"
     property bool nowPlayingOpen: false
@@ -472,7 +515,7 @@ ApplicationWindow {
             entries.push({ type: "current", track: player.currentTrack, title: player.currentTrack.title, fileName: player.currentTrack.fileName, filePath: player.currentTrack.filePath, artist: player.currentTrack.artist, album: player.currentTrack.album, duration: player.currentTrack.duration })
         }
         const queue = activePlaybackQueue()
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         const upcoming = currentIndex >= 0 ? queue.slice(currentIndex + 1) : queue
         if (upcoming.length) {
             entries.push({ type: "header", title: qsTr("UP NEXT") })
@@ -810,8 +853,8 @@ ApplicationWindow {
             radioCustomStations = []
         }
         restorePlaylists()
-        playCounts = numberMapFromSetting("library/playCounts")
-        seenAt = numberMapFromSetting("library/seenAt")
+        playCounts = numberMapFromData("play-counts", "library/playCounts")
+        seenAt = numberMapFromData("seen-at", "library/seenAt")
         settingsInitialized = true
         checkForUpdatesOnLaunch()
         reconcileLibraryMaps()
@@ -866,7 +909,6 @@ ApplicationWindow {
             "player/lastTrack": player.currentTrack.filePath,
             "player/lastPosition": Math.max(0, player.position)
         })
-        appSettings.sync()
     }
 
     function restorePlaybackHistory() {
@@ -1153,9 +1195,9 @@ ApplicationWindow {
         return result
     }
 
-    function numberMapFromSetting(key) {
+    function numberMapFromData(name, legacyKey) {
         try {
-            return numberMap(JSON.parse(appSettings.value(key, "{}") || "{}"))
+            return numberMap(JSON.parse(appSettings.loadData(name, legacyKey) || "{}"))
         } catch (e) {
             return {}
         }
@@ -1427,9 +1469,10 @@ ApplicationWindow {
     }
 
     onPageChanged: {
+        settlePage()
         catalogDetailOpen = false
         if (settingsInitialized) appSettings.setValue("ui/page", page)
-        updateVisibleLibrary()
+        if (page === "library" || page === "search") updateVisibleLibrary()
         if (page === "library") refreshLibraryGroups(library.catalogGroups())
         else clearLibraryGroups()
         if (settingsInitialized && page === "radio" && radioStations.length === 0) Qt.callLater(refreshRadio)
@@ -1620,12 +1663,13 @@ ApplicationWindow {
         if (settingsInitialized) appSettings.setValue("library/playlists", JSON.stringify(playlists))
     }
     onPlayCountsChanged: {
-        if (settingsInitialized) appSettings.setValue("library/playCounts", JSON.stringify(playCounts))
-        refreshHomeActivity()
+        if (settingsInitialized) appSettings.saveData("play-counts", JSON.stringify(playCounts), "library/playCounts")
+        // Play counts, seen times and history change together when a song starts; this refreshes Home once for all.
+        Qt.callLater(refreshHomeActivity)
     }
     onSeenAtChanged: {
-        if (settingsInitialized) appSettings.setValue("library/seenAt", JSON.stringify(seenAt))
-        refreshHomeActivity()
+        if (settingsInitialized) appSettings.saveData("seen-at", JSON.stringify(seenAt), "library/seenAt")
+        Qt.callLater(refreshHomeActivity)
     }
     onExcludedFoldersChanged: {
         saveSetting("library/excludedFolders", excludedFolders)
@@ -1635,7 +1679,7 @@ ApplicationWindow {
     onOriginalPlaybackQueueChanged: if (settingsInitialized) appSettings.setValue("player/originalQueue", savedTrackPaths(originalPlaybackQueue))
     onPlaybackHistoryChanged: {
         if (settingsInitialized) appSettings.setValue("player/history", savedTrackPaths(playbackHistory))
-        refreshHomeActivity()
+        Qt.callLater(refreshHomeActivity)
     }
     onRepeatModeChanged: {
         if (settingsInitialized) appSettings.setValue("player/repeatMode", repeatMode)
@@ -1695,28 +1739,30 @@ ApplicationWindow {
             const isMax = (window.visibility === Window.Maximized)
             wasMaximized = isMax
             appSettings.setValue("window/maximized", isMax)
-            if (!isMax && window.width > 400 && window.height > 300) {
-                appSettings.setValue("window/width", window.width)
-                appSettings.setValue("window/height", window.height)
-                if (window.x >= 0) appSettings.setValue("window/x", window.x)
-                if (window.y >= 0) appSettings.setValue("window/y", window.y)
-            }
+            if (!isMax && window.width > 400 && window.height > 300) saveWindowGeometry()
         }
     }
 
     // Maximised and full-screen sizes aren't the window's own, so they don't replace the saved one.
     readonly property bool geometryRestorable: visibility !== Window.Maximized && visibility !== Window.FullScreen
-    onWidthChanged: if (settingsInitialized && window.geometryRestorable && window.width > 400) {
-        appSettings.setValue("window/width", window.width)
+    // Each save rewrites the settings file, so a drag or resize saves once it settles rather than at every step.
+    Timer {
+        id: geometrySaveTimer
+        interval: 500
+        onTriggered: if (window.geometryRestorable) window.saveWindowGeometry()
     }
-    onHeightChanged: if (settingsInitialized && window.geometryRestorable && window.height > 300) {
-        appSettings.setValue("window/height", window.height)
-    }
-    onXChanged: if (settingsInitialized && window.geometryRestorable && window.x >= 0) {
-        appSettings.setValue("window/x", window.x)
-    }
-    onYChanged: if (settingsInitialized && window.geometryRestorable && window.y >= 0) {
-        appSettings.setValue("window/y", window.y)
+    onWidthChanged: if (settingsInitialized) geometrySaveTimer.restart()
+    onHeightChanged: if (settingsInitialized) geometrySaveTimer.restart()
+    onXChanged: if (settingsInitialized) geometrySaveTimer.restart()
+    onYChanged: if (settingsInitialized) geometrySaveTimer.restart()
+
+    function saveWindowGeometry() {
+        const geometry = {}
+        if (window.width > 400) geometry["window/width"] = window.width
+        if (window.height > 300) geometry["window/height"] = window.height
+        if (window.x >= 0) geometry["window/x"] = window.x
+        if (window.y >= 0) geometry["window/y"] = window.y
+        appSettings.setValues(geometry)
     }
     onClosing: function(close) {
         persistBeforeExit()
@@ -1724,6 +1770,10 @@ ApplicationWindow {
             close.accepted = false
             window.hide()
             tray.notifyHidden()
+        } else if (!appQuitting && miniPlayerWindow && miniPlayerWindow.visible) {
+            // The mini player keeps playing, and going back to the full player brings this window back.
+            close.accepted = false
+            window.hide()
         } else if (!appQuitting) {
             appQuitting = true
             Qt.quit()
@@ -1734,12 +1784,7 @@ ApplicationWindow {
         finishHistoryTracking()
         libraryTagScan.save()
         persistPlayerState()
-        if (window.geometryRestorable) {
-            if (window.width > 400) appSettings.setValue("window/width", window.width)
-            if (window.height > 300) appSettings.setValue("window/height", window.height)
-            if (window.x >= 0) appSettings.setValue("window/x", window.x)
-            if (window.y >= 0) appSettings.setValue("window/y", window.y)
-        }
+        if (window.geometryRestorable) saveWindowGeometry()
         appSettings.setValue("window/maximized", wasMaximized)
         appSettings.setValues({
             "ui/page": page,
@@ -1882,8 +1927,8 @@ ApplicationWindow {
         nowPlayingOpen = false
         catalogDetailOpen = false
         page = "search"
-        if (searchPageLoader.item) focusSearchInput()
-        else searchPageLoader.focusOnLoad = true
+        if (shownPage === "search") focusSearchInput()
+        else searchPageLoader.focusOnShow = true
     }
 
     Shortcut {
@@ -2356,14 +2401,6 @@ ApplicationWindow {
     property var genreGroups: []
     property var folderGroups: []
 
-    function refreshSpotlight(candidates) {
-        if (candidates.length > 0) {
-            spotlightTrack = candidates[Math.floor(Math.random() * candidates.length)]
-        } else {
-            spotlightTrack = null
-        }
-    }
-
     function refreshHomeRecommendations() {
         const home = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory)
         spotlightTrack = home.spotlight.filePath ? home.spotlight : null
@@ -2375,11 +2412,14 @@ ApplicationWindow {
     }
 
     // Listening updates the activity rows only, so the picks don't reshuffle mid-session.
+    // A row is replaced only when its tracks changed, since a new model rebuilds every card in it.
     function refreshHomeActivity() {
         const home = library.homeRecommendations(playCounts, seenAt, favoriteTracks, playbackHistory)
-        heavyRotation = home.heavyRotation
-        recentlyPlayed = home.recentlyPlayed
-        forgottenFavs = home.forgottenFavs
+        const changed = (current, next) => current.length !== next.length
+            || next.some((track, i) => track.filePath !== current[i].filePath)
+        if (changed(heavyRotation, home.heavyRotation)) heavyRotation = home.heavyRotation
+        if (changed(recentlyPlayed, home.recentlyPlayed)) recentlyPlayed = home.recentlyPlayed
+        if (changed(forgottenFavs, home.forgottenFavs)) forgottenFavs = home.forgottenFavs
     }
 
     property int homePickedTrackCount: -1
@@ -2389,6 +2429,9 @@ ApplicationWindow {
         const fresh = tracks => tracksForPaths(tracks.map(track => track.filePath)).filter(track => !!track)
         quickPicks = fresh(quickPicks)
         recentlyAdded = fresh(recentlyAdded)
+        heavyRotation = fresh(heavyRotation)
+        recentlyPlayed = fresh(recentlyPlayed)
+        forgottenFavs = fresh(forgottenFavs)
         if (spotlightTrack) spotlightTrack = fresh([spotlightTrack])[0] || null
     }
 
@@ -2428,15 +2471,15 @@ ApplicationWindow {
         const albumGroups = groups.albums || []
         artistCount = artistGroups.length
         albumCount = albumGroups.length
-        artistsRotation = artistGroups.slice().sort((a, b) => (b.count - a.count) || compareSortKey(a.name, b.name)).slice(0, 12)
-        albumsRotation = albumGroups.slice().sort((a, b) => (b.count - a.count) || compareSortKey(a.name, b.name)).slice(0, 12)
+        artistsRotation = artistGroups.slice().sort((a, b) => (b.count - a.count) || (a.rank - b.rank)).slice(0, 12)
+        albumsRotation = albumGroups.slice().sort((a, b) => (b.count - a.count) || (a.rank - b.rank)).slice(0, 12)
     }
 
     function refreshLibraryGroups(groups) {
-        artists = (groups.artists || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
-        albums = (groups.albums || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
-        genreGroups = (groups.genres || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
-        folderGroups = (groups.folders || []).slice().sort((a, b) => compareSortKey(a.name, b.name))
+        artists = groups.artists || []
+        albums = groups.albums || []
+        genreGroups = groups.genres || []
+        folderGroups = groups.folders || []
     }
 
     function refreshVisibleLibraryGroups() {
@@ -2539,15 +2582,33 @@ ApplicationWindow {
         startPlayback(source, index >= 0 ? index : 0, player.shuffleEnabled)
     }
 
+    // An even shuffle often plays one artist several times in a row, which doesn't sound random. Each artist's songs are
+    // shuffled, then spread evenly through the queue from a random starting point, with a little jitter.
     function shuffledTracks(source) {
-        const result = source.slice()
-        for (let i = result.length - 1; i > 0; --i) {
-            const j = Math.floor(Math.random() * (i + 1))
-            const item = result[i]
-            result[i] = result[j]
-            result[j] = item
+        const shuffle = list => {
+            for (let i = list.length - 1; i > 0; --i) {
+                const j = Math.floor(Math.random() * (i + 1))
+                const item = list[i]
+                list[i] = list[j]
+                list[j] = item
+            }
+            return list
         }
-        return result
+        const byArtist = {}
+        source.forEach(track => {
+            const artist = splitArtists(track.artist || "")[0].toLowerCase()
+            if (!byArtist[artist]) byArtist[artist] = []
+            byArtist[artist].push(track)
+        })
+        const placed = []
+        Object.keys(byArtist).forEach(artist => {
+            const songs = shuffle(byArtist[artist])
+            const step = 1 / songs.length
+            const start = Math.random() * step
+            songs.forEach((track, i) => placed.push({ track: track, at: start + i * step + (Math.random() - 0.5) * step * 0.2 }))
+        })
+        placed.sort((a, b) => a.at - b.at)
+        return placed.map(entry => entry.track)
     }
 
     function startPlayback(source, startIndex, shuffle) {
@@ -2623,7 +2684,7 @@ ApplicationWindow {
 
     function remoteUpNext() {
         const queue = activePlaybackQueue()
-        const start = currentQueueIndex() + 1
+        const start = currentQueueIndex(queue) + 1
         return queue.slice(start, start + 30).map((track, offset) => ({
             index: start + offset,
             title: track.title || track.fileName || "",
@@ -2634,8 +2695,8 @@ ApplicationWindow {
         }))
     }
 
-    function currentQueueIndex() {
-        const queue = activePlaybackQueue()
+    // Callers that already have the queue pass it; building it from the library takes tens of milliseconds.
+    function currentQueueIndex(queue = activePlaybackQueue()) {
         const filePath = player.currentTrack ? player.currentTrack.filePath : ""
         return queue.findIndex(track => track.filePath === filePath)
     }
@@ -2664,7 +2725,7 @@ ApplicationWindow {
         if (!track || !track.filePath) return
         const queue = activePlaybackQueue()
         const index = queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(track))
-        if (index < 0 || index <= currentQueueIndex()) return
+        if (index < 0 || index <= currentQueueIndex(queue)) return
         const nextQueue = queue.slice()
         nextQueue.splice(index, 1)
         if (player.currentTrack && player.currentTrack.format === "STREAM") {
@@ -2680,7 +2741,7 @@ ApplicationWindow {
     function moveQueuedTrackNext(track) {
         if (!track || !track.filePath) return
         const queue = activePlaybackQueue()
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         const index = queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(track))
         if (index < 0 || index <= currentIndex + 1) return
         const nextQueue = queue.slice()
@@ -2694,7 +2755,7 @@ ApplicationWindow {
     function reorderQueuedTrack(sourceTrack, targetTrack, sourceIndex, targetIndex) {
         if (!sourceTrack || !targetTrack) return
         const queue = activePlaybackQueue()
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         let fromIdx = (sourceIndex !== undefined && sourceIndex >= 0) ? sourceIndex : queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(sourceTrack))
         let toIdx = (targetIndex !== undefined && targetIndex >= 0) ? targetIndex : queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(targetTrack))
         if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx || fromIdx <= currentIndex || toIdx <= currentIndex) return
@@ -2710,7 +2771,7 @@ ApplicationWindow {
         const radioQueue = player.currentTrack && player.currentTrack.format === "STREAM"
         const queue = activePlaybackQueue()
         if (queue.length < 2) return
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         player.toggleShuffle()
         if (currentIndex < 0) return
 
@@ -2729,7 +2790,7 @@ ApplicationWindow {
     function playNext() {
         const queue = activePlaybackQueue()
         if (!queue.length) return
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         if (currentIndex < 0) {
             playQueuedTrack(queue[0])
         } else if (currentIndex < queue.length - 1) {
@@ -2756,7 +2817,7 @@ ApplicationWindow {
             return
         }
         const queue = activePlaybackQueue()
-        const currentIndex = currentQueueIndex()
+        const currentIndex = currentQueueIndex(queue)
         if (currentIndex > 0) playQueuedTrack(queue[currentIndex - 1])
         else player.seek(0)
     }
@@ -2765,7 +2826,6 @@ ApplicationWindow {
         const queue = uniqueTracks(availableTracks())
         if (!queue.length) return
         shufflePlayback(queue)
-        refreshSpotlight(queue)
     }
 
     Connections {
@@ -2852,9 +2912,13 @@ ApplicationWindow {
                 playbackPending = false
                 resumeHistoryTracking()
             } else {
+                playbackPending = false
                 pauseHistoryTracking()
                 persistPlayerState()
             }
+        }
+        function onPaused() {
+            playbackPending = false
         }
         function onVolumeChanged() {
             if (settingsInitialized && !fadeOutTimer.running) appSettings.setValue("player/volume", player.volume)
@@ -2875,8 +2939,10 @@ ApplicationWindow {
         }
     }
 
+    // Writing settings stalls the interface briefly, so while playing the position is only saved now and then. Pausing,
+    // changing songs and quitting save it straight away.
     Timer {
-        interval: 2000
+        interval: 15000
         repeat: true
         running: playerStateDirty
         onTriggered: {
@@ -3322,6 +3388,9 @@ ApplicationWindow {
             }
             onCloseRequested: {
                 miniPlayerWindow.visible = false
+                // With the full player already closed, this was the last window, so it closes the app the usual way.
+                if (!window.visible)
+                    window.close()
             }
             onPlayPrevious: window.playPrevious()
             onPlayNext: window.playNext()
@@ -3461,7 +3530,7 @@ ApplicationWindow {
                 anchors.rightMargin: 16
 
                 Label {
-                    text: page === "home" ? qsTr("Home") : page === "library" ? qsTr("Library") : page === "radio" ? qsTr("Radio") : page === "search" ? qsTr("Search") : page === "stats" ? qsTr("Listening Record") : page === "jellyfin" ? "Jellyfin" : page === "subsonic" ? "Subsonic" : qsTr("Settings")
+                    text: shownPage === "home" ? qsTr("Home") : shownPage === "library" ? qsTr("Library") : shownPage === "radio" ? qsTr("Radio") : shownPage === "search" ? qsTr("Search") : shownPage === "stats" ? qsTr("Listening Record") : shownPage === "jellyfin" ? "Jellyfin" : shownPage === "subsonic" ? "Subsonic" : shownPage === "settings" ? qsTr("Settings") : ""
                     color: textPrimary
                     font.family: displayFont
                     font.pixelSize: 22
@@ -3473,7 +3542,7 @@ ApplicationWindow {
                 Label {
                     readonly property var pageItem: ({ library: libraryPageLoader, search: searchPageLoader, radio: radioPageLoader,
                                                        jellyfin: jellyfinPageLoader, subsonic: subsonicPageLoader,
-                                                       stats: listeningRecordPageLoader })[page]
+                                                       stats: listeningRecordPageLoader })[shownPage]
                     Layout.leftMargin: 12
                     Layout.alignment: Qt.AlignBaseline
                     text: pageItem && pageItem.item ? pageItem.item.countText : ""
@@ -3486,7 +3555,7 @@ ApplicationWindow {
 
                 ExpandableSearchBar {
                     id: settingsSearchBar
-                    visible: page === "settings"
+                    visible: shownPage === "settings"
                     alwaysOpen: true
                     boxSize: 34
                     iconSize: 16
@@ -3912,7 +3981,7 @@ ApplicationWindow {
                 StackLayout {
                     id: mainStack
                     anchors.fill: parent
-                    currentIndex: page === "home" ? 0 : (page === "library" ? 1 : (page === "search" ? 2 : (page === "radio" ? 3 : (page === "jellyfin" ? 4 : (page === "subsonic" ? 5 : (page === "stats" ? 6 : 7))))))
+                    currentIndex: ["home", "library", "search", "radio", "jellyfin", "subsonic", "stats", "settings"].indexOf(shownPage)
 
                     transform: Translate { id: pageTranslate }
                     onCurrentIndexChanged: pageEnter.restart()
@@ -3929,12 +3998,7 @@ ApplicationWindow {
                         Layout.fillHeight: true
                         asynchronous: true
                         // Wait for the saved page, or Home is built and discarded when launching elsewhere.
-                        active: settingsInitialized && page === "home" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: homePageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: settingsInitialized && (page === "home" || shownPage === "home") && !inTray
 
                         sourceComponent: Component {
                             HomePage {
@@ -3963,12 +4027,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "library" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: libraryPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "library" || shownPage === "library") && !inTray
 
                         sourceComponent: Component {
                             LibraryPage {
@@ -3983,17 +4042,8 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "search" && !inTray
-                        property bool focusOnLoad: false
-                        onLoaded: if (focusOnLoad) {
-                            focusOnLoad = false
-                            focusSearchInput()
-                        }
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: searchPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "search" || shownPage === "search") && !inTray
+                        property bool focusOnShow: false
 
                         sourceComponent: Component {
                             SearchPage {
@@ -4009,12 +4059,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "radio" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: radioPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "radio" || shownPage === "radio") && !inTray
 
                         sourceComponent: Component {
                             RadioPage {
@@ -4029,12 +4074,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "jellyfin" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: jellyfinPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "jellyfin" || shownPage === "jellyfin") && !inTray
 
                         sourceComponent: Component {
                             JellyfinPage {
@@ -4049,12 +4089,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "subsonic" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: subsonicPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "subsonic" || shownPage === "subsonic") && !inTray
 
                         sourceComponent: Component {
                             SubsonicPage {
@@ -4069,12 +4104,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "stats" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: listeningRecordPageLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "stats" || shownPage === "stats") && !inTray
 
                         sourceComponent: Component {
                             ListeningRecordPage {
@@ -4093,12 +4123,7 @@ ApplicationWindow {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
                         asynchronous: true
-                        active: page === "settings" && !inTray
-
-                        LoadingBar {
-                            anchors.fill: parent
-                            visible: settingsLoader.status === Loader.Loading || window.coversLoading > 0
-                        }
+                        active: (page === "settings" || shownPage === "settings") && !inTray
                         sourceComponent: Component {
                             SettingsPage {
                                 id: settingsRoot
@@ -4264,6 +4289,13 @@ ApplicationWindow {
                         }
                     }
                 }
+
+                // Runs while a page is built out of sight, or the one on screen is still loading covers.
+                LoadingBar {
+                    anchors.fill: parent
+                    visible: window.page !== window.shownPage || window.coversLoading > 0
+                        || (window.pageLoader !== null && window.pageLoader.status === Loader.Loading)
+                }
             }
         }
 
@@ -4397,10 +4429,13 @@ ApplicationWindow {
             }
 
             RowLayout {
+                id: dockRow
+                // Too narrow for everything: the volume slider gives way, as volume is also in the Now Playing deck.
+                readonly property bool compact: width < 860
                 anchors.fill: parent
                 anchors.leftMargin: 24
                 anchors.rightMargin: 20
-                spacing: 20
+                spacing: compact ? 12 : 20
 
                 RowLayout {
                     Layout.preferredWidth: 340
@@ -4445,7 +4480,7 @@ ApplicationWindow {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Layout.minimumWidth: 0
+                        Layout.minimumWidth: 90
                         spacing: 2
 
                         Label {
@@ -4626,15 +4661,11 @@ ApplicationWindow {
                     Layout.alignment: Qt.AlignRight
                     spacing: 8
 
-                    // The tools share one background, so they read as a group rather than five separate buttons.
-                    Rectangle {
+                    // The tools share one button face, so they read as a group rather than five separate buttons.
+                    ButtonFace {
                         Layout.alignment: Qt.AlignVCenter
                         implicitWidth: dockTools.implicitWidth + 8
                         implicitHeight: 42
-                        radius: height / 2
-                        color: surfaceCard
-                        border.width: 1
-                        border.color: borderSubtle
 
                         RowLayout {
                             id: dockTools
@@ -4645,7 +4676,7 @@ ApplicationWindow {
                                 readonly property bool phoneConnected: phoneRemote.controllerName !== "" || !!phoneRemote.phonePlayback.name
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 34
-                                backgroundColor: "transparent"
+                                face: false
                                 borderColor: "transparent"
                                 iconSize: 17
                                 iconName: "smartphone"
@@ -4663,14 +4694,14 @@ ApplicationWindow {
                                     radius: 3.5
                                     color: recordRed
                                     border.width: 1.5
-                                    border.color: surfaceCard
+                                    border.color: capBottom
                                 }
                             }
 
                             PressDepthIconButton {
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 34
-                                backgroundColor: "transparent"
+                                face: false
                                 borderColor: "transparent"
                                 iconSize: 17
                                 iconName: "quote"
@@ -4690,7 +4721,7 @@ ApplicationWindow {
                             PressDepthIconButton {
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 34
-                                backgroundColor: "transparent"
+                                face: false
                                 borderColor: "transparent"
                                 iconSize: 17
                                 iconName: "list"
@@ -4710,7 +4741,7 @@ ApplicationWindow {
                             PressDepthIconButton {
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 34
-                                backgroundColor: "transparent"
+                                face: false
                                 borderColor: "transparent"
                                 iconSize: 17
                                 iconName: "pip"
@@ -4722,7 +4753,7 @@ ApplicationWindow {
                             PressDepthIconButton {
                                 Layout.alignment: Qt.AlignVCenter
                                 boxSize: 34
-                                backgroundColor: "transparent"
+                                face: false
                                 borderColor: "transparent"
                                 iconSize: 17
                                 iconName: nowPlayingOpen ? "chevron-down" : "audio-lines"
@@ -4738,6 +4769,7 @@ ApplicationWindow {
                         Layout.alignment: Qt.AlignVCenter
                         Layout.leftMargin: 2
                         Layout.rightMargin: 4
+                        visible: !dockRow.compact
                         width: 1
                         height: 18
                         color: borderSubtle
@@ -4746,6 +4778,7 @@ ApplicationWindow {
                     VolumeControl {
                         Layout.alignment: Qt.AlignVCenter
                         Layout.preferredWidth: 135
+                        visible: !dockRow.compact
                         enabled: !phoneInDock || phonePlayback.volumePercent >= 0
                         showPercentage: false
                         volume: shownPlayer.volume
@@ -5160,246 +5193,242 @@ ApplicationWindow {
         }
     }
 
-    AppDialog {
-        id: lyricSearchPopup
-        visible: lyricSearchOpen
-        maxWidth: 620
-        height: lyricCustomEditorOpen
-            ? Math.min(parent.height - 100, 560)
-            : Math.min(parent.height - 100, lyricSearchLoading || lyricSearchResults.length ? 560 : 300)
-        padding: 0
-        onClosed: {
-            lyricSearchOpen = false
-            lyricsSelectionCallback = null
-        }
+    // Built the first time lyric search opens, then kept so it can animate closed.
+    Loader {
+        property bool used: false
+        active: used || lyricSearchOpen
+        onLoaded: used = true
+        sourceComponent: Component {
+            AppDialog {
+                id: lyricSearchPopup
+                visible: lyricSearchOpen
+                maxWidth: 620
+                height: lyricCustomEditorOpen
+                    ? Math.min(parent.height - 100, 560)
+                    : Math.min(parent.height - 100, lyricSearchLoading || lyricSearchResults.length ? 560 : 300)
+                padding: 0
+                onClosed: {
+                    lyricSearchOpen = false
+                    lyricsSelectionCallback = null
+                }
 
-        contentItem: ColumnLayout {
-            spacing: 0
+                contentItem: ColumnLayout {
+                    spacing: 0
 
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 18
-                Layout.rightMargin: 18
-                Layout.topMargin: 16
-                Layout.bottomMargin: 10
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 2
-                    Label {
-                        text: lyricSearchLoading ? qsTr("Searching LRCLIB…") : qsTr("Choose lyrics")
-                        color: textPrimary
-                        font.family: displayFont
-                        font.pixelSize: 18
-                        font.weight: Font.DemiBold
-                    }
-                    Label {
+                    RowLayout {
                         Layout.fillWidth: true
-                        visible: !lyricCustomEditorOpen
-                        text: (player.currentTrack.title || player.currentTrack.fileName || "") + (player.currentTrack.artist ? " • " + player.currentTrack.artist : "")
-                        color: textSecondary
-                        font.family: bodyFont
-                        font.pixelSize: 11
-                        elide: Text.ElideRight
-                    }
-                }
-                Label {
-                    visible: !lyricCustomEditorOpen
-                    text: qsTr("Add custom")
-                    color: accentText
-                    font.family: displayFont
-                    font.pixelSize: 12
-                    font.weight: Font.DemiBold
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = true }
-                }
-                TransportButton {
-                    Accessible.name: qsTr("Close lyrics search")
-                    buttonSize: 30
-                    iconName: "x"
-                    onClicked: lyricSearchOpen = false
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 18
-                Layout.rightMargin: 18
-                Layout.bottomMargin: 12
-                visible: !lyricCustomEditorOpen
-
-                RefineTextInput {
-                    Layout.fillWidth: true
-                    placeholder: qsTr("Track title")
-                    text: lyricSearchQuery
-                    onEdited: lyricSearchQuery = text
-                    onSubmitted: searchLyricsOnline()
-                }
-                TransportButton {
-                    Accessible.name: qsTr("Search lyrics online")
-                    buttonSize: 36
-                    iconName: "search"
-                    accented: true
-                    onClicked: searchLyricsOnline()
-                }
-            }
-
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 18
-                Layout.rightMargin: 18
-                Layout.bottomMargin: 8
-                visible: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length > 0
-
-                Label {
-                    Layout.fillWidth: true
-                    text: qsTr("%n version(s) found", "", lyricSearchResults.length)
-                    color: accentText
-                    font.family: monoFont
-                    font.pixelSize: 10
-                    font.weight: Font.Bold
-                }
-                Label {
-                    text: qsTr("Choose the closest match")
-                    color: silverDim
-                    font.family: bodyFont
-                    font.pixelSize: 10
-                }
-            }
-
-            AppListView {
-                Layout.fillWidth: true
-                Layout.fillHeight: !lyricCustomEditorOpen && (lyricSearchLoading || lyricSearchResults.length > 0)
-                clip: true
-                visible: !lyricCustomEditorOpen
-                model: lyricSearchResults
-                spacing: 4
-                reuseItems: true
-                ScrollBar.vertical: AutoHideScrollBar {}
-
-                delegate: Item {
-                    width: ListView.view.width
-                    height: 82
-
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        anchors.topMargin: 4
-                        anchors.bottomMargin: 4
-                        radius: 8
-                        color: resultMouse.containsMouse ? surfaceElevated : "transparent"
-                        border.width: 0
-
-                        Behavior on color { ColorAnimation { duration: 120 } }
-
-                        Column {
-                            anchors.fill: parent
-                            anchors.margins: 12
-                            spacing: 4
-
-                            Row {
-                                width: parent.width
-                                spacing: 7
-                                Label { width: parent.width - lyricType.implicitWidth - parent.spacing; text: modelData.title || qsTr("Unknown track"); color: textPrimary; font.family: displayFont; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight }
-                                Label { id: lyricType; text: modelData.syncedLyrics ? qsTr("SYNCED") : qsTr("PLAIN"); color: modelData.syncedLyrics ? recordRedHover : textSecondary; font.family: monoFont; font.pixelSize: 9; font.weight: Font.Bold }
-                            }
-                            Label { width: parent.width; text: (modelData.artist || qsTr("Unknown artist")) + (modelData.album ? " • " + modelData.album : ""); color: textSecondary; font.family: bodyFont; font.pixelSize: 11; elide: Text.ElideRight }
+                        Layout.leftMargin: 18
+                        Layout.rightMargin: 18
+                        Layout.topMargin: 16
+                        Layout.bottomMargin: 10
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 2
                             Label {
-                                width: parent.width
-                                height: 16
-                                text: parseLrc(modelData.syncedLyrics || modelData.plainLyrics || "").slice(0, 1).map(line => line.text).join("") || (modelData.plainLyrics || "").split(/\r?\n/).filter(line => line.trim().length).slice(0, 1).join("")
-                                color: silverDim
+                                text: lyricSearchLoading ? qsTr("Searching LRCLIB…") : qsTr("Choose lyrics")
+                                color: textPrimary
+                                font.family: displayFont
+                                font.pixelSize: 18
+                                font.weight: Font.DemiBold
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                visible: !lyricCustomEditorOpen
+                                text: (player.currentTrack.title || player.currentTrack.fileName || "") + (player.currentTrack.artist ? " • " + player.currentTrack.artist : "")
+                                color: textSecondary
                                 font.family: bodyFont
-                                font.pixelSize: 10
-                                wrapMode: Text.NoWrap
-                                maximumLineCount: 1
+                                font.pixelSize: 11
                                 elide: Text.ElideRight
                             }
                         }
-
-                    }
-                    MouseArea {
-                        id: resultMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            const lyrics = modelData.syncedLyrics || modelData.plainLyrics || ""
-                            services.cacheLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", modelData.syncedLyrics || "", modelData.plainLyrics || "", "LRCLIB")
-                            applyLyrics(lyrics, "LRCLIB")
-                            lyricSearchOpen = false
+                        SettingButton {
+                            visible: !lyricCustomEditorOpen
+                            text: qsTr("Add custom")
+                            onClicked: lyricCustomEditorOpen = true
+                        }
+                        TransportButton {
+                            Accessible.name: qsTr("Close lyrics search")
+                            buttonSize: 30
+                            iconName: "x"
+                            onClicked: lyricSearchOpen = false
                         }
                     }
-                }
-            }
 
-            Label {
-                Layout.fillWidth: true
-                Layout.fillHeight: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length === 0
-                Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
-                visible: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length === 0
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                text: qsTr("No lyrics found\nTry the track title, or add custom lyrics")
-                color: textSecondary
-                font.family: bodyFont
-                font.pixelSize: 14
-                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = true }
-            }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 18
+                        Layout.rightMargin: 18
+                        Layout.bottomMargin: 12
+                        visible: !lyricCustomEditorOpen
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: lyricCustomEditorOpen
-                Layout.margins: 18
-                visible: lyricCustomEditorOpen
-                spacing: 12
-
-                Label {
-                    Layout.fillWidth: true
-                    text: (player.currentTrack.title || "") + " • " + (player.currentTrack.artist || "")
-                    color: textSecondary
-                    font.family: bodyFont
-                    font.pixelSize: 12
-                    elide: Text.ElideRight
-                }
-                TextArea {
-                    id: lyricCustomInput
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    text: lyricCustomText
-                    placeholderText: qsTr("Paste synchronized LRC or plain lyrics…")
-                    wrapMode: TextArea.Wrap
-                    color: textPrimary
-                    font.family: monoFont
-                    font.pixelSize: 12
-                    selectByMouse: true
-                    onTextChanged: lyricCustomText = text
-                    background: Rectangle { radius: 10; color: surfaceInput; border.width: 1; border.color: lyricCustomInput.activeFocus ? recordRed : borderSubtle }
-                }
-                RowLayout {
-                    Layout.fillWidth: true
-                    Label { Layout.fillWidth: true; text: qsTr("Timestamped LRC becomes synced lyrics."); color: silverDim; font.family: bodyFont; font.pixelSize: 11 }
-                    Label {
-                        text: qsTr("Cancel")
-                        color: textSecondary
-                        font.family: displayFont
-                        font.pixelSize: 13
-                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = false }
+                        RefineTextInput {
+                            Layout.fillWidth: true
+                            placeholder: qsTr("Track title")
+                            text: lyricSearchQuery
+                            onEdited: lyricSearchQuery = text
+                            onSubmitted: searchLyricsOnline()
+                        }
+                        TransportButton {
+                            Accessible.name: qsTr("Search lyrics online")
+                            buttonSize: 36
+                            iconName: "search"
+                            accented: true
+                            onClicked: searchLyricsOnline()
+                        }
                     }
+
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: 18
+                        Layout.rightMargin: 18
+                        Layout.bottomMargin: 8
+                        visible: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length > 0
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: qsTr("%n version(s) found", "", lyricSearchResults.length)
+                            color: accentText
+                            font.family: monoFont
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                        }
+                        Label {
+                            text: qsTr("Choose the closest match")
+                            color: silverDim
+                            font.family: bodyFont
+                            font.pixelSize: 10
+                        }
+                    }
+
+                    AppListView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: !lyricCustomEditorOpen && (lyricSearchLoading || lyricSearchResults.length > 0)
+                        clip: true
+                        visible: !lyricCustomEditorOpen
+                        model: lyricSearchResults
+                        spacing: 4
+                        reuseItems: true
+                        ScrollBar.vertical: AutoHideScrollBar {}
+
+                        delegate: Item {
+                            width: ListView.view.width
+                            height: 82
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.leftMargin: 12
+                                anchors.rightMargin: 12
+                                anchors.topMargin: 4
+                                anchors.bottomMargin: 4
+                                radius: 8
+                                color: resultMouse.containsMouse ? surfaceElevated : "transparent"
+                                border.width: 0
+
+                                Behavior on color { ColorAnimation { duration: 120 } }
+
+                                Column {
+                                    anchors.fill: parent
+                                    anchors.margins: 12
+                                    spacing: 4
+
+                                    Row {
+                                        width: parent.width
+                                        spacing: 7
+                                        Label { width: parent.width - lyricType.implicitWidth - parent.spacing; text: modelData.title || qsTr("Unknown track"); color: textPrimary; font.family: displayFont; font.pixelSize: 13; font.weight: Font.DemiBold; elide: Text.ElideRight }
+                                        Label { id: lyricType; text: modelData.syncedLyrics ? qsTr("SYNCED") : qsTr("PLAIN"); color: modelData.syncedLyrics ? recordRedHover : textSecondary; font.family: monoFont; font.pixelSize: 9; font.weight: Font.Bold }
+                                    }
+                                    Label { width: parent.width; text: (modelData.artist || qsTr("Unknown artist")) + (modelData.album ? " • " + modelData.album : ""); color: textSecondary; font.family: bodyFont; font.pixelSize: 11; elide: Text.ElideRight }
+                                    Label {
+                                        width: parent.width
+                                        height: 16
+                                        text: parseLrc(modelData.syncedLyrics || modelData.plainLyrics || "").slice(0, 1).map(line => line.text).join("") || (modelData.plainLyrics || "").split(/\r?\n/).filter(line => line.trim().length).slice(0, 1).join("")
+                                        color: silverDim
+                                        font.family: bodyFont
+                                        font.pixelSize: 10
+                                        wrapMode: Text.NoWrap
+                                        maximumLineCount: 1
+                                        elide: Text.ElideRight
+                                    }
+                                }
+
+                            }
+                            MouseArea {
+                                id: resultMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: {
+                                    const lyrics = modelData.syncedLyrics || modelData.plainLyrics || ""
+                                    services.cacheLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", modelData.syncedLyrics || "", modelData.plainLyrics || "", "LRCLIB")
+                                    applyLyrics(lyrics, "LRCLIB")
+                                    lyricSearchOpen = false
+                                }
+                            }
+                        }
+                    }
+
                     Label {
-                        text: qsTr("Save & apply")
-                        color: lyricCustomText.trim().length ? recordRedHover : silverDim
-                        font.family: displayFont
-                        font.pixelSize: 13
-                        font.weight: Font.DemiBold
-                        MouseArea {
-                            anchors.fill: parent
-                            enabled: lyricCustomText.trim().length > 0
-                            cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            onClicked: {
-                                const synced = parseLrc(lyricCustomText).length > 0
-                                services.cacheLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", synced ? lyricCustomText : "", synced ? "" : lyricCustomText, synced ? "Custom LRC" : "Custom plain")
-                                applyLyrics(lyricCustomText, synced ? "Custom LRC" : "Custom plain")
-                                lyricSearchOpen = false
+                        Layout.fillWidth: true
+                        Layout.fillHeight: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length === 0
+                        Layout.alignment: Qt.AlignHCenter | Qt.AlignVCenter
+                        visible: !lyricCustomEditorOpen && !lyricSearchLoading && lyricSearchResults.length === 0
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        text: qsTr("No lyrics found\nTry the track title, or add custom lyrics")
+                        color: textSecondary
+                        font.family: bodyFont
+                        font.pixelSize: 14
+                        MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = true }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: lyricCustomEditorOpen
+                        Layout.margins: 18
+                        visible: lyricCustomEditorOpen
+                        spacing: 12
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: (player.currentTrack.title || "") + " • " + (player.currentTrack.artist || "")
+                            color: textSecondary
+                            font.family: bodyFont
+                            font.pixelSize: 12
+                            elide: Text.ElideRight
+                        }
+                        TextArea {
+                            id: lyricCustomInput
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            text: lyricCustomText
+                            placeholderText: qsTr("Paste synchronized LRC or plain lyrics…")
+                            wrapMode: TextArea.Wrap
+                            color: textPrimary
+                            font.family: monoFont
+                            font.pixelSize: 12
+                            selectByMouse: true
+                            onTextChanged: lyricCustomText = text
+                            background: Rectangle { radius: 10; color: surfaceInput; border.width: 1; border.color: lyricCustomInput.activeFocus ? recordRed : borderSubtle }
+                        }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Label { Layout.fillWidth: true; text: qsTr("Timestamped LRC becomes synced lyrics."); color: silverDim; font.family: bodyFont; font.pixelSize: 11 }
+                            SettingButton {
+                                text: qsTr("Cancel")
+                                onClicked: lyricCustomEditorOpen = false
+                            }
+                            SettingButton {
+                                text: qsTr("Save & apply")
+                                primary: true
+                                enabled: lyricCustomText.trim().length > 0
+                                onClicked: {
+                                    // Plain text parses too, as untimed lines; lyrics count as synced when they start timed.
+                                    const parsed = parseLrc(lyricCustomText)
+                                    const synced = parsed.length > 0 && parsed[0].timeMs >= 0
+                                    services.cacheLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", synced ? lyricCustomText : "", synced ? "" : lyricCustomText, synced ? "Custom LRC" : "Custom plain")
+                                    applyLyrics(lyricCustomText, synced ? "Custom LRC" : "Custom plain")
+                                    lyricSearchOpen = false
+                                }
                             }
                         }
                     }
@@ -5547,20 +5576,45 @@ ApplicationWindow {
         onClosed: appSettings.setValue("updates/promptedVersion", version)
     }
 
-    TrackMetadataDialog {
+    // Built the first time it opens; building it with the window added about 300 ms to startup.
+    Loader {
         id: metadataDialog
-        appWindow: window
+        active: false
+        sourceComponent: Component {
+            TrackMetadataDialog { appWindow: window }
+        }
+
+        function openFor(track) {
+            active = true
+            item.openFor(track)
+        }
+
+        function openForMany(tracks) {
+            active = true
+            item.openForMany(tracks)
+        }
     }
 
     WhatsNewSheet {
         id: whatsNewSheet
     }
 
-    SetupSheet {
+    // Only a first run opens it, so it isn't built otherwise; it lists every installed font.
+    Loader {
         id: setupSheet
-        appWindow: window
-        onAddFolderRequested: folderDialog.open()
-        onFinished: appSettings.setValue("ui/setupDone", true)
+        active: false
+        sourceComponent: Component {
+            SetupSheet {
+                appWindow: window
+                onAddFolderRequested: folderDialog.open()
+                onFinished: appSettings.setValue("ui/setupDone", true)
+            }
+        }
+
+        function open() {
+            active = true
+            item.open()
+        }
     }
 
     // The phone gets a smart playlist as its current songs, kept up to date as the library and likes change.

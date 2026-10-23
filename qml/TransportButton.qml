@@ -15,30 +15,20 @@ ButtonBase {
     implicitWidth: root.buttonSize
     implicitHeight: root.buttonSize
 
-    Rectangle {
+    ButtonFace {
         id: cap
         anchors.fill: parent
-        y: root.isPressed ? 1.5 : 0
-        radius: width / 2
-        color: root.isPressed 
-            ? surfaceDock 
-            : (root.isHovered 
-                ? surfaceElevated 
-                : (root.filled ? surfaceCardHover : "transparent"))
+        y: root.isPressed ? 2 : 0
+        hovered: root.isHovered
+        accented: root.accented
+        flat: !root.filled
+        accentColor: root.recordRed
+        accentHoverColor: root.recordRedHover
+        border.width: root.accented ? 1.5 : (root.filled || root.isHovered ? 1 : 0)
 
         Behavior on y {
             NumberAnimation { duration: 80; easing.type: Easing.Linear }
         }
-        Behavior on color {
-            ColorAnimation { duration: 150 }
-        }
-
-        border.width: root.accented ? 1.2 : (root.isHovered ? 1.0 : 0)
-        border.color: root.accented
-            ? (root.isHovered ? root.recordRedHover : root.recordRed)
-            : (root.isHovered ? "#35FFFFFF" : "transparent")
-
-        Behavior on border.color { ColorAnimation { duration: 150 } }
 
         LucideIcon {
             anchors.centerIn: parent

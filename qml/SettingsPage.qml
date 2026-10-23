@@ -89,25 +89,6 @@ Item {
         { id: "credits", label: qsTr("Credits & Legal"), icon: "info" }
     ]
 
-    readonly property real activeSectionHeight: {
-        switch (currentSection) {
-            case "library": return secLibrary.implicitHeight
-            case "health": return secHealth.implicitHeight
-            case "appearance": return secAppearance.implicitHeight
-            case "sound": return secSound.implicitHeight
-            case "playback": return secPlayback.implicitHeight
-            case "shortcuts": return secShortcuts.implicitHeight
-            case "desktop": return secDesktop.implicitHeight
-            case "lyrics": return secLyrics.implicitHeight
-            case "scrobble": return secScrobble.implicitHeight
-            case "network": return secNetwork.implicitHeight
-            case "phone": return secPhoneRemote.implicitHeight
-            case "data": return secBackup.implicitHeight
-            case "credits": return secCredits.implicitHeight
-            default: return 600
-        }
-    }
-
     signal addLibraryFolderRequested()
     signal removeLibraryFolderRequested(string path)
     signal addExcludeRequested()
@@ -169,10 +150,19 @@ Item {
     readonly property var searchResults: findSettings(searchQuery)
     // Library Health lists songs and Credits lists projects, so those two are found by their names only.
     readonly property var searchableSections: ({
-        library: secLibrary, appearance: secAppearance, sound: secSound, playback: secPlayback, shortcuts: secShortcuts,
-        desktop: secDesktop, lyrics: secLyrics, scrobble: secScrobble, network: secNetwork,
-        phone: secPhoneRemote, data: secBackup
+        library: secLibrary.item, appearance: secAppearance.item, sound: secSound.item, playback: secPlayback.item,
+        shortcuts: secShortcuts.item, desktop: secDesktop.item, lyrics: secLyrics.item, scrobble: secScrobble.item,
+        network: secNetwork.item, phone: secPhoneRemote.item, data: secBackup.item
     })
+
+    // Only the open section is built with the page, so Settings opens quickly. The rest follow in the background, for
+    // switching sections and searching.
+    property bool buildAllSections: false
+    Timer {
+        interval: 600
+        running: true
+        onTriggered: root.buildAllSections = true
+    }
 
     // Settings are read from the rows in each section, so a new setting is found without a list to keep up to date.
     function settingRows(item, found) {
@@ -293,7 +283,6 @@ Item {
                     width: 184
                     contentHeight: navigationColumn.implicitHeight
                     clip: true
-                    ScrollBar.vertical: AutoHideScrollBar {}
 
                     Column {
                         id: navigationColumn
@@ -373,217 +362,320 @@ Item {
                                 }
                             }
 
-                            SettingsLibrarySection {
+                            Loader {
                                 id: secLibrary
-                                visible: root.shownSection === "library"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                trackCount: root.trackCount
-                                libraryFolders: root.libraryFolders
-                                excludedFolders: root.excludedFolders
-                                ignoreShortClips: root.ignoreShortClips
-                                songSortMetric: root.songSortMetric
-                                onAddLibraryFolderRequested: root.addLibraryFolderRequested()
-                                onRemoveLibraryFolderRequested: path => root.removeLibraryFolderRequested(path)
-                                onAddExcludeRequested: root.addExcludeRequested()
-                                onRemoveExcludeRequested: path => root.removeExcludeRequested(path)
-                                onIgnoreShortClipsSelected: value => root.ignoreShortClipsSelected(value)
-                                onSongSortSelected: value => root.songSortSelected(value)
-                            }
-
-                            SettingsLibraryHealthSection {
-                                id: secHealth
-                                visible: root.shownSection === "health"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                appWindow: root.appWindow
-                                tagScan: root.tagScan
-                            }
-
-                            SettingsAppearanceSection {
-                                id: secAppearance
-                                visible: root.shownSection === "appearance"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                accentName: root.accentName
-                                customAccentColor: root.customAccentColor
-                                albumArtRadius: root.albumArtRadius
-                                nowPlayingBackdrop: root.nowPlayingBackdrop
-                                showRemainingTime: root.showRemainingTime
-                                appFont: root.appWindow.appFont
-                                fontFamilies: root.appWindow.fontFamilies
-                                trackDensity: root.trackDensity
-                                showFormatBadges: root.showFormatBadges
-                                onAppFontSelected: value => root.appWindow.appFont = value
-                                onTrackDensitySelected: value => root.trackDensitySelected(value)
-                                onShowFormatBadgesSelected: value => root.showFormatBadgesSelected(value)
-                                onAccentSelected: value => root.accentSelected(value)
-                                onCustomAccentSelected: value => root.customAccentSelected(value)
-                                onAlbumArtRadiusSelected: value => root.albumArtRadiusSelected(value)
-                                onNowPlayingBackdropSelected: value => root.nowPlayingBackdropSelected(value)
-                                onShowRemainingTimeSelected: value => root.showRemainingTimeSelected(value)
-                            }
-
-                            SettingsSoundSection {
-                                id: secSound
-                                visible: root.shownSection === "sound"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                audioOutputs: root.audioOutputs
-                                audioDeviceId: root.audioDeviceId
-                                crossfadeSeconds: root.crossfadeSeconds
-                                volumeLimitEnabled: root.volumeLimitEnabled
-                                maxVolumePercent: root.maxVolumePercent
-                                replayGainMode: root.replayGainMode
-                                onAudioDeviceSelected: value => root.audioDeviceSelected(value)
-                                onCrossfadeSelected: value => root.crossfadeSelected(value)
-                                onVolumeLimitSelected: value => root.volumeLimitSelected(value)
-                                onMaxVolumeSelected: value => root.maxVolumeSelected(value)
-                                onReplayGainModeSelected: value => root.replayGainModeSelected(value)
-                            }
-
-                            SettingsPlaybackSection {
-                                id: secPlayback
-                                visible: root.shownSection === "playback"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                resumeQueueOnLaunch: root.resumeQueueOnLaunch
-                                autoplayEnabled: root.autoplayEnabled
-                                sleepTimerMode: root.sleepTimerMode
-                                sleepTimerStatus: root.sleepTimerStatus
-                                sleepFadeOut: root.sleepFadeOut
-                                onResumeQueueOnLaunchSelected: value => root.resumeQueueOnLaunchSelected(value)
-                                onAutoplaySelected: value => root.autoplaySelected(value)
-                                onSleepTimerSelected: value => root.sleepTimerSelected(value)
-                                onSleepTimerCancelled: root.sleepTimerCancelled()
-                                onSleepFadeOutSelected: value => root.sleepFadeOutSelected(value)
-                            }
-
-                            SettingsShortcutsSection {
-                                id: secShortcuts
-                                visible: root.shownSection === "shortcuts"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                globalShortcutsEnabled: root.globalShortcutsEnabled
-                                globalShortcutsSupported: root.globalShortcutsSupported
-                                globalShortcutStatus: root.globalShortcutStatus
-                                globalShortcutBindings: root.globalShortcutBindings
-                                inAppShortcutBindings: root.inAppShortcutBindings
-                                inAppActions: root.inAppShortcutActions
-                                inAppShortcutStatus: root.inAppShortcutStatus
-                                onGlobalShortcutsEnabledSelected: value => root.globalShortcutsEnabledSelected(value)
-                                onGlobalShortcutSelected: (action, shortcut) => root.globalShortcutSelected(action, shortcut)
-                                onInAppShortcutSelected: (action, shortcut) => root.inAppShortcutSelected(action, shortcut)
-                            }
-
-                            SettingsDesktopSection {
-                                id: secDesktop
-                                visible: root.shownSection === "desktop"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                defaultLaunchPage: root.defaultLaunchPage
-                                sidebarOrder: root.appWindow.sidebarOrder
-                                sidebarHidden: root.appWindow.sidebarHidden
-                                sidebarPageLabel: root.appWindow.sidebarPageLabel
-                                sidebarPageIcon: root.appWindow.sidebarPageIcon
-                                onSidebarPagesSelected: (order, hidden) => root.appWindow.setSidebarPages(order, hidden)
-                                closeToTray: root.closeToTray
-                                startMinimizedToTray: root.startMinimizedToTray
-                                nowPlayingNotifications: root.nowPlayingNotifications
-                                miniPlayerAlwaysOnTop: root.miniPlayerAlwaysOnTop
-                                trayAvailable: root.trayAvailable
-                                updateStatusText: root.updateStatusText
-                                updateChecking: root.updateChecking
-                                updateAvailable: root.updateAvailable
-                                updateUrl: root.updateUrl
-                                onDefaultLaunchPageSelected: value => root.defaultLaunchPageSelected(value)
-                                onCloseToTraySelected: value => root.closeToTraySelected(value)
-                                onStartMinimizedToTraySelected: value => root.startMinimizedToTraySelected(value)
-                                onNowPlayingNotificationsSelected: value => root.nowPlayingNotificationsSelected(value)
-                                onMiniPlayerAlwaysOnTopSelected: value => root.miniPlayerAlwaysOnTopSelected(value)
-                                onCheckUpdatesRequested: root.checkUpdatesRequested()
-                                onDownloadUpdateRequested: root.downloadUpdateRequested()
-                            }
-
-                            SettingsLyricsSection {
-                                id: secLyrics
-                                visible: root.shownSection === "lyrics"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                lyricsFontSize: root.lyricsFontSize
-                                lyricsAlignment: root.lyricsAlignment
-                                lyricsActiveStyle: root.lyricsActiveStyle
-                                preferLocalLyrics: root.preferLocalLyrics
-                                lyricsFont: root.appWindow.lyricsFont
-                                lyricsFontWeight: root.appWindow.lyricsFontWeight
-                                fontFamilies: root.appWindow.fontFamilies
-                                libraryLyricsEnabled: root.appWindow.libraryLyricsEnabled
-                                lrclibAvailable: root.svcLrclib && !root.offlineBlackout
-                                onLibraryLyricsSelected: value => root.appWindow.libraryLyricsEnabled = value
-                                onLyricsFontSelected: value => root.appWindow.lyricsFont = value
-                                onLyricsFontWeightSelected: value => root.appWindow.lyricsFontWeight = value
-                                onLyricsFontSizeSelected: value => root.lyricsFontSizeSelected(value)
-                                onLyricsAlignmentSelected: value => root.lyricsAlignmentSelected(value)
-                                onLyricsActiveStyleSelected: value => root.lyricsActiveStyleSelected(value)
-                                onPreferLocalLyricsSelected: value => root.preferLocalLyricsSelected(value)
-                            }
-
-                            SettingsScrobbleSection {
-                                id: secScrobble
-                                visible: root.shownSection === "scrobble"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                offlineBlackout: root.offlineBlackout
-                                listenBrainzEnabled: root.scrobbleListenBrainzEnabled
-                                listenBrainzUser: root.scrobbleListenBrainzUser
-                                listenBrainzConnected: root.scrobbleListenBrainzConnected
-                                libreFmEnabled: root.scrobbleLibreFmEnabled
-                                libreFmUser: root.scrobbleLibreFmUser
-                                libreFmConnected: root.scrobbleLibreFmConnected
-                                onListenBrainzEnabledToggled: value => root.scrobbleListenBrainzToggled(value)
-                                onDisconnectListenBrainzRequested: root.disconnectListenBrainzRequested()
-                                onLibreFmEnabledToggled: value => root.scrobbleLibreFmToggled(value)
-                                onDisconnectLibreFmRequested: root.disconnectLibreFmRequested()
-                                lastFmEnabled: root.scrobbleLastFmEnabled
-                                lastFmUser: root.scrobbleLastFmUser
-                                lastFmConnected: root.scrobbleLastFmConnected
-                                onLastFmEnabledToggled: value => root.scrobbleLastFmToggled(value)
-                                onDisconnectLastFmRequested: root.disconnectLastFmRequested()
-                            }
-
-                            SettingsNetworkSection {
-                                id: secNetwork
-                                visible: root.shownSection === "network"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                offlineBlackout: root.offlineBlackout
-                                svcLrclib: root.svcLrclib
-                                svcRadio: root.svcRadio
-                                svcDeezer: root.svcDeezer
-                                svcAudiodb: root.svcAudiodb
-                                svcWiki: root.svcWiki
-                                svcArchive: root.svcArchive
-                                svcDiscord: root.svcDiscord
-                                onOfflineBlackoutSelected: value => root.offlineBlackoutSelected(value)
-                                onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
-                                onOpenJellyfinRequested: root.openJellyfinRequested()
-                                onOpenSubsonicRequested: root.openSubsonicRequested()
-                            }
-
-                            SettingsPhoneRemoteSection {
-                                id: secPhoneRemote
-                                visible: root.shownSection === "phone"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                offlineBlackout: root.offlineBlackout
-                                svcPhoneRemote: root.svcPhoneRemote
-                                onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
-                            }
-
-                            SettingsBackupSection {
-                                id: secBackup
-                                visible: root.shownSection === "data"
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                backupStatus: root.backupStatus
-                                onExportBackupRequested: root.exportBackupRequested()
-                                onImportBackupRequested: root.importBackupRequested()
-                            }
-
-                            CreditsView {
-                                id: secCredits
-                                visible: root.shownSection === "credits"
+                                readonly property bool shown: root.shownSection === "library"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: visible ? implicitHeight : 0
-                                onWhatsNewRequested: root.whatsNewRequested()
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsLibrarySection {
+                                        trackCount: root.trackCount
+                                        libraryFolders: root.libraryFolders
+                                        excludedFolders: root.excludedFolders
+                                        ignoreShortClips: root.ignoreShortClips
+                                        songSortMetric: root.songSortMetric
+                                        onAddLibraryFolderRequested: root.addLibraryFolderRequested()
+                                        onRemoveLibraryFolderRequested: path => root.removeLibraryFolderRequested(path)
+                                        onAddExcludeRequested: root.addExcludeRequested()
+                                        onRemoveExcludeRequested: path => root.removeExcludeRequested(path)
+                                        onIgnoreShortClipsSelected: value => root.ignoreShortClipsSelected(value)
+                                        onSongSortSelected: value => root.songSortSelected(value)
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secHealth
+                                readonly property bool shown: root.shownSection === "health"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsLibraryHealthSection {
+                                        appWindow: root.appWindow
+                                        tagScan: root.tagScan
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secAppearance
+                                readonly property bool shown: root.shownSection === "appearance"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsAppearanceSection {
+                                        accentName: root.accentName
+                                        customAccentColor: root.customAccentColor
+                                        albumArtRadius: root.albumArtRadius
+                                        nowPlayingBackdrop: root.nowPlayingBackdrop
+                                        showRemainingTime: root.showRemainingTime
+                                        appFont: root.appWindow.appFont
+                                        fontFamilies: root.appWindow.fontFamilies
+                                        trackDensity: root.trackDensity
+                                        showFormatBadges: root.showFormatBadges
+                                        onAppFontSelected: value => root.appWindow.appFont = value
+                                        onTrackDensitySelected: value => root.trackDensitySelected(value)
+                                        onShowFormatBadgesSelected: value => root.showFormatBadgesSelected(value)
+                                        onAccentSelected: value => root.accentSelected(value)
+                                        onCustomAccentSelected: value => root.customAccentSelected(value)
+                                        onAlbumArtRadiusSelected: value => root.albumArtRadiusSelected(value)
+                                        onNowPlayingBackdropSelected: value => root.nowPlayingBackdropSelected(value)
+                                        onShowRemainingTimeSelected: value => root.showRemainingTimeSelected(value)
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secSound
+                                readonly property bool shown: root.shownSection === "sound"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsSoundSection {
+                                        audioOutputs: root.audioOutputs
+                                        audioDeviceId: root.audioDeviceId
+                                        crossfadeSeconds: root.crossfadeSeconds
+                                        volumeLimitEnabled: root.volumeLimitEnabled
+                                        maxVolumePercent: root.maxVolumePercent
+                                        replayGainMode: root.replayGainMode
+                                        onAudioDeviceSelected: value => root.audioDeviceSelected(value)
+                                        onCrossfadeSelected: value => root.crossfadeSelected(value)
+                                        onVolumeLimitSelected: value => root.volumeLimitSelected(value)
+                                        onMaxVolumeSelected: value => root.maxVolumeSelected(value)
+                                        onReplayGainModeSelected: value => root.replayGainModeSelected(value)
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secPlayback
+                                readonly property bool shown: root.shownSection === "playback"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsPlaybackSection {
+                                        resumeQueueOnLaunch: root.resumeQueueOnLaunch
+                                        autoplayEnabled: root.autoplayEnabled
+                                        sleepTimerMode: root.sleepTimerMode
+                                        sleepTimerStatus: root.sleepTimerStatus
+                                        sleepFadeOut: root.sleepFadeOut
+                                        onResumeQueueOnLaunchSelected: value => root.resumeQueueOnLaunchSelected(value)
+                                        onAutoplaySelected: value => root.autoplaySelected(value)
+                                        onSleepTimerSelected: value => root.sleepTimerSelected(value)
+                                        onSleepTimerCancelled: root.sleepTimerCancelled()
+                                        onSleepFadeOutSelected: value => root.sleepFadeOutSelected(value)
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secShortcuts
+                                readonly property bool shown: root.shownSection === "shortcuts"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsShortcutsSection {
+                                        globalShortcutsEnabled: root.globalShortcutsEnabled
+                                        globalShortcutsSupported: root.globalShortcutsSupported
+                                        globalShortcutStatus: root.globalShortcutStatus
+                                        globalShortcutBindings: root.globalShortcutBindings
+                                        inAppShortcutBindings: root.inAppShortcutBindings
+                                        inAppActions: root.inAppShortcutActions
+                                        inAppShortcutStatus: root.inAppShortcutStatus
+                                        onGlobalShortcutsEnabledSelected: value => root.globalShortcutsEnabledSelected(value)
+                                        onGlobalShortcutSelected: (action, shortcut) => root.globalShortcutSelected(action, shortcut)
+                                        onInAppShortcutSelected: (action, shortcut) => root.inAppShortcutSelected(action, shortcut)
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secDesktop
+                                readonly property bool shown: root.shownSection === "desktop"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsDesktopSection {
+                                        defaultLaunchPage: root.defaultLaunchPage
+                                        sidebarOrder: root.appWindow.sidebarOrder
+                                        sidebarHidden: root.appWindow.sidebarHidden
+                                        sidebarPageLabel: root.appWindow.sidebarPageLabel
+                                        sidebarPageIcon: root.appWindow.sidebarPageIcon
+                                        onSidebarPagesSelected: (order, hidden) => root.appWindow.setSidebarPages(order, hidden)
+                                        closeToTray: root.closeToTray
+                                        startMinimizedToTray: root.startMinimizedToTray
+                                        nowPlayingNotifications: root.nowPlayingNotifications
+                                        miniPlayerAlwaysOnTop: root.miniPlayerAlwaysOnTop
+                                        trayAvailable: root.trayAvailable
+                                        updateStatusText: root.updateStatusText
+                                        updateChecking: root.updateChecking
+                                        updateAvailable: root.updateAvailable
+                                        updateUrl: root.updateUrl
+                                        onDefaultLaunchPageSelected: value => root.defaultLaunchPageSelected(value)
+                                        onCloseToTraySelected: value => root.closeToTraySelected(value)
+                                        onStartMinimizedToTraySelected: value => root.startMinimizedToTraySelected(value)
+                                        onNowPlayingNotificationsSelected: value => root.nowPlayingNotificationsSelected(value)
+                                        onMiniPlayerAlwaysOnTopSelected: value => root.miniPlayerAlwaysOnTopSelected(value)
+                                        onCheckUpdatesRequested: root.checkUpdatesRequested()
+                                        onDownloadUpdateRequested: root.downloadUpdateRequested()
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secLyrics
+                                readonly property bool shown: root.shownSection === "lyrics"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsLyricsSection {
+                                        lyricsFontSize: root.lyricsFontSize
+                                        lyricsAlignment: root.lyricsAlignment
+                                        lyricsActiveStyle: root.lyricsActiveStyle
+                                        preferLocalLyrics: root.preferLocalLyrics
+                                        lyricsFont: root.appWindow.lyricsFont
+                                        lyricsFontWeight: root.appWindow.lyricsFontWeight
+                                        fontFamilies: root.appWindow.fontFamilies
+                                        libraryLyricsEnabled: root.appWindow.libraryLyricsEnabled
+                                        lrclibAvailable: root.svcLrclib && !root.offlineBlackout
+                                        onLibraryLyricsSelected: value => root.appWindow.libraryLyricsEnabled = value
+                                        onLyricsFontSelected: value => root.appWindow.lyricsFont = value
+                                        onLyricsFontWeightSelected: value => root.appWindow.lyricsFontWeight = value
+                                        onLyricsFontSizeSelected: value => root.lyricsFontSizeSelected(value)
+                                        onLyricsAlignmentSelected: value => root.lyricsAlignmentSelected(value)
+                                        onLyricsActiveStyleSelected: value => root.lyricsActiveStyleSelected(value)
+                                        onPreferLocalLyricsSelected: value => root.preferLocalLyricsSelected(value)
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secScrobble
+                                readonly property bool shown: root.shownSection === "scrobble"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsScrobbleSection {
+                                        offlineBlackout: root.offlineBlackout
+                                        listenBrainzEnabled: root.scrobbleListenBrainzEnabled
+                                        listenBrainzUser: root.scrobbleListenBrainzUser
+                                        listenBrainzConnected: root.scrobbleListenBrainzConnected
+                                        libreFmEnabled: root.scrobbleLibreFmEnabled
+                                        libreFmUser: root.scrobbleLibreFmUser
+                                        libreFmConnected: root.scrobbleLibreFmConnected
+                                        onListenBrainzEnabledToggled: value => root.scrobbleListenBrainzToggled(value)
+                                        onDisconnectListenBrainzRequested: root.disconnectListenBrainzRequested()
+                                        onLibreFmEnabledToggled: value => root.scrobbleLibreFmToggled(value)
+                                        onDisconnectLibreFmRequested: root.disconnectLibreFmRequested()
+                                        lastFmEnabled: root.scrobbleLastFmEnabled
+                                        lastFmUser: root.scrobbleLastFmUser
+                                        lastFmConnected: root.scrobbleLastFmConnected
+                                        onLastFmEnabledToggled: value => root.scrobbleLastFmToggled(value)
+                                        onDisconnectLastFmRequested: root.disconnectLastFmRequested()
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secNetwork
+                                readonly property bool shown: root.shownSection === "network"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsNetworkSection {
+                                        offlineBlackout: root.offlineBlackout
+                                        svcLrclib: root.svcLrclib
+                                        svcRadio: root.svcRadio
+                                        svcDeezer: root.svcDeezer
+                                        svcAudiodb: root.svcAudiodb
+                                        svcWiki: root.svcWiki
+                                        svcArchive: root.svcArchive
+                                        svcDiscord: root.svcDiscord
+                                        onOfflineBlackoutSelected: value => root.offlineBlackoutSelected(value)
+                                        onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
+                                        onOpenJellyfinRequested: root.openJellyfinRequested()
+                                        onOpenSubsonicRequested: root.openSubsonicRequested()
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secPhoneRemote
+                                readonly property bool shown: root.shownSection === "phone"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsPhoneRemoteSection {
+                                        offlineBlackout: root.offlineBlackout
+                                        svcPhoneRemote: root.svcPhoneRemote
+                                        onServiceToggleRequested: (name, value) => root.serviceToggleRequested(name, value)
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secBackup
+                                readonly property bool shown: root.shownSection === "data"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    SettingsBackupSection {
+                                        backupStatus: root.backupStatus
+                                        onExportBackupRequested: root.exportBackupRequested()
+                                        onImportBackupRequested: root.importBackupRequested()
+                                    }
+                                }
+                            }
+
+                            Loader {
+                                id: secCredits
+                                readonly property bool shown: root.shownSection === "credits"
+                                visible: shown
+                                active: shown || root.buildAllSections
+                                asynchronous: !shown
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                sourceComponent: Component {
+                                    CreditsView {
+                                        onWhatsNewRequested: root.whatsNewRequested()
+                                    }
+                                }
                             }
                         }
                     }

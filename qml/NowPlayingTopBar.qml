@@ -14,6 +14,7 @@ Item {
         iconSize: 18
         tint: root.appWindow.textSecondary
         hoverTint: root.appWindow.textPrimary
+        face: false
         backgroundColor: root.appWindow.overlayButton
         hoverBackgroundColor: root.appWindow.overlayButtonHover
         borderColor: Qt.alpha(root.appWindow.textPrimary, 0.1)

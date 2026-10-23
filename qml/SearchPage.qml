@@ -203,15 +203,26 @@ Item {
                     Timer {
                         id: queryTimer
                         interval: 150
-                        onTriggered: root.appWindow.searchQuery = pageSearchInput.text
+                        onTriggered: pageSearchInput.applyQuery()
+                    }
+
+                    // Keys that act on the results search the typed text first, so they never use the previous results.
+                    function applyQuery() {
+                        queryTimer.stop()
+                        root.appWindow.searchQuery = text
                     }
                     Keys.onEscapePressed: {
                         if (text) text = ""
                         else focus = false
                     }
-                    Keys.onReturnPressed: if (root.libraryModel.visibleTrackCount > 0) root.playResult(root.libraryModel.visibleTracks()[0])
-                    Keys.onEnterPressed: if (root.libraryModel.visibleTrackCount > 0) root.playResult(root.libraryModel.visibleTracks()[0])
+                    function playFirstResult() {
+                        applyQuery()
+                        if (root.libraryModel.visibleTrackCount > 0) root.playResult(root.libraryModel.visibleTracks()[0])
+                    }
+                    Keys.onReturnPressed: playFirstResult()
+                    Keys.onEnterPressed: playFirstResult()
                     Keys.onDownPressed: {
+                        applyQuery()
                         if (root.libraryModel.visibleTrackCount === 0) return
                         searchResults.currentIndex = 0
                         searchResults.forceActiveFocus()

@@ -140,7 +140,7 @@ SettingRow {
                         Label {
                             Layout.fillWidth: true
                             text: optItem.optionLabel
-                            color: optItem.isSelected ? root.accentColor : (optItem.highlighted ? textPrimary : textSecondary)
+                            color: optItem.isSelected ? accentText : (optItem.highlighted ? textPrimary : textSecondary)
                             font.family: (modelData && typeof modelData === "object" && modelData.font)
                                 || (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
                             font.pixelSize: 12

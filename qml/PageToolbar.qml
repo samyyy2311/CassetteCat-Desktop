@@ -42,6 +42,9 @@ RowLayout {
         Accessible.name: root.currentLabel
         Accessible.onPressAction: tabMenu.open()
         Keys.onReturnPressed: tabMenu.open()
+        Keys.onEnterPressed: tabMenu.open()
+        // Space opens the menu rather than reaching the play/pause shortcut.
+        Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space
         Keys.onSpacePressed: tabMenu.open()
 
         Row {
@@ -97,7 +100,7 @@ RowLayout {
                 AppMenuItem {
                     required property var modelData
                     text: modelData.label
-                    checkable: true
+                    // Not checkable: choosing the current tab would uncheck it, and nothing binds it back.
                     checked: modelData.id === root.current
                     onTriggered: root.selected(modelData.id)
                 }

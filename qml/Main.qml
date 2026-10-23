@@ -5241,14 +5241,10 @@ ApplicationWindow {
                                 elide: Text.ElideRight
                             }
                         }
-                        Label {
+                        SettingButton {
                             visible: !lyricCustomEditorOpen
                             text: qsTr("Add custom")
-                            color: accentText
-                            font.family: displayFont
-                            font.pixelSize: 12
-                            font.weight: Font.DemiBold
-                            MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = true }
+                            onClicked: lyricCustomEditorOpen = true
                         }
                         TransportButton {
                             Accessible.name: qsTr("Close lyrics search")
@@ -5417,29 +5413,21 @@ ApplicationWindow {
                         RowLayout {
                             Layout.fillWidth: true
                             Label { Layout.fillWidth: true; text: qsTr("Timestamped LRC becomes synced lyrics."); color: silverDim; font.family: bodyFont; font.pixelSize: 11 }
-                            Label {
+                            SettingButton {
                                 text: qsTr("Cancel")
-                                color: textSecondary
-                                font.family: displayFont
-                                font.pixelSize: 13
-                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: lyricCustomEditorOpen = false }
+                                onClicked: lyricCustomEditorOpen = false
                             }
-                            Label {
+                            SettingButton {
                                 text: qsTr("Save & apply")
-                                color: lyricCustomText.trim().length ? recordRedHover : silverDim
-                                font.family: displayFont
-                                font.pixelSize: 13
-                                font.weight: Font.DemiBold
-                                MouseArea {
-                                    anchors.fill: parent
-                                    enabled: lyricCustomText.trim().length > 0
-                                    cursorShape: enabled ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                    onClicked: {
-                                        const synced = parseLrc(lyricCustomText).length > 0
-                                        services.cacheLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", synced ? lyricCustomText : "", synced ? "" : lyricCustomText, synced ? "Custom LRC" : "Custom plain")
-                                        applyLyrics(lyricCustomText, synced ? "Custom LRC" : "Custom plain")
-                                        lyricSearchOpen = false
-                                    }
+                                primary: true
+                                enabled: lyricCustomText.trim().length > 0
+                                onClicked: {
+                                    // Plain text parses too, as untimed lines; lyrics count as synced when they start timed.
+                                    const parsed = parseLrc(lyricCustomText)
+                                    const synced = parsed.length > 0 && parsed[0].timeMs >= 0
+                                    services.cacheLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", synced ? lyricCustomText : "", synced ? "" : lyricCustomText, synced ? "Custom LRC" : "Custom plain")
+                                    applyLyrics(lyricCustomText, synced ? "Custom LRC" : "Custom plain")
+                                    lyricSearchOpen = false
                                 }
                             }
                         }

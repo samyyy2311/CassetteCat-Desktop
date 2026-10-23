@@ -25,6 +25,7 @@ Rectangle {
         : root.primary ? root.accentHoverColor
         : (mouseArea.containsMouse ? textPrimary : textSecondary)
     color: "transparent"
+    opacity: enabled ? 1 : 0.35
     Accessible.name: root.accessibleName
     Accessible.role: Accessible.Button
 
@@ -95,5 +96,8 @@ Rectangle {
 
     Keys.onReturnPressed: root.clicked()
     Keys.onEnterPressed: root.clicked()
+    // Space presses the focused button rather than reaching the play/pause shortcut.
+    Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space
+    Keys.onSpacePressed: event => { if (!event.isAutoRepeat) root.clicked() }
     activeFocusOnTab: true
 }

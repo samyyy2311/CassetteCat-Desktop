@@ -89,25 +89,6 @@ Item {
         { id: "credits", label: qsTr("Credits & Legal"), icon: "info" }
     ]
 
-    readonly property real activeSectionHeight: {
-        switch (currentSection) {
-            case "library": return secLibrary.item ? secLibrary.item.implicitHeight : 0
-            case "health": return secHealth.item ? secHealth.item.implicitHeight : 0
-            case "appearance": return secAppearance.item ? secAppearance.item.implicitHeight : 0
-            case "sound": return secSound.item ? secSound.item.implicitHeight : 0
-            case "playback": return secPlayback.item ? secPlayback.item.implicitHeight : 0
-            case "shortcuts": return secShortcuts.item ? secShortcuts.item.implicitHeight : 0
-            case "desktop": return secDesktop.item ? secDesktop.item.implicitHeight : 0
-            case "lyrics": return secLyrics.item ? secLyrics.item.implicitHeight : 0
-            case "scrobble": return secScrobble.item ? secScrobble.item.implicitHeight : 0
-            case "network": return secNetwork.item ? secNetwork.item.implicitHeight : 0
-            case "phone": return secPhoneRemote.item ? secPhoneRemote.item.implicitHeight : 0
-            case "data": return secBackup.item ? secBackup.item.implicitHeight : 0
-            case "credits": return secCredits.item ? secCredits.item.implicitHeight : 0
-            default: return 600
-        }
-    }
-
     signal addLibraryFolderRequested()
     signal removeLibraryFolderRequested(string path)
     signal addExcludeRequested()

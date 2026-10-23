@@ -146,7 +146,6 @@ ApplicationWindow {
     property bool folderSortAscending: true
     property bool refineSheetOpen: false
     property string libSearchQuery: ""
-    property bool libSearchVisible: false
     property string searchQuery: ""
     property string activeFormatFilter: "ALL"
     property bool nowPlayingOpen: false

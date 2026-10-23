@@ -16,8 +16,4 @@ QtObject {
     readonly property real flickDeceleration: 900
     readonly property real maximumFlickVelocity: 4500
     readonly property int cacheBuffer: 350
-
-    // Lyrics highlight scroll durations
-    readonly property int highlightDurationFull: 500
-    readonly property int highlightDurationMini: 400
 }

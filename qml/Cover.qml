@@ -68,13 +68,6 @@ Item {
 
     property bool useB: false
     readonly property var activeImage: useB ? imageB : imageA
-    readonly property var previousImage: useB ? imageA : imageB
-
-    readonly property real artworkImplicitWidth: activeImage ? activeImage.implicitWidth : 0
-    readonly property real artworkImplicitHeight: activeImage ? activeImage.implicitHeight : 0
-    readonly property real artworkAspectRatio: (artworkImplicitHeight > 0 && artworkImplicitWidth > 0)
-        ? (artworkImplicitWidth / artworkImplicitHeight)
-        : 1.0
 
     readonly property bool hasArtwork: artworkSource.toString() !== ""
     // The cover image provider answers "no artwork" with a 1x1 image instead of an error.

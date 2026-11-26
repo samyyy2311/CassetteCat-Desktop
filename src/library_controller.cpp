@@ -664,6 +664,15 @@ bool LibraryController::selfCheck() {
         readTrackInfo(wavPath).title != "Keep" || !tagged.hasEmbeddedArtwork(wavPath))
         return fail("cover saved into the file");
 
+    // Opened files play as the library's copy when it has one; files that aren't audio are skipped.
+    const QString outsidePath = tagDir.filePath("outside.wav");
+    QFile::copy(wavPath, outsidePath);
+    tagged.m_tracks = {QVariantMap{{"filePath", wavPath}, {"title", "From library"}}};
+    const QVariantList opened = tagged.openPaths({wavPath, coverPath, outsidePath});
+    if (opened.size() != 2 || opened[0].toMap().value("title").toString() != "From library" ||
+        opened[1].toMap().value("title").toString() != "Keep")
+        return fail("opened files");
+
     LibraryController mixLibrary;
     mixLibrary.m_tracks = {
         QVariantMap{{"filePath", "/m/seed.flac"},
@@ -821,6 +830,31 @@ QVariantList LibraryController::tracksForPaths(const QVariantList &paths) const 
             result[index] = track;
     }
     return result;
+}
+
+QVariantList LibraryController::openPaths(const QStringList &paths) {
+    QVariantList tracks;
+    for (const QString &path : paths) {
+        const QFileInfo file(path);
+        if (file.isDir()) {
+            loadFolder(QUrl::fromLocalFile(file.absoluteFilePath()));
+            continue;
+        }
+        const QString suffix = file.suffix().toLower();
+        if (suffix == "m3u" || suffix == "m3u8") {
+            tracks += parseM3uPlaylist(file.absoluteFilePath());
+            continue;
+        }
+        if (!file.isFile() || !QDir::match(audioFileFilters(), file.fileName()))
+            continue;
+        const QVariantMap known = tracksForPaths({file.absoluteFilePath()}).constFirst().toMap();
+        if (!known.isEmpty()) {
+            tracks.append(known);
+            continue;
+        }
+        tracks.append(readTrackInfo(file.absoluteFilePath()).toMap());
+    }
+    return tracks;
 }
 
 QString LibraryController::indexLetter(const QString &name) {

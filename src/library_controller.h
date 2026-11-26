@@ -50,6 +50,9 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE void setAlbumArtwork(const QString &album, const QString &artist, const QString &artworkPath);
     /// Returns the available track for each path, or an empty map where none matches; accepts file URLs.
     Q_INVOKABLE QVariantList tracksForPaths(const QVariantList &paths) const;
+    /// Takes files and folders opened or dropped from outside the app: folders join the library, and the tracks to
+    /// play for the rest are returned, using the library's copy of a song when it has one. Other files are skipped.
+    Q_INVOKABLE QVariantList openPaths(const QStringList &paths);
     Q_INVOKABLE QStringList availablePaths() const;
     /// Orders names for display: symbols and numbers first, then letters in any script, ignoring leading articles.
     Q_INVOKABLE int compareNames(const QString &left, const QString &right) const;

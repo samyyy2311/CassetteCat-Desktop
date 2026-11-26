@@ -40,7 +40,6 @@
 
 #include "app_paths.h"
 #include "app_settings.h"
-#include "audio_metadata.h"
 #include "credential_vault.h"
 #include "discord_presence.h"
 #include "remote_control.h"
@@ -525,26 +524,9 @@ int main(int argc, char *argv[]) {
     TrayController tray(appIcon, &app);
 
     const auto openExternalPath = [&](const QString &path) {
-        const QFileInfo file(path);
-        if (!file.exists())
-            return;
-        if (file.isDir()) {
-            library.loadFolder(QUrl::fromLocalFile(file.absoluteFilePath()));
-            return;
-        }
-        const QString ext = file.suffix().toLower();
-        if (ext == "m3u" || ext == "m3u8") {
-            const QVariantList tracks = parseM3uPlaylist(file.absoluteFilePath());
-            if (!tracks.isEmpty()) {
-                player.requestPlayback(tracks, 0);
-            }
-            return;
-        }
-        TrackInfo info = readTrackInfo(file.absoluteFilePath());
-        if (info.album.isEmpty()) {
-            info.album = QStringLiteral("External file");
-        }
-        player.requestPlayback({info.toMap()}, 0);
+        const QVariantList tracks = library.openPaths({path});
+        if (!tracks.isEmpty())
+            player.requestPlayback(tracks, 0);
     };
 
     QObject::connect(&mpris, &MprisController::openUriRequested, [&](const QString &uri) {

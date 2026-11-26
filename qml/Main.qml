@@ -3823,6 +3823,18 @@ ApplicationWindow {
         }
     }
 
+    // Songs and folders dragged in from outside the app: songs play, folders join the library. Drags within the app
+    // carry a source and are left to the drop areas they're meant for.
+    DropArea {
+        anchors.fill: parent
+        onEntered: drag => drag.accepted = drag.hasUrls && !drag.source
+        onDropped: drop => {
+            const tracks = library.openPaths(drop.urls.map(url => library.localPath(url)))
+            if (tracks.length) player.requestPlayback(tracks, 0)
+            drop.accept(Qt.CopyAction)
+        }
+    }
+
     Item {
         id: appArea
         anchors.top: customTitleBar.bottom

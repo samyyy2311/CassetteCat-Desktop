@@ -136,12 +136,21 @@ Item {
         else appWindow.subsonicError = msg
     }
 
-    function doConnect() {
+    // Plain HTTP beyond the home network sends the password as readable text, so it's confirmed first.
+    function confirmUnencrypted(action) {
+        if (!streamingController.isUnencryptedPublicUrl(serverUrl.text)) return true
+        unencryptedConfirm.pendingAction = action
+        unencryptedConfirm.open()
+        return false
+    }
+
+    function doConnect(confirmed) {
         if (connecting) return
         const url = serverUrl.text.trim()
         const username = serverUser.text.trim()
         const password = serverPassword.text
         if (!url || !username || !password) { setError(qsTr("Enter server URL, username, and password.")); return }
+        if (!confirmed && !confirmUnencrypted(() => doConnect(true))) return
         setError("")
         if (protocol === "jellyfin") { appWindow.jellyfinConnecting = true; streamingController.connectJellyfin(url, username, password, root.trustCert) }
         else { appWindow.subsonicConnecting = true; streamingController.connectSubsonic(url, username, password, root.trustCert) }
@@ -757,7 +766,8 @@ Item {
                         iconName: "key-round"
                         accessibleName: qsTr("Connect with Jellyfin Quick Connect")
                         onClicked: {
-                            root.streamingController.startJellyfinQuickConnect(serverUrl.text, root.trustCert)
+                            const start = () => root.streamingController.startJellyfinQuickConnect(serverUrl.text, root.trustCert)
+                            if (root.confirmUnencrypted(start)) start()
                         }
                     }
 
@@ -818,5 +828,16 @@ Item {
         confirmText: qsTr("Disconnect")
         destructive: true
         onConfirmed: streamingController.disconnectServer(root.protocol)
+    }
+
+    ConfirmPopup {
+        id: unencryptedConfirm
+        property var pendingAction: null
+        title: qsTr("Connect without encryption?")
+        subtitle: ""
+        message: qsTr("This address uses plain HTTP and isn't on your home network, so your password and music travel unencrypted. Use an https:// address if your server has one.")
+        iconName: "shield"
+        confirmText: qsTr("Connect anyway")
+        onConfirmed: pendingAction()
     }
 }

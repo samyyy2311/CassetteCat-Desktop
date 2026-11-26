@@ -45,8 +45,9 @@ bool isPrivateOrLocalHost(const QString &host) {
     if (isIpv4) {
         const quint8 first = static_cast<quint8>(ipv4 >> 24);
         const quint8 second = static_cast<quint8>((ipv4 >> 16) & 0xff);
+        // 100.64.0.0/10 is shared address space, used by Tailscale for devices on a private network.
         return first == 10 || (first == 172 && second >= 16 && second <= 31) || (first == 192 && second == 168) ||
-               (first == 169 && second == 254);
+               (first == 169 && second == 254) || (first == 100 && second >= 64 && second <= 127);
     }
 
     const Q_IPV6ADDR ipv6 = address.toIPv6Address();
@@ -58,6 +59,11 @@ QString hostFromUnschemedUrl(const QString &value) {
 }
 
 } // namespace
+
+bool isUnencryptedPublicUrl(const QString &raw) {
+    const QUrl url(normalizeServerUrl(raw));
+    return url.scheme().compare("http", Qt::CaseInsensitive) == 0 && !isPrivateOrLocalHost(url.host());
+}
 
 QString normalizeServerUrl(const QString &raw, int defaultPort) {
     QString url = raw.trimmed();
@@ -79,8 +85,7 @@ QString normalizeServerUrl(const QString &raw, int defaultPort) {
     if (!parsed.isValid() || parsed.host().isEmpty() ||
         (parsed.scheme().compare("http", Qt::CaseInsensitive) != 0 &&
          parsed.scheme().compare("https", Qt::CaseInsensitive) != 0) ||
-        !parsed.userInfo().isEmpty() || parsed.hasQuery() || parsed.hasFragment() ||
-        (parsed.scheme().compare("http", Qt::CaseInsensitive) == 0 && !isPrivateOrLocalHost(parsed.host()))) {
+        !parsed.userInfo().isEmpty() || parsed.hasQuery() || parsed.hasFragment()) {
         return {};
     }
 

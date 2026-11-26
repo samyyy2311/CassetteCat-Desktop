@@ -645,14 +645,30 @@ QUrl StreamingController::streamSourceFor(const QString &source, const QString &
         if (token.isEmpty()) {
             return {};
         }
-        QUrl url(settings.value("stream/jellyfinUrl").toString() + "/Audio/" + remoteId + "/stream");
+        // The universal stream sends a song as it is when the player reads its format, and otherwise has the server
+        // convert it, so songs in formats the player can't decode still play. FFmpeg decodes nearly every format, so
+        // conversion is rarely needed here.
+        QUrl url(settings.value("stream/jellyfinUrl").toString() + "/Audio/" + remoteId + "/universal");
         QUrlQuery q;
-        q.addQueryItem("static", "true");
+        q.addQueryItem("container", "mp3,aac,m4a,m4b,flac,alac,ogg,oga,opus,webm,webma,wav,aiff,aif,wma,ape,wv,mka,"
+                                    "mpc,dsf,dff");
+        q.addQueryItem("transcodingContainer", "mp3");
+        q.addQueryItem("transcodingProtocol", "http");
+        q.addQueryItem("audioCodec", "mp3");
+        q.addQueryItem("audioBitRate", "320000");
+        // High enough that lossless files are sent as they are rather than converted to fit.
+        q.addQueryItem("maxStreamingBitrate", "140000000");
+        q.addQueryItem("userId", settings.value("stream/jellyfinUserId").toString());
+        q.addQueryItem("deviceId", settings.value("stream/deviceId").toString());
         q.addQueryItem("api_key", token);
         url.setQuery(q);
         return url;
     }
     return {};
+}
+
+bool StreamingController::isUnencryptedPublicUrl(const QString &serverUrl) const {
+    return streaming::protocol::isUnencryptedPublicUrl(serverUrl);
 }
 
 QVariantMap StreamingController::serverConfigSnapshot() const {
@@ -692,7 +708,12 @@ bool runSelfChecks(bool includeVaultProbe) {
     g_failures = 0;
 
     check(normalizeServerUrl("music.example.com") == "https://music.example.com", "normalize-adds-https");
-    check(normalizeServerUrl("  http://music.example.com/ ").isEmpty(), "normalize-rejects-public-http");
+    check(normalizeServerUrl("  http://music.example.com/ ") == "http://music.example.com",
+          "normalize-keeps-typed-http");
+    check(isUnencryptedPublicUrl("http://music.example.com") && !isUnencryptedPublicUrl("http://jellyfin.lan") &&
+              !isUnencryptedPublicUrl("https://music.example.com") && !isUnencryptedPublicUrl("100.101.1.2:8096"),
+          "unencrypted-public-url");
+    check(normalizeServerUrl("100.101.1.2", 8096) == "http://100.101.1.2:8096", "normalize-tailscale-http");
     check(normalizeServerUrl("https://user:password@music.example.com").isEmpty(), "normalize-rejects-userinfo");
     check(normalizeServerUrl("https://music.example.com?token=secret").isEmpty(), "normalize-rejects-query");
     check(normalizeServerUrl("https://music.example.com#fragment").isEmpty(), "normalize-rejects-fragment");

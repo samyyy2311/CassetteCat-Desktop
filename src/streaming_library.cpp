@@ -36,8 +36,7 @@ void StreamingController::connectSubsonic(const QString &serverUrl, const QStrin
     const QString base = normalizeServerUrl(serverUrl, 4533);
     const QString user = username.trimmed();
     if (base.isEmpty() || user.isEmpty() || password.isEmpty()) {
-        emit serverFailed("subsonic",
-                          QString("Enter a valid server URL, username, and password. Public servers require HTTPS."));
+        emit serverFailed("subsonic", QString("Enter a valid server URL, username, and password."));
         return;
     }
     const QString salt = randomSalt();
@@ -223,8 +222,7 @@ void StreamingController::connectJellyfin(const QString &serverUrl, const QStrin
     const QString base = normalizeServerUrl(serverUrl, 8096);
     const QString user = username.trimmed();
     if (base.isEmpty() || user.isEmpty() || password.isEmpty()) {
-        emit serverFailed("jellyfin",
-                          QString("Enter a valid server URL, username, and password. Public servers require HTTPS."));
+        emit serverFailed("jellyfin", QString("Enter a valid server URL, username, and password."));
         return;
     }
     const int attempt = ++m_jellyConnectToken;
@@ -316,7 +314,7 @@ void StreamingController::startJellyfinQuickConnect(const QString &serverUrl, bo
 
     const QString base = normalizeServerUrl(serverUrl, 8096);
     if (base.isEmpty()) {
-        emit serverFailed("jellyfin", QString("Enter a valid Jellyfin server URL. Public servers require HTTPS."));
+        emit serverFailed("jellyfin", QString("Enter a valid Jellyfin server URL."));
         return;
     }
 

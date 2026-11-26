@@ -4,6 +4,36 @@ All notable changes to CassetteCat Desktop are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.3] - 2026-11-26
+
+### Added
+* Drag songs, an M3U playlist or a folder from File Explorer onto the window: songs play, and folders join your library.
+* Removing a song from the queue can be undone for a few seconds.
+* Liking a song loves it on your connected Last.fm, Libre.fm and ListenBrainz accounts. Sync Likes in Settings > Scrobbling marks the songs you liked before too.
+
+### Changed
+* Every button, chip and choice shares one look, and dropdowns and menus share one panel.
+* In a narrow window, page tabs fold into a menu instead of running off the edge, and the player bar keeps the song title.
+* Shuffle spreads each artist's songs out, so the same artist rarely plays twice in a row.
+* A page appears once it's ready instead of filling in piece by piece, and Settings opens in under a second.
+* CassetteCat starts about a second faster, and searching no longer freezes for half a second as you type.
+* Resizing the window is smoother.
+* Messages such as an import's result show again.
+* A Jellyfin or Subsonic server address can start with http:// even when it isn't on your home network. CassetteCat asks first before sending your password unencrypted.
+
+### Fixed
+* Jellyfin songs in formats the player can't read now play, converted by the server.
+* CassetteCat no longer crashes when it comes back from the system tray or from the mini player.
+* Music no longer stutters while a page opens or a setting is saved.
+* Closing the full player while the mini player is open no longer quits the app.
+* Pause no longer gets stuck when you pause while the next song is loading.
+* Song counts in the Listening Record are no longer cut short when you close the window to the tray or the mini player.
+* Covers that went blank when the song changed come back, and the queue stays on the current song after shuffling.
+* Opening CassetteCat again while it's starting brings its window up instead of doing nothing.
+* Buttons and See all links can be used with the keyboard and screen readers.
+
+---
+
 ## [1.0.2] - 2026-10-22
 
 ### Fixed

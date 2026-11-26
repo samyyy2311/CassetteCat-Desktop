@@ -30,59 +30,63 @@ Rectangle {
     Accessible.role: Accessible.Button
     Accessible.onPressAction: if (root.enabled) root.clicked()
 
-    ButtonFace {
+    // Only what's drawn sinks when pressed, so a press near the edge still releases on the button.
+    Item {
         anchors.fill: parent
-        hovered: mouseArea.containsMouse
-        accented: root.primary || root.destructive
-        accentColor: root.destructive ? Qt.alpha(danger, 0.6) : root.accentColor
-        accentHoverColor: root.destructive ? danger : root.accentHoverColor
-        border.width: root.primary ? 1.5 : 1
-    }
-
-    transform: Translate {
-        y: mouseArea.pressed ? 2 : 0
-        Behavior on y { NumberAnimation { duration: 80; easing.type: Easing.Linear } }
-    }
-
-    RowLayout {
-        id: contentRow
-        anchors.centerIn: parent
-        spacing: 6
-
-        LucideIcon {
-            visible: root.iconName.length > 0 && !root.iconRight
-            Layout.preferredWidth: 14
-            Layout.preferredHeight: 14
-            Layout.alignment: Qt.AlignVCenter
-            icon: root.iconName
-            preserveColor: root.preserveIconColor
-            color: root.contentColor
-
-            Behavior on color { ColorAnimation { duration: 120 } }
+        transform: Translate {
+            y: mouseArea.pressed ? 2 : 0
+            Behavior on y { NumberAnimation { duration: 80; easing.type: Easing.Linear } }
         }
 
-        Label {
-            visible: root.text.length > 0
-            text: root.text
-            color: root.contentColor
-            font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
-            font.pixelSize: 12
-            font.weight: Font.DemiBold
-            Layout.alignment: Qt.AlignVCenter
-
-            Behavior on color { ColorAnimation { duration: 120 } }
+        ButtonFace {
+            anchors.fill: parent
+            hovered: mouseArea.containsMouse
+            accented: root.primary || root.destructive
+            accentColor: root.destructive ? Qt.alpha(danger, 0.6) : root.accentColor
+            accentHoverColor: root.destructive ? danger : root.accentHoverColor
+            border.width: root.primary ? 1.5 : 1
         }
 
-        LucideIcon {
-            visible: root.iconName.length > 0 && root.iconRight
-            Layout.preferredWidth: 14
-            Layout.preferredHeight: 14
-            Layout.alignment: Qt.AlignVCenter
-            icon: root.iconName
-            preserveColor: root.preserveIconColor
-            color: root.contentColor
+        RowLayout {
+            id: contentRow
+            anchors.centerIn: parent
+            spacing: 6
 
-            Behavior on color { ColorAnimation { duration: 120 } }
+            LucideIcon {
+                visible: root.iconName.length > 0 && !root.iconRight
+                Layout.preferredWidth: 14
+                Layout.preferredHeight: 14
+                Layout.alignment: Qt.AlignVCenter
+                icon: root.iconName
+                preserveColor: root.preserveIconColor
+                color: root.contentColor
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
+
+            Label {
+                visible: root.text.length > 0
+                text: root.text
+                color: root.contentColor
+                font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                Layout.alignment: Qt.AlignVCenter
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
+
+            LucideIcon {
+                visible: root.iconName.length > 0 && root.iconRight
+                Layout.preferredWidth: 14
+                Layout.preferredHeight: 14
+                Layout.alignment: Qt.AlignVCenter
+                icon: root.iconName
+                preserveColor: root.preserveIconColor
+                color: root.contentColor
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
         }
     }
 

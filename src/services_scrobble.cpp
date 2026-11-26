@@ -251,7 +251,9 @@ void ServicesController::postToScrobbleAccounts(const QMap<QString, QString> &pa
             continue;
         QMap<QString, QString> withSession = params;
         withSession.insert("sk", it.value());
-        trackReply(m_net->post(scrobbleRequest(*network), signedRequestBody(*network, withSession)));
+        QNetworkReply *sent =
+            trackReply(m_net->post(scrobbleRequest(*network), signedRequestBody(*network, withSession)));
+        connect(sent, &QNetworkReply::finished, sent, &QObject::deleteLater);
     }
 }
 
@@ -437,18 +439,27 @@ void ServicesController::sendLove(const Love &love) {
     QNetworkRequest lookup(lookupUrl);
     lookup.setRawHeader("Authorization", "Token " + m_listenBrainzToken.toUtf8());
     lookup.setTransferTimeout(services::detail::requestTimeoutMs);
+    // Lookups can finish out of order, so only the newest like or unlike of a song is sent.
+    const QString song = artist + u'' + title;
+    const quint64 generation = ++m_loveGenerations[song];
     auto *reply = trackReply(m_net->get(lookup));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, loved, token = m_listenBrainzToken] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, loved, song, generation, token = m_listenBrainzToken] {
         reply->deleteLater();
         const QString mbid = QJsonDocument::fromJson(reply->readAll()).object().value("recording_mbid").toString();
-        if (reply->error() != QNetworkReply::NoError || mbid.isEmpty() || token != m_listenBrainzToken)
+        if (reply->error() != QNetworkReply::NoError || mbid.isEmpty() || token != m_listenBrainzToken ||
+            m_loveGenerations.value(song) != generation)
+            return;
+        m_loveGenerations.remove(song);
+        // ListenBrainz may have been turned off, or the app taken offline, while the lookup ran.
+        if (!onlineEnabled() || !SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool())
             return;
         QNetworkRequest feedback(QUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/feedback/recording-feedback"));
         feedback.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
         feedback.setRawHeader("Authorization", "Token " + token.toUtf8());
         feedback.setTransferTimeout(services::detail::requestTimeoutMs);
         const QJsonObject body{{"recording_mbid", mbid}, {"score", loved ? 1 : 0}};
-        trackReply(m_net->post(feedback, QJsonDocument(body).toJson(QJsonDocument::Compact)));
+        QNetworkReply *sent = trackReply(m_net->post(feedback, QJsonDocument(body).toJson(QJsonDocument::Compact)));
+        connect(sent, &QNetworkReply::finished, sent, &QObject::deleteLater);
     });
 }
 

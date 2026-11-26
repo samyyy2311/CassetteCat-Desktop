@@ -17,6 +17,7 @@
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMimeDatabase>
 #include <QPointer>
 #include <QRandomGenerator>
 #include <QRegularExpression>
@@ -834,6 +835,10 @@ QVariantList LibraryController::tracksForPaths(const QVariantList &paths) const 
 
 QVariantList LibraryController::openPaths(const QStringList &paths) {
     QVariantList tracks;
+    // Files keep their place in tracks and are filled in after one lookup for all of them.
+    QList<qsizetype> fileSlots;
+    QVariantList files;
+    const QMimeDatabase mimeTypes;
     for (const QString &path : paths) {
         const QFileInfo file(path);
         if (file.isDir()) {
@@ -845,14 +850,19 @@ QVariantList LibraryController::openPaths(const QStringList &paths) {
             tracks += parseM3uPlaylist(file.absoluteFilePath());
             continue;
         }
-        if (!file.isFile() || !QDir::match(audioFileFilters(), file.fileName()))
+        // Anything the player can decode, so audio in a video container plays too; images and text are skipped.
+        const QString mime = mimeTypes.mimeTypeForFile(file).name();
+        if (!file.isFile() || !(mime.startsWith("audio/") || mime.startsWith("video/")))
             continue;
-        const QVariantMap known = tracksForPaths({file.absoluteFilePath()}).constFirst().toMap();
-        if (!known.isEmpty()) {
-            tracks.append(known);
-            continue;
-        }
-        tracks.append(readTrackInfo(file.absoluteFilePath()).toMap());
+        fileSlots.append(tracks.size());
+        tracks.append(QVariant());
+        files.append(file.absoluteFilePath());
+    }
+
+    const QVariantList known = tracksForPaths(files);
+    for (qsizetype i = 0; i < files.size(); ++i) {
+        const QVariantMap track = known[i].toMap();
+        tracks[fileSlots[i]] = track.isEmpty() ? readTrackInfo(files[i].toString()).toMap() : track;
     }
     return tracks;
 }
@@ -1510,6 +1520,9 @@ LibraryController::TrackLyrics LibraryController::indexedLyrics(int row, const Q
 
 void LibraryController::addLyrics(const QString &key, const QString &text) {
     const QStringList lines = sungLines(text);
+    // An index being built may have read this song already; a new revision makes it start again.
+    if (m_lyricsLoading && !lines.isEmpty())
+        ++m_lyricsRevision;
     if (!m_lyricsRead || lines.isEmpty())
         return;
     bool added = false;

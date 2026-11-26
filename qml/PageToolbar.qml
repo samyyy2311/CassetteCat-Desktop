@@ -32,20 +32,17 @@ RowLayout {
     }
 
     // Looks like the current tab, with a chevron to open the others.
-    Item {
+    ButtonBase {
         id: foldedTab
         visible: root.folded
+        // Hidden when the tabs unfold, so it mustn't keep keyboard focus or catch keys then.
+        enabled: visible
+        activeFocusOnTab: visible
         implicitWidth: foldedRow.implicitWidth
         implicitHeight: 32
-        activeFocusOnTab: visible
         Accessible.role: Accessible.ButtonMenu
         Accessible.name: root.currentLabel
-        Accessible.onPressAction: tabMenu.open()
-        Keys.onReturnPressed: tabMenu.open()
-        Keys.onEnterPressed: tabMenu.open()
-        // Space opens the menu rather than reaching the play/pause shortcut.
-        Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space
-        Keys.onSpacePressed: tabMenu.open()
+        onClicked: tabMenu.visible ? tabMenu.close() : tabMenu.open()
 
         Row {
             id: foldedRow
@@ -65,7 +62,7 @@ RowLayout {
                 width: 14
                 height: 14
                 icon: tabMenu.visible ? "chevron-up" : "chevron-down"
-                color: foldedMouse.containsMouse || foldedTab.activeFocus ? textPrimary : textSecondary
+                color: foldedTab.isHovered ? textPrimary : textSecondary
             }
         }
 
@@ -75,14 +72,6 @@ RowLayout {
             height: 2.5
             radius: 1.25
             color: recordRed
-        }
-
-        MouseArea {
-            id: foldedMouse
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: tabMenu.visible ? tabMenu.close() : tabMenu.open()
         }
 
         Menu {

@@ -175,6 +175,7 @@ class ServicesController : public QObject {
         bool loved;
     };
     QList<Love> m_loves;
+    QHash<QString, quint64> m_loveGenerations;
     bool m_lovesRunning = false;
     void sendNextLove();
     void sendLove(const Love &love);

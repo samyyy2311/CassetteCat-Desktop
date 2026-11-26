@@ -8,7 +8,7 @@ Item {
 
     signal clicked()
 
-    readonly property color tint: linkMouse.containsMouse ? recordRedHover : textSecondary
+    readonly property color tint: linkMouse.containsMouse || activeFocus ? recordRedHover : textSecondary
 
     implicitWidth: content.implicitWidth
     implicitHeight: content.implicitHeight
@@ -16,6 +16,12 @@ Item {
     Accessible.role: Accessible.Link
     Accessible.name: qsTr("See all %1").arg(count)
     Accessible.onPressAction: root.clicked()
+    activeFocusOnTab: true
+    Keys.onReturnPressed: root.clicked()
+    Keys.onEnterPressed: root.clicked()
+    // Space opens the list rather than reaching the play/pause shortcut.
+    Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space
+    Keys.onSpacePressed: event => { if (!event.isAutoRepeat) root.clicked() }
 
     RowLayout {
         id: content

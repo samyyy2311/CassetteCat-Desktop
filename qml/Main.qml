@@ -1789,12 +1789,13 @@ ApplicationWindow {
             window.hide()
         } else if (!appQuitting) {
             appQuitting = true
+            finishHistoryTracking()
             Qt.quit()
         }
     }
 
+    // Also runs when the window only hides, while the song keeps playing; quitting finishes its listen separately.
     function persistBeforeExit() {
-        finishHistoryTracking()
         libraryTagScan.save()
         persistPlayerState()
         if (window.geometryRestorable) saveWindowGeometry()
@@ -1940,7 +1941,8 @@ ApplicationWindow {
         nowPlayingOpen = false
         catalogDetailOpen = false
         page = "search"
-        if (shownPage === "search") focusSearchInput()
+        // The page is unloaded in the tray while shownPage stays "search", so it may still be loading.
+        if (shownPage === "search" && searchPageLoader.item) focusSearchInput()
         else searchPageLoader.focusOnShow = true
     }
 
@@ -2615,7 +2617,8 @@ ApplicationWindow {
             }
             return list
         }
-        const byArtist = {}
+        // No prototype, so an artist called "constructor" is just another key.
+        const byArtist = Object.create(null)
         source.forEach(track => {
             const artist = splitArtists(track.artist || "")[0].toLowerCase()
             if (!byArtist[artist]) byArtist[artist] = []
@@ -3224,6 +3227,7 @@ ApplicationWindow {
         }
         function onQuitRequested() {
             appQuitting = true
+            finishHistoryTracking()
             persistBeforeExit()
             Qt.quit()
         }
@@ -3314,6 +3318,7 @@ ApplicationWindow {
         function onPreviousRequested() { window.playPrevious() }
         function onQuitRequested() {
             appQuitting = true
+            finishHistoryTracking()
             persistBeforeExit()
             Qt.quit()
         }
@@ -4103,6 +4108,10 @@ ApplicationWindow {
                         asynchronous: true
                         active: (page === "search" || shownPage === "search") && !inTray
                         property bool focusOnShow: false
+                        onLoaded: if (focusOnShow && window.shownPage === "search") {
+                            focusOnShow = false
+                            window.focusSearchInput()
+                        }
 
                         sourceComponent: Component {
                             SearchPage {

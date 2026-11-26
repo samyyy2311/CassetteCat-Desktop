@@ -16,12 +16,9 @@
 
 #include <algorithm>
 
-QStringList audioFileFilters() {
-    return {"*.aac", "*.aiff", "*.alac", "*.flac", "*.m4a", "*.mp3", "*.ogg", "*.opus", "*.wav", "*.wma"};
-}
-
 QVariantList scanTracks(const QString &folder) {
-    const QStringList filters = audioFileFilters();
+    const QStringList filters = {"*.aac", "*.aiff", "*.alac", "*.flac", "*.m4a",
+                                 "*.mp3", "*.ogg",  "*.opus", "*.wav",  "*.wma"};
     QList<TrackInfo> trackList;
     QHash<QString, QString> artworkByFolder;
 

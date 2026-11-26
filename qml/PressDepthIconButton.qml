@@ -20,35 +20,39 @@ ButtonBase {
     implicitWidth: root.boxSize
     implicitHeight: root.boxSize
 
-    // Pressed, the whole button sinks a little, as on the website.
-    transform: Translate {
-        y: root.isPressed ? 2 : 0
-        Behavior on y { NumberAnimation { duration: 80; easing.type: Easing.Linear } }
-    }
-
-    ButtonFace {
-        anchors.fill: parent
-        radius: root.cornerRadius
-        hovered: root.isHovered
-        accented: root.highlighted
-        flat: !root.face
-        color: root.isHovered ? root.hoverBackgroundColor : root.backgroundColor
-        border.color: root.highlighted ? (root.isHovered ? recordRedHover : recordRed)
-                                       : (root.isHovered ? root.hoverBorderColor : root.borderColor)
-
-        Behavior on color { ColorAnimation { duration: 130 } }
-    }
-
+    // Pressed, the button sinks a little, as on the website. Only what's drawn moves, so a press near the edge
+    // still releases on the button.
     Item {
-        id: iconContainer
-        anchors.centerIn: parent
-        width: root.iconSize
-        height: root.iconSize
+        anchors.fill: parent
+        transform: Translate {
+            y: root.isPressed ? 2 : 0
+            Behavior on y { NumberAnimation { duration: 80; easing.type: Easing.Linear } }
+        }
 
-        LucideIcon {
+        ButtonFace {
             anchors.fill: parent
-            icon: root.iconName
-            color: root.highlighted ? recordRedHover : (root.isHovered ? root.hoverTint : root.tint)
+            radius: root.cornerRadius
+            hovered: root.isHovered
+            accented: root.highlighted
+            flat: !root.face
+            color: root.isHovered ? root.hoverBackgroundColor : root.backgroundColor
+            border.color: root.highlighted ? (root.isHovered ? recordRedHover : recordRed)
+                                           : (root.isHovered ? root.hoverBorderColor : root.borderColor)
+
+            Behavior on color { ColorAnimation { duration: 130 } }
+        }
+
+        Item {
+            id: iconContainer
+            anchors.centerIn: parent
+            width: root.iconSize
+            height: root.iconSize
+
+            LucideIcon {
+                anchors.fill: parent
+                icon: root.iconName
+                color: root.highlighted ? recordRedHover : (root.isHovered ? root.hoverTint : root.tint)
+            }
         }
     }
 }

@@ -154,10 +154,23 @@ Item {
         shortcuts: secShortcuts.item, desktop: secDesktop.item, lyrics: secLyrics.item, scrobble: secScrobble.item,
         network: secNetwork.item, phone: secPhoneRemote.item, data: secBackup.item
     })
+    // Sections still building in the background can't be searched yet, so a search waits for them before saying
+    // nothing was found.
+    readonly property bool sectionsSearchable: Object.values(searchableSections).every(item => !!item)
+    onSearchQueryChanged: if (searchQuery.trim()) buildAllSections = true
 
     // Only the open section is built with the page, so Settings opens quickly. The rest follow in the background, for
     // switching sections and searching.
     property bool buildAllSections: false
+    component SectionLoader: Loader {
+        property string section
+        readonly property bool shown: root.shownSection === section
+        visible: shown
+        active: shown || root.buildAllSections
+        asynchronous: !shown
+        Layout.fillWidth: true
+        Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+    }
     Timer {
         interval: 600
         running: true
@@ -339,7 +352,7 @@ Item {
                                 visible: root.searchQuery.trim() !== ""
                                 text: root.searchResults.length > 0
                                       ? qsTr("%n Setting(s) Found", "", root.searchResults.length)
-                                      : qsTr("No Settings Found")
+                                      : root.sectionsSearchable ? qsTr("No Settings Found") : qsTr("Searching…")
                             }
 
                             SettingCard {
@@ -362,14 +375,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secLibrary
-                                readonly property bool shown: root.shownSection === "library"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "library"
                                 sourceComponent: Component {
                                     SettingsLibrarySection {
                                         trackCount: root.trackCount
@@ -387,14 +395,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secHealth
-                                readonly property bool shown: root.shownSection === "health"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "health"
                                 sourceComponent: Component {
                                     SettingsLibraryHealthSection {
                                         appWindow: root.appWindow
@@ -403,14 +406,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secAppearance
-                                readonly property bool shown: root.shownSection === "appearance"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "appearance"
                                 sourceComponent: Component {
                                     SettingsAppearanceSection {
                                         accentName: root.accentName
@@ -434,14 +432,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secSound
-                                readonly property bool shown: root.shownSection === "sound"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "sound"
                                 sourceComponent: Component {
                                     SettingsSoundSection {
                                         audioOutputs: root.audioOutputs
@@ -459,14 +452,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secPlayback
-                                readonly property bool shown: root.shownSection === "playback"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "playback"
                                 sourceComponent: Component {
                                     SettingsPlaybackSection {
                                         resumeQueueOnLaunch: root.resumeQueueOnLaunch
@@ -483,14 +471,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secShortcuts
-                                readonly property bool shown: root.shownSection === "shortcuts"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "shortcuts"
                                 sourceComponent: Component {
                                     SettingsShortcutsSection {
                                         globalShortcutsEnabled: root.globalShortcutsEnabled
@@ -507,14 +490,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secDesktop
-                                readonly property bool shown: root.shownSection === "desktop"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "desktop"
                                 sourceComponent: Component {
                                     SettingsDesktopSection {
                                         defaultLaunchPage: root.defaultLaunchPage
@@ -543,14 +521,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secLyrics
-                                readonly property bool shown: root.shownSection === "lyrics"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "lyrics"
                                 sourceComponent: Component {
                                     SettingsLyricsSection {
                                         lyricsFontSize: root.lyricsFontSize
@@ -573,14 +546,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secScrobble
-                                readonly property bool shown: root.shownSection === "scrobble"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "scrobble"
                                 sourceComponent: Component {
                                     SettingsScrobbleSection {
                                         offlineBlackout: root.offlineBlackout
@@ -604,14 +572,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secNetwork
-                                readonly property bool shown: root.shownSection === "network"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "network"
                                 sourceComponent: Component {
                                     SettingsNetworkSection {
                                         offlineBlackout: root.offlineBlackout
@@ -630,14 +593,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secPhoneRemote
-                                readonly property bool shown: root.shownSection === "phone"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "phone"
                                 sourceComponent: Component {
                                     SettingsPhoneRemoteSection {
                                         offlineBlackout: root.offlineBlackout
@@ -647,14 +605,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secBackup
-                                readonly property bool shown: root.shownSection === "data"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "data"
                                 sourceComponent: Component {
                                     SettingsBackupSection {
                                         backupStatus: root.backupStatus
@@ -664,14 +617,9 @@ Item {
                                 }
                             }
 
-                            Loader {
+                            SectionLoader {
                                 id: secCredits
-                                readonly property bool shown: root.shownSection === "credits"
-                                visible: shown
-                                active: shown || root.buildAllSections
-                                asynchronous: !shown
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: visible && item ? item.implicitHeight : 0
+                                section: "credits"
                                 sourceComponent: Component {
                                     CreditsView {
                                         onWhatsNewRequested: root.whatsNewRequested()

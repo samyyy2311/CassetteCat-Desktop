@@ -161,13 +161,13 @@ ColumnLayout {
 
         SettingRow {
             iconName: "heart"
-            title: qsTr("Love Liked Songs")
+            title: qsTr("Sync Likes")
             subtitle: services.lovesLeft > 0
                       ? qsTr("%n love(s) left to send", "", services.lovesLeft)
-                      : qsTr("Songs you like are loved on your accounts. This sends the ones you liked before")
+                      : qsTr("Songs you like are marked as loved on your accounts. Sync adds the ones you liked before")
 
             SettingButton {
-                text: qsTr("Send")
+                text: qsTr("Sync")
                 enabled: !root.offlineBlackout && services.lovesLeft === 0
                 onClicked: root.loveLikedSongsRequested()
             }

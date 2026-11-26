@@ -2876,6 +2876,18 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Connect without encryption?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>This address uses plain HTTP and isn&apos;t on your home network, so your password and music travel unencrypted. Use an https:// address if your server has one.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Connect anyway</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Username</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4417,10 +4429,6 @@ Try the track title, or add custom lyrics</source>
         <source>Log in with your Last.fm username and password</source>
         <translation type="unfinished"></translation>
     </message>
-    <message>
-        <source>Love Liked Songs</source>
-        <translation type="unfinished"></translation>
-    </message>
     <message numerus="yes">
         <source>%n love(s) left to send</source>
         <translation>
@@ -4429,11 +4437,15 @@ Try the track title, or add custom lyrics</source>
         </translation>
     </message>
     <message>
-        <source>Songs you like are loved on your accounts. This sends the ones you liked before</source>
+        <source>Sync Likes</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Send</source>
+        <source>Songs you like are marked as loved on your accounts. Sync adds the ones you liked before</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sync</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

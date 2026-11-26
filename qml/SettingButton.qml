@@ -28,6 +28,7 @@ Rectangle {
     opacity: enabled ? 1 : 0.35
     Accessible.name: root.accessibleName
     Accessible.role: Accessible.Button
+    Accessible.onPressAction: if (root.enabled) root.clicked()
 
     ButtonFace {
         anchors.fill: parent

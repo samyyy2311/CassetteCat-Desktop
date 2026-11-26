@@ -165,6 +165,24 @@ ApplicationWindow {
     property var favoriteTracks: ({})
     property var playlists: []
     property string playlistStatus: ""
+    // Undoes what playlistStatus reports, while that message is still the one shown.
+    property var statusUndo: null
+    property string statusUndoText: ""
+    onPlaylistStatusChanged: if (playlistStatus) statusTimer.restart()
+
+    // Cleared once hidden, so the same message shown again still counts as a change.
+    function clearStatus() {
+        playlistStatus = ""
+        statusUndo = null
+        statusUndoText = ""
+    }
+
+    function showUndoable(message, undo) {
+        clearStatus()
+        statusUndo = undo
+        statusUndoText = message
+        playlistStatus = message
+    }
     property var playlistPendingExport: null
     property var playCounts: ({})
     property var seenAt: ({})
@@ -2721,14 +2739,39 @@ ApplicationWindow {
         const queue = activePlaybackQueue()
         const index = queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(track))
         if (index < 0 || index <= currentQueueIndex(queue)) return
+        const radio = player.currentTrack && player.currentTrack.format === "STREAM"
+        const original = radio ? originalRadioPlaybackQueue : originalPlaybackQueue
+        const originalIndex = original.findIndex(candidate => trackIdentity(candidate) === trackIdentity(track))
         const nextQueue = queue.slice()
         nextQueue.splice(index, 1)
-        if (player.currentTrack && player.currentTrack.format === "STREAM") {
+        const nextOriginal = original.filter(candidate => trackIdentity(candidate) !== trackIdentity(track))
+        if (radio) {
             radioPlaybackQueue = nextQueue
-            originalRadioPlaybackQueue = originalRadioPlaybackQueue.filter(candidate => trackIdentity(candidate) !== trackIdentity(track))
+            originalRadioPlaybackQueue = nextOriginal
         } else {
             playbackQueue = nextQueue
-            originalPlaybackQueue = originalPlaybackQueue.filter(candidate => trackIdentity(candidate) !== trackIdentity(track))
+            originalPlaybackQueue = nextOriginal
+        }
+        queueRevision++
+        showUndoable(qsTr("Removed %1 from the queue").arg(track.title || track.fileName),
+                     () => restoreQueuedTrack(track, radio, nextQueue, index, originalIndex))
+    }
+
+    // Puts a removed track back where it was. Any later change replaces the queue array, and then there's nothing
+    // sensible to put it back into.
+    function restoreQueuedTrack(track, radio, queueAfterRemoval, index, originalIndex) {
+        const queue = radio ? radioPlaybackQueue : playbackQueue
+        if (queue !== queueAfterRemoval) return
+        const nextQueue = queue.slice()
+        nextQueue.splice(index, 0, track)
+        const nextOriginal = (radio ? originalRadioPlaybackQueue : originalPlaybackQueue).slice()
+        if (originalIndex >= 0) nextOriginal.splice(originalIndex, 0, track)
+        if (radio) {
+            radioPlaybackQueue = nextQueue
+            originalRadioPlaybackQueue = nextOriginal
+        } else {
+            playbackQueue = nextQueue
+            originalPlaybackQueue = nextOriginal
         }
         queueRevision++
     }
@@ -4805,6 +4848,54 @@ ApplicationWindow {
     }
 
 
+
+    // Short messages, such as a playlist import's result or a removal that can be undone.
+    MenuSurface {
+        id: statusToast
+        readonly property bool undoable: !!window.statusUndo && window.statusUndoText === window.playlistStatus
+        // Above the Now Playing overlay, where most queue edits happen, and clear of the player bar.
+        z: 600
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: miniPlayerDock.height + 16
+        width: statusRow.implicitWidth + 36
+        height: 44
+        radius: height / 2
+        visible: opacity > 0
+        opacity: window.playlistStatus ? 1 : 0
+
+        Behavior on opacity { NumberAnimation { duration: UiConstants.durationFast } }
+
+        RowLayout {
+            id: statusRow
+            anchors.centerIn: parent
+            spacing: 14
+
+            Label {
+                text: window.playlistStatus
+                color: textPrimary
+                font.family: bodyFont
+                font.pixelSize: 13
+            }
+
+            SettingButton {
+                visible: statusToast.undoable
+                implicitHeight: 28
+                text: qsTr("Undo")
+                onClicked: {
+                    const undo = window.statusUndo
+                    window.clearStatus()
+                    undo()
+                }
+            }
+        }
+
+        Timer {
+            id: statusTimer
+            interval: statusToast.undoable ? 6000 : 3500
+            onTriggered: window.clearStatus()
+        }
+    }
 
     Loader {
         id: nowPlayingLoader

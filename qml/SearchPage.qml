@@ -46,19 +46,27 @@ Item {
         appWindow.playTrack(track)
     }
 
-    function matches(groups) {
-        if (!query) return []
+    // Names are lowercased once per catalog, not on every keystroke.
+    function searchable(groups) {
         const list = []
-        for (let i = 0; i < groups.length; ++i) {
+        for (let i = 0; i < (groups || []).length; ++i) {
             const group = groups[i]
-            if (group && group.name && group.name.toLowerCase().includes(query) && group.name !== "Unknown Album")
-                list.push(group)
+            if (group && group.name && group.name !== "Unknown Album")
+                list.push({ group: group, key: group.name.toLowerCase() })
         }
-        list.sort((a, b) => (b.name.toLowerCase().startsWith(query) - a.name.toLowerCase().startsWith(query)) || b.count - a.count)
-        return list.slice(0, 10)
+        return list
     }
-    readonly property var matchingArtists: matches((cachedGroups && cachedGroups.artists) || [])
-    readonly property var matchingAlbums: matches((cachedGroups && cachedGroups.albums) || [])
+    readonly property var searchableArtists: searchable(cachedGroups && cachedGroups.artists)
+    readonly property var searchableAlbums: searchable(cachedGroups && cachedGroups.albums)
+
+    function matches(entries) {
+        if (!query) return []
+        const list = entries.filter(entry => entry.key.includes(query))
+        list.sort((a, b) => (b.key.startsWith(query) - a.key.startsWith(query)) || b.group.count - a.group.count)
+        return list.slice(0, 10).map(entry => entry.group)
+    }
+    readonly property var matchingArtists: matches(searchableArtists)
+    readonly property var matchingAlbums: matches(searchableAlbums)
     // Lyric matches aren't format-filtered.
     readonly property var lyricHits: {
         libraryModel.lyricsRevision
@@ -71,7 +79,12 @@ Item {
         }
     }
 
-    Component.onCompleted: refreshCatalog()
+    // Lyrics are indexed while the page is open, so matches are ready by the time three letters are typed.
+    Component.onCompleted: {
+        refreshCatalog()
+        libraryModel.loadLyrics()
+    }
+    Component.onDestruction: libraryModel.releaseLyrics()
 
     Connections {
         target: root.libraryModel
@@ -194,14 +207,35 @@ Item {
                     font.weight: Font.Medium
                     selectByMouse: true
                     text: root.appWindow.searchQuery
-                    onTextChanged: root.appWindow.searchQuery = text
+                    // Each search rebuilds every result row, so it waits for a pause in typing.
+                    onTextChanged: {
+                        if (text) queryTimer.restart()
+                        else root.appWindow.searchQuery = ""
+                    }
+
+                    Timer {
+                        id: queryTimer
+                        interval: 150
+                        onTriggered: pageSearchInput.applyQuery()
+                    }
+
+                    // Keys that act on the results search the typed text first, so they never use the previous results.
+                    function applyQuery() {
+                        queryTimer.stop()
+                        root.appWindow.searchQuery = text
+                    }
                     Keys.onEscapePressed: {
                         if (text) text = ""
                         else focus = false
                     }
-                    Keys.onReturnPressed: if (root.libraryModel.visibleTrackCount > 0) root.playResult(root.libraryModel.visibleTracks()[0])
-                    Keys.onEnterPressed: if (root.libraryModel.visibleTrackCount > 0) root.playResult(root.libraryModel.visibleTracks()[0])
+                    function playFirstResult() {
+                        applyQuery()
+                        if (root.libraryModel.visibleTrackCount > 0) root.playResult(root.libraryModel.visibleTracks()[0])
+                    }
+                    Keys.onReturnPressed: playFirstResult()
+                    Keys.onEnterPressed: playFirstResult()
                     Keys.onDownPressed: {
+                        applyQuery()
                         if (root.libraryModel.visibleTrackCount === 0) return
                         searchResults.currentIndex = 0
                         searchResults.forceActiveFocus()

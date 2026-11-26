@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 
 // Hover, press, keyboard and tooltip behaviour shared by the round icon buttons; each button draws itself on top.
 Item {
@@ -10,7 +11,8 @@ Item {
     // Only keyboard focus shows the hover state, so a clicked button doesn't stay lit.
     readonly property bool isHovered: mouseArea.containsMouse || (root.activeFocus && !root.mouseFocused)
     property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+    // Focus also leaves when the window goes inactive and comes back with it, still from that click.
+    onActiveFocusChanged: if (!activeFocus && Window.active) mouseFocused = false
 
     Accessible.role: Accessible.Button
     Accessible.name: root.tooltipText

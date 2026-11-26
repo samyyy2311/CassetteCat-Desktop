@@ -94,37 +94,18 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        RowLayout {
-            z: 100
-            Layout.fillWidth: true
-            Layout.leftMargin: 28
-            Layout.rightMargin: 28
-            Layout.topMargin: 16
+        PageToolbar {
             Layout.bottomMargin: 8
-            spacing: 14
-
-            Row {
-                spacing: 12
-                Layout.alignment: Qt.AlignVCenter
-
-                PageTabs {
-                    tabs: [
-                        { id: "ALL", label: qsTr("All Stations") },
-                        { id: "FAVORITES", label: qsTr("Favorites") },
-                        { id: "RECENTS", label: qsTr("Recents") },
-                        { id: "CUSTOM", label: qsTr("Custom") }
-                    ]
-                    current: root.currentTab
-                    onSelected: id => {
-                        root.appWindow.radioActiveTag = id
-                        if (id === "ALL") root.appWindow.refreshRadio()
-                    }
-                }
-
-            }
-
-            Item {
-                Layout.fillWidth: true
+            tabs: [
+                { id: "ALL", label: qsTr("All Stations") },
+                { id: "FAVORITES", label: qsTr("Favorites") },
+                { id: "RECENTS", label: qsTr("Recents") },
+                { id: "CUSTOM", label: qsTr("Custom") }
+            ]
+            current: root.currentTab
+            onSelected: id => {
+                root.appWindow.radioActiveTag = id
+                if (id === "ALL") root.appWindow.refreshRadio()
             }
 
             Row {

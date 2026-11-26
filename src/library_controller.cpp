@@ -17,6 +17,7 @@
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QMimeDatabase>
 #include <QPointer>
 #include <QRandomGenerator>
 #include <QRegularExpression>
@@ -28,6 +29,7 @@
 #include <QTimer>
 
 #include <algorithm>
+#include <numeric>
 #include <utility>
 
 namespace {
@@ -127,8 +129,13 @@ QString sortKey(const QString &value) {
                                                    QRegularExpression::CaseInsensitiveOption);
     static const QRegularExpression edgePunctuation(QStringLiteral(R"(^[\s'"\[\](){}#._-]+|[\s'"\[\](){}#._-]+$)"),
                                                     QRegularExpression::UseUnicodePropertiesOption);
+    // Sorting compares each name many times, and the expressions above are the slow part, so each key is made once.
+    static thread_local QHash<QString, QString> keys;
+    const auto known = keys.constFind(value);
+    if (known != keys.cend())
+        return *known;
     const QString lower = QString(value).remove(leadingArticle).remove(edgePunctuation).toLower();
-    return lower.isEmpty() ? value.toLower() : lower;
+    return keys.insert(value, lower.isEmpty() ? value.toLower() : lower).value();
 }
 
 int symbolOrNumberCategory(const QString &key) {
@@ -330,8 +337,9 @@ LibraryController::LibraryController(QObject *parent)
     : QAbstractListModel(parent), m_folderWatcher(this), m_watchDebounce(this), m_scanProcess(this) {
     m_watchDebounce.setSingleShot(true);
     m_watchDebounce.setInterval(750);
-    // m_lyrics holds rows of m_tracks.
+    // m_lyrics holds rows of m_tracks, and the groups are built from them.
     connect(this, &LibraryController::tracksChanged, this, [this] {
+        m_catalogGroups.clear();
         m_lyricsRead = false;
         ++m_lyricsRevision;
         emit lyricsChanged();
@@ -369,11 +377,15 @@ LibraryController::LibraryController(QObject *parent)
             }
         }
 
+        updateFolderWatch();
+        // A scan usually finds what the cache already restored; announcing it anyway rebuilt every page.
+        if (tracks == m_tracks)
+            return;
+
         beginResetModel();
         m_tracks = tracks;
         rebuildVisibleRows();
         endResetModel();
-        updateFolderWatch();
         saveLibraryCache();
         emit changed();
         emit tracksChanged();
@@ -515,7 +527,7 @@ bool LibraryController::selfCheck() {
         QVariantMap{{"filePath", "b.flac"}, {"lyrics", "Now stop, me don't"}},
         QVariantMap{{"filePath", "c.flac"}, {"lyrics", "Stopping by"}},
     };
-    library.lyricMatches({});
+    library.readLyrics();
     const QVariantList lyricHits = library.lyricMatches("DONT stop me");
     const auto hitAt = [&lyricHits](int i, const char *key) {
         const QVariantMap hit = lyricHits.value(i).toMap();
@@ -652,6 +664,15 @@ bool LibraryController::selfCheck() {
         tagged.embedArtwork({wavPath}, QUrl::fromLocalFile(coverPath).toString()) != 1 ||
         readTrackInfo(wavPath).title != "Keep" || !tagged.hasEmbeddedArtwork(wavPath))
         return fail("cover saved into the file");
+
+    // Opened files play as the library's copy when it has one; files that aren't audio are skipped.
+    const QString outsidePath = tagDir.filePath("outside.wav");
+    QFile::copy(wavPath, outsidePath);
+    tagged.m_tracks = {QVariantMap{{"filePath", wavPath}, {"title", "From library"}}};
+    const QVariantList opened = tagged.openPaths({wavPath, coverPath, outsidePath});
+    if (opened.size() != 2 || opened[0].toMap().value("title").toString() != "From library" ||
+        opened[1].toMap().value("title").toString() != "Keep")
+        return fail("opened files");
 
     LibraryController mixLibrary;
     mixLibrary.m_tracks = {
@@ -810,6 +831,40 @@ QVariantList LibraryController::tracksForPaths(const QVariantList &paths) const 
             result[index] = track;
     }
     return result;
+}
+
+QVariantList LibraryController::openPaths(const QStringList &paths) {
+    QVariantList tracks;
+    // Files keep their place in tracks and are filled in after one lookup for all of them.
+    QList<qsizetype> fileSlots;
+    QVariantList files;
+    const QMimeDatabase mimeTypes;
+    for (const QString &path : paths) {
+        const QFileInfo file(path);
+        if (file.isDir()) {
+            loadFolder(QUrl::fromLocalFile(file.absoluteFilePath()));
+            continue;
+        }
+        const QString suffix = file.suffix().toLower();
+        if (suffix == "m3u" || suffix == "m3u8") {
+            tracks += parseM3uPlaylist(file.absoluteFilePath());
+            continue;
+        }
+        // Anything the player can decode, so audio in a video container plays too; images and text are skipped.
+        const QString mime = mimeTypes.mimeTypeForFile(file).name();
+        if (!file.isFile() || !(mime.startsWith("audio/") || mime.startsWith("video/")))
+            continue;
+        fileSlots.append(tracks.size());
+        tracks.append(QVariant());
+        files.append(file.absoluteFilePath());
+    }
+
+    const QVariantList known = tracksForPaths(files);
+    for (qsizetype i = 0; i < files.size(); ++i) {
+        const QVariantMap track = known[i].toMap();
+        tracks[fileSlots[i]] = track.isEmpty() ? readTrackInfo(files[i].toString()).toMap() : track;
+    }
+    return tracks;
 }
 
 QString LibraryController::indexLetter(const QString &name) {
@@ -1233,6 +1288,9 @@ QVariantList LibraryController::similarTracks(const QVariantMap &seed, const QSt
 }
 
 QVariantMap LibraryController::catalogGroups() const {
+    // Kept until the tracks change, since the Library and Search pages ask for them each time they open.
+    if (!m_catalogGroups.isEmpty())
+        return m_catalogGroups;
     QHash<QString, QVariantMap> artists;
     QHash<QString, QVariantMap> albums;
     QHash<QString, QVariantMap> genres;
@@ -1290,18 +1348,40 @@ QVariantMap LibraryController::catalogGroups() const {
         add(folders, folderPath, track, {{"name", folderName}, {"path", folderPath}});
     }
 
-    const auto values = [](const QHash<QString, QVariantMap> &groups) {
+    // Sorted here, with each group's place in name order as "rank", so the pages can order them by comparing
+    // numbers instead of calling back for every pair of names.
+    const auto byName = [](const QHash<QString, QVariantMap> &groups) {
+        QList<QVariantMap> list = groups.values();
+        std::sort(list.begin(), list.end(), [](const QVariantMap &a, const QVariantMap &b) {
+            return compareSortKeys(a.value("name").toString(), b.value("name").toString()) < 0;
+        });
+        for (int i = 0; i < list.size(); ++i)
+            list[i].insert("rank", i);
+        return list;
+    };
+    const auto toList = [](const QList<QVariantMap> &groups) {
         QVariantList result;
         result.reserve(groups.size());
-        for (auto it = groups.cbegin(); it != groups.cend(); ++it)
-            result.append(it.value());
+        for (const QVariantMap &group : groups)
+            result.append(group);
         return result;
     };
-    return {{"artists", values(artists)},
-            {"albums", values(albums)},
-            {"genres", values(genres)},
-            {"folders", values(folders)},
-            {"formats", QVariantMap{{"ALL", allFormats}, {"FLAC", lossless}, {"MP3", mp3}, {"AAC", aac}}}};
+    QList<QVariantMap> albumList = byName(albums);
+    QList<int> byArtist(albumList.size());
+    std::iota(byArtist.begin(), byArtist.end(), 0);
+    const auto artistOf = [&albumList](int i) {
+        return albumList[i].value("track").toMap().value("artist").toString();
+    };
+    std::stable_sort(byArtist.begin(), byArtist.end(),
+                     [&artistOf](int a, int b) { return compareSortKeys(artistOf(a), artistOf(b)) < 0; });
+    for (int i = 0; i < byArtist.size(); ++i)
+        albumList[byArtist[i]].insert("artistRank", i);
+    m_catalogGroups = {{"artists", toList(byName(artists))},
+                       {"albums", toList(albumList)},
+                       {"genres", toList(byName(genres))},
+                       {"folders", toList(byName(folders))},
+                       {"formats", QVariantMap{{"ALL", allFormats}, {"FLAC", lossless}, {"MP3", mp3}, {"AAC", aac}}}};
+    return m_catalogGroups;
 }
 
 QVariantList LibraryController::visibleTracks() const {
@@ -1326,18 +1406,18 @@ void LibraryController::setSearchFilter(const QString &query, const QString &for
 
 QVariantList LibraryController::lyricMatches(const QString &query) {
     const QString folded = foldedForSearch(query);
-    if (folded.isEmpty()) {
-        m_lyrics = {};
-        m_lyricsRead = false;
-        return {};
-    }
     if (folded.size() < 3)
         return {};
-    if (!m_lyricsRead)
-        readLyrics();
+    if (!m_lyricsRead) {
+        loadLyrics();
+        return {};
+    }
 
     // Prefix match per word; the words in order score higher.
-    const QStringList words = folded.split(' ');
+    const QString phrase = ' ' + folded;
+    QStringList words = folded.split(' ');
+    for (QString &word : words)
+        word.prepend(' ');
     struct Hit {
         int score;
         int row;
@@ -1347,12 +1427,12 @@ QVariantList LibraryController::lyricMatches(const QString &query) {
     for (const TrackLyrics &song : std::as_const(m_lyrics)) {
         Hit best{0, song.row, {}};
         for (int i = 0; i < song.folded.size() && best.score < 2; ++i) {
-            const QString line = ' ' + song.folded[i];
+            const QString &line = song.folded[i];
             int score = 0;
-            if (line.contains(' ' + folded))
+            if (line.contains(phrase))
                 score = 2;
             else if (std::all_of(words.cbegin(), words.cend(),
-                                 [&line](const QString &word) { return line.contains(' ' + word); }))
+                                 [&line](const QString &word) { return line.contains(word); }))
                 score = 1;
             if (score > best.score)
                 best = {score, song.row, song.lines[i]};
@@ -1368,32 +1448,81 @@ QVariantList LibraryController::lyricMatches(const QString &query) {
     return result;
 }
 
-void LibraryController::readLyrics() {
-    m_lyrics.clear();
+QList<LibraryController::LyricsSource> LibraryController::lyricsSources() const {
+    QList<LyricsSource> sources;
     for (int row = 0; row < m_tracks.size(); ++row) {
         const QVariantMap track = m_tracks[row].toMap();
         if (!isAvailable(track))
             continue;
-        QString text = track.value("lyrics").toString();
-        if (text.trimmed().isEmpty())
-            text = lyrics::load(lyrics::keyFor(track)).text;
-        const QStringList lines = sungLines(text);
-        if (!lines.isEmpty())
-            m_lyrics.append(indexedLyrics(row, lines));
+        const QString text = track.value("lyrics").toString();
+        sources.append({row, text, text.trimmed().isEmpty() ? lyrics::keyFor(track) : QString()});
     }
+    return sources;
+}
+
+QList<LibraryController::TrackLyrics> LibraryController::indexLyrics(const QList<LyricsSource> &sources) {
+    QList<TrackLyrics> index;
+    for (const LyricsSource &source : sources) {
+        const QStringList lines = sungLines(source.key.isEmpty() ? source.text : lyrics::load(source.key).text);
+        if (!lines.isEmpty())
+            index.append(indexedLyrics(source.row, lines));
+    }
+    return index;
+}
+
+void LibraryController::readLyrics() {
+    m_lyrics = indexLyrics(lyricsSources());
     m_lyricsRead = true;
+}
+
+void LibraryController::loadLyrics() {
+    m_lyricsWanted = true;
+    if (m_lyricsRead || m_lyricsLoading)
+        return;
+    // Every saved lyrics file is read, which took over half a second on the interface thread.
+    m_lyricsLoading = true;
+    const int revision = m_lyricsRevision;
+    QThreadPool::globalInstance()->start([self = QPointer(this), sources = lyricsSources(), revision] {
+        QList<TrackLyrics> index = indexLyrics(sources);
+        QMetaObject::invokeMethod(qApp, [self, index = std::move(index), revision]() mutable {
+            if (!self)
+                return;
+            self->m_lyricsLoading = false;
+            // The library changed or the index was freed meanwhile; start again if it's still wanted.
+            if (revision != self->m_lyricsRevision) {
+                if (self->m_lyricsWanted)
+                    self->loadLyrics();
+                return;
+            }
+            self->m_lyrics = std::move(index);
+            self->m_lyricsRead = true;
+            ++self->m_lyricsRevision;
+            emit self->lyricsChanged();
+        });
+    });
+}
+
+void LibraryController::releaseLyrics() {
+    m_lyricsWanted = false;
+    m_lyrics = {};
+    m_lyricsRead = false;
+    ++m_lyricsRevision;
 }
 
 LibraryController::TrackLyrics LibraryController::indexedLyrics(int row, const QStringList &lines) {
     TrackLyrics song{row, lines, {}};
     song.folded.reserve(lines.size());
+    // A leading space lets a word be matched from its start with a single contains().
     for (const QString &line : lines)
-        song.folded.append(foldedForSearch(line));
+        song.folded.append(' ' + foldedForSearch(line));
     return song;
 }
 
 void LibraryController::addLyrics(const QString &key, const QString &text) {
     const QStringList lines = sungLines(text);
+    // An index being built may have read this song already; a new revision makes it start again.
+    if (m_lyricsLoading && !lines.isEmpty())
+        ++m_lyricsRevision;
     if (!m_lyricsRead || lines.isEmpty())
         return;
     bool added = false;

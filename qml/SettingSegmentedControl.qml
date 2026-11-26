@@ -12,10 +12,10 @@ Rectangle {
 
     implicitHeight: 32
     implicitWidth: rowLayout.implicitWidth + 8
-    radius: 8
+    radius: height / 2
     color: surfaceInput
-    border.width: 0
-    border.color: "transparent"
+    border.width: 1
+    border.color: capBorder
 
     activeFocusOnTab: true
     Accessible.role: Accessible.PageTabList
@@ -63,15 +63,16 @@ Rectangle {
 
                 height: 24
                 width: segLabel.implicitWidth + 20
-                radius: 6
-                color: isSelected ? surfaceSelected : (segMouse.containsMouse ? surfaceCardHover : "transparent")
-                border.width: isSelected ? 1 : 0
-                border.color: root.accentColor
-                scale: segMouse.pressed ? 0.97 : 1.0
+                radius: height / 2
+                color: "transparent"
 
-                Behavior on color { ColorAnimation { duration: 120 } }
-                Behavior on border.color { ColorAnimation { duration: 120 } }
-                Behavior on scale { NumberAnimation { duration: 80 } }
+                // The chosen option has the button face; the others sit flat in the strip.
+                ButtonFace {
+                    anchors.fill: parent
+                    visible: segItem.isSelected
+                    accented: true
+                    hovered: segMouse.containsMouse
+                }
 
                 Label {
                     id: segLabel

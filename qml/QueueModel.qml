@@ -6,6 +6,8 @@ ListModel {
     id: root
     property var entries: []
     property var entryByKey: ({})
+    // Rebuilding drops the view's scroll position.
+    signal rebuilt()
 
     function keyFor(entry, seen) {
         let base
@@ -53,14 +55,16 @@ ListModel {
         if (steps.length > 64 || count === 0) {
             clear()
             append(keys.map(key => ({ key: key })))
-        } else {
-            for (const step of steps) {
-                if (step.remove !== undefined) remove(step.remove, 1)
-                else if (step.insert !== undefined) insert(step.insert, { key: step.key })
-                else move(step.from, step.to, 1)
-            }
-            if (count > keys.length) remove(keys.length, count - keys.length)
+            rowKeys = keys
+            rebuilt()
+            return
         }
+        for (const step of steps) {
+            if (step.remove !== undefined) remove(step.remove, 1)
+            else if (step.insert !== undefined) insert(step.insert, { key: step.key })
+            else move(step.from, step.to, 1)
+        }
+        if (count > keys.length) remove(keys.length, count - keys.length)
         rowKeys = keys
     }
 

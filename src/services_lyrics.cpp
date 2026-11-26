@@ -13,7 +13,40 @@
 #include <QNetworkRequest>
 #include <QSet>
 #include <QTimer>
+#include <QtConcurrent>
 #include <QUrlQuery>
+
+namespace {
+
+struct LibraryLyricsScan {
+    QList<QVariantMap> queue;
+    int found = 0;
+    int total = 0;
+};
+
+LibraryLyricsScan scanLibraryLyrics(const QVariantList &tracks) {
+    LibraryLyricsScan scan;
+    scan.total = int(tracks.size());
+    for (const QVariant &value : tracks) {
+        const QVariantMap track = value.toMap();
+        const bool embedded = !track.value("lyrics").toString().trimmed().isEmpty();
+        const lyrics::Stored stored = embedded ? lyrics::Stored{} : lyrics::load(lyrics::keyFor(track));
+        if (embedded || !stored.text.isEmpty()) {
+            ++scan.found;
+            continue;
+        }
+        if (track.value("artist").toString().isEmpty() || lyrics::missingRecently(stored))
+            continue;
+        const QString title = track.value("title").toString();
+        scan.queue.append({{"title", title.isEmpty() ? track.value("fileName").toString() : title},
+                           {"artist", track.value("artist")},
+                           {"album", track.value("album")},
+                           {"durationSeconds", track.value("durationSeconds")}});
+    }
+    return scan;
+}
+
+} // namespace
 
 QString ServicesController::localLyricsFor(const QString &filePath) const {
     const QFileInfo info(filePath);
@@ -119,28 +152,27 @@ void ServicesController::lookUpLyrics(const QVariantMap &song,
 }
 
 void ServicesController::fetchLibraryLyrics(const QVariantList &tracks) {
-    m_libraryLyricsQueue.clear();
-    m_libraryLyricsFound = 0;
-    m_libraryLyricsTotal = int(tracks.size());
-    for (const QVariant &value : tracks) {
-        const QVariantMap track = value.toMap();
-        const bool embedded = !track.value("lyrics").toString().trimmed().isEmpty();
-        const lyrics::Stored stored = embedded ? lyrics::Stored{} : lyrics::load(lyrics::keyFor(track));
-        if (embedded || !stored.text.isEmpty()) {
-            ++m_libraryLyricsFound;
-            continue;
-        }
-        if (track.value("artist").toString().isEmpty() || lyrics::missingRecently(stored))
-            continue;
-        const QString title = track.value("title").toString();
-        m_libraryLyricsQueue.append({{"title", title.isEmpty() ? track.value("fileName").toString() : title},
-                                     {"artist", track.value("artist")},
-                                     {"album", track.value("album")},
-                                     {"durationSeconds", track.value("durationSeconds")}});
-    }
-    emit libraryLyricsChanged();
-    if (!m_libraryLyricsRunning)
-        fetchNextLibraryLyrics();
+    // Reading every song's saved lyrics takes a while for a large library, so it's done off the interface thread.
+    const quint64 scan = ++m_libraryLyricsScan;
+    m_libraryLyricsHandled.clear();
+    QtConcurrent::run(scanLibraryLyrics, tracks).then(this, [this, scan](const LibraryLyricsScan &result) {
+        if (scan != m_libraryLyricsScan)
+            return;
+        m_libraryLyricsQueue = result.queue;
+        m_libraryLyricsFound = result.found;
+        m_libraryLyricsQueue.removeIf([this](const QVariantMap &song) {
+            const auto handled = m_libraryLyricsHandled.constFind(lyrics::keyFor(song));
+            if (handled == m_libraryLyricsHandled.cend())
+                return false;
+            m_libraryLyricsFound += handled.value() ? 1 : 0;
+            return true;
+        });
+        m_libraryLyricsHandled.clear();
+        m_libraryLyricsTotal = result.total;
+        emit libraryLyricsChanged();
+        if (!m_libraryLyricsRunning)
+            fetchNextLibraryLyrics();
+    });
 }
 
 int ServicesController::libraryLyricsFound() const {
@@ -156,6 +188,7 @@ int ServicesController::libraryLyricsLeft() const {
 }
 
 void ServicesController::stopLibraryLyrics() {
+    ++m_libraryLyricsScan;
     m_libraryLyricsQueue.clear();
     emit libraryLyricsChanged();
 }
@@ -170,8 +203,7 @@ void ServicesController::fetchNextLibraryLyrics() {
     m_libraryLyricsRunning = true;
     const QVariantMap song = m_libraryLyricsQueue.first();
     lookUpLyrics(song, [this, song](LyricsLookup result, const QString &text) {
-        const QString key = lyrics::key(song.value("title").toString(), song.value("artist").toString(),
-                                        song.value("album").toString());
+        const QString key = lyrics::keyFor(song);
         if (result == LyricsLookup::Failed) {
             // Transient failure: retry in a minute, skip the song after three.
             if (++m_libraryLyricsFailures < 3) {
@@ -186,6 +218,7 @@ void ServicesController::fetchNextLibraryLyrics() {
             lyrics::markMissing(key);
         }
         m_libraryLyricsFailures = 0;
+        m_libraryLyricsHandled.insert(key, result == LyricsLookup::Found);
         // The queue may have been rebuilt meanwhile.
         m_libraryLyricsQueue.removeOne(song);
         emit libraryLyricsChanged();

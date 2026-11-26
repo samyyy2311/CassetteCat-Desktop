@@ -50,6 +50,9 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE void setAlbumArtwork(const QString &album, const QString &artist, const QString &artworkPath);
     /// Returns the available track for each path, or an empty map where none matches; accepts file URLs.
     Q_INVOKABLE QVariantList tracksForPaths(const QVariantList &paths) const;
+    /// Takes files and folders opened or dropped from outside the app: folders join the library, and the tracks to
+    /// play for the rest are returned, using the library's copy of a song when it has one. Other files are skipped.
+    Q_INVOKABLE QVariantList openPaths(const QStringList &paths);
     Q_INVOKABLE QStringList availablePaths() const;
     /// Orders names for display: symbols and numbers first, then letters in any script, ignoring leading articles.
     Q_INVOKABLE int compareNames(const QString &left, const QString &right) const;
@@ -99,8 +102,12 @@ class LibraryController final : public QAbstractListModel {
     Q_INVOKABLE void setLibraryFilter(const QString &query, const QString &filter, const QVariantMap &favorites,
                                       const QString &sortMetric, bool ascending, const QVariantList &excludedFolders,
                                       bool ignoreShortClips);
-    /// Lyric lines matching every word of \p query, as {track, line}, best first. An empty query frees the index.
+    /// Lyric lines matching every word of \p query, as {track, line}, best first. Empty until the index is built.
     Q_INVOKABLE QVariantList lyricMatches(const QString &query);
+    /// Builds the lyrics index in the background; lyricsChanged reports when it's ready.
+    Q_INVOKABLE void loadLyrics();
+    /// Frees the lyrics index.
+    Q_INVOKABLE void releaseLyrics();
     int lyricsRevision() const {
         return m_lyricsRevision;
     }
@@ -143,11 +150,22 @@ class LibraryController final : public QAbstractListModel {
         QStringList folded;
     };
     static TrackLyrics indexedLyrics(int row, const QStringList &lines);
+    // A song's row with its embedded lyrics, or the key its saved lyrics are stored under.
+    struct LyricsSource {
+        int row;
+        QString text;
+        QString key;
+    };
+    QList<LyricsSource> lyricsSources() const;
+    static QList<TrackLyrics> indexLyrics(const QList<LyricsSource> &sources);
 
     QStringList m_folders;
     QVariantList m_tracks;
     QList<TrackLyrics> m_lyrics;
     bool m_lyricsRead = false;
+    bool m_lyricsLoading = false;
+    bool m_lyricsWanted = false;
+    mutable QVariantMap m_catalogGroups;
     int m_lyricsRevision = 0;
     QVector<int> m_visibleRows;
     QString m_query;

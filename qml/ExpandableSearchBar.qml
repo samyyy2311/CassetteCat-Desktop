@@ -37,16 +37,20 @@ Item {
         NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
     }
 
-    Rectangle {
+    // Closed, it's a round button like the others; open, it's a field to type in.
+    ButtonFace {
         id: bgRect
         anchors.fill: parent
-        radius: height / 2
-        color: (root.expanded && inputField.activeFocus) ? surfaceCard : (collapsedMouseArea.containsMouse ? surfaceElevated : surfaceCard)
-        border.width: (root.expanded && inputField.activeFocus) ? 1.5 : 1.0
-        border.color: (root.expanded && inputField.activeFocus) ? root.activeColor : (collapsedMouseArea.containsMouse ? borderVariant : borderSubtle)
+        flat: root.expanded
+        hovered: collapsedMouseArea.containsMouse
+        accented: root.expanded && inputField.activeFocus
+        accentColor: root.activeColor
+        color: surfaceCard
+        border.color: accented ? accentColor
+            : root.expanded ? (collapsedMouseArea.containsMouse ? borderVariant : borderSubtle)
+            : (collapsedMouseArea.containsMouse ? capBorderHover : capBorder)
 
         Behavior on color { ColorAnimation { duration: 120 } }
-        Behavior on border.color { ColorAnimation { duration: 120 } }
         Behavior on border.width { NumberAnimation { duration: 100 } }
     }
 

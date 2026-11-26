@@ -20,6 +20,7 @@ Item {
             height: width
             source: "qrc:/qt/qml/CassetteCat/assets/vinyl_record.svg"
             sourceSize.width: Math.ceil(width * 2)
+            asynchronous: true
             smooth: true
 
             Image {
@@ -29,6 +30,7 @@ Item {
                 source: "image://cover/0.5/qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png"
                 sourceSize.width: Math.ceil(width * Screen.devicePixelRatio)
                 sourceSize.height: Math.ceil(height * Screen.devicePixelRatio)
+                asynchronous: true
             }
             RotationAnimator on rotation {
                 from: 0
@@ -47,6 +49,7 @@ Item {
             source: "qrc:/qt/qml/CassetteCat/assets/vinyl_tonearm.svg"
             sourceSize.width: Math.ceil(width * 2)
             sourceSize.height: Math.ceil(height * 2)
+            asynchronous: true
             smooth: true
             visible: root.showTonearm && composition.width >= 64
             transform: Rotation {

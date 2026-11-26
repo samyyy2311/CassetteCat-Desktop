@@ -309,31 +309,19 @@ Item {
         spacing: 0
         visible: root.connected
 
-        RowLayout {
-            z: 100
-            Layout.fillWidth: true
-            Layout.leftMargin: 28
-            Layout.rightMargin: 28
-            Layout.topMargin: 16
-            Layout.bottomMargin: 14
-            spacing: 16
-
-            PageTabs {
-                tabs: [
-                    { id: "songs", label: qsTr("Songs") },
-                    { id: "artists", label: qsTr("Artists") },
-                    { id: "albums", label: qsTr("Albums") },
-                    { id: "genres", label: qsTr("Genres") },
-                    { id: "playlists", label: qsTr("Playlists") }
-                ]
-                current: root.activeTab
-                onSelected: id => {
-                    root.activeTab = id
-                    if (id !== "songs") root.viewMode = "grid"
-                }
+        PageToolbar {
+            tabs: [
+                { id: "songs", label: qsTr("Songs") },
+                { id: "artists", label: qsTr("Artists") },
+                { id: "albums", label: qsTr("Albums") },
+                { id: "genres", label: qsTr("Genres") },
+                { id: "playlists", label: qsTr("Playlists") }
+            ]
+            current: root.activeTab
+            onSelected: id => {
+                root.activeTab = id
+                if (id !== "songs") root.viewMode = "grid"
             }
-
-            Item { Layout.fillWidth: true }
 
             Row {
                 spacing: 8

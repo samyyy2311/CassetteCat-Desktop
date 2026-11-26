@@ -251,7 +251,9 @@ void ServicesController::postToScrobbleAccounts(const QMap<QString, QString> &pa
             continue;
         QMap<QString, QString> withSession = params;
         withSession.insert("sk", it.value());
-        trackReply(m_net->post(scrobbleRequest(*network), signedRequestBody(*network, withSession)));
+        QNetworkReply *sent =
+            trackReply(m_net->post(scrobbleRequest(*network), signedRequestBody(*network, withSession)));
+        connect(sent, &QNetworkReply::finished, sent, &QObject::deleteLater);
     }
 }
 
@@ -389,6 +391,76 @@ void ServicesController::scrobbleNowPlaying(const QVariantMap &track) {
     if (!album.isEmpty())
         params.insert("album", album);
     postToScrobbleAccounts(params);
+}
+
+void ServicesController::loveTrack(const QVariantMap &track, bool loved) {
+    if (!onlineEnabled())
+        return;
+    const auto [artist, title, album] = scrobbleFields(track);
+    if (artist.isEmpty() || title.isEmpty())
+        return;
+    // A song liked and unliked before its turn is sent once, as it ended up.
+    m_loves.removeIf([&](const Love &queued) { return queued.artist == artist && queued.title == title; });
+    m_loves.append({artist, title, loved});
+    emit lovesChanged();
+    if (!m_lovesRunning)
+        sendNextLove();
+}
+
+void ServicesController::sendNextLove() {
+    if (m_loves.isEmpty() || !onlineEnabled()) {
+        m_lovesRunning = false;
+        if (!m_loves.isEmpty()) {
+            m_loves.clear();
+            emit lovesChanged();
+        }
+        return;
+    }
+    m_lovesRunning = true;
+    sendLove(m_loves.takeFirst());
+    emit lovesChanged();
+    QTimer::singleShot(1000, this, &ServicesController::sendNextLove);
+}
+
+void ServicesController::sendLove(const Love &love) {
+    const QString &artist = love.artist;
+    const QString &title = love.title;
+    const bool loved = love.loved;
+    initScrobbleCredentials();
+
+    postToScrobbleAccounts({{"method", loved ? "track.love" : "track.unlove"}, {"artist", artist}, {"track", title}});
+
+    if (!SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool() ||
+        m_listenBrainzToken.isEmpty())
+        return;
+    // ListenBrainz takes feedback for a MusicBrainz recording, which the files don't name, so it's looked up first.
+    QUrl lookupUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/metadata/lookup/");
+    lookupUrl.setQuery(QUrlQuery{{"artist_name", artist}, {"recording_name", title}});
+    QNetworkRequest lookup(lookupUrl);
+    lookup.setRawHeader("Authorization", "Token " + m_listenBrainzToken.toUtf8());
+    lookup.setTransferTimeout(services::detail::requestTimeoutMs);
+    // Lookups can finish out of order, so only the newest like or unlike of a song is sent.
+    const QString song = artist + u'' + title;
+    const quint64 generation = ++m_loveGenerations[song];
+    auto *reply = trackReply(m_net->get(lookup));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, loved, song, generation, token = m_listenBrainzToken] {
+        reply->deleteLater();
+        const QString mbid = QJsonDocument::fromJson(reply->readAll()).object().value("recording_mbid").toString();
+        if (reply->error() != QNetworkReply::NoError || mbid.isEmpty() || token != m_listenBrainzToken ||
+            m_loveGenerations.value(song) != generation)
+            return;
+        m_loveGenerations.remove(song);
+        // ListenBrainz may have been turned off, or the app taken offline, while the lookup ran.
+        if (!onlineEnabled() || !SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool())
+            return;
+        QNetworkRequest feedback(QUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/feedback/recording-feedback"));
+        feedback.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
+        feedback.setRawHeader("Authorization", "Token " + token.toUtf8());
+        feedback.setTransferTimeout(services::detail::requestTimeoutMs);
+        const QJsonObject body{{"recording_mbid", mbid}, {"score", loved ? 1 : 0}};
+        QNetworkReply *sent = trackReply(m_net->post(feedback, QJsonDocument(body).toJson(QJsonDocument::Compact)));
+        connect(sent, &QNetworkReply::finished, sent, &QObject::deleteLater);
+    });
 }
 
 void ServicesController::scrobbleTrack(const QVariantMap &track, qint64 timestampSec) {

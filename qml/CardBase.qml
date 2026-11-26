@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 
 Rectangle {
     id: root
@@ -11,7 +12,7 @@ Rectangle {
     signal rightClicked()
 
     color: "transparent"
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+    onActiveFocusChanged: if (!activeFocus && Window.active) mouseFocused = false
 
     Accessible.role: Accessible.Button
     Accessible.name: accessibleName

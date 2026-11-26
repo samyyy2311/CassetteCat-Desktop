@@ -14,7 +14,6 @@ ColumnLayout {
     spacing: 0
 
     component Value: Label {
-        anchors.verticalCenter: parent ? parent.verticalCenter : undefined
         color: textPrimary
         font.family: monoFont
         font.pixelSize: 13

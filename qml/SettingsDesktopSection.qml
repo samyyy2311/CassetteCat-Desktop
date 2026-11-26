@@ -88,7 +88,6 @@ ColumnLayout {
                         iconName: "arrow-up"
                         accessibleName: qsTr("Move %1 up").arg(sidebarEntry.label)
                         enabled: sidebarEntry.index > 0
-                        opacity: enabled ? 1 : 0.35
                         onClicked: root.moveSidebarPage(sidebarEntry.index, -1)
                     }
 
@@ -96,7 +95,6 @@ ColumnLayout {
                         iconName: "arrow-down"
                         accessibleName: qsTr("Move %1 down").arg(sidebarEntry.label)
                         enabled: sidebarEntry.index < root.sidebarOrder.length - 1
-                        opacity: enabled ? 1 : 0.35
                         onClicked: root.moveSidebarPage(sidebarEntry.index, 1)
                     }
 

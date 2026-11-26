@@ -16,75 +16,77 @@ Rectangle {
     readonly property color accentColor: recordRed
     readonly property color accentHoverColor: recordRedHover
 
-    implicitWidth: contentRow.implicitWidth + 22
+    // With only an icon it's round, like the other icon buttons.
+    implicitWidth: text ? contentRow.implicitWidth + 22 : implicitHeight
     implicitHeight: 32
-    radius: 8
-    // A main action looks like a selected chip, with an accent border and text.
+    radius: height / 2
+    // A main action has an accent border and text, a destructive one a red border and text.
     readonly property color contentColor: root.destructive ? (mouseArea.containsMouse ? danger : Qt.alpha(danger, 0.9))
-        : root.primary ? root.accentColor
+        : root.primary ? root.accentHoverColor
         : (mouseArea.containsMouse ? textPrimary : textSecondary)
-    color: {
-        if (mouseArea.containsMouse) {
-            if (root.destructive) return Qt.alpha(danger, 0.18)
-            return surfaceElevated
-        }
-        if (root.destructive) return "transparent"
-        if (root.primary) return surfaceSelected
-        return surfaceInput
-    }
-    border.width: root.primary || root.destructive || mouseArea.containsMouse ? 1 : 0
-    border.color: {
-        if (root.destructive) return Qt.alpha(danger, mouseArea.containsMouse ? 0.5 : 0.25)
-        if (root.primary) return mouseArea.containsMouse ? root.accentHoverColor : root.accentColor
-        return mouseArea.containsMouse ? borderVariant : borderSubtle
-    }
+    color: "transparent"
+    opacity: enabled ? 1 : 0.35
     Accessible.name: root.accessibleName
     Accessible.role: Accessible.Button
+    Accessible.onPressAction: if (root.enabled) root.clicked()
 
-    scale: mouseArea.pressed ? 0.97 : 1.0
-
-    Behavior on color { ColorAnimation { duration: 120 } }
-    Behavior on border.color { ColorAnimation { duration: 120 } }
-    Behavior on scale { NumberAnimation { duration: 80 } }
-
-    RowLayout {
-        id: contentRow
-        anchors.centerIn: parent
-        spacing: 6
-
-        LucideIcon {
-            visible: root.iconName.length > 0 && !root.iconRight
-            Layout.preferredWidth: 14
-            Layout.preferredHeight: 14
-            Layout.alignment: Qt.AlignVCenter
-            icon: root.iconName
-            preserveColor: root.preserveIconColor
-            color: root.contentColor
-
-            Behavior on color { ColorAnimation { duration: 120 } }
+    // Only what's drawn sinks when pressed, so a press near the edge still releases on the button.
+    Item {
+        anchors.fill: parent
+        transform: Translate {
+            y: mouseArea.pressed ? 2 : 0
+            Behavior on y { NumberAnimation { duration: 80; easing.type: Easing.Linear } }
         }
 
-        Label {
-            text: root.text
-            color: root.contentColor
-            font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
-            font.pixelSize: 12
-            font.weight: Font.DemiBold
-            Layout.alignment: Qt.AlignVCenter
-
-            Behavior on color { ColorAnimation { duration: 120 } }
+        ButtonFace {
+            anchors.fill: parent
+            hovered: mouseArea.containsMouse
+            accented: root.primary || root.destructive
+            accentColor: root.destructive ? Qt.alpha(danger, 0.6) : root.accentColor
+            accentHoverColor: root.destructive ? danger : root.accentHoverColor
+            border.width: root.primary ? 1.5 : 1
         }
 
-        LucideIcon {
-            visible: root.iconName.length > 0 && root.iconRight
-            Layout.preferredWidth: 14
-            Layout.preferredHeight: 14
-            Layout.alignment: Qt.AlignVCenter
-            icon: root.iconName
-            preserveColor: root.preserveIconColor
-            color: root.contentColor
+        RowLayout {
+            id: contentRow
+            anchors.centerIn: parent
+            spacing: 6
 
-            Behavior on color { ColorAnimation { duration: 120 } }
+            LucideIcon {
+                visible: root.iconName.length > 0 && !root.iconRight
+                Layout.preferredWidth: 14
+                Layout.preferredHeight: 14
+                Layout.alignment: Qt.AlignVCenter
+                icon: root.iconName
+                preserveColor: root.preserveIconColor
+                color: root.contentColor
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
+
+            Label {
+                visible: root.text.length > 0
+                text: root.text
+                color: root.contentColor
+                font.family: (typeof displayFont !== "undefined" ? displayFont : "Space Grotesk")
+                font.pixelSize: 12
+                font.weight: Font.DemiBold
+                Layout.alignment: Qt.AlignVCenter
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
+
+            LucideIcon {
+                visible: root.iconName.length > 0 && root.iconRight
+                Layout.preferredWidth: 14
+                Layout.preferredHeight: 14
+                Layout.alignment: Qt.AlignVCenter
+                icon: root.iconName
+                preserveColor: root.preserveIconColor
+                color: root.contentColor
+
+                Behavior on color { ColorAnimation { duration: 120 } }
+            }
         }
     }
 
@@ -99,5 +101,8 @@ Rectangle {
 
     Keys.onReturnPressed: root.clicked()
     Keys.onEnterPressed: root.clicked()
+    // Space presses the focused button rather than reaching the play/pause shortcut.
+    Keys.onShortcutOverride: event => event.accepted = event.key === Qt.Key_Space
+    Keys.onSpacePressed: event => { if (!event.isAutoRepeat) root.clicked() }
     activeFocusOnTab: true
 }

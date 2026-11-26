@@ -8,7 +8,6 @@ RowLayout {
     property color iconColor: "transparent"
     property string title: ""
     property string subtitle: ""
-    property bool showDivider: false
     property bool preserveIconColor: false
     property int iconSize: 20
     default property alias control: trailing.data
@@ -56,7 +55,7 @@ RowLayout {
         }
     }
 
-    Row {
+    RowLayout {
         id: trailing
         Layout.alignment: Qt.AlignVCenter
         spacing: 8

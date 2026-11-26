@@ -139,7 +139,9 @@ bool WindowFrame::overButton(int x, int y) const {
 
 bool WindowFrame::nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result) {
 #ifdef Q_OS_WIN
-    if (eventType != "windows_generic_MSG" || !m_button || !m_button->window())
+    // Without a native window yet, winId() would create one in the middle of another window's message and crash,
+    // as on the way back from the mini player.
+    if (eventType != "windows_generic_MSG" || !m_button || !m_button->window() || !m_button->window()->handle())
         return false;
     const MSG *msg = static_cast<const MSG *>(message);
     const HWND hwnd = reinterpret_cast<HWND>(m_button->window()->winId());

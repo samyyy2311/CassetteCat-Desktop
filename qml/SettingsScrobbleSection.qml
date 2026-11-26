@@ -24,6 +24,7 @@ ColumnLayout {
     signal disconnectLibreFmRequested()
     signal lastFmEnabledToggled(bool value)
     signal disconnectLastFmRequested()
+    signal loveLikedSongsRequested()
 
     Layout.fillWidth: true
     spacing: 16
@@ -151,6 +152,24 @@ ColumnLayout {
                     enabled: !root.offlineBlackout
                     onClicked: accountDialog.openFor("lastfm")
                 }
+            }
+        }
+    }
+
+    SettingCard {
+        visible: root.listenBrainzConnected || root.libreFmConnected || root.lastFmConnected
+
+        SettingRow {
+            iconName: "heart"
+            title: qsTr("Love Liked Songs")
+            subtitle: services.lovesLeft > 0
+                      ? qsTr("%n love(s) left to send", "", services.lovesLeft)
+                      : qsTr("Songs you like are loved on your accounts. This sends the ones you liked before")
+
+            SettingButton {
+                text: qsTr("Send")
+                enabled: !root.offlineBlackout && services.lovesLeft === 0
+                onClicked: root.loveLikedSongsRequested()
             }
         }
     }

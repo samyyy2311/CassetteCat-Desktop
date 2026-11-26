@@ -40,6 +40,7 @@ class PlayerController final : public QObject {
   public:
     /// Creates a player backed by \p streaming for authenticated remote tracks.
     explicit PlayerController(QObject *parent = nullptr, StreamingController *streaming = nullptr);
+    ~PlayerController() override;
     /// Runs deterministic checks for core playback behavior.
     static bool selfCheck();
 
@@ -99,6 +100,8 @@ class PlayerController final : public QObject {
     void currentTrackChanged();
     void currentLyricsChanged();
     void isPlayingChanged();
+    /// Also sent when a song is paused before it started, which leaves isPlaying unchanged.
+    void paused();
     void positionChanged();
     void durationChanged();
     void volumeChanged();

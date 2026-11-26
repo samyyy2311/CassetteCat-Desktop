@@ -40,7 +40,6 @@
 
 #include "app_paths.h"
 #include "app_settings.h"
-#include "audio_metadata.h"
 #include "credential_vault.h"
 #include "discord_presence.h"
 #include "remote_control.h"
@@ -421,6 +420,9 @@ int main(int argc, char *argv[]) {
 
 #ifdef Q_OS_WIN
     SetCurrentProcessExplicitAppUserModelID(kAppUserModelId);
+    // A flip-model swap chain waits on the compositor at every size change, so dragging the window's edge stutters.
+    if (!qEnvironmentVariableIsSet("QT_D3D_NO_FLIP"))
+        qputenv("QT_D3D_NO_FLIP", "1");
 #endif
 
     QSurfaceFormat surfaceFormat = QSurfaceFormat::defaultFormat();
@@ -467,15 +469,18 @@ int main(int argc, char *argv[]) {
     SetLastError(0);
     const HANDLE instanceMutex = CreateMutexW(nullptr, FALSE, kInstanceMutexName);
     if (instanceMutex && GetLastError() == ERROR_ALREADY_EXISTS) {
+        // Windows only lets the running instance come to the front if the foreground process allows it.
+        AllowSetForegroundWindow(ASFW_ANY);
         bool handedOff = false;
-        constexpr int maxHandoffRetries = 5;
+        // The running instance answers once its event loop is free, which can take seconds while it starts up.
+        constexpr int maxHandoffRetries = 20;
         for (int attempt = 0; attempt < maxHandoffRetries; ++attempt) {
             if (notifyRunningInstance(QString::fromLatin1(kInstanceServerName), openPath)) {
                 handedOff = true;
                 break;
             }
             if (attempt + 1 < maxHandoffRetries)
-                QThread::msleep(100);
+                QThread::msleep(250);
         }
         if (!handedOff) {
             qWarning() << "Existing instance detected, but handoff notification failed.";
@@ -519,26 +524,9 @@ int main(int argc, char *argv[]) {
     TrayController tray(appIcon, &app);
 
     const auto openExternalPath = [&](const QString &path) {
-        const QFileInfo file(path);
-        if (!file.exists())
-            return;
-        if (file.isDir()) {
-            library.loadFolder(QUrl::fromLocalFile(file.absoluteFilePath()));
-            return;
-        }
-        const QString ext = file.suffix().toLower();
-        if (ext == "m3u" || ext == "m3u8") {
-            const QVariantList tracks = parseM3uPlaylist(file.absoluteFilePath());
-            if (!tracks.isEmpty()) {
-                player.requestPlayback(tracks, 0);
-            }
-            return;
-        }
-        TrackInfo info = readTrackInfo(file.absoluteFilePath());
-        if (info.album.isEmpty()) {
-            info.album = QStringLiteral("External file");
-        }
-        player.requestPlayback({info.toMap()}, 0);
+        const QVariantList tracks = library.openPaths({path});
+        if (!tracks.isEmpty())
+            player.requestPlayback(tracks, 0);
     };
 
     QObject::connect(&mpris, &MprisController::openUriRequested, [&](const QString &uri) {
@@ -628,8 +616,6 @@ int main(int argc, char *argv[]) {
 
     for (auto *rootObj : engine.rootObjects()) {
         if (auto *quickWin = qobject_cast<QQuickWindow *>(rootObj)) {
-            quickWin->setPersistentGraphics(false);
-            quickWin->setPersistentSceneGraph(false);
             mainWindow = quickWin;
             showMainWindow(quickWin,
                            appSettings.value(QStringLiteral("ui/startMinimizedToTray"), false).toBool() &&

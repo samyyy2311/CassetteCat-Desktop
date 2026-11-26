@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Controls
 import QtQuick.Layouts
 
@@ -25,7 +26,7 @@ Item {
     readonly property bool isCompactDensity: compact || (typeof window !== "undefined" && window.trackDensity === "compact")
     readonly property bool highlighted: rowMouse.containsMouse || (rowMouse.enabled && activeFocus && !mouseFocused)
     property bool mouseFocused: false
-    onActiveFocusChanged: if (!activeFocus) mouseFocused = false
+    onActiveFocusChanged: if (!activeFocus && Window.active) mouseFocused = false
 
     Accessible.role: Accessible.ListItem
     Accessible.name: track ? (track.title || track.fileName || "") : ""

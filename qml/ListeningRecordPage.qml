@@ -362,33 +362,20 @@ Item {
         visible: root.hasData
 
         // Top bar
-        RowLayout {
-            z: 100
-            Layout.fillWidth: true
-            Layout.leftMargin: 28
-            Layout.rightMargin: 28
-            Layout.topMargin: 16
-            Layout.bottomMargin: 14
-            spacing: 16
-
-            PageTabs {
-                tabs: [
-                    { id: "overview", label: qsTr("Overview") },
-                    { id: "tracks", label: qsTr("Top Tracks") },
-                    { id: "artists", label: qsTr("Top Artists") },
-                    { id: "albums", label: qsTr("Top Albums") },
-                    { id: "history", label: qsTr("History") },
-                    { id: "recap", label: qsTr("Rewind") }
-                ]
-                current: root.currentTab
-                onSelected: id => {
-                    root.currentTab = id
-                    root.searchQuery = ""
-                }
+        PageToolbar {
+            tabs: [
+                { id: "overview", label: qsTr("Overview") },
+                { id: "tracks", label: qsTr("Top Tracks") },
+                { id: "artists", label: qsTr("Top Artists") },
+                { id: "albums", label: qsTr("Top Albums") },
+                { id: "history", label: qsTr("History") },
+                { id: "recap", label: qsTr("Rewind") }
+            ]
+            current: root.currentTab
+            onSelected: id => {
+                root.currentTab = id
+                root.searchQuery = ""
             }
-
-            Item { Layout.fillWidth: true }
-
 
             Row {
                 spacing: 8

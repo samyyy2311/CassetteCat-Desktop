@@ -50,32 +50,17 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        RowLayout {
-            z: 100
-            Layout.fillWidth: true
-            Layout.leftMargin: 28
-            Layout.rightMargin: 28
-            Layout.topMargin: 16
-            Layout.bottomMargin: 14
-            spacing: 16
-
-            PageTabs {
-                tabs: [
-                    { id: "songs", label: qsTr("Songs") },
-                    { id: "artists", label: qsTr("Artists") },
-                    { id: "albums", label: qsTr("Albums") },
-                    { id: "genres", label: qsTr("Genres") },
-                    { id: "folders", label: qsTr("Folders") },
-                    { id: "playlists", label: qsTr("Playlists") }
-                ]
-                current: root.appWindow.libraryTab
-                onSelected: id => root.appWindow.libraryTab = id
-            }
-
-
-            Item {
-                Layout.fillWidth: true
-            }
+        PageToolbar {
+            tabs: [
+                { id: "songs", label: qsTr("Songs") },
+                { id: "artists", label: qsTr("Artists") },
+                { id: "albums", label: qsTr("Albums") },
+                { id: "genres", label: qsTr("Genres") },
+                { id: "folders", label: qsTr("Folders") },
+                { id: "playlists", label: qsTr("Playlists") }
+            ]
+            current: root.appWindow.libraryTab
+            onSelected: id => root.appWindow.libraryTab = id
 
             Row {
                 spacing: 8
@@ -402,9 +387,9 @@ Item {
                     list.sort((a, b) => {
                         let res;
                         if (sortM === "count") {
-                            res = (a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name);
+                            res = (a.count - b.count) || (a.rank - b.rank);
                         } else {
-                            res = root.appWindow.compareSortKey(a.name, b.name);
+                            res = a.rank - b.rank;
                         }
                         return asc ? res : -res;
                     });
@@ -481,13 +466,11 @@ Item {
                     list.sort((a, b) => {
                         let res;
                         if (sortM === "artist") {
-                            const artistA = a.track ? a.track.artist : "";
-                            const artistB = b.track ? b.track.artist : "";
-                            res = root.appWindow.compareSortKey(artistA, artistB) || root.appWindow.compareSortKey(a.name, b.name);
+                            res = a.artistRank - b.artistRank;
                         } else if (sortM === "count") {
-                            res = (a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name);
+                            res = (a.count - b.count) || (a.rank - b.rank);
                         } else {
-                            res = root.appWindow.compareSortKey(a.name, b.name);
+                            res = a.rank - b.rank;
                         }
                         return asc ? res : -res;
                     });
@@ -567,8 +550,8 @@ Item {
                     }
                     list.sort((a, b) => {
                         let res = sortM === "count"
-                            ? ((a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name))
-                            : root.appWindow.compareSortKey(a.name, b.name);
+                            ? ((a.count - b.count) || (a.rank - b.rank))
+                            : (a.rank - b.rank);
                         return asc ? res : -res;
                     });
                     return list;
@@ -631,8 +614,8 @@ Item {
                     }
                     list.sort((a, b) => {
                         let res = sortM === "count"
-                            ? ((a.count - b.count) || root.appWindow.compareSortKey(a.name, b.name))
-                            : root.appWindow.compareSortKey(a.name, b.name);
+                            ? ((a.count - b.count) || (a.rank - b.rank))
+                            : (a.rank - b.rank);
                         return asc ? res : -res;
                     });
                     return list;

@@ -7,10 +7,12 @@ ButtonBase {
     property int iconSize: 18
     property color tint: textPrimary
     property color hoverTint: "#FFFFFF"
-    property color backgroundColor: surfaceCard
-    property color hoverBackgroundColor: surfaceElevated
-    property color borderColor: borderSubtle
-    property color hoverBorderColor: borderVariant
+    // The website's button face; buttons over artwork or inside a group turn it off and use a flat colour.
+    property bool face: true
+    property color backgroundColor: "transparent"
+    property color hoverBackgroundColor: backgroundColor
+    property color borderColor: capBorder
+    property color hoverBorderColor: capBorderHover
     property bool highlighted: false
     property alias accented: root.highlighted
     property real cornerRadius: Math.round(boxSize / 2)
@@ -18,32 +20,39 @@ ButtonBase {
     implicitWidth: root.boxSize
     implicitHeight: root.boxSize
 
-    Rectangle {
-        anchors.fill: parent
-        radius: root.cornerRadius
-        color: root.isHovered ? root.hoverBackgroundColor : root.backgroundColor
-        border.width: root.highlighted ? 1.5 : 1.0
-        border.color: root.highlighted ? recordRed : (root.isHovered ? root.hoverBorderColor : root.borderColor)
-
-        Behavior on color { ColorAnimation { duration: 130 } }
-        Behavior on border.color { ColorAnimation { duration: 130 } }
-    }
-
+    // Pressed, the button sinks a little, as on the website. Only what's drawn moves, so a press near the edge
+    // still releases on the button.
     Item {
-        id: iconContainer
-        anchors.centerIn: parent
-        width: root.iconSize
-        height: root.iconSize
-        y: root.isPressed ? 1.5 : 0
-
-        Behavior on y {
-            NumberAnimation { duration: 80; easing.type: Easing.Linear }
+        anchors.fill: parent
+        transform: Translate {
+            y: root.isPressed ? 2 : 0
+            Behavior on y { NumberAnimation { duration: 80; easing.type: Easing.Linear } }
         }
 
-        LucideIcon {
+        ButtonFace {
             anchors.fill: parent
-            icon: root.iconName
-            color: root.highlighted ? recordRedHover : (root.isHovered ? root.hoverTint : root.tint)
+            radius: root.cornerRadius
+            hovered: root.isHovered
+            accented: root.highlighted
+            flat: !root.face
+            color: root.isHovered ? root.hoverBackgroundColor : root.backgroundColor
+            border.color: root.highlighted ? (root.isHovered ? recordRedHover : recordRed)
+                                           : (root.isHovered ? root.hoverBorderColor : root.borderColor)
+
+            Behavior on color { ColorAnimation { duration: 130 } }
+        }
+
+        Item {
+            id: iconContainer
+            anchors.centerIn: parent
+            width: root.iconSize
+            height: root.iconSize
+
+            LucideIcon {
+                anchors.fill: parent
+                icon: root.iconName
+                color: root.highlighted ? recordRedHover : (root.isHovered ? root.hoverTint : root.tint)
+            }
         }
     }
 }

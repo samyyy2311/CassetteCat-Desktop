@@ -526,7 +526,7 @@ bool LibraryController::selfCheck() {
         QVariantMap{{"filePath", "b.flac"}, {"lyrics", "Now stop, me don't"}},
         QVariantMap{{"filePath", "c.flac"}, {"lyrics", "Stopping by"}},
     };
-    library.lyricMatches({});
+    library.readLyrics();
     const QVariantList lyricHits = library.lyricMatches("DONT stop me");
     const auto hitAt = [&lyricHits](int i, const char *key) {
         const QVariantMap hit = lyricHits.value(i).toMap();
@@ -1362,18 +1362,18 @@ void LibraryController::setSearchFilter(const QString &query, const QString &for
 
 QVariantList LibraryController::lyricMatches(const QString &query) {
     const QString folded = foldedForSearch(query);
-    if (folded.isEmpty()) {
-        m_lyrics = {};
-        m_lyricsRead = false;
-        return {};
-    }
     if (folded.size() < 3)
         return {};
-    if (!m_lyricsRead)
-        readLyrics();
+    if (!m_lyricsRead) {
+        loadLyrics();
+        return {};
+    }
 
     // Prefix match per word; the words in order score higher.
-    const QStringList words = folded.split(' ');
+    const QString phrase = ' ' + folded;
+    QStringList words = folded.split(' ');
+    for (QString &word : words)
+        word.prepend(' ');
     struct Hit {
         int score;
         int row;
@@ -1383,12 +1383,12 @@ QVariantList LibraryController::lyricMatches(const QString &query) {
     for (const TrackLyrics &song : std::as_const(m_lyrics)) {
         Hit best{0, song.row, {}};
         for (int i = 0; i < song.folded.size() && best.score < 2; ++i) {
-            const QString line = ' ' + song.folded[i];
+            const QString &line = song.folded[i];
             int score = 0;
-            if (line.contains(' ' + folded))
+            if (line.contains(phrase))
                 score = 2;
             else if (std::all_of(words.cbegin(), words.cend(),
-                                 [&line](const QString &word) { return line.contains(' ' + word); }))
+                                 [&line](const QString &word) { return line.contains(word); }))
                 score = 1;
             if (score > best.score)
                 best = {score, song.row, song.lines[i]};
@@ -1404,27 +1404,73 @@ QVariantList LibraryController::lyricMatches(const QString &query) {
     return result;
 }
 
-void LibraryController::readLyrics() {
-    m_lyrics.clear();
+QList<LibraryController::LyricsSource> LibraryController::lyricsSources() const {
+    QList<LyricsSource> sources;
     for (int row = 0; row < m_tracks.size(); ++row) {
         const QVariantMap track = m_tracks[row].toMap();
         if (!isAvailable(track))
             continue;
-        QString text = track.value("lyrics").toString();
-        if (text.trimmed().isEmpty())
-            text = lyrics::load(lyrics::keyFor(track)).text;
-        const QStringList lines = sungLines(text);
-        if (!lines.isEmpty())
-            m_lyrics.append(indexedLyrics(row, lines));
+        const QString text = track.value("lyrics").toString();
+        sources.append({row, text, text.trimmed().isEmpty() ? lyrics::keyFor(track) : QString()});
     }
+    return sources;
+}
+
+QList<LibraryController::TrackLyrics> LibraryController::indexLyrics(const QList<LyricsSource> &sources) {
+    QList<TrackLyrics> index;
+    for (const LyricsSource &source : sources) {
+        const QStringList lines = sungLines(source.key.isEmpty() ? source.text : lyrics::load(source.key).text);
+        if (!lines.isEmpty())
+            index.append(indexedLyrics(source.row, lines));
+    }
+    return index;
+}
+
+void LibraryController::readLyrics() {
+    m_lyrics = indexLyrics(lyricsSources());
     m_lyricsRead = true;
+}
+
+void LibraryController::loadLyrics() {
+    m_lyricsWanted = true;
+    if (m_lyricsRead || m_lyricsLoading)
+        return;
+    // Every saved lyrics file is read, which took over half a second on the interface thread.
+    m_lyricsLoading = true;
+    const int revision = m_lyricsRevision;
+    QThreadPool::globalInstance()->start([self = QPointer(this), sources = lyricsSources(), revision] {
+        QList<TrackLyrics> index = indexLyrics(sources);
+        QMetaObject::invokeMethod(qApp, [self, index = std::move(index), revision]() mutable {
+            if (!self)
+                return;
+            self->m_lyricsLoading = false;
+            // The library changed or the index was freed meanwhile; start again if it's still wanted.
+            if (revision != self->m_lyricsRevision) {
+                if (self->m_lyricsWanted)
+                    self->loadLyrics();
+                return;
+            }
+            self->m_lyrics = std::move(index);
+            self->m_lyricsRead = true;
+            ++self->m_lyricsRevision;
+            emit self->lyricsChanged();
+        });
+    });
+}
+
+void LibraryController::releaseLyrics() {
+    m_lyricsWanted = false;
+    m_lyrics = {};
+    m_lyricsRead = false;
+    ++m_lyricsRevision;
 }
 
 LibraryController::TrackLyrics LibraryController::indexedLyrics(int row, const QStringList &lines) {
     TrackLyrics song{row, lines, {}};
     song.folded.reserve(lines.size());
+    // A leading space lets a word be matched from its start with a single contains().
     for (const QString &line : lines)
-        song.folded.append(foldedForSearch(line));
+        song.folded.append(' ' + foldedForSearch(line));
     return song;
 }
 

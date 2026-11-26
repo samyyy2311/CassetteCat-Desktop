@@ -1828,6 +1828,10 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Removed %1 from the queue</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Collapse</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1945,6 +1949,10 @@
     </message>
     <message>
         <source>Now Playing Deck</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Undo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4158,6 +4166,10 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Searching…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Settings section</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4403,6 +4415,25 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Log in with your Last.fm username and password</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Love Liked Songs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <source>%n love(s) left to send</source>
+        <translation>
+            <numerusform>%n love left to send</numerusform>
+            <numerusform>%n loves left to send</numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Songs you like are loved on your accounts. This sends the ones you liked before</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Send</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

@@ -53,8 +53,8 @@
     <message numerus="yes">
         <source>%n song(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n lugu</numerusform>
+            <numerusform>%n lugu</numerusform>
         </translation>
     </message>
 </context>
@@ -546,6 +546,14 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>No shortcuts were allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Global shortcuts weren&apos;t allowed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Global shortcuts are off</source>
         <translation type="unfinished"></translation>
     </message>
@@ -573,6 +581,10 @@
         </translation>
     </message>
     <message>
+        <source>Waiting for the desktop to allow the shortcuts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Global shortcuts are active</source>
         <translation type="unfinished"></translation>
     </message>
@@ -582,8 +594,8 @@
     <message numerus="yes">
         <source>%n song(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n lugu</numerusform>
+            <numerusform>%n lugu</numerusform>
         </translation>
     </message>
     <message numerus="yes">
@@ -596,8 +608,8 @@
     <message numerus="yes">
         <source>%n album(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n album</numerusform>
+            <numerusform>%n albumit</numerusform>
         </translation>
     </message>
     <message>
@@ -606,7 +618,7 @@
     </message>
     <message>
         <source>Shuffle</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sega järjestust</translation>
     </message>
     <message>
         <source>Your whole library, in a new order</source>
@@ -705,6 +717,13 @@
     </message>
 </context>
 <context>
+    <name>IndexRail</name>
+    <message>
+        <source>Jump to letter</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>JellyfinPage</name>
     <message>
         <source>Stream music from your Jellyfin server</source>
@@ -727,8 +746,8 @@
     <message numerus="yes">
         <source>%n album(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n album</numerusform>
+            <numerusform>%n albumit</numerusform>
         </translation>
     </message>
     <message numerus="yes">
@@ -755,8 +774,8 @@
     <message numerus="yes">
         <source>%n song(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n lugu</numerusform>
+            <numerusform>%n lugu</numerusform>
         </translation>
     </message>
     <message>
@@ -769,7 +788,7 @@
     </message>
     <message>
         <source>Albums</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Albumid</translation>
     </message>
     <message>
         <source>Genres</source>
@@ -927,11 +946,67 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Added in the last 30 days</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Favorites only</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Longer than 5 minutes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Shorter than 3 minutes</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>1990s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>2000s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>2010s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>2020s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Playlist %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Enter a name for your new playlist:</source>
+        <source>Songs that match every rule, up to 100</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Songs you add yourself</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Standard</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Smart</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Playlist name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Cancel</source>
+        <translation type="unfinished">Katkesta</translation>
+    </message>
+    <message>
+        <source>Create</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -968,8 +1043,8 @@
     <message numerus="yes">
         <source>%n track(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n pala</numerusform>
+            <numerusform>%n pala</numerusform>
         </translation>
     </message>
     <message>
@@ -1013,7 +1088,7 @@
     </message>
     <message>
         <source>Close</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sulge</translation>
     </message>
     <message>
         <source>FILTER BY</source>
@@ -1073,11 +1148,11 @@
     </message>
     <message>
         <source>Artist</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Esitaja</translation>
     </message>
     <message>
         <source>Album</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Album</translation>
     </message>
     <message>
         <source>Duration</source>
@@ -1112,11 +1187,11 @@
     </message>
     <message>
         <source>Artist</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Esitaja</translation>
     </message>
     <message>
         <source>Album</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Album</translation>
     </message>
     <message>
         <source>Year</source>
@@ -1175,7 +1250,7 @@
     </message>
     <message>
         <source>Shuffle</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sega järjestust</translation>
     </message>
     <message>
         <source>Search artists...</source>
@@ -1222,10 +1297,6 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>based on qualified listens</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Total Plays</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1239,8 +1310,8 @@
     <message numerus="yes">
         <source>%n track(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n pala</numerusform>
+            <numerusform>%n pala</numerusform>
         </translation>
     </message>
     <message>
@@ -1249,7 +1320,7 @@
     </message>
     <message>
         <source>%1h %2m</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">%1 t %2 min</translation>
     </message>
     <message>
         <source>Listening Record</source>
@@ -1265,6 +1336,10 @@
     </message>
     <message>
         <source>%1 on repeat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>every minute you listened</source>
         <translation type="unfinished"></translation>
     </message>
     <message numerus="yes">
@@ -1404,8 +1479,8 @@
     <message numerus="yes">
         <source>%n song(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n lugu</numerusform>
+            <numerusform>%n lugu</numerusform>
         </translation>
     </message>
     <message numerus="yes">
@@ -1718,7 +1793,7 @@
     </message>
     <message>
         <source>Search</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Otsi</translation>
     </message>
     <message>
         <source>Listening Record</source>
@@ -1750,6 +1825,10 @@
     </message>
     <message>
         <source>Close</source>
+        <translation type="unfinished">Sulge</translation>
+    </message>
+    <message>
+        <source>Removed %1 from the queue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1873,6 +1952,10 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Undo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>No Track Selected</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1882,7 +1965,7 @@
     </message>
     <message>
         <source>Shuffle</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sega järjestust</translation>
     </message>
     <message>
         <source>Previous track</source>
@@ -1962,7 +2045,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Katkesta</translation>
     </message>
     <message>
         <source>Save &amp; apply</source>
@@ -2031,6 +2114,9 @@ Try the track title, or add custom lyrics</source>
         <source>Close miniplayer</source>
         <translation type="unfinished"></translation>
     </message>
+</context>
+<context>
+    <name>MiniPlayerControls</name>
     <message>
         <source>Volume</source>
         <translation type="unfinished"></translation>
@@ -2175,70 +2261,6 @@ Try the track title, or add custom lyrics</source>
         <source>Select folder</source>
         <translation type="unfinished"></translation>
     </message>
-    <message>
-        <source>Switch to duration</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Switch to remaining time</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Volume</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Remove from favorites</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Add to favorites</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Shuffle On</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Shuffle Off</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Previous</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Pause</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Play</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Next</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Repeat Track</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Repeat All</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Repeat Off</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Lyrics</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Queue</source>
-        <translation type="unfinished"></translation>
-    </message>
 </context>
 <context>
     <name>NowPlayingDeckControls</name>
@@ -2338,7 +2360,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Katkesta</translation>
     </message>
     <message>
         <source>Choose Lyrics</source>
@@ -2370,6 +2392,14 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Track options</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Exit full screen</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Full screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2421,7 +2451,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Close</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sulge</translation>
     </message>
     <message>
         <source>Turn off Offline Blackout Mode in Settings to use your phone as a remote.</source>
@@ -2713,7 +2743,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Katkesta</translation>
     </message>
     <message>
         <source>Add Station</source>
@@ -2743,7 +2773,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Albums</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Albumid</translation>
     </message>
     <message>
         <source>Genres</source>
@@ -2771,11 +2801,11 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Play All</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Esita kõik</translation>
     </message>
     <message>
         <source>Shuffle</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sega järjestust</translation>
     </message>
     <message>
         <source>Search...</source>
@@ -2860,8 +2890,8 @@ Try the track title, or add custom lyrics</source>
     <message numerus="yes">
         <source>%n song(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n lugu</numerusform>
+            <numerusform>%n lugu</numerusform>
         </translation>
     </message>
     <message>
@@ -2882,7 +2912,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Katkesta</translation>
     </message>
     <message>
         <source>Connecting…</source>
@@ -2930,8 +2960,8 @@ Try the track title, or add custom lyrics</source>
     <message numerus="yes">
         <source>%n song(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n lugu</numerusform>
+            <numerusform>%n lugu</numerusform>
         </translation>
     </message>
     <message>
@@ -2971,7 +3001,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Albums</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Albumid</translation>
     </message>
     <message>
         <source>Songs</source>
@@ -2979,10 +3009,14 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Shuffle</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sega järjestust</translation>
     </message>
     <message>
         <source>Play</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -3119,7 +3153,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Katkesta</translation>
     </message>
     <message>
         <source>Apply</source>
@@ -3135,6 +3169,22 @@ Try the track title, or add custom lyrics</source>
 </context>
 <context>
     <name>SettingsAppearanceSection</name>
+    <message>
+        <source>Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>App Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Any font installed on this computer, for all of CassetteCat&apos;s text</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Default</source>
+        <translation type="unfinished"></translation>
+    </message>
     <message>
         <source>Color Scheme</source>
         <translation type="unfinished"></translation>
@@ -3180,7 +3230,7 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Visual style of the expanded player backdrop</source>
+        <source>Moving slowly shifts the cover&apos;s colors, and uses more graphics memory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -3188,7 +3238,39 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Moving</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Clean</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Track Lists</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Track Row Density</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Vertical spacing for song rows in track lists</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Comfortable</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Compact</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Audio Format Badges</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show FLAC, MP3, and AAC badges on track rows and in Now Playing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -3306,10 +3388,26 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Search</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Otsi</translation>
     </message>
     <message>
         <source>Settings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sidebar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Always shown</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move %1 up</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Move %1 down</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -3710,8 +3808,8 @@ Try the track title, or add custom lyrics</source>
     <message numerus="yes">
         <source>%n song(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n lugu</numerusform>
+            <numerusform>%n lugu</numerusform>
         </translation>
     </message>
     <message numerus="yes">
@@ -3757,7 +3855,7 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Display &amp; Sorting</source>
+        <source>Sorting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -3774,38 +3872,14 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Artist</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Esitaja</translation>
     </message>
     <message>
         <source>Album</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Album</translation>
     </message>
     <message>
         <source>Duration</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Track Row Density</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Vertical spacing for song rows in track lists</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Comfortable</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Compact</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Audio Format Badges</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Show FLAC, MP3, and AAC badges on track rows</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3868,6 +3942,42 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Lyrics Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Any font installed on this computer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Same as App</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Lyrics Weight</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How bold the lyric lines are</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Regular</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Medium</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>SemiBold</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Bold</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Local Files</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3877,6 +3987,37 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Load sidecar .lrc files before querying online providers</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Search</source>
+        <translation type="unfinished">Otsi</translation>
+    </message>
+    <message>
+        <source>Find Songs by Their Lyrics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Downloads lyrics for your songs, so you can search by a line</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Paused while LrcLib Lyrics is off or Offline Mode is on</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Looking up lyrics…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <source>%n song(s) left to check</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>%1 of %2 songs have lyrics</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3970,11 +4111,15 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Appearance</source>
+        <source>Look &amp; Feel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Playback &amp; Audio</source>
+        <source>Sound</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Playback</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4018,6 +4163,10 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>No Settings Found</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Searching…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4166,14 +4315,6 @@ Try the track title, or add custom lyrics</source>
 <context>
     <name>SettingsPlaybackSection</name>
     <message>
-        <source>Playback Device</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Choose where CassetteCat sends audio output</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Resume Queue on Launch</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4190,75 +4331,11 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Crossfade</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Fade each song into the next as it ends</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Off</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Audio Output</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Queue &amp; Playback</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Audio Protection</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Volume Limit</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Cap the maximum output level to protect your hearing</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Maximum Volume Limit</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Ceiling threshold applied to the master volume slider</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Equalizer</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Loudness &amp; Normalization</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Volume Normalization (ReplayGain)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Preserve original file loudness</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Track gain active: balance volume per song</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Album gain active: preserve album dynamic range</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Track</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Album</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4341,6 +4418,25 @@ Try the track title, or add custom lyrics</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <source>Love Liked Songs</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <source>%n love(s) left to send</source>
+        <translation type="unfinished">
+            <numerusform></numerusform>
+            <numerusform></numerusform>
+        </translation>
+    </message>
+    <message>
+        <source>Songs you like are loved on your accounts. This sends the ones you liked before</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Send</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <source>Connect %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4370,7 +4466,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Katkesta</translation>
     </message>
     <message>
         <source>Validating...</source>
@@ -4441,6 +4537,85 @@ Try the track title, or add custom lyrics</source>
     </message>
 </context>
 <context>
+    <name>SettingsSoundSection</name>
+    <message>
+        <source>Audio Output</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Playback Device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Choose where CassetteCat sends audio output</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Crossfade</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Fade each song into the next as it ends</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Equalizer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Loudness &amp; Normalization</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Volume Normalization (ReplayGain)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Preserve original file loudness</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Track gain active: balance volume per song</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Album gain active: preserve album dynamic range</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Track</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Album</source>
+        <translation type="unfinished">Album</translation>
+    </message>
+    <message>
+        <source>Audio Protection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Volume Limit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Turns all playback down, to protect your hearing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Maximum Volume Limit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>How loud full volume plays</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>SetupSheet</name>
     <message>
         <source>Welcome to CassetteCat</source>
@@ -4480,8 +4655,8 @@ Try the track title, or add custom lyrics</source>
     <message numerus="yes">
         <source>%n song(s)</source>
         <translation type="unfinished">
-            <numerusform></numerusform>
-            <numerusform></numerusform>
+            <numerusform>%n lugu</numerusform>
+            <numerusform>%n lugu</numerusform>
         </translation>
     </message>
     <message>
@@ -4536,6 +4711,10 @@ Try the track title, or add custom lyrics</source>
     <name>ShortcutDefinitions</name>
     <message>
         <source>Toggle Mini Player</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Full Screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4723,7 +4902,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Close</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sulge</translation>
     </message>
     <message>
         <source>Go to Artist</source>
@@ -4903,7 +5082,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Close</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sulge</translation>
     </message>
     <message>
         <source>Title</source>
@@ -4911,11 +5090,11 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Artist</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Esitaja</translation>
     </message>
     <message>
         <source>Album</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Album</translation>
     </message>
     <message>
         <source>Genre</source>
@@ -4951,7 +5130,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Change cover art</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Muuda kaanepilti</translation>
     </message>
     <message>
         <source>Looking up...</source>
@@ -4963,7 +5142,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Cancel</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Katkesta</translation>
     </message>
     <message>
         <source>Save</source>
@@ -5027,7 +5206,7 @@ Try the track title, or add custom lyrics</source>
     </message>
     <message>
         <source>Close</source>
-        <translation type="unfinished"></translation>
+        <translation type="unfinished">Sulge</translation>
     </message>
 </context>
 </TS>

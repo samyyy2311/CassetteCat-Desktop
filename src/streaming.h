@@ -85,6 +85,8 @@ class StreamingController final : public QObject {
     /// Starts Jellyfin Quick Connect for \p serverUrl.
     Q_INVOKABLE void startJellyfinQuickConnect(const QString &serverUrl, bool trustCert = false);
     Q_INVOKABLE void cancelJellyfinQuickConnect();
+    /// Whether signing in to \p serverUrl would send the password unencrypted beyond the home network.
+    Q_INVOKABLE bool isUnencryptedPublicUrl(const QString &serverUrl) const;
     Q_INVOKABLE void disconnectServer(const QString &protocol);
     Q_INVOKABLE void refreshLibrary();
     Q_INVOKABLE void setBlackoutEnabled(bool enabled);

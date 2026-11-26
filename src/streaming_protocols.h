@@ -11,7 +11,10 @@
 
 namespace streaming::protocol {
 
+// An address with no scheme gets http:// on a home network and https:// otherwise; a typed http:// is kept anywhere.
 QString normalizeServerUrl(const QString &raw, int defaultPort = 0);
+// Plain HTTP to a server that isn't on a home network, which the app asks about before sending a password.
+bool isUnencryptedPublicUrl(const QString &raw);
 QString md5Hex(const QString &input);
 QString randomSalt();
 QUrl subsonicUrl(const QString &base, const QString &endpoint, const QString &username, const QString &token,

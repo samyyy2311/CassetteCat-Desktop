@@ -634,8 +634,6 @@ int main(int argc, char *argv[]) {
 
     for (auto *rootObj : engine.rootObjects()) {
         if (auto *quickWin = qobject_cast<QQuickWindow *>(rootObj)) {
-            quickWin->setPersistentGraphics(false);
-            quickWin->setPersistentSceneGraph(false);
             mainWindow = quickWin;
             showMainWindow(quickWin,
                            appSettings.value(QStringLiteral("ui/startMinimizedToTray"), false).toBool() &&

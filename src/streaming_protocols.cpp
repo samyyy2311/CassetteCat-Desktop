@@ -45,9 +45,10 @@ bool isPrivateOrLocalHost(const QString &host) {
     if (isIpv4) {
         const quint8 first = static_cast<quint8>(ipv4 >> 24);
         const quint8 second = static_cast<quint8>((ipv4 >> 16) & 0xff);
-        // 100.64.0.0/10 is shared address space, used by Tailscale for devices on a private network.
+        // 100.64.0.0/10 isn't counted: Tailscale uses it, but so do mobile carriers, so it may not be the user's
+        // network.
         return first == 10 || (first == 172 && second >= 16 && second <= 31) || (first == 192 && second == 168) ||
-               (first == 169 && second == 254) || (first == 100 && second >= 64 && second <= 127);
+               (first == 169 && second == 254);
     }
 
     const Q_IPV6ADDR ipv6 = address.toIPv6Address();

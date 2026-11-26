@@ -711,9 +711,8 @@ bool runSelfChecks(bool includeVaultProbe) {
     check(normalizeServerUrl("  http://music.example.com/ ") == "http://music.example.com",
           "normalize-keeps-typed-http");
     check(isUnencryptedPublicUrl("http://music.example.com") && !isUnencryptedPublicUrl("http://jellyfin.lan") &&
-              !isUnencryptedPublicUrl("https://music.example.com") && !isUnencryptedPublicUrl("100.101.1.2:8096"),
+              !isUnencryptedPublicUrl("https://music.example.com") && isUnencryptedPublicUrl("http://100.101.1.2:8096"),
           "unencrypted-public-url");
-    check(normalizeServerUrl("100.101.1.2", 8096) == "http://100.101.1.2:8096", "normalize-tailscale-http");
     check(normalizeServerUrl("https://user:password@music.example.com").isEmpty(), "normalize-rejects-userinfo");
     check(normalizeServerUrl("https://music.example.com?token=secret").isEmpty(), "normalize-rejects-query");
     check(normalizeServerUrl("https://music.example.com#fragment").isEmpty(), "normalize-rejects-fragment");

@@ -122,7 +122,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ubuntu-latest
+          # Pinned like the ARM runner: Ubuntu 26.04 dropped libgstreamer-plugins-good1.0-0.
+          - runner: ubuntu-24.04
             qt-host: linux
             qt-arch: linux_gcc_64
             arch: x86_64

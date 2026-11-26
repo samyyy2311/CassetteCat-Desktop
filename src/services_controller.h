@@ -67,6 +67,8 @@ class ServicesController : public QObject {
                                                  const QString &password);
     Q_INVOKABLE void scrobbleNowPlaying(const QVariantMap &track);
     Q_INVOKABLE void scrobbleTrack(const QVariantMap &track, qint64 timestampSec);
+    /// Marks a liked song as loved on the connected Last.fm, Libre.fm and ListenBrainz accounts, or clears it.
+    Q_INVOKABLE void loveTrack(const QVariantMap &track, bool loved);
     Q_INVOKABLE void saveListenBrainzSession(const QString &token, const QString &userName);
     Q_INVOKABLE void disconnectListenBrainz();
     Q_INVOKABLE void disconnectScrobbleAccount(const QString &service);

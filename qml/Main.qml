@@ -2055,6 +2055,9 @@ ApplicationWindow {
         }
         favoriteTracks = favs
         syncServerFavorite(filePath, !!favs[norm])
+        // Only single likes are sent as loves; liking a whole album or a phone's likes at once would hit rate limits.
+        const track = tracksForPaths([filePath])[0]
+        if (track) services.loveTrack(track, !!favs[norm])
     }
 
     function setFavorites(filePaths, favorite) {

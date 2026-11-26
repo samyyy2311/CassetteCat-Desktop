@@ -391,6 +391,41 @@ void ServicesController::scrobbleNowPlaying(const QVariantMap &track) {
     postToScrobbleAccounts(params);
 }
 
+void ServicesController::loveTrack(const QVariantMap &track, bool loved) {
+    if (!onlineEnabled())
+        return;
+    const auto [artist, title, album] = scrobbleFields(track);
+    if (artist.isEmpty() || title.isEmpty())
+        return;
+
+    initScrobbleCredentials();
+
+    postToScrobbleAccounts({{"method", loved ? "track.love" : "track.unlove"}, {"artist", artist}, {"track", title}});
+
+    if (!SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool() ||
+        m_listenBrainzToken.isEmpty())
+        return;
+    // ListenBrainz takes feedback for a MusicBrainz recording, which the files don't name, so it's looked up first.
+    QUrl lookupUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/metadata/lookup/");
+    lookupUrl.setQuery(QUrlQuery{{"artist_name", artist}, {"recording_name", title}});
+    QNetworkRequest lookup(lookupUrl);
+    lookup.setRawHeader("Authorization", "Token " + m_listenBrainzToken.toUtf8());
+    lookup.setTransferTimeout(services::detail::requestTimeoutMs);
+    auto *reply = trackReply(m_net->get(lookup));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, loved, token = m_listenBrainzToken] {
+        reply->deleteLater();
+        const QString mbid = QJsonDocument::fromJson(reply->readAll()).object().value("recording_mbid").toString();
+        if (reply->error() != QNetworkReply::NoError || mbid.isEmpty() || token != m_listenBrainzToken)
+            return;
+        QNetworkRequest feedback(QUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/feedback/recording-feedback"));
+        feedback.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
+        feedback.setRawHeader("Authorization", "Token " + token.toUtf8());
+        feedback.setTransferTimeout(services::detail::requestTimeoutMs);
+        const QJsonObject body{{"recording_mbid", mbid}, {"score", loved ? 1 : 0}};
+        trackReply(m_net->post(feedback, QJsonDocument(body).toJson(QJsonDocument::Compact)));
+    });
+}
+
 void ServicesController::scrobbleTrack(const QVariantMap &track, qint64 timestampSec) {
     if (!onlineEnabled())
         return;

@@ -367,11 +367,6 @@ ApplicationWindow {
         value: settingsInitialized && svcPhoneRemote && !offlineBlackout
     }
 
-    Binding {
-        target: phoneRemote
-        property: "upNext"
-        value: phoneRemote.enabled ? remoteUpNext() : []
-    }
 
     Binding {
         target: player
@@ -3193,6 +3188,7 @@ ApplicationWindow {
         function onRepeatCycleRequested() { window.toggleRepeat() }
         function onVolumeRequested(volume) { window.setPlayerVolume(volume) }
         function onSeekRequested(positionMs) { player.seek(positionMs) }
+        function onUpNextNeeded() { phoneRemote.upNext = remoteUpNext() }
         // Indexes come from the phone's last poll, so the queue may have changed since.
         function onQueueTrackRequested(index) {
             const queue = window.activePlaybackQueue()

@@ -627,6 +627,7 @@ RemoteControlServer::Response RemoteControlServer::answerGet(const QUrl &url, co
     if (path == "/api/stream" || path == "/api/artwork")
         return answerMedia(path, QUrlQuery(url));
     if (path == "/api/queue") {
+        emit upNextNeeded();
         QJsonArray tracks;
         for (const QVariant &item : m_upNext) {
             const QVariantMap track = item.toMap();

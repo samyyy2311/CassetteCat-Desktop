@@ -40,7 +40,7 @@ class RemoteControlServer final : public QObject {
     /// volumePercent, artwork, filePath}; empty when none is. filePath is the same song in this library, if any.
     Q_PROPERTY(QVariantMap phonePlayback READ phonePlayback NOTIFY phonePlaybackChanged)
     Q_PROPERTY(int repeatMode MEMBER m_repeatMode)
-    /// The next few queued tracks as {index, title, artist, durationMs, filePath, artworkUrl}, kept current by QML.
+    /// The next few queued tracks as {index, title, artist, durationMs, filePath, artworkUrl}, set by QML on upNextNeeded.
     Q_PROPERTY(QVariantList upNext MEMBER m_upNext)
     /// The favorite file paths, kept current by QML, so a paired phone can sync likes.
     Q_PROPERTY(QStringList favoritePaths MEMBER m_favoritePaths NOTIFY favoritePathsChanged)
@@ -98,6 +98,8 @@ class RemoteControlServer final : public QObject {
     void repeatCycleRequested();
     void volumeRequested(double volume);
     void seekRequested(qint64 positionMs);
+    /// A phone is about to read upNext; it's built only then, as building it can walk the whole library.
+    void upNextNeeded();
     /// Requests playback of the track at \p index in the active queue.
     void queueTrackRequested(int index);
     /// Moves the queued track at \p from to \p to; both are positions in the active queue.

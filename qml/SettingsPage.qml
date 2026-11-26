@@ -599,6 +599,7 @@ Item {
                                         lastFmConnected: root.scrobbleLastFmConnected
                                         onLastFmEnabledToggled: value => root.scrobbleLastFmToggled(value)
                                         onDisconnectLastFmRequested: root.disconnectLastFmRequested()
+                                        onLoveLikedSongsRequested: root.appWindow.loveAllFavorites()
                                     }
                                 }
                             }

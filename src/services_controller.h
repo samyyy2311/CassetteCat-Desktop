@@ -31,6 +31,8 @@ class ServicesController : public QObject {
     Q_PROPERTY(int libraryLyricsFound READ libraryLyricsFound NOTIFY libraryLyricsChanged)
     Q_PROPERTY(int libraryLyricsTotal READ libraryLyricsTotal NOTIFY libraryLyricsChanged)
     Q_PROPERTY(int libraryLyricsLeft READ libraryLyricsLeft NOTIFY libraryLyricsChanged)
+    /// Loves still waiting to be sent.
+    Q_PROPERTY(int lovesLeft READ lovesLeft NOTIFY lovesChanged)
 
   public:
     explicit ServicesController(QObject *parent = nullptr);
@@ -67,8 +69,12 @@ class ServicesController : public QObject {
                                                  const QString &password);
     Q_INVOKABLE void scrobbleNowPlaying(const QVariantMap &track);
     Q_INVOKABLE void scrobbleTrack(const QVariantMap &track, qint64 timestampSec);
-    /// Marks a liked song as loved on the connected Last.fm, Libre.fm and ListenBrainz accounts, or clears it.
+    /// Marks a liked song as loved on the connected Last.fm, Libre.fm and ListenBrainz accounts, or clears it. Loves
+    /// are sent one a second, so liking many songs at once stays under the services' rate limits.
     Q_INVOKABLE void loveTrack(const QVariantMap &track, bool loved);
+    int lovesLeft() const {
+        return int(m_loves.size());
+    }
     Q_INVOKABLE void saveListenBrainzSession(const QString &token, const QString &userName);
     Q_INVOKABLE void disconnectListenBrainz();
     Q_INVOKABLE void disconnectScrobbleAccount(const QString &service);
@@ -95,6 +101,7 @@ class ServicesController : public QObject {
     void lyricsFetched(const QString &title, const QString &artist, const QString &lyrics, const QString &provider);
     void lyricsSearchResultsReady(const QVariantList &results);
     void libraryLyricsChanged();
+    void lovesChanged();
     void lyricsSaved(const QString &key, const QString &text);
     void coverSearchResultsReady(const QVariantList &results);
     /// \p tags is empty without a confident match. \p problem is "off" when MusicBrainz is turned off or the app is
@@ -162,6 +169,15 @@ class ServicesController : public QObject {
     quint64 m_lyricsRequestToken = 0;
     QList<QVariantMap> m_libraryLyricsQueue;
     bool m_libraryLyricsRunning = false;
+    struct Love {
+        QString artist;
+        QString title;
+        bool loved;
+    };
+    QList<Love> m_loves;
+    bool m_lovesRunning = false;
+    void sendNextLove();
+    void sendLove(const Love &love);
     int m_libraryLyricsFailures = 0;
     int m_libraryLyricsFound = 0;
     int m_libraryLyricsTotal = 0;

@@ -2055,9 +2055,13 @@ ApplicationWindow {
         }
         favoriteTracks = favs
         syncServerFavorite(filePath, !!favs[norm])
-        // Only single likes are sent as loves; liking a whole album or a phone's likes at once would hit rate limits.
         const track = tracksForPaths([filePath])[0]
         if (track) services.loveTrack(track, !!favs[norm])
+    }
+
+    // Sends every liked song as a love, for likes made before loves were sent.
+    function loveAllFavorites() {
+        tracksForPaths(Object.keys(favoriteTracks)).forEach(track => { if (track) services.loveTrack(track, true) })
     }
 
     function setFavorites(filePaths, favorite) {
@@ -2069,6 +2073,7 @@ ApplicationWindow {
         }
         favoriteTracks = favs
         filePaths.forEach(filePath => syncServerFavorite(filePath, favorite))
+        tracksForPaths(filePaths).forEach(track => { if (track) services.loveTrack(track, favorite) })
     }
 
     // A like on a server's song goes to the server too, as it does from the phone.

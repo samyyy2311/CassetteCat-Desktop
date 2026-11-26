@@ -397,7 +397,33 @@ void ServicesController::loveTrack(const QVariantMap &track, bool loved) {
     const auto [artist, title, album] = scrobbleFields(track);
     if (artist.isEmpty() || title.isEmpty())
         return;
+    // A song liked and unliked before its turn is sent once, as it ended up.
+    m_loves.removeIf([&](const Love &queued) { return queued.artist == artist && queued.title == title; });
+    m_loves.append({artist, title, loved});
+    emit lovesChanged();
+    if (!m_lovesRunning)
+        sendNextLove();
+}
 
+void ServicesController::sendNextLove() {
+    if (m_loves.isEmpty() || !onlineEnabled()) {
+        m_lovesRunning = false;
+        if (!m_loves.isEmpty()) {
+            m_loves.clear();
+            emit lovesChanged();
+        }
+        return;
+    }
+    m_lovesRunning = true;
+    sendLove(m_loves.takeFirst());
+    emit lovesChanged();
+    QTimer::singleShot(1000, this, &ServicesController::sendNextLove);
+}
+
+void ServicesController::sendLove(const Love &love) {
+    const QString &artist = love.artist;
+    const QString &title = love.title;
+    const bool loved = love.loved;
     initScrobbleCredentials();
 
     postToScrobbleAccounts({{"method", loved ? "track.love" : "track.unlove"}, {"artist", artist}, {"track", title}});

@@ -28,9 +28,13 @@ enum Opcode : quint32 { Handshake = 0, Frame = 1, Close = 2, Ping = 3, Pong = 4 
 // Which field the member list shows after "Listening to": 2 is details, the song.
 constexpr int kShowDetails = 2;
 
+// Empty for a song that can't be looked up, which then shows the logo.
 QString artworkKey(const QVariantMap &track) {
-    return track.value("artist").toString().trimmed().toLower() + QChar(0x1f) +
-           track.value("album").toString().trimmed().toLower();
+    const QString artist = track.value("artist").toString().trimmed().toLower();
+    const QString title = track.value("title").toString().trimmed().toLower();
+    if (artist.isEmpty() || title.isEmpty())
+        return {};
+    return artist + QChar(0x1f) + title + QChar(0x1f) + track.value("album").toString().trimmed().toLower();
 }
 
 // The song's public Last.fm page, which needs no account to open.
@@ -246,8 +250,11 @@ void DiscordPresence::sendActivity() {
     const qint64 positionMs = m_player->position();
     const QVariantMap track = m_player->currentTrack();
     const QString key = artworkKey(track);
-    if (!m_artwork.contains(key))
+    // Waiting for the cover sends the song once, rather than without it and again a moment later.
+    if (!key.isEmpty() && !m_artwork.contains(key)) {
         lookUpArtwork(track);
+        return;
+    }
     const QJsonObject activity =
         activityFor(track, m_player->isPlaying(), positionMs, m_player->duration(), nowMs, m_artwork.value(key));
     m_sentStartMs = activity.isEmpty() ? 0 : nowMs - positionMs;
@@ -257,29 +264,38 @@ void DiscordPresence::sendActivity() {
 
 void DiscordPresence::lookUpArtwork(const QVariantMap &track) {
     const QString key = artworkKey(track);
-    const QString artist = track.value("artist").toString().trimmed();
-    const QString album = track.value("album").toString().trimmed();
-    if (artist.isEmpty() || album.isEmpty() || m_artworkLookup == key)
+    if (m_artworkLookup == key)
         return;
     m_artworkLookup = key;
-    // iTunes search returns a public cover URL from one request, without a key.
+    const QString album = track.value("album").toString().trimmed();
+    // iTunes search returns a public cover URL from one request, without a key. Searching by song rather than
+    // album finds soundtracks and compilations, whose album artist isn't the song's artist.
     QUrl url(QStringLiteral("https://itunes.apple.com/search"));
-    url.setQuery(QUrlQuery{{"term", artist + u' ' + album}, {"entity", "album"}, {"limit", "1"}});
+    url.setQuery(QUrlQuery{{"term", track.value("artist").toString() + u' ' + track.value("title").toString()},
+                           {"entity", "song"},
+                           {"limit", "10"}});
     QNetworkRequest request(url);
-    request.setTransferTimeout(10000);
+    // Short, as the status waits for it.
+    request.setTransferTimeout(4000);
     QNetworkReply *reply = m_net.get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, key] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, key, album] {
         reply->deleteLater();
         if (m_artworkLookup == key)
             m_artworkLookup.clear();
-        // A failed request isn't remembered, so the next song change tries again.
-        if (reply->error() != QNetworkReply::NoError)
-            return;
         const QJsonArray results = QJsonDocument::fromJson(reply->readAll()).object().value("results").toArray();
-        const QString small =
-            results.isEmpty() ? QString() : results.first().toObject().value("artworkUrl100").toString();
-        m_artwork.insert(key, small.isEmpty() ? QString() : QString(small).replace("100x100bb", "512x512bb"));
-        scheduleUpdate();
+        // The same song is often on a single, the album and a deluxe edition, each with its own cover.
+        QString small;
+        for (const QJsonValue &result : results) {
+            const QJsonObject song = result.toObject();
+            const bool sameAlbum = song.value("collectionName").toString().startsWith(album, Qt::CaseInsensitive);
+            if (small.isEmpty() || sameAlbum)
+                small = song.value("artworkUrl100").toString();
+            if (sameAlbum)
+                break;
+        }
+        // A failed lookup shows the logo for this song rather than holding back its status.
+        m_artwork.insert(key, small.isEmpty() ? QString() : small.replace("100x100bb", "512x512bb"));
+        sendActivity();
     });
 }
 

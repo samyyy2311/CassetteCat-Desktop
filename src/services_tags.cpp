@@ -61,11 +61,11 @@ int ServicesController::nextMusicBrainzSlotMs() {
     return delayMs;
 }
 
-QVariantMap ServicesController::musicBrainzTagsFrom(const QJsonObject &search, const QVariantMap &track) {
+namespace {
+// MusicBrainz often has the same song as several recordings, so every one that fits is searched for its album. A
+// recording with the file's own title wins over versions of it, such as a remix of the same length.
+QList<QJsonObject> fittingRecordings(const QJsonObject &search, const QVariantMap &track) {
     const qint64 lengthMs = track.value("durationSeconds").toLongLong() * 1000;
-    const QString album = track.value("album").toString().trimmed();
-    // MusicBrainz often has the same song as several recordings, so every one that fits is searched for its album:
-    // the one the file already names, or else the earliest studio album, where the song first came out.
     QList<QJsonObject> confident;
     for (const QJsonValue &value : search[QStringLiteral("recordings")].toArray()) {
         const QJsonObject recording = value.toObject();
@@ -74,46 +74,29 @@ QVariantMap ServicesController::musicBrainzTagsFrom(const QJsonObject &search, c
             (lengthMs <= 0 || recordingMs <= 0 || std::llabs(recordingMs - lengthMs) <= kLengthToleranceMs))
             confident.append(recording);
     }
-    // A recording with the file's own title wins over versions of it, such as a remix of the same length.
     const QString title = comparableText(track.value("title").toString());
     QList<QJsonObject> fitting;
-    for (const QJsonObject &recording : confident)
+    for (const QJsonObject &recording : confident) {
         if (comparableText(recording[QStringLiteral("title")].toString()) == title)
             fitting.append(recording);
-    if (fitting.isEmpty())
-        fitting = confident;
-
-    QJsonObject firstRecording, namedRecording, namedRelease, studioRecording, studioRelease;
-    for (const QJsonObject &recording : fitting) {
-        if (firstRecording.isEmpty())
-            firstRecording = recording;
-        for (const QJsonValue &releaseValue : recording[QStringLiteral("releases")].toArray()) {
-            const QJsonObject release = releaseValue.toObject();
-            // Of the releases with the file's album name, the earliest is the original rather than a reissue.
-            if (!album.isEmpty() &&
-                release[QStringLiteral("title")].toString().compare(album, Qt::CaseInsensitive) == 0 &&
-                (namedRelease.isEmpty() || sortableDate(release) < sortableDate(namedRelease))) {
-                namedRecording = recording;
-                namedRelease = release;
-            }
-            if (isStudioAlbum(release) &&
-                (studioRelease.isEmpty() || sortableDate(release) < sortableDate(studioRelease))) {
-                studioRecording = recording;
-                studioRelease = release;
-            }
-        }
     }
-    if (firstRecording.isEmpty())
-        return {};
+    return fitting.isEmpty() ? confident : fitting;
+}
 
-    const bool named = !namedRelease.isEmpty();
-    const QJsonObject recording = named ? namedRecording : studioRelease.isEmpty() ? firstRecording : studioRecording;
-    const QJsonObject release = named ? namedRelease : studioRelease;
-    QVariantMap tags{{"title", recording[QStringLiteral("title")].toString()},
-                     {"artist", creditedArtist(recording[QStringLiteral("artist-credit")].toArray())}};
-    // Without the file's album or a studio album, the release would be a guess, such as one of many compilations.
-    if (release.isEmpty())
-        return tags;
+// The earliest release offered, which is the original rather than a reissue, with the recording it came from.
+struct EarliestRelease {
+    QJsonObject recording;
+    QJsonObject release;
+
+    void offer(const QJsonObject &candidateRecording, const QJsonObject &candidateRelease) {
+        if (!release.isEmpty() && sortableDate(candidateRelease) >= sortableDate(release))
+            return;
+        recording = candidateRecording;
+        release = candidateRelease;
+    }
+};
+
+void addReleaseTags(QVariantMap &tags, const QJsonObject &release) {
     const QJsonObject medium = release[QStringLiteral("media")].toArray().first().toObject();
     tags.insert("album", release[QStringLiteral("title")].toString());
     if (const QString releaseId = release[QStringLiteral("id")].toString(); !releaseId.isEmpty())
@@ -125,6 +108,35 @@ QVariantMap ServicesController::musicBrainzTagsFrom(const QJsonObject &search, c
         tags.insert("trackNumber", number);
     if (const int disc = medium[QStringLiteral("position")].toInt(); disc > 0)
         tags.insert("discNumber", disc);
+}
+} // namespace
+
+QVariantMap ServicesController::musicBrainzTagsFrom(const QJsonObject &search, const QVariantMap &track) {
+    const QList<QJsonObject> fitting = fittingRecordings(search, track);
+    if (fitting.isEmpty())
+        return {};
+    // The album the file already names, or else the earliest studio album, where the song first came out.
+    const QString album = track.value("album").toString().trimmed();
+    EarliestRelease named;
+    EarliestRelease studio;
+    for (const QJsonObject &recording : fitting) {
+        for (const QJsonValue &releaseValue : recording[QStringLiteral("releases")].toArray()) {
+            const QJsonObject release = releaseValue.toObject();
+            if (!album.isEmpty() &&
+                release[QStringLiteral("title")].toString().compare(album, Qt::CaseInsensitive) == 0)
+                named.offer(recording, release);
+            if (isStudioAlbum(release))
+                studio.offer(recording, release);
+        }
+    }
+
+    const EarliestRelease &chosen = named.release.isEmpty() ? studio : named;
+    const QJsonObject recording = chosen.release.isEmpty() ? fitting.first() : chosen.recording;
+    QVariantMap tags{{"title", recording[QStringLiteral("title")].toString()},
+                     {"artist", creditedArtist(recording[QStringLiteral("artist-credit")].toArray())}};
+    // Without the file's album or a studio album, the release would be a guess, such as one of many compilations.
+    if (!chosen.release.isEmpty())
+        addReleaseTags(tags, chosen.release);
     return tags;
 }
 

@@ -135,7 +135,8 @@ bool ServicesController::selfCheck() {
     check.expect(musicBrainzTagsFrom(search, {{"durationSeconds", 150}}).isEmpty(),
                  "skips recordings of another length");
     // A file already naming the album still gets the original's year, not a reissue's.
-    check.expect(musicBrainzTagsFrom(search, {{"durationSeconds", 200}, {"album", "first album"}}).value("year") == 1999,
+    check.expect(musicBrainzTagsFrom(search, {{"durationSeconds", 200}, {"album", "first album"}}).value("year") ==
+                     1999,
                  "takes the original's year");
     // With only a compilation to go on, the album is left alone.
     check.expect(musicBrainzTagsFrom(search, {{"durationSeconds", 240}}) ==
@@ -155,13 +156,9 @@ QNetworkReply *ServicesController::trackReply(QNetworkReply *reply) {
     return reply;
 }
 
-void ServicesController::fetchRadioStations(const QString &searchQuery, const QString &country, const QString &language,
-                                            const QString &tag, const QString &sort, bool reverse) {
-    if (!onlineEnabled() || !serviceEnabled("radio"))
-        return;
-    cancelRadioRequests();
-    const int requestToken = m_radioRequestToken;
-    QUrl url("https://de1.api.radio-browser.info/json/stations/search");
+namespace {
+QUrlQuery radioQuery(const QString &searchQuery, const QString &country, const QString &language, const QString &tag,
+                     const QString &sort, bool reverse) {
     QUrlQuery q;
     const QString normalizedSort =
         QStringList{"votes", "clicktrend", "name", "country", "bitrate"}.contains(sort) ? sort : "votes";
@@ -169,54 +166,58 @@ void ServicesController::fetchRadioStations(const QString &searchQuery, const QS
     q.addQueryItem("reverse", reverse ? "true" : "false");
     q.addQueryItem("lastcheckok", "1");
     q.addQueryItem("limit", "80");
-    if (!searchQuery.trimmed().isEmpty()) {
-        q.addQueryItem("name", searchQuery.trimmed());
+    const std::pair<const char *, QString> filters[] = {
+        {"name", searchQuery}, {"country", country}, {"language", language}, {"tag", tag}};
+    for (const auto &[name, value] : filters) {
+        if (!value.trimmed().isEmpty())
+            q.addQueryItem(name, value.trimmed());
     }
-    if (!country.trimmed().isEmpty())
-        q.addQueryItem("country", country.trimmed());
-    if (!language.trimmed().isEmpty())
-        q.addQueryItem("language", language.trimmed());
-    if (!tag.trimmed().isEmpty())
-        q.addQueryItem("tag", tag.trimmed());
-    url.setQuery(q);
+    return q;
+}
 
-    QNetworkRequest req = services::detail::request(url);
+// Stations without a working stream address are left out.
+QVariantList radioStationsFrom(const QJsonArray &results) {
+    QVariantList stations;
+    for (const auto &value : results) {
+        const auto obj = value.toObject();
+        const QString streamUrl = obj.value("url_resolved").toString();
+        if (streamUrl.isEmpty())
+            continue;
+        stations.append(QVariantMap{{"id", obj.value("stationuuid").toString()},
+                                    {"name", obj.value("name").toString()},
+                                    {"streamUrl", streamUrl},
+                                    {"favicon", obj.value("favicon").toString()},
+                                    {"tags", obj.value("tags").toString()},
+                                    {"country", obj.value("country").toString()},
+                                    {"language", obj.value("language").toString()},
+                                    {"bitrate", obj.value("bitrate").toInt()}});
+    }
+    return stations;
+}
+} // namespace
 
-    auto *reply = trackReply(m_net->get(req));
+void ServicesController::fetchRadioStations(const QString &searchQuery, const QString &country, const QString &language,
+                                            const QString &tag, const QString &sort, bool reverse) {
+    if (!onlineEnabled() || !serviceEnabled("radio"))
+        return;
+    cancelRadioRequests();
+    const int requestToken = m_radioRequestToken;
+    QUrl url("https://de1.api.radio-browser.info/json/stations/search");
+    url.setQuery(radioQuery(searchQuery, country, language, tag, sort, reverse));
+
+    auto *reply = trackReply(m_net->get(services::detail::request(url)));
     m_radioReply = reply;
     connect(reply, &QNetworkReply::finished, this, [this, reply, requestToken]() {
         if (reply == m_radioReply)
             m_radioReply = nullptr;
         reply->deleteLater();
-        if (!onlineEnabled() || !serviceEnabled("radio"))
+        if (!onlineEnabled() || !serviceEnabled("radio") || requestToken != m_radioRequestToken)
             return;
-        if (requestToken != m_radioRequestToken)
+        if (reply->error() != QNetworkReply::NoError)
             return;
-        if (reply->error() == QNetworkReply::NoError) {
-            const auto doc = QJsonDocument::fromJson(reply->readAll());
-            if (doc.isArray()) {
-                QVariantList stations;
-                const auto arr = doc.array();
-                for (const auto &v : arr) {
-                    const auto obj = v.toObject();
-                    const QString streamUrl = obj.value("url_resolved").toString();
-                    if (streamUrl.isEmpty())
-                        continue;
-
-                    QVariantMap s;
-                    s["id"] = obj.value("stationuuid").toString();
-                    s["name"] = obj.value("name").toString();
-                    s["streamUrl"] = streamUrl;
-                    s["favicon"] = obj.value("favicon").toString();
-                    s["tags"] = obj.value("tags").toString();
-                    s["country"] = obj.value("country").toString();
-                    s["language"] = obj.value("language").toString();
-                    s["bitrate"] = obj.value("bitrate").toInt();
-                    stations.append(s);
-                }
-                emit radioStationsLoaded(stations);
-            }
-        }
+        const auto doc = QJsonDocument::fromJson(reply->readAll());
+        if (doc.isArray())
+            emit radioStationsLoaded(radioStationsFrom(doc.array()));
     });
 }
 

@@ -92,6 +92,14 @@ void ServicesController::fetchLyrics(const QString &title, const QString &artist
     });
 }
 
+namespace {
+// Timed lyrics when there are any, plain ones otherwise.
+QString lyricsOf(const QJsonObject &result) {
+    const QString synced = result.value("syncedLyrics").toString().trimmed();
+    return synced.isEmpty() ? result.value("plainLyrics").toString().trimmed() : synced;
+}
+} // namespace
+
 void ServicesController::lookUpLyrics(const QVariantMap &song,
                                       std::function<void(LyricsLookup, const QString &)> done) {
     const QString title = song.value("title").toString();
@@ -109,12 +117,8 @@ void ServicesController::lookUpLyrics(const QVariantMap &song,
         q.addQueryItem("duration", QString::number(durationSeconds));
     url.setQuery(q);
 
-    const auto lyricsOf = [](const QJsonObject &result) {
-        const QString synced = result.value("syncedLyrics").toString().trimmed();
-        return synced.isEmpty() ? result.value("plainLyrics").toString().trimmed() : synced;
-    };
     auto *reply = trackReply(m_net->get(services::detail::request(url)));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, title, artist, done, lyricsOf]() {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, title, artist, done]() {
         reply->deleteLater();
         if (!onlineEnabled() || !serviceEnabled("lrclib"))
             return done(LyricsLookup::Failed, {});
@@ -128,26 +132,30 @@ void ServicesController::lookUpLyrics(const QVariantMap &song,
             if (!text.isEmpty())
                 return done(LyricsLookup::Found, text);
         }
+        searchLyrics(title, artist, done);
+    });
+}
 
-        QUrl searchUrl("https://lrclib.net/api/search");
-        QUrlQuery sq;
-        sq.addQueryItem("artist_name", artist);
-        sq.addQueryItem("track_name", title);
-        searchUrl.setQuery(sq);
+void ServicesController::searchLyrics(const QString &title, const QString &artist,
+                                      std::function<void(LyricsLookup, const QString &)> done) {
+    QUrl searchUrl("https://lrclib.net/api/search");
+    QUrlQuery sq;
+    sq.addQueryItem("artist_name", artist);
+    sq.addQueryItem("track_name", title);
+    searchUrl.setQuery(sq);
 
-        auto *sReply = trackReply(m_net->get(services::detail::request(searchUrl)));
-        connect(sReply, &QNetworkReply::finished, this, [this, sReply, done, lyricsOf]() {
-            sReply->deleteLater();
-            if (!onlineEnabled() || !serviceEnabled("lrclib") || sReply->error() != QNetworkReply::NoError)
-                return done(LyricsLookup::Failed, {});
-            const QJsonArray results = QJsonDocument::fromJson(sReply->readAll()).array();
-            for (const auto &result : results) {
-                const QString text = lyricsOf(result.toObject());
-                if (!text.isEmpty())
-                    return done(LyricsLookup::Found, text);
-            }
-            done(LyricsLookup::Missing, {});
-        });
+    auto *reply = trackReply(m_net->get(services::detail::request(searchUrl)));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, done]() {
+        reply->deleteLater();
+        if (!onlineEnabled() || !serviceEnabled("lrclib") || reply->error() != QNetworkReply::NoError)
+            return done(LyricsLookup::Failed, {});
+        const QJsonArray results = QJsonDocument::fromJson(reply->readAll()).array();
+        for (const auto &result : results) {
+            const QString text = lyricsOf(result.toObject());
+            if (!text.isEmpty())
+                return done(LyricsLookup::Found, text);
+        }
+        done(LyricsLookup::Missing, {});
     });
 }
 

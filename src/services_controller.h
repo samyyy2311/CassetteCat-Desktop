@@ -131,8 +131,12 @@ class ServicesController : public QObject {
     enum class LyricsLookup { Found, Missing, Failed };
     /// Exact match first, then search; synced lyrics preferred.
     void lookUpLyrics(const QVariantMap &song, std::function<void(LyricsLookup, const QString &)> done);
+    /// Falls back to LRCLIB's search when it has no exact match for the song.
+    void searchLyrics(const QString &title, const QString &artist,
+                      std::function<void(LyricsLookup, const QString &)> done);
     void fetchNextLibraryLyrics();
     static QString canonicalArtistName(const QString &artist);
+    static QString deezerPicture(const QJsonArray &artists, const QString &key);
     static bool serviceEnabled(const QSettings &settings, const QString &service);
     bool onlineEnabled() const;
     bool serviceEnabled(const QString &service) const;
@@ -188,6 +192,9 @@ class ServicesController : public QObject {
     bool m_lovesRunning = false;
     void sendNextLove();
     void sendLove(const Love &love);
+    void sendLoveToScrobblers(const Love &love);
+    void sendLoveToListenBrainz(const Love &love);
+    void sendListenBrainzFeedback(const QString &mbid, bool loved, const QString &key, const QString &token);
     int m_libraryLyricsFailures = 0;
     int m_libraryLyricsFound = 0;
     int m_libraryLyricsTotal = 0;

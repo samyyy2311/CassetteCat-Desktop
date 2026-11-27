@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QElapsedTimer>
+#include <QMediaPlayer>
 #include <QObject>
 #include <QString>
 #include <QUrl>
@@ -8,7 +9,6 @@
 
 class AudioPipeline;
 class QMediaDevices;
-class QMediaPlayer;
 class QQuickWindow;
 class QTimer;
 class StreamingController;
@@ -139,6 +139,12 @@ class PlayerController final : public QObject {
     float effectiveVolume() const;
     /// Wires \p player's signals; only the current player's signals are acted on.
     void connectPlayer(QMediaPlayer *player);
+    void onPlaybackStateChanged(QMediaPlayer::PlaybackState state);
+    void followPlaybackState(bool playing, bool naturalEnd);
+    void resumeIfUnexpected(QMediaPlayer::PlaybackState state, bool wasPlaying);
+    void onMediaStatusChanged(QMediaPlayer::MediaStatus status);
+    void onPlayerError(const QString &message);
+    void onPlayerPosition(qint64 pos);
     /// Ends a crossfade now: the outgoing track stops and the incoming one plays at full volume.
     void finishCrossfade();
 

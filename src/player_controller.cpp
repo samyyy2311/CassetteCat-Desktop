@@ -77,118 +77,130 @@ PlayerController::PlayerController(QObject *parent, StreamingController *streami
 }
 
 void PlayerController::connectPlayer(QMediaPlayer *player) {
+    // Both players stay connected, and only the one playing now is listened to.
     connect(player, &QMediaPlayer::playbackStateChanged, this, [this, player](QMediaPlayer::PlaybackState state) {
-        if (player != m_player)
-            return;
-        const bool wasPlaying = m_isPlaying;
-        const bool playing = (state == QMediaPlayer::PlayingState);
-        qInfo().noquote() << "[PLAYER] state=" << static_cast<int>(state) << "positionMs=" << m_player->position()
-                          << "track=" << m_currentTrack.value("filePath").toString();
-        // Between two songs the player stops for a moment; that only counts as stopping if no song follows.
-        const bool naturalEnd =
-            state == QMediaPlayer::StoppedState && m_player->mediaStatus() == QMediaPlayer::EndOfMedia;
-        // A pause ends a song change too, or pausing while the next song opened kept it showing as playing.
-        if (playing || state == QMediaPlayer::PausedState)
-            m_switchingTrack = false;
-        if (!m_switchingTrack && !naturalEnd)
-            setPlaying(playing);
-        if (state == QMediaPlayer::PausedState)
-            emit paused();
-        if (playing) {
-            m_pipeline->setPaused(false);
-        } else if (m_switchingTrack) {
-            // The device keeps running, so the next song follows without the device stopping and starting.
-        } else if (!naturalEnd) {
-            m_pipeline->setPaused(true);
-        } else {
-            // At a song's natural end the queued audio plays out while the next song opens.
-            QTimer::singleShot(1500, this, [this] {
-                if (m_player->playbackState() != QMediaPlayer::PlayingState && !m_fadeTimer->isActive()) {
-                    setPlaying(false);
-                    m_pipeline->setPaused(true);
-                }
-            });
-        }
-        if (state == QMediaPlayer::StoppedState && !m_pauseExpected && !m_currentTrack.isEmpty()) {
-            const QString stoppedTrackPath = m_currentTrack.value("filePath").toString();
-            QTimer::singleShot(75, this, [this, stoppedTrackPath] {
-                if (m_pauseExpected || m_currentTrack.value("filePath").toString() != stoppedTrackPath ||
-                    m_player->playbackState() == QMediaPlayer::PlayingState ||
-                    m_player->mediaStatus() == QMediaPlayer::EndOfMedia)
-                    return;
-                qWarning().noquote() << "[PLAYER] unexpected backend stop; resuming positionMs="
-                                     << m_player->position();
-                m_player->play();
-            });
-        }
-        if (state == QMediaPlayer::PausedState && wasPlaying && !m_pauseExpected &&
-            m_player->mediaStatus() != QMediaPlayer::EndOfMedia) {
-            qWarning() << "[PLAYER] unexpected backend pause; resuming";
-            QTimer::singleShot(0, m_player, &QMediaPlayer::play);
-        }
-        if (state == QMediaPlayer::PlayingState) {
-            m_pauseExpected = false;
-        }
-        if (state == QMediaPlayer::PausedState)
-            m_pauseExpected = false;
+        if (player == m_player)
+            onPlaybackStateChanged(state);
     });
-
     connect(player, &QMediaPlayer::mediaStatusChanged, this, [this, player](QMediaPlayer::MediaStatus status) {
-        if (player != m_player)
-            return;
-        qInfo().noquote() << "[PLAYER] mediaStatus=" << static_cast<int>(status)
-                          << "positionMs=" << m_player->position();
-        if (status == QMediaPlayer::LoadedMedia || status == QMediaPlayer::BufferedMedia) {
-            if (m_pendingRestorePositionMs > 0) {
-                const qint64 targetPos = m_pendingRestorePositionMs;
-                m_pendingRestorePositionMs = 0;
-                m_pipeline->clear(m_player->audioBufferOutput());
-                m_player->setPosition(targetPos);
-                m_position = targetPos;
-                emit positionChanged();
-            }
-        }
-        if (status == QMediaPlayer::EndOfMedia) {
-            emit trackEnded();
-        }
+        if (player == m_player)
+            onMediaStatusChanged(status);
     });
-
     connect(player, &QMediaPlayer::errorOccurred, this, [this, player](QMediaPlayer::Error, const QString &message) {
-        if (player != m_player)
-            return;
-        qWarning().noquote() << "[PLAYER] error positionMs=" << m_player->position() << message;
-        if (m_switchingTrack) {
-            m_switchingTrack = false;
-            setPlaying(false);
-            m_pipeline->setPaused(true);
-        }
-        if (m_error == message)
-            return;
-        m_error = message;
-        emit errorChanged();
+        if (player == m_player)
+            onPlayerError(message);
     });
-
     connect(player, &QMediaPlayer::positionChanged, this, [this, player](qint64 pos) {
-        if (player != m_player)
-            return;
-        if (m_pendingRestorePositionMs > 0 && pos == 0) {
-            return;
-        }
-        m_position = pos;
-        emit positionChanged();
-        if (m_crossfadeMs > 0 && !m_crossfadeReady && m_isPlaying && m_duration > 2 * m_crossfadeMs &&
-            pos >= m_duration - m_crossfadeMs && !isNetworkStream(m_player->source())) {
-            m_crossfadeReady = true;
-            emit crossfadeReady();
-        }
+        if (player == m_player)
+            onPlayerPosition(pos);
     });
-
     connect(player, &QMediaPlayer::durationChanged, this, [this, player](qint64 dur) {
         if (player != m_player)
             return;
         m_duration = dur;
         emit durationChanged();
     });
+}
+
+void PlayerController::onPlaybackStateChanged(QMediaPlayer::PlaybackState state) {
+    const bool wasPlaying = m_isPlaying;
+    const bool playing = (state == QMediaPlayer::PlayingState);
+    qInfo().noquote() << "[PLAYER] state=" << static_cast<int>(state) << "positionMs=" << m_player->position()
+                      << "track=" << m_currentTrack.value("filePath").toString();
+    // Between two songs the player stops for a moment; that only counts as stopping if no song follows.
+    const bool naturalEnd = state == QMediaPlayer::StoppedState && m_player->mediaStatus() == QMediaPlayer::EndOfMedia;
+    // A pause ends a song change too, or pausing while the next song opened kept it showing as playing.
+    if (playing || state == QMediaPlayer::PausedState)
+        m_switchingTrack = false;
+    if (!m_switchingTrack && !naturalEnd)
+        setPlaying(playing);
+    if (state == QMediaPlayer::PausedState)
+        emit paused();
+    followPlaybackState(playing, naturalEnd);
+    resumeIfUnexpected(state, wasPlaying);
+    if (playing || state == QMediaPlayer::PausedState)
+        m_pauseExpected = false;
+}
+
+void PlayerController::followPlaybackState(bool playing, bool naturalEnd) {
+    if (playing) {
+        m_pipeline->setPaused(false);
+        return;
+    }
+    // During a song change the device keeps running, so the next song follows without it stopping and starting.
+    if (m_switchingTrack)
+        return;
+    if (!naturalEnd) {
+        m_pipeline->setPaused(true);
+        return;
+    }
+    // At a song's natural end the queued audio plays out while the next song opens.
+    QTimer::singleShot(1500, this, [this] {
+        if (m_player->playbackState() != QMediaPlayer::PlayingState && !m_fadeTimer->isActive()) {
+            setPlaying(false);
+            m_pipeline->setPaused(true);
+        }
+    });
+}
+
+// The audio backend sometimes stops or pauses on its own; playback carries on unless the app asked for it.
+void PlayerController::resumeIfUnexpected(QMediaPlayer::PlaybackState state, bool wasPlaying) {
+    if (state == QMediaPlayer::StoppedState && !m_pauseExpected && !m_currentTrack.isEmpty()) {
+        const QString stoppedTrackPath = m_currentTrack.value("filePath").toString();
+        QTimer::singleShot(75, this, [this, stoppedTrackPath] {
+            if (m_pauseExpected || m_currentTrack.value("filePath").toString() != stoppedTrackPath ||
+                m_player->playbackState() == QMediaPlayer::PlayingState ||
+                m_player->mediaStatus() == QMediaPlayer::EndOfMedia)
+                return;
+            qWarning().noquote() << "[PLAYER] unexpected backend stop; resuming positionMs=" << m_player->position();
+            m_player->play();
+        });
+    }
+    if (state == QMediaPlayer::PausedState && wasPlaying && !m_pauseExpected &&
+        m_player->mediaStatus() != QMediaPlayer::EndOfMedia) {
+        qWarning() << "[PLAYER] unexpected backend pause; resuming";
+        QTimer::singleShot(0, m_player, &QMediaPlayer::play);
+    }
+}
+
+void PlayerController::onMediaStatusChanged(QMediaPlayer::MediaStatus status) {
+    qInfo().noquote() << "[PLAYER] mediaStatus=" << static_cast<int>(status) << "positionMs=" << m_player->position();
+    const bool loaded = status == QMediaPlayer::LoadedMedia || status == QMediaPlayer::BufferedMedia;
+    if (loaded && m_pendingRestorePositionMs > 0) {
+        const qint64 targetPos = m_pendingRestorePositionMs;
+        m_pendingRestorePositionMs = 0;
+        m_pipeline->clear(m_player->audioBufferOutput());
+        m_player->setPosition(targetPos);
+        m_position = targetPos;
+        emit positionChanged();
+    }
+    if (status == QMediaPlayer::EndOfMedia)
+        emit trackEnded();
+}
+
+void PlayerController::onPlayerError(const QString &message) {
+    qWarning().noquote() << "[PLAYER] error positionMs=" << m_player->position() << message;
+    if (m_switchingTrack) {
+        m_switchingTrack = false;
+        setPlaying(false);
+        m_pipeline->setPaused(true);
+    }
+    if (m_error == message)
+        return;
+    m_error = message;
+    emit errorChanged();
+}
+
+void PlayerController::onPlayerPosition(qint64 pos) {
+    if (m_pendingRestorePositionMs > 0 && pos == 0)
+        return;
+    m_position = pos;
+    emit positionChanged();
+    if (m_crossfadeMs > 0 && !m_crossfadeReady && m_isPlaying && m_duration > 2 * m_crossfadeMs &&
+        pos >= m_duration - m_crossfadeMs && !isNetworkStream(m_player->source())) {
+        m_crossfadeReady = true;
+        emit crossfadeReady();
+    }
 }
 
 QVariantMap PlayerController::currentTrack() const {

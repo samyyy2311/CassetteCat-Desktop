@@ -1353,6 +1353,14 @@ ApplicationWindow {
         }
     }
 
+    function quitApp() {
+        if (appQuitting) return
+        appQuitting = true
+        finishHistoryTracking()
+        persistBeforeExit()
+        Qt.quit()
+    }
+
     function finishHistoryTracking() {
         pauseHistoryTracking()
         // Every listen is logged for the Listening Record's time, marked as a play once it counted as one.
@@ -1785,6 +1793,10 @@ ApplicationWindow {
             tray.notifyHidden()
         } else if (!appQuitting && miniPlayerWindow && miniPlayerWindow.visible) {
             // The mini player keeps playing, and going back to the full player brings this window back.
+            close.accepted = false
+            window.hide()
+        } else if (!appQuitting && Qt.platform.os === "osx") {
+            // Mac apps keep running when their window closes; the Dock icon brings it back.
             close.accepted = false
             window.hide()
         } else if (!appQuitting) {
@@ -3225,12 +3237,7 @@ ApplicationWindow {
         function onVolumeRequested(volume) {
             window.setPlayerVolume(volume)
         }
-        function onQuitRequested() {
-            appQuitting = true
-            finishHistoryTracking()
-            persistBeforeExit()
-            Qt.quit()
-        }
+        function onQuitRequested() { window.quitApp() }
     }
 
     Connections {
@@ -3316,12 +3323,7 @@ ApplicationWindow {
         function onPlayPauseRequested() { player.togglePlay() }
         function onNextRequested() { window.playNext() }
         function onPreviousRequested() { window.playPrevious() }
-        function onQuitRequested() {
-            appQuitting = true
-            finishHistoryTracking()
-            persistBeforeExit()
-            Qt.quit()
-        }
+        function onQuitRequested() { window.quitApp() }
     }
 
     // Sleep timer helpers

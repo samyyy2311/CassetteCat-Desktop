@@ -303,6 +303,22 @@ std::optional<int> runSelfCheck(const char *flag) {
     return std::nullopt;
 }
 
+#ifdef Q_OS_MACOS
+// Cmd+Q and the Dock's Quit close every window first, so the window learns it's a real quit before it would hide.
+class MacQuitFilter : public QObject {
+  public:
+    explicit MacQuitFilter(QObject *window) : m_window(window) {}
+    bool eventFilter(QObject *watched, QEvent *event) override {
+        if (watched == qApp && event->type() == QEvent::Quit)
+            QMetaObject::invokeMethod(m_window, "quitApp");
+        return false;
+    }
+
+  private:
+    QObject *m_window;
+};
+#endif
+
 QIcon bundledAppIcon() {
     QIcon icon;
     for (const int size : {16, 24, 32, 48, 64, 128, 256})
@@ -521,7 +537,14 @@ int main(int argc, char *argv[]) {
     DiscordPresence discord(&player, &app);
     RemoteControlServer phoneRemote(&player, &library, &app);
     GlobalShortcutController globalShortcuts(&app);
+#ifdef Q_OS_MACOS
+    // The menu bar wants a template image, which macOS tints to suit light and dark menu bars.
+    QIcon trayIcon(QStringLiteral(":/qt/qml/CassetteCat/qml/icons/logo.svg"));
+    trayIcon.setIsMask(true);
+    TrayController tray(trayIcon, &app);
+#else
     TrayController tray(appIcon, &app);
+#endif
 
     const auto openExternalPath = [&](const QString &path) {
         const QVariantList tracks = library.openPaths({path});
@@ -624,6 +647,20 @@ int main(int argc, char *argv[]) {
             break;
         }
     }
+
+#ifdef Q_OS_MACOS
+    MacQuitFilter quitFilter(mainWindow);
+    app.installEventFilter(&quitFilter);
+    // Clicking the Dock icon reports the app active again, which brings back a window closed with the red button.
+    QObject::connect(&app, &QGuiApplication::applicationStateChanged, &app, [&](Qt::ApplicationState state) {
+        if (state != Qt::ApplicationActive)
+            return;
+        for (const QWindow *window : QGuiApplication::topLevelWindows())
+            if (window->isVisible())
+                return;
+        activateWindow(mainWindow);
+    });
+#endif
 
     if (!openPath.isEmpty())
         openExternalPath(openPath);

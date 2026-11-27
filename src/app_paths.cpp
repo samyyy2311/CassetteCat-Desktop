@@ -4,7 +4,12 @@
 #include <QStandardPaths>
 
 QString settingsFilePath() {
+#ifdef Q_OS_MACOS
+    // ~/Library/Preferences is for the system's own preference plists; an app's files go in Application Support.
+    const QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+#else
     const QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
+#endif
     QDir().mkpath(configDir);
     return QDir(configDir).filePath("settings.ini");
 }

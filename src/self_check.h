@@ -14,7 +14,9 @@ class SelfCheck {
         m_passed = false;
     }
 
-    bool passed() const { return m_passed; }
+    bool passed() const {
+        return m_passed;
+    }
 
   private:
     const char *m_suite;

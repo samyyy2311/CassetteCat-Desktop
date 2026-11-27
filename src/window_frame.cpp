@@ -144,9 +144,19 @@ bool WindowFrame::nativeEventFilter(const QByteArray &eventType, void *message, 
     if (eventType != "windows_generic_MSG" || !m_button || !m_button->window() || !m_button->window()->handle())
         return false;
     const MSG *msg = static_cast<const MSG *>(message);
-    const HWND hwnd = reinterpret_cast<HWND>(m_button->window()->winId());
-    if (msg->hwnd != hwnd)
+    if (msg->hwnd != reinterpret_cast<HWND>(m_button->window()->winId()))
         return false;
+    return frameMessage(msg, result) || buttonMessage(msg, result);
+#else
+    Q_UNUSED(eventType);
+    Q_UNUSED(message);
+    Q_UNUSED(result);
+    return false;
+#endif
+}
+
+#ifdef Q_OS_WIN
+bool WindowFrame::frameMessage(const MSG *msg, qintptr *result) {
     switch (msg->message) {
     // The whole window is client area, so the frame Windows needs for snapping stays invisible.
     case WM_NCCALCSIZE:
@@ -159,16 +169,23 @@ bool WindowFrame::nativeEventFilter(const QByteArray &eventType, void *message, 
         int overhang = 0;
         MONITORINFO monitor{sizeof(monitor)};
         RECT frame;
-        if (msg->wParam == SIZE_MAXIMIZED && GetWindowRect(hwnd, &frame) &&
-            GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor))
+        if (msg->wParam == SIZE_MAXIMIZED && GetWindowRect(msg->hwnd, &frame) &&
+            GetMonitorInfo(MonitorFromWindow(msg->hwnd, MONITOR_DEFAULTTONEAREST), &monitor))
             overhang = monitor.rcWork.left - frame.left;
         setMaximizedMargin(overhang / m_button->window()->devicePixelRatio());
         // Windows 11 keeps a frameless window's rounded corners when it's maximized, so square them while it fills
         // the screen.
         const DWORD corners = msg->wParam == SIZE_MAXIMIZED ? 1 /* DWMWCP_DONOTROUND */ : 2 /* DWMWCP_ROUND */;
-        DwmSetWindowAttribute(hwnd, 33 /* DWMWA_WINDOW_CORNER_PREFERENCE */, &corners, sizeof(corners));
+        DwmSetWindowAttribute(msg->hwnd, 33 /* DWMWA_WINDOW_CORNER_PREFERENCE */, &corners, sizeof(corners));
         return false;
     }
+    default:
+        return false;
+    }
+}
+
+bool WindowFrame::buttonMessage(const MSG *msg, qintptr *result) {
+    switch (msg->message) {
     case WM_NCHITTEST:
         if (overButton(GET_X_LPARAM(msg->lParam), GET_Y_LPARAM(msg->lParam))) {
             *result = HTMAXBUTTON;
@@ -177,7 +194,7 @@ bool WindowFrame::nativeEventFilter(const QByteArray &eventType, void *message, 
         return false;
     case WM_NCMOUSEMOVE:
         if (msg->wParam == HTMAXBUTTON) {
-            TRACKMOUSEEVENT track{sizeof(track), TME_LEAVE | TME_NONCLIENT, hwnd, 0};
+            TRACKMOUSEEVENT track{sizeof(track), TME_LEAVE | TME_NONCLIENT, msg->hwnd, 0};
             TrackMouseEvent(&track);
         }
         setHovered(msg->wParam == HTMAXBUTTON);
@@ -199,10 +216,5 @@ bool WindowFrame::nativeEventFilter(const QByteArray &eventType, void *message, 
     default:
         return false;
     }
-#else
-    Q_UNUSED(eventType);
-    Q_UNUSED(message);
-    Q_UNUSED(result);
-    return false;
-#endif
 }
+#endif

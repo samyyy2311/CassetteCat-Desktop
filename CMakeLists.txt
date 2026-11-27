@@ -33,6 +33,7 @@ endif()
 qt_add_executable(CassetteCat
     src/main.cpp
     src/app_paths.h
+    src/self_check.h
     src/app_paths.cpp
     src/app_settings.h
     src/app_settings.cpp

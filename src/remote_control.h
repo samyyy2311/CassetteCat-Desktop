@@ -81,7 +81,7 @@ class RemoteControlServer final : public QObject {
     /// Allows or denies the phone in pairingRequest; once allowed, it receives the pairing code on its next check.
     Q_INVOKABLE void answerPairing(bool allow);
 
-    /// Verifies pairing, routing and the status payload without opening sockets.
+    /// Verifies requests, the phone protocol, pairing, synced data and the encrypted server.
     static bool selfCheck();
 
   signals:
@@ -126,6 +126,12 @@ class RemoteControlServer final : public QObject {
         // Set for /api/stream: the library file to send, honouring the request's Range header.
         QString filePath;
     };
+
+    static bool checkRequests();
+    static bool checkPhone();
+    static bool checkPairing();
+    static bool checkLibraryData();
+    static bool checkConnections();
 
     bool acceptsCode(const QByteArray &code) const;
     void serve(QTcpSocket *socket);

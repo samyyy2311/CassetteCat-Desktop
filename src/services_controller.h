@@ -72,6 +72,9 @@ class ServicesController : public QObject {
     /// Marks a liked song as loved on the connected Last.fm, Libre.fm and ListenBrainz accounts, or clears it. Loves
     /// are sent one a second, so liking many songs at once stays under the services' rate limits.
     Q_INVOKABLE void loveTrack(const QVariantMap &track, bool loved);
+    // Loves the liked songs each account lacks, and takes back loves the app sent for library songs no
+    // longer liked. Songs outside the library are left alone.
+    Q_INVOKABLE void syncLikes(const QVariantList &likedTracks, const QVariantList &libraryTracks);
     int lovesLeft() const {
         return int(m_loves.size());
     }
@@ -173,7 +176,13 @@ class ServicesController : public QObject {
         QString artist;
         QString title;
         bool loved;
+        // Accounts that already have this love.
+        QStringList skip;
     };
+    // The songs an account has loved through the app, so Sync Likes sends each account only what it lacks.
+    static QStringList lovedSongs(const QString &service);
+    static void recordLove(const QString &service, const QString &song, bool loved);
+    QStringList lovingServices() const;
     QList<Love> m_loves;
     QHash<QString, quint64> m_loveGenerations;
     bool m_lovesRunning = false;

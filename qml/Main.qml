@@ -2061,9 +2061,9 @@ ApplicationWindow {
         if (track) services.loveTrack(track, !!favs[norm])
     }
 
-    // Sends every liked song as a love, for likes made before loves were sent.
+    // Loves the liked songs each account lacks, and takes back loves for library songs no longer liked.
     function loveAllFavorites() {
-        tracksForPaths(Object.keys(favoriteTracks)).forEach(track => { if (track) services.loveTrack(track, true) })
+        services.syncLikes(tracksForPaths(Object.keys(favoriteTracks)).filter(track => !!track), library.playbackTracks())
     }
 
     function setFavorites(filePaths, favorite) {

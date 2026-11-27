@@ -3,6 +3,7 @@
 #include "app_paths.h"
 
 #include <cmath>
+#include <optional>
 
 #include <QClipboard>
 #include <QDebug>
@@ -24,57 +25,74 @@ QString dataFilePath(const QString &name) {
     return QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "/" + name + ".json";
 }
 
+// QSettings reads INI values back as text, so a switch can come back as "true" or "1".
+std::optional<bool> boolFromText(const QVariant &value, bool acceptDigits) {
+    if (value.typeId() != QMetaType::QString)
+        return std::nullopt;
+    const QString s = value.toString().trimmed();
+    if (s.compare(QLatin1String("true"), Qt::CaseInsensitive) == 0 || (acceptDigits && s == QLatin1String("1")))
+        return true;
+    if (s.compare(QLatin1String("false"), Qt::CaseInsensitive) == 0 || (acceptDigits && s == QLatin1String("0")))
+        return false;
+    return std::nullopt;
+}
+
+// QML passes whole-number defaults such as 1.0 as int, so keep a stored fraction.
+QVariant wholeOrFraction(const QVariant &val) {
+    bool isNumber = false;
+    const double number = val.toDouble(&isNumber);
+    if (isNumber && std::isfinite(number) && number != std::floor(number))
+        return number;
+    return val.toInt();
+}
+
+QVariant coerceTo(const QVariant &val, int typeId) {
+    switch (typeId) {
+    case QMetaType::Bool:
+        return boolFromText(val, true).value_or(val.toBool());
+    case QMetaType::Int:
+        return wholeOrFraction(val);
+    case QMetaType::Double:
+        return val.toDouble();
+    case QMetaType::Float:
+        return val.toFloat();
+    case QMetaType::LongLong:
+        return val.toLongLong();
+    case QMetaType::ULongLong:
+        return val.toULongLong();
+    case QMetaType::QString:
+        return val.toString();
+    case QMetaType::QStringList:
+        return val.toStringList();
+    case QMetaType::QVariantList:
+        return val.toList();
+    default:
+        return val;
+    }
+}
+
 QVariant coerceSettingsValue(const QVariant &val, const QVariant &defaultValue) {
-    if (!val.isValid()) {
+    if (!val.isValid())
         return defaultValue;
-    }
-
-    if (defaultValue.isValid() && !defaultValue.isNull()) {
-        switch (defaultValue.typeId()) {
-        case QMetaType::Bool: {
-            if (val.typeId() == QMetaType::QString) {
-                const QString s = val.toString().trimmed();
-                if (s.compare(QLatin1String("true"), Qt::CaseInsensitive) == 0 || s == QLatin1String("1"))
-                    return true;
-                if (s.compare(QLatin1String("false"), Qt::CaseInsensitive) == 0 || s == QLatin1String("0"))
-                    return false;
-            }
-            return val.toBool();
-        }
-        case QMetaType::Int: {
-            // QML passes whole-number defaults such as 1.0 as int, so keep a stored fraction.
-            bool isNumber = false;
-            const double number = val.toDouble(&isNumber);
-            if (isNumber && std::isfinite(number) && number != std::floor(number))
-                return number;
-            return val.toInt();
-        }
-        case QMetaType::Double:
-            return val.toDouble();
-        case QMetaType::Float:
-            return val.toFloat();
-        case QMetaType::LongLong:
-            return val.toLongLong();
-        case QMetaType::ULongLong:
-            return val.toULongLong();
-        case QMetaType::QString:
-            return val.toString();
-        case QMetaType::QStringList:
-            return val.toStringList();
-        case QMetaType::QVariantList:
-            return val.toList();
-        default:
-            break;
-        }
-    } else if (val.typeId() == QMetaType::QString) {
-        const QString s = val.toString().trimmed();
-        if (s.compare(QLatin1String("true"), Qt::CaseInsensitive) == 0)
-            return true;
-        if (s.compare(QLatin1String("false"), Qt::CaseInsensitive) == 0)
-            return false;
-    }
-
+    if (defaultValue.isValid() && !defaultValue.isNull())
+        return coerceTo(val, defaultValue.typeId());
+    if (const std::optional<bool> flag = boolFromText(val, false))
+        return *flag;
     return val;
+}
+
+// The lines from offset up to endOffset, leaving out one cut off at the start.
+QStringList linesBetween(QFile &file, qint64 offset, qint64 endOffset) {
+    char previous = 0;
+    const bool cutLine = offset > 0 && file.seek(offset - 1) && file.getChar(&previous) && previous != '\n';
+    file.seek(offset);
+    QTextStream in(&file);
+    if (cutLine)
+        in.readLine();
+    QStringList lines;
+    while (in.pos() < endOffset && !in.atEnd())
+        lines.append(in.readLine());
+    return lines;
 }
 
 } // namespace
@@ -260,33 +278,11 @@ QString SettingsController::readRecentLogs(int maxLines) const {
 
     QStringList lines;
     while (true) {
-        bool skipFirstLine = false;
-        if (offset > 0) {
-            if (file.seek(offset - 1)) {
-                char prevByte = 0;
-                if (file.getChar(&prevByte) && prevByte != '\n') {
-                    skipFirstLine = true;
-                }
-            }
-        }
-        file.seek(offset);
-        QTextStream in(&file);
-        if (skipFirstLine) {
-            in.readLine();
-        }
-        QStringList chunkLines;
-        while (in.pos() < endOffset && !in.atEnd()) {
-            chunkLines.append(in.readLine());
-        }
-        for (int i = chunkLines.size() - 1; i >= 0; --i) {
-            lines.prepend(chunkLines.at(i));
-        }
-        if (lines.size() > maxLines) {
+        lines = linesBetween(file, offset, endOffset) + lines;
+        if (lines.size() > maxLines)
             lines = lines.mid(lines.size() - maxLines);
-        }
-        if (lines.size() >= maxLines || offset == 0) {
+        if (lines.size() >= maxLines || offset == 0)
             break;
-        }
         endOffset = offset;
         offset = qMax<qint64>(0, offset - stepSize);
     }

@@ -333,22 +333,16 @@ void StreamingController::startJellyfinQuickConnect(const QString &serverUrl, bo
     connect(reply, &QNetworkReply::finished, this, [=, this] {
         if (attempt != m_jellyfinQuickConnectToken)
             return;
-        if (reply->error() != QNetworkReply::NoError) {
-            m_jellyfinQuickConnecting = false;
-            emit jellyfinQuickConnectChanged();
-            const QString message = friendlyError(reply, QString("Quick Connect is unavailable on this server."));
-            setStatus("jellyfin", false, message);
-            emit serverFailed("jellyfin", message);
-            return;
-        }
-
-        const QJsonObject result = QJsonDocument::fromJson(reply->readAll()).object();
+        const bool answered = reply->error() == QNetworkReply::NoError;
+        const QJsonObject result = answered ? QJsonDocument::fromJson(reply->readAll()).object() : QJsonObject();
         const QString secret = result.value("Secret").toString();
         const QString code = result.value("Code").toString();
         if (secret.isEmpty() || code.isEmpty()) {
             m_jellyfinQuickConnecting = false;
             emit jellyfinQuickConnectChanged();
-            const QString message = QString("Quick Connect is disabled or unavailable on this server.");
+            const QString message = answered
+                                        ? QString("Quick Connect is disabled or unavailable on this server.")
+                                        : friendlyError(reply, QString("Quick Connect is unavailable on this server."));
             setStatus("jellyfin", false, message);
             emit serverFailed("jellyfin", message);
             return;
@@ -356,52 +350,56 @@ void StreamingController::startJellyfinQuickConnect(const QString &serverUrl, bo
 
         m_jellyfinQuickConnectCode = code;
         emit jellyfinQuickConnectChanged();
+        pollJellyfinQuickConnect(base, secret, attempt, trustCert, 0);
+    });
+}
 
-        const auto poll = std::make_shared<std::function<void(int)>>();
-        *poll = [this, base, secret, attempt, poll, trustCert](int count) {
-            if (attempt != m_jellyfinQuickConnectToken || count >= 120) {
-                if (attempt == m_jellyfinQuickConnectToken)
-                    cancelJellyfinQuickConnect();
+// Asks every two seconds, for up to four minutes, whether the code was approved in another Jellyfin app.
+void StreamingController::pollJellyfinQuickConnect(const QString &base, const QString &secret, int attempt,
+                                                   bool trustCert, int count) {
+    if (attempt != m_jellyfinQuickConnectToken)
+        return;
+    if (count >= 120) {
+        cancelJellyfinQuickConnect();
+        return;
+    }
+    QTimer::singleShot(2000, this, [=, this] {
+        if (attempt != m_jellyfinQuickConnectToken)
+            return;
+        QNetworkRequest check(QUrl(base + "/QuickConnect/Connect?Secret=" + QUrl::toPercentEncoding(secret)));
+        check.setTransferTimeout(streaming::detail::requestTimeoutMs);
+        QNetworkReply *statusReply = trackReply(m_net->get(check), trustCert);
+        connect(statusReply, &QNetworkReply::finished, this, [=, this] {
+            if (attempt != m_jellyfinQuickConnectToken)
                 return;
-            }
-            QTimer::singleShot(2000, this, [this, base, secret, attempt, count, poll, trustCert] {
-                if (attempt != m_jellyfinQuickConnectToken)
-                    return;
-                QNetworkRequest check(QUrl(base + "/QuickConnect/Connect?Secret=" + QUrl::toPercentEncoding(secret)));
-                check.setTransferTimeout(streaming::detail::requestTimeoutMs);
-                QNetworkReply *statusReply = trackReply(m_net->get(check), trustCert);
-                connect(statusReply, &QNetworkReply::finished, this, [=, this] {
-                    if (attempt != m_jellyfinQuickConnectToken)
-                        return;
-                    const QJsonObject status = QJsonDocument::fromJson(statusReply->readAll()).object();
-                    if (statusReply->error() == QNetworkReply::NoError && status.value("Authenticated").toBool()) {
-                        QNetworkRequest auth(QUrl(base + "/Users/AuthenticateWithQuickConnect"));
-                        auth.setTransferTimeout(streaming::detail::requestTimeoutMs);
-                        auth.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-                        const QJsonObject payload{{"Secret", secret}};
-                        QNetworkReply *authReply = trackReply(
-                            m_net->post(auth, QJsonDocument(payload).toJson(QJsonDocument::Compact)), trustCert);
-                        connect(authReply, &QNetworkReply::finished, this, [=, this] {
-                            if (attempt != m_jellyfinQuickConnectToken)
-                                return;
-                            if (authReply->error() != QNetworkReply::NoError) {
-                                cancelJellyfinQuickConnect();
-                                const QString message =
-                                    friendlyError(authReply, QString("Quick Connect authorization failed."));
-                                setStatus("jellyfin", false, message);
-                                emit serverFailed("jellyfin", message);
-                                return;
-                            }
-                            completeJellyfinLogin(base, QJsonDocument::fromJson(authReply->readAll()).object(),
-                                                  trustCert);
-                        });
-                    } else {
-                        (*poll)(count + 1);
-                    }
-                });
-            });
-        };
-        (*poll)(0);
+            const QJsonObject status = QJsonDocument::fromJson(statusReply->readAll()).object();
+            if (statusReply->error() == QNetworkReply::NoError && status.value("Authenticated").toBool())
+                authenticateJellyfinQuickConnect(base, secret, attempt, trustCert);
+            else
+                pollJellyfinQuickConnect(base, secret, attempt, trustCert, count + 1);
+        });
+    });
+}
+
+void StreamingController::authenticateJellyfinQuickConnect(const QString &base, const QString &secret, int attempt,
+                                                           bool trustCert) {
+    QNetworkRequest auth(QUrl(base + "/Users/AuthenticateWithQuickConnect"));
+    auth.setTransferTimeout(streaming::detail::requestTimeoutMs);
+    auth.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    const QJsonObject payload{{"Secret", secret}};
+    QNetworkReply *authReply =
+        trackReply(m_net->post(auth, QJsonDocument(payload).toJson(QJsonDocument::Compact)), trustCert);
+    connect(authReply, &QNetworkReply::finished, this, [=, this] {
+        if (attempt != m_jellyfinQuickConnectToken)
+            return;
+        if (authReply->error() != QNetworkReply::NoError) {
+            cancelJellyfinQuickConnect();
+            const QString message = friendlyError(authReply, QString("Quick Connect authorization failed."));
+            setStatus("jellyfin", false, message);
+            emit serverFailed("jellyfin", message);
+            return;
+        }
+        completeJellyfinLogin(base, QJsonDocument::fromJson(authReply->readAll()).object(), trustCert);
     });
 }
 

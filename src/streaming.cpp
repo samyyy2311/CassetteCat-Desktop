@@ -29,6 +29,7 @@
 #include <QUuid>
 
 #include <algorithm>
+#include <optional>
 
 #include <iostream>
 #include <memory>
@@ -176,80 +177,49 @@ void StreamingController::updateStatusTexts() {
     emit statusChanged();
 }
 
+namespace {
+bool sameServer(const QUrl &a, const QUrl &b) {
+    return a.host().compare(b.host(), Qt::CaseInsensitive) == 0 && a.port(443) == b.port(443);
+}
+
+// Whether the user chose to trust the certificate of the saved server that \p url points at.
+bool trustsSavedServer(const QSettings &settings, const QString &service, const QUrl &url) {
+    const QUrl savedUrl(settings.value("stream/" + service + "Url").toString());
+    return settings.value("stream/" + service + "TrustCert", false).toBool() && savedUrl.isValid() &&
+           sameServer(savedUrl, url);
+}
+
+// Only errors about who issued the certificate can be set aside; any other error keeps the connection refused.
+std::optional<QList<QSslError>> ignorableErrors(const QList<QSslError> &errors) {
+    QList<QSslError> ignorable;
+    for (const auto &err : errors) {
+        switch (err.error()) {
+        case QSslError::SelfSignedCertificate:
+        case QSslError::SelfSignedCertificateInChain:
+        case QSslError::UnableToGetLocalIssuerCertificate:
+        case QSslError::UnableToVerifyFirstCertificate:
+        case QSslError::CertificateUntrusted:
+            ignorable.append(err);
+            break;
+        default:
+            return std::nullopt;
+        }
+    }
+    return ignorable;
+}
+} // namespace
+
 QNetworkReply *StreamingController::trackReply(QNetworkReply *reply, bool allowSelfSigned) {
     if (!reply) {
         return nullptr;
     }
     const QUrl originalUrl = reply->url();
-    QSettings settings(m_settingsPath, QSettings::IniFormat);
-    const bool subTrust = settings.value("stream/subsonicTrustCert", false).toBool();
-    const bool jellyTrust = settings.value("stream/jellyfinTrustCert", false).toBool();
-    const QUrl subUrl(settings.value("stream/subsonicUrl").toString());
-    const QUrl jellyUrl(settings.value("stream/jellyfinUrl").toString());
-    const bool matchesSub = subTrust && subUrl.isValid() &&
-                            subUrl.host().compare(originalUrl.host(), Qt::CaseInsensitive) == 0 &&
-                            subUrl.port(443) == originalUrl.port(443);
-    const bool matchesJelly = jellyTrust && jellyUrl.isValid() &&
-                              jellyUrl.host().compare(originalUrl.host(), Qt::CaseInsensitive) == 0 &&
-                              jellyUrl.port(443) == originalUrl.port(443);
-
-    if (allowSelfSigned || matchesSub || matchesJelly) {
+    const QSettings settings(m_settingsPath, QSettings::IniFormat);
+    if (allowSelfSigned || trustsSavedServer(settings, "subsonic", originalUrl) ||
+        trustsSavedServer(settings, "jellyfin", originalUrl)) {
         connect(reply, &QNetworkReply::sslErrors, reply,
                 [this, reply, originalUrl, allowSelfSigned](const QList<QSslError> &errors) {
-                    const QUrl currentUrl = reply->url();
-                    const bool sameOrigin = (currentUrl.scheme() == originalUrl.scheme() &&
-                                             currentUrl.host().compare(originalUrl.host(), Qt::CaseInsensitive) == 0 &&
-                                             (currentUrl.port(443) == originalUrl.port(443)));
-
-                    QSslCertificate peerCert = reply->sslConfiguration().peerCertificate();
-                    if (peerCert.isNull() && !errors.isEmpty()) {
-                        peerCert = errors.first().certificate();
-                    }
-
-                    bool trustAllowed = false;
-                    // A saved certificate is only replaced after the user disconnects, which clears it.
-                    if (sameOrigin && allowSelfSigned && hasPinnedCertificate(m_settingsPath, currentUrl)) {
-                        trustAllowed = isServerCertTrusted(currentUrl, peerCert);
-                    } else if (sameOrigin && allowSelfSigned) {
-                        if (!peerCert.isNull()) {
-                            const QString digest =
-                                QString::fromLatin1(peerCert.digest(QCryptographicHash::Sha256).toHex());
-                            const QString hostKey =
-                                QString("%1:%2").arg(currentUrl.host().toLower()).arg(currentUrl.port(443));
-                            if (m_pendingCertDigests.contains(hostKey)) {
-                                if (m_pendingCertDigests.value(hostKey).compare(digest, Qt::CaseInsensitive) == 0) {
-                                    trustAllowed = true;
-                                }
-                            } else {
-                                m_pendingCertDigests.insert(hostKey, digest);
-                                trustAllowed = true;
-                            }
-                        }
-                    } else if (isServerCertTrusted(currentUrl, peerCert)) {
-                        trustAllowed = true;
-                    }
-
-                    if (!trustAllowed) {
-                        return;
-                    }
-
-                    QList<QSslError> ignorable;
-                    for (const auto &err : errors) {
-                        switch (err.error()) {
-                        case QSslError::SelfSignedCertificate:
-                        case QSslError::SelfSignedCertificateInChain:
-                        case QSslError::UnableToGetLocalIssuerCertificate:
-                        case QSslError::UnableToVerifyFirstCertificate:
-                        case QSslError::CertificateUntrusted:
-                            ignorable.append(err);
-                            break;
-                        default:
-                            return;
-                        }
-                    }
-                    if (!ignorable.isEmpty()) {
-                        reply->ignoreSslErrors(ignorable);
-                    }
+                    handleSslErrors(reply, originalUrl, allowSelfSigned, errors);
                 });
     }
     m_pendingReplies.append(QPointer<QNetworkReply>(reply));
@@ -263,6 +233,41 @@ QNetworkReply *StreamingController::trackReply(QNetworkReply *reply, bool allowS
         reply->deleteLater();
     });
     return reply;
+}
+
+void StreamingController::handleSslErrors(QNetworkReply *reply, const QUrl &originalUrl, bool allowSelfSigned,
+                                          const QList<QSslError> &errors) {
+    const QUrl currentUrl = reply->url();
+    const bool sameOrigin = currentUrl.scheme() == originalUrl.scheme() && sameServer(currentUrl, originalUrl);
+    QSslCertificate peerCert = reply->sslConfiguration().peerCertificate();
+    if (peerCert.isNull() && !errors.isEmpty()) {
+        peerCert = errors.first().certificate();
+    }
+    if (!acceptsCertificate(currentUrl, peerCert, sameOrigin && allowSelfSigned)) {
+        return;
+    }
+    const std::optional<QList<QSslError>> ignorable = ignorableErrors(errors);
+    if (ignorable && !ignorable->isEmpty()) {
+        reply->ignoreSslErrors(*ignorable);
+    }
+}
+
+bool StreamingController::acceptsCertificate(const QUrl &url, const QSslCertificate &cert, bool connecting) {
+    // A saved certificate is only replaced after the user disconnects, which clears it.
+    if (!connecting || hasPinnedCertificate(m_settingsPath, url)) {
+        return isServerCertTrusted(url, cert);
+    }
+    if (cert.isNull()) {
+        return false;
+    }
+    // While connecting, the first certificate the server shows is taken, and a different one after it is refused.
+    const QString digest = QString::fromLatin1(cert.digest(QCryptographicHash::Sha256).toHex());
+    const QString hostKey = QString("%1:%2").arg(url.host().toLower()).arg(url.port(443));
+    if (!m_pendingCertDigests.contains(hostKey)) {
+        m_pendingCertDigests.insert(hostKey, digest);
+        return true;
+    }
+    return m_pendingCertDigests.value(hostKey).compare(digest, Qt::CaseInsensitive) == 0;
 }
 
 bool StreamingController::isServerCertTrusted(const QUrl &url, const QSslCertificate &cert) const {
@@ -710,8 +715,8 @@ bool holdsSecret(const QVariantMap &snapshot) {
     for (auto it = snapshot.cbegin(); it != snapshot.cend(); ++it) {
         const QString key = it.key().toLower();
         const QString value = it.value().toString();
-        const bool namesSecret =
-            std::any_of(secretWords.cbegin(), secretWords.cend(), [&](const QString &word) { return key.contains(word); });
+        const bool namesSecret = std::any_of(secretWords.cbegin(), secretWords.cend(),
+                                             [&](const QString &word) { return key.contains(word); });
         if (namesSecret || value.contains("s3cret-pw") || value.contains("tok-abc"))
             return true;
     }

@@ -81,7 +81,8 @@ A macOS app is in development. It isn't ready to use yet, so releases don't incl
 ### Your music
 
 - **Your own files**: point it at your music folders and it sorts everything by song, album, artist, genre and folder, and picks up new files as you add them. FLAC, MP3, AAC, M4A, ALAC, OGG, Opus and WAV all play.
-- **Your server**: stream from Subsonic-compatible servers (Navidrome, Gonic, Airsonic) or Jellyfin, with Quick Connect, alongside your local library.
+- **Drag and drop**: drop songs or an M3U playlist on the window to play them, or a folder to add it to your library. With the Windows installer, CassetteCat can also be your "Open with" app for audio files.
+- **Your server**: stream from Subsonic-compatible servers (Navidrome, Gonic, Airsonic) or Jellyfin, with Quick Connect, alongside your local library. Jellyfin converts songs in formats CassetteCat can't play. A server address can start with `http://`, and CassetteCat asks first before sending your password unencrypted outside your home network.
 - **Internet radio**: live stations from [Radio Browser](https://www.radio-browser.info), plus stations you add yourself.
 - **Tag editor**: fix the artist, album, genre, year, lyrics and cover art of many songs at once, written back to the files with [TagLib](https://taglib.org).
 - **Playlists**: make them from a selection or the queue, and import or export M3U.
@@ -95,15 +96,17 @@ A macOS app is in development. It isn't ready to use yet, so releases don't incl
 - **Synced lyrics** from `.lrc` files, tags, Jellyfin or [LRCLIB](https://lrclib.net). For songs with plain lyrics, press Space along with the song once and CassetteCat saves the timings.
 - **Audio details**: Hi-Res Lossless, Lossless or the codec at a glance, with the sample rate, bit depth and bitrate a click away.
 - **Autoplay** keeps going with similar songs when the queue ends.
+- **Queue**: remove a song and undo it for a few seconds after. Shuffle spreads each artist's songs out, so the same artist rarely plays twice in a row.
 
 ### On your desktop
 
 - A floating **mini player** with artwork, lyrics or the queue, kept on top if you like.
-- **System media controls**: the media overlay and taskbar buttons on Windows, Now Playing in Control Center on macOS, and MPRIS on Linux.
+- **System media controls**: the media overlay and taskbar buttons on Windows, and MPRIS on Linux.
+- **Small windows**: in a narrow window, page tabs fold into a menu and the player bar keeps the song title.
 - **Keyboard shortcuts** for playback, volume, seeking, search and the mini player, all changeable.
 - **Close to the system tray**, start minimized, and notifications when the song changes.
 - **Listening Record**: top songs, artists and albums, your full history, and monthly and yearly Rewind.
-- **Scrobbling** to Last.fm, [ListenBrainz](https://listenbrainz.org) and [Libre.fm](https://libre.fm), and an optional Discord status.
+- **Scrobbling** to Last.fm, [ListenBrainz](https://listenbrainz.org) and [Libre.fm](https://libre.fm), and an optional Discord status. Liking a song loves it on those accounts, and Sync Likes in Settings > Scrobbling marks the songs you liked before too.
 
 ### With your phone
 

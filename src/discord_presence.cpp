@@ -1,6 +1,7 @@
 #include "discord_presence.h"
 
 #include "player_controller.h"
+#include "self_check.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -304,30 +305,36 @@ void DiscordPresence::sendFrame(quint32 opcode, const QJsonObject &payload) {
 }
 
 bool DiscordPresence::selfCheck() {
+    SelfCheck check("Discord presence");
     const QVariantMap track{{"title", "Song Title"}, {"artist", "Some Artist"}, {"album", "An Album"}};
     const QJsonObject activity = activityFor(track, true, 30000, 200000, 1000000);
     const QJsonObject timestamps = activity.value("timestamps").toObject();
-    if (activity.value("type").toInt() != 2 || activity.value("details") != "Song Title" ||
-        activity.value("state") != "Some Artist" || timestamps.value("start").toInteger() != 970000 ||
-        timestamps.value("end").toInteger() != 1170000 ||
-        activity.value("assets").toObject().value("large_text") != "An Album" ||
-        activity.value("assets").toObject().value("large_image") != "cassettecat" ||
-        activity.value("status_display_type").toInt() != kShowDetails ||
-        activity.value("buttons").toArray().first().toObject().value("url") !=
-            "https://www.last.fm/music/Some+Artist/_/Song+Title")
-        return false;
-    const QJsonObject withCover = activityFor(track, true, 0, 1000, 0, "https://example.org/cover.jpg");
-    if (withCover.value("assets").toObject().value("large_image") != "https://example.org/cover.jpg" ||
-        withCover.value("assets").toObject().value("small_image") != "cassettecat")
-        return false;
-    if (!activityFor(track, false, 0, 0, 0).isEmpty() || !activityFor({{"title", "X"}}, true, 0, 0, 0).isEmpty())
-        return false;
+    const QJsonObject assets = activity.value("assets").toObject();
+    check.expect(activity.value("type").toInt() == 2, "shows as listening");
+    check.expect(activity.value("details") == "Song Title", "names the song");
+    check.expect(activity.value("state") == "Some Artist", "names the artist");
+    check.expect(timestamps.value("start").toInteger() == 970000, "starts the timer at the song's start");
+    check.expect(timestamps.value("end").toInteger() == 1170000, "ends the timer at the song's end");
+    check.expect(assets.value("large_text") == "An Album", "names the album");
+    check.expect(assets.value("large_image") == "cassettecat", "shows the logo without a cover");
+    check.expect(activity.value("status_display_type").toInt() == kShowDetails, "shows the song in the member list");
+    check.expect(activity.value("buttons")[0].toObject().value("url") ==
+                     "https://www.last.fm/music/Some+Artist/_/Song+Title",
+                 "links the song on Last.fm");
+    const QJsonObject coverAssets =
+        activityFor(track, true, 0, 1000, 0, "https://example.org/cover.jpg").value("assets").toObject();
+    check.expect(coverAssets.value("large_image") == "https://example.org/cover.jpg", "shows the cover");
+    check.expect(coverAssets.value("small_image") == "cassettecat", "shows the logo beside the cover");
+    check.expect(activityFor(track, false, 0, 0, 0).isEmpty(), "clears the status when paused");
+    check.expect(activityFor({{"title", "X"}}, true, 0, 0, 0).isEmpty(), "shows nothing without an artist");
 
     // Exchange frames with a local stand-in for the Discord client.
     const QString name = QStringLiteral("cassettecat-discord-check-%1").arg(QCoreApplication::applicationPid());
     QLocalServer::removeServer(name);
     QLocalServer server;
-    if (!server.listen(name))
+    const bool listening = server.listen(name);
+    check.expect(listening, "opens a stand-in for Discord");
+    if (!listening)
         return false;
 
     PlayerController player;
@@ -363,11 +370,17 @@ bool DiscordPresence::selfCheck() {
     const int firstWaitMs = presence.m_updateTimer.remainingTime();
     QThread::msleep(20);
     presence.scheduleUpdate();
-    const bool keepsPendingUpdate = presence.m_updateTimer.remainingTime() < firstWaitMs;
+    check.expect(presence.m_updateTimer.remainingTime() < firstWaitMs, "keeps a pending update");
 
+    const QPair<quint32, QJsonObject> none{0, {}};
+    const auto handshake = frames.value(0, none);
+    const auto update = frames.value(1, none);
+    check.expect(frames.size() == 2, "sends a handshake and one update");
+    check.expect(handshake.first == Handshake, "starts with a handshake");
+    check.expect(handshake.second.value("client_id").toString() == kClientId, "names the app in the handshake");
+    check.expect(update.first == Frame, "sends the update as a frame");
+    check.expect(update.second.value("cmd") == "SET_ACTIVITY", "sets the activity");
     // The player is paused, so the first update clears the activity.
-    return keepsPendingUpdate && frames.size() == 2 && frames[0].first == Handshake &&
-           frames[0].second.value("client_id").toString() == kClientId && frames[1].first == Frame &&
-           frames[1].second.value("cmd") == "SET_ACTIVITY" &&
-           frames[1].second.value("args").toObject().value("activity").isNull();
+    check.expect(update.second.value("args").toObject().value("activity").isNull(), "clears the activity when paused");
+    return check.passed();
 }

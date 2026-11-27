@@ -5,6 +5,8 @@
 #include "image_cache.h"
 #include "lyrics_store.h"
 #include "network_requests.h"
+#include "self_check.h"
+
 #include <QCoreApplication>
 #include <QDesktopServices>
 #include <QFile>
@@ -19,6 +21,8 @@
 #include <QStringList>
 #include <QTemporaryDir>
 #include <QUrlQuery>
+
+#include <algorithm>
 
 QNetworkRequest services::detail::request(const QUrl &url) {
     QNetworkRequest request(url);
@@ -58,13 +62,11 @@ bool ServicesController::serviceEnabled(const QSettings &settings, const QString
 }
 
 bool ServicesController::selfCheck() {
+    SelfCheck check("Services");
     const QStringList notes = releaseNotesFrom(
         QStringLiteral("## [1.1.0]\n### Added\n* **Lyrics**: synced.\n* Faster.\n\n---\n\n## [1.0.0]\n* Old.\n"),
         QStringLiteral("1.1.0"));
-    if (notes != QStringList{QStringLiteral("Lyrics: synced."), QStringLiteral("Faster.")}) {
-        qWarning() << "Services self-check failed: release notes";
-        return false;
-    }
+    check.expect(notes == QStringList{QStringLiteral("Lyrics: synced."), QStringLiteral("Faster.")}, "release notes");
     class PendingReply final : public QNetworkReply {
       public:
         void abort() override {
@@ -80,41 +82,30 @@ bool ServicesController::selfCheck() {
 
     ServicesController services;
     QTemporaryDir settingsDir;
-    if (!settingsDir.isValid())
-        return false;
+    check.expect(settingsDir.isValid(), "makes a settings folder");
     QSettings serviceSettings(settingsDir.filePath("settings.ini"), QSettings::IniFormat);
     serviceSettings.setValue("services/deezer", false);
-    if (serviceEnabled(serviceSettings, "deezer") || !serviceEnabled(serviceSettings, "wiki") ||
-        !serviceEnabled(serviceSettings, "archive"))
-        return false;
+    check.expect(!serviceEnabled(serviceSettings, "deezer"), "turns a service off");
+    check.expect(serviceEnabled(serviceSettings, "wiki"), "leaves other services on");
+    check.expect(serviceEnabled(serviceSettings, "archive"), "starts with services on");
 
     PendingReply replies[8];
     for (auto &reply : replies)
         services.trackReply(&reply);
     services.m_radioReply = &replies[0];
-
+    const auto running = [](const PendingReply &reply) { return reply.isRunning(); };
+    const auto finished = [](const PendingReply &reply) { return reply.isFinished(); };
     services.setBlackoutEnabled(false);
-    for (const auto &reply : replies) {
-        if (!reply.isRunning())
-            return false;
-    }
-
+    check.expect(std::all_of(std::begin(replies), std::end(replies), running),
+                 "leaves requests running outside blackout");
     services.cancelRadioRequests();
-    if (!replies[0].isFinished() || services.m_radioReply)
-        return false;
-    for (int i = 1; i < 8; ++i) {
-        if (!replies[i].isRunning())
-            return false;
-    }
-
+    check.expect(replies[0].isFinished(), "cancels the radio request");
+    check.expect(!services.m_radioReply, "forgets the cancelled radio request");
+    check.expect(std::all_of(std::begin(replies) + 1, std::end(replies), running), "leaves other requests running");
     services.setBlackoutEnabled(true);
-    for (const auto &reply : replies) {
-        if (!reply.isFinished())
-            return false;
-    }
+    check.expect(std::all_of(std::begin(replies), std::end(replies), finished), "cancels every request in blackout");
     services.setBlackoutEnabled(true);
-    if (!services.m_pendingReplies.isEmpty())
-        return false;
+    check.expect(services.m_pendingReplies.isEmpty(), "forgets cancelled requests");
 
     // A 3:20 song: the 4:00 live recording is skipped, and the original 1999 album beats a later compilation.
     const QJsonObject search = QJsonDocument::fromJson(R"json({"recordings": [
@@ -136,21 +127,26 @@ bool ServicesController::selfCheck() {
     const QVariantMap expected{{"title", "Song"},        {"artist", "Band feat. Singer"},
                                {"album", "First Album"}, {"year", 1999},
                                {"trackNumber", 4},       {"discNumber", 2}};
-    if (musicBrainzTagsFrom(search, {{"durationSeconds", 200}}) != expected ||
-        musicBrainzTagsFrom(search, {{"durationSeconds", 200}, {"album", "greatest hits"}}).value("album") !=
-            QStringLiteral("Greatest Hits") ||
-        !musicBrainzTagsFrom(search, {{"durationSeconds", 150}}).isEmpty() ||
-        // A file already naming the album still gets the original's year, not a reissue's.
-        musicBrainzTagsFrom(search, {{"durationSeconds", 200}, {"album", "first album"}}).value("year") != 1999 ||
-        // With only a compilation to go on, the album is left alone.
-        musicBrainzTagsFrom(search, {{"durationSeconds", 240}}) !=
-            QVariantMap{{"title", "Song (Live)"}, {"artist", "Band"}}) {
-        qWarning() << "Services self-check failed: MusicBrainz tags";
-        return false;
-    }
+    check.expect(musicBrainzTagsFrom(search, {{"durationSeconds", 200}}) == expected,
+                 "picks the original album's MusicBrainz tags");
+    check.expect(musicBrainzTagsFrom(search, {{"durationSeconds", 200}, {"album", "greatest hits"}}).value("album") ==
+                     QStringLiteral("Greatest Hits"),
+                 "keeps the album a file already names");
+    check.expect(musicBrainzTagsFrom(search, {{"durationSeconds", 150}}).isEmpty(),
+                 "skips recordings of another length");
+    // A file already naming the album still gets the original's year, not a reissue's.
+    check.expect(musicBrainzTagsFrom(search, {{"durationSeconds", 200}, {"album", "first album"}}).value("year") == 1999,
+                 "takes the original's year");
+    // With only a compilation to go on, the album is left alone.
+    check.expect(musicBrainzTagsFrom(search, {{"durationSeconds", 240}}) ==
+                     QVariantMap{{"title", "Song (Live)"}, {"artist", "Band"}},
+                 "leaves the album alone without an original");
 
-    return compareVersions("0.6.1", "0.6.0") > 0 && compareVersions("0.6.0", "0.6.0") == 0 &&
-           compareVersions("0.5.1", "0.6.0") < 0 && compareVersions("v1.0.0", "0.9.9") > 0;
+    check.expect(compareVersions("0.6.1", "0.6.0") > 0, "orders a newer patch version");
+    check.expect(compareVersions("0.6.0", "0.6.0") == 0, "matches the same version");
+    check.expect(compareVersions("0.5.1", "0.6.0") < 0, "orders an older minor version");
+    check.expect(compareVersions("v1.0.0", "0.9.9") > 0, "ignores a leading v");
+    return check.passed();
 }
 
 QNetworkReply *ServicesController::trackReply(QNetworkReply *reply) {

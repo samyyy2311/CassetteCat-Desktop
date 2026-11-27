@@ -1,4 +1,5 @@
 #include "global_shortcut_controller.h"
+#include "self_check.h"
 
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -455,31 +456,34 @@ bool GlobalShortcutController::registerShortcuts() {
 }
 
 bool GlobalShortcutController::selfCheck() {
+    SelfCheck check("Global shortcuts");
 #ifdef Q_OS_WIN
     UINT modifiers = 0;
     UINT key = 0;
-    if (!parseShortcut("Ctrl+Alt+Space", &modifiers, &key) || modifiers != (MOD_CONTROL | MOD_ALT) || key != VK_SPACE) {
-        return false;
-    }
-    if (parseShortcut("Space", &modifiers, &key) || parseShortcut("Ctrl+Alt+", &modifiers, &key))
-        return false;
-    return parseShortcut("Ctrl+Equal", &modifiers, &key) && key == VK_OEM_PLUS &&
-           parseShortcut("Ctrl++", &modifiers, &key) && key == VK_OEM_PLUS &&
-           parseShortcut("Ctrl+Shift+Plus", &modifiers, &key) && key == VK_OEM_PLUS &&
-           parseShortcut(QStringLiteral("Ctrl+\u00BB"), &modifiers, &key) && key == VK_OEM_PLUS &&
-           parseShortcut("Ctrl+-", &modifiers, &key) && key == VK_OEM_MINUS &&
-           normalizedShortcut(MOD_CONTROL, VK_OEM_PLUS) == "Ctrl+Equal" &&
-           normalizedShortcut(MOD_CONTROL | MOD_SHIFT, VK_OEM_PLUS) == "Ctrl+Shift+Plus" &&
-           normalizedShortcut(MOD_CONTROL, VK_OEM_MINUS) == "Ctrl+-";
+    const auto keyFor = [&](const QString &shortcut) {
+        key = 0;
+        return parseShortcut(shortcut, &modifiers, &key) ? key : 0;
+    };
+    check.expect(keyFor("Ctrl+Alt+Space") == VK_SPACE, "reads a key");
+    check.expect(modifiers == (MOD_CONTROL | MOD_ALT), "reads its modifiers");
+    check.expect(!parseShortcut("Space", &modifiers, &key), "needs a modifier");
+    check.expect(!parseShortcut("Ctrl+Alt+", &modifiers, &key), "needs a key");
+    check.expect(keyFor("Ctrl+Equal") == VK_OEM_PLUS, "reads Equal");
+    check.expect(keyFor("Ctrl++") == VK_OEM_PLUS, "reads +");
+    check.expect(keyFor("Ctrl+Shift+Plus") == VK_OEM_PLUS, "reads Plus");
+    check.expect(keyFor(QStringLiteral("Ctrl+»")) == VK_OEM_PLUS, "reads a layout's own name for +");
+    check.expect(keyFor("Ctrl+-") == VK_OEM_MINUS, "reads -");
+    check.expect(normalizedShortcut(MOD_CONTROL, VK_OEM_PLUS) == "Ctrl+Equal", "names Equal");
+    check.expect(normalizedShortcut(MOD_CONTROL | MOD_SHIFT, VK_OEM_PLUS) == "Ctrl+Shift+Plus", "names Plus");
+    check.expect(normalizedShortcut(MOD_CONTROL, VK_OEM_MINUS) == "Ctrl+-", "names -");
 #elif defined(CASSETTECAT_HAVE_DBUS)
-    return PortalShortcuts::portalTrigger("Ctrl+Alt+Space") == "CTRL+ALT+space" &&
-           PortalShortcuts::portalTrigger("Ctrl+Alt+Left") == "CTRL+ALT+Left" &&
-           PortalShortcuts::portalTrigger("Ctrl+Shift+F") == "CTRL+SHIFT+f" &&
-           PortalShortcuts::portalTrigger("Ctrl++") == "CTRL+plus" &&
-           PortalShortcuts::portalTrigger("Alt+F5") == "ALT+F5";
-#else
-    return true;
+    check.expect(PortalShortcuts::portalTrigger("Ctrl+Alt+Space") == "CTRL+ALT+space", "portal space");
+    check.expect(PortalShortcuts::portalTrigger("Ctrl+Alt+Left") == "CTRL+ALT+Left", "portal arrow");
+    check.expect(PortalShortcuts::portalTrigger("Ctrl+Shift+F") == "CTRL+SHIFT+f", "portal letter");
+    check.expect(PortalShortcuts::portalTrigger("Ctrl++") == "CTRL+plus", "portal plus");
+    check.expect(PortalShortcuts::portalTrigger("Alt+F5") == "ALT+F5", "portal function key");
 #endif
+    return check.passed();
 }
 
 void GlobalShortcutController::unregisterShortcuts() {

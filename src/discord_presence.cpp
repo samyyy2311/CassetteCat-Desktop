@@ -7,9 +7,14 @@
 #include <QDebug>
 #include <QEventLoop>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QLocalServer>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QThread>
+#include <QUrl>
+#include <QUrlQuery>
 #include <QUuid>
 #include <QtEndian>
 
@@ -19,6 +24,22 @@ namespace {
 constexpr auto kClientId = "1553132340107149476";
 
 enum Opcode : quint32 { Handshake = 0, Frame = 1, Close = 2, Ping = 3, Pong = 4 };
+
+// Which field the member list shows after "Listening to": 2 is details, the song.
+constexpr int kShowDetails = 2;
+
+QString artworkKey(const QVariantMap &track) {
+    return track.value("artist").toString().trimmed().toLower() + QChar(0x1f) +
+           track.value("album").toString().trimmed().toLower();
+}
+
+// The song's public Last.fm page, which needs no account to open.
+QString lastFmUrl(const QString &artist, const QString &title) {
+    const auto part = [](const QString &text) {
+        return QString::fromUtf8(QUrl::toPercentEncoding(text, " ")).replace(u' ', u'+');
+    };
+    return "https://www.last.fm/music/" + part(artist) + "/_/" + part(title);
+}
 
 QStringList ipcCandidates() {
     QStringList names;
@@ -74,7 +95,7 @@ QJsonObject setActivityPayload(const QJsonObject &activity) {
 } // namespace
 
 DiscordPresence::DiscordPresence(PlayerController *player, QObject *parent)
-    : QObject(parent), m_player(player), m_socket(this), m_retryTimer(this), m_updateTimer(this) {
+    : QObject(parent), m_player(player), m_socket(this), m_retryTimer(this), m_updateTimer(this), m_net(this) {
     m_retryTimer.setSingleShot(true);
     m_retryTimer.setInterval(15000);
     connect(&m_retryTimer, &QTimer::timeout, this, [this] {
@@ -143,7 +164,7 @@ void DiscordPresence::setEnabled(bool enabled) {
 }
 
 QJsonObject DiscordPresence::activityFor(const QVariantMap &track, bool playing, qint64 positionMs, qint64 durationMs,
-                                         qint64 nowMs) {
+                                         qint64 nowMs, const QString &artworkUrl) {
     QString title = track.value("title").toString().trimmed();
     if (title.isEmpty())
         title = track.value("fileName").toString().trimmed();
@@ -151,10 +172,13 @@ QJsonObject DiscordPresence::activityFor(const QVariantMap &track, bool playing,
     if (!playing || title.size() < 2)
         return {};
 
-    QJsonObject activity{{"type", 2}, {"details", title.left(128)}};
+    QJsonObject activity{{"type", 2}, {"status_display_type", kShowDetails}, {"details", title.left(128)}};
     const QString artist = track.value("artist").toString().trimmed();
-    if (artist.size() >= 2)
+    if (artist.size() >= 2) {
         activity.insert("state", artist.left(128));
+        activity.insert("buttons",
+                        QJsonArray{QJsonObject{{"label", "Open on Last.fm"}, {"url", lastFmUrl(artist, title)}}});
+    }
 
     const qint64 startMs = nowMs - positionMs;
     QJsonObject timestamps{{"start", startMs}};
@@ -162,7 +186,12 @@ QJsonObject DiscordPresence::activityFor(const QVariantMap &track, bool playing,
         timestamps.insert("end", startMs + durationMs);
     activity.insert("timestamps", timestamps);
 
-    QJsonObject assets{{"large_image", "cassettecat"}};
+    // With a cover, the app logo moves to the small corner image.
+    QJsonObject assets{{"large_image", artworkUrl.isEmpty() ? QStringLiteral("cassettecat") : artworkUrl}};
+    if (!artworkUrl.isEmpty()) {
+        assets.insert("small_image", "cassettecat");
+        assets.insert("small_text", "CassetteCat");
+    }
     const QString album = track.value("album").toString().trimmed();
     if (album.size() >= 2)
         assets.insert("large_text", album.left(128));
@@ -216,10 +245,42 @@ void DiscordPresence::sendActivity() {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     const qint64 positionMs = m_player->position();
     const QVariantMap track = m_player->currentTrack();
-    const QJsonObject activity = activityFor(track, m_player->isPlaying(), positionMs, m_player->duration(), nowMs);
+    const QString key = artworkKey(track);
+    if (!m_artwork.contains(key))
+        lookUpArtwork(track);
+    const QJsonObject activity =
+        activityFor(track, m_player->isPlaying(), positionMs, m_player->duration(), nowMs, m_artwork.value(key));
     m_sentStartMs = activity.isEmpty() ? 0 : nowMs - positionMs;
     m_lastSentMs = nowMs;
     sendFrame(Frame, setActivityPayload(activity));
+}
+
+void DiscordPresence::lookUpArtwork(const QVariantMap &track) {
+    const QString key = artworkKey(track);
+    const QString artist = track.value("artist").toString().trimmed();
+    const QString album = track.value("album").toString().trimmed();
+    if (artist.isEmpty() || album.isEmpty() || m_artworkLookup == key)
+        return;
+    m_artworkLookup = key;
+    // iTunes search returns a public cover URL from one request, without a key.
+    QUrl url(QStringLiteral("https://itunes.apple.com/search"));
+    url.setQuery(QUrlQuery{{"term", artist + u' ' + album}, {"entity", "album"}, {"limit", "1"}});
+    QNetworkRequest request(url);
+    request.setTransferTimeout(10000);
+    QNetworkReply *reply = m_net.get(request);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, key] {
+        reply->deleteLater();
+        if (m_artworkLookup == key)
+            m_artworkLookup.clear();
+        // A failed request isn't remembered, so the next song change tries again.
+        if (reply->error() != QNetworkReply::NoError)
+            return;
+        const QJsonArray results = QJsonDocument::fromJson(reply->readAll()).object().value("results").toArray();
+        const QString small =
+            results.isEmpty() ? QString() : results.first().toObject().value("artworkUrl100").toString();
+        m_artwork.insert(key, small.isEmpty() ? QString() : QString(small).replace("100x100bb", "512x512bb"));
+        scheduleUpdate();
+    });
 }
 
 void DiscordPresence::sendFrame(quint32 opcode, const QJsonObject &payload) {
@@ -233,7 +294,15 @@ bool DiscordPresence::selfCheck() {
     if (activity.value("type").toInt() != 2 || activity.value("details") != "Song Title" ||
         activity.value("state") != "Some Artist" || timestamps.value("start").toInteger() != 970000 ||
         timestamps.value("end").toInteger() != 1170000 ||
-        activity.value("assets").toObject().value("large_text") != "An Album")
+        activity.value("assets").toObject().value("large_text") != "An Album" ||
+        activity.value("assets").toObject().value("large_image") != "cassettecat" ||
+        activity.value("status_display_type").toInt() != kShowDetails ||
+        activity.value("buttons").toArray().first().toObject().value("url") !=
+            "https://www.last.fm/music/Some+Artist/_/Song+Title")
+        return false;
+    const QJsonObject withCover = activityFor(track, true, 0, 1000, 0, "https://example.org/cover.jpg");
+    if (withCover.value("assets").toObject().value("large_image") != "https://example.org/cover.jpg" ||
+        withCover.value("assets").toObject().value("small_image") != "cassettecat")
         return false;
     if (!activityFor(track, false, 0, 0, 0).isEmpty() || !activityFor({{"title", "X"}}, true, 0, 0, 0).isEmpty())
         return false;

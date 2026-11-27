@@ -128,6 +128,13 @@ class LibraryController final : public QAbstractListModel {
     void listensChanged();
 
   private:
+    static bool checkSortKeys();
+    static bool checkFilters();
+    static bool checkLyricSearch();
+    static bool checkRecap();
+    static bool checkTagEdits();
+    static bool checkSimilarTracks();
+
     QVariantMap refreshTrack(const QString &filePath);
     void publishTrackChanges();
     void setFolderPaths(QStringList paths);

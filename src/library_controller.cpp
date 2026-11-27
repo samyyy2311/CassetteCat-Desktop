@@ -6,6 +6,7 @@
 #include "image_cache.h"
 #include "library_scanner.h"
 #include "lyrics_store.h"
+#include "self_check.h"
 
 #include <QCoreApplication>
 #include <QDataStream>
@@ -426,11 +427,19 @@ QHash<int, QByteArray> LibraryController::roleNames() const {
 }
 
 bool LibraryController::selfCheck() {
+    SelfCheck check("Library");
+    check.expect(checkSortKeys(), "sort keys");
+    check.expect(checkFilters(), "filters");
+    check.expect(checkLyricSearch(), "lyric search");
+    check.expect(checkRecap(), "listening recap");
+    check.expect(checkTagEdits(), "tag edits");
+    check.expect(checkSimilarTracks(), "similar tracks");
+    return check.passed();
+}
+
+bool LibraryController::checkSortKeys() {
     LibraryController library;
-    const auto fail = [](const char *check) {
-        qWarning().noquote() << "Library self-check failed:" << check;
-        return false;
-    };
+    SelfCheck check("Library sort keys");
     const std::pair<QString, QString> folderUrls[] = {
         {"file:///home/music/Live%20Sets", "/home/music/Live Sets"},
         {"file:///home/music/%2520", "/home/music/%20"},
@@ -439,34 +448,41 @@ bool LibraryController::selfCheck() {
     };
     for (const auto &[url, expected] : folderUrls) {
         QString path;
-        if (!QMetaObject::invokeMethod(&library, "localPath", Q_RETURN_ARG(QString, path), Q_ARG(QUrl, QUrl(url))) ||
-            path != expected)
-            return fail("local path");
+        const bool called =
+            QMetaObject::invokeMethod(&library, "localPath", Q_RETURN_ARG(QString, path), Q_ARG(QUrl, QUrl(url)));
+        check.expect(called && path == expected, "turns a folder link into a path");
     }
 
-    if (splitArtists(QStringLiteral("21 Savage & Metro Boomin")) !=
-        QStringList{QStringLiteral("21 Savage"), QStringLiteral("Metro Boomin")})
-        return fail("splitArtists collaborate");
-    if (splitArtists(QStringLiteral("A feat. B, C; D / E featuring F")) !=
-        QStringList{QStringLiteral("A"), QStringLiteral("B"), QStringLiteral("C"), QStringLiteral("D"),
-                    QStringLiteral("E"), QStringLiteral("F")})
-        return fail("splitArtists delimiters");
-    if (sortKey(QStringLiteral("The Beatles")) != QStringLiteral("beatles") ||
-        sortKey(QStringLiteral("\"A\" Hero")) != QStringLiteral("hero") ||
-        sortKey(QStringLiteral("(Untitled)\u00a0")) != QStringLiteral("untitled") ||
-        sortKey(QStringLiteral("---")) != QStringLiteral("---"))
-        return fail("sortKey stripping");
-    if (compareSortKeys(QStringLiteral("1989"), QStringLiteral("Abbey Road")) >= 0 ||
-        compareSortKeys(QStringLiteral("The Beatles"), QStringLiteral("Bee Gees")) >= 0)
-        return fail("compareSortKeys order");
-    if (compareSortKeys(QStringLiteral("Émile"), QStringLiteral("1989")) <= 0 ||
-        compareSortKeys(QStringLiteral("Кино"), QStringLiteral("#1 Hits")) <= 0)
-        return fail("compareSortKeys unicode letters");
-    if (indexLetter(QStringLiteral("The Beatles")) != QStringLiteral("B") ||
-        indexLetter(QStringLiteral("émile")) != QStringLiteral("E") ||
-        indexLetter(QStringLiteral("1989")) != QStringLiteral("#") ||
-        indexLetter(QStringLiteral("Кино")) != QStringLiteral("#") || indexLetter(QString()) != QStringLiteral("#"))
-        return fail("index letters");
+    check.expect(splitArtists(QStringLiteral("21 Savage & Metro Boomin")) ==
+                     QStringList{QStringLiteral("21 Savage"), QStringLiteral("Metro Boomin")},
+                 "splits collaborating artists");
+    check.expect(splitArtists(QStringLiteral("A feat. B, C; D / E featuring F")) ==
+                     QStringList{QStringLiteral("A"), QStringLiteral("B"), QStringLiteral("C"), QStringLiteral("D"),
+                                 QStringLiteral("E"), QStringLiteral("F")},
+                 "splits artists at every delimiter");
+    check.expect(sortKey(QStringLiteral("The Beatles")) == QStringLiteral("beatles"), "sorts without \"The\"");
+    check.expect(sortKey(QStringLiteral("\"A\" Hero")) == QStringLiteral("hero"), "sorts without quoted articles");
+    check.expect(sortKey(QStringLiteral("(Untitled)\u00a0")) == QStringLiteral("untitled"),
+                 "sorts without brackets and spaces");
+    check.expect(sortKey(QStringLiteral("---")) == QStringLiteral("---"), "keeps a key made only of punctuation");
+    check.expect(compareSortKeys(QStringLiteral("1989"), QStringLiteral("Abbey Road")) < 0,
+                 "sorts numbers before letters");
+    check.expect(compareSortKeys(QStringLiteral("The Beatles"), QStringLiteral("Bee Gees")) < 0,
+                 "sorts by the key without \"The\"");
+    check.expect(compareSortKeys(QStringLiteral("Émile"), QStringLiteral("1989")) > 0, "sorts accented letters as letters");
+    check.expect(compareSortKeys(QStringLiteral("Кино"), QStringLiteral("#1 Hits")) > 0,
+                 "sorts other alphabets as letters");
+    check.expect(indexLetter(QStringLiteral("The Beatles")) == QStringLiteral("B"), "indexes without \"The\"");
+    check.expect(indexLetter(QStringLiteral("émile")) == QStringLiteral("E"), "indexes accented letters");
+    check.expect(indexLetter(QStringLiteral("1989")) == QStringLiteral("#"), "indexes numbers under #");
+    check.expect(indexLetter(QStringLiteral("Кино")) == QStringLiteral("#"), "indexes other alphabets under #");
+    check.expect(indexLetter(QString()) == QStringLiteral("#"), "indexes a blank name under #");
+    return check.passed();
+}
+
+bool LibraryController::checkFilters() {
+    LibraryController library;
+    SelfCheck check("Library filters");
     library.m_tracks = {
         QVariantMap{
             {"filePath", "C:/Music/keep.flac"}, {"title", "Keep"}, {"format", "FLAC"}, {"durationSeconds", 180}},
@@ -480,19 +496,23 @@ bool LibraryController::selfCheck() {
     };
 
     library.setLibraryFilter({}, "ALL", {}, "title", true, {"C:/Music/hidden"}, true);
-    if (library.trackCount() != 2 || library.visibleTrackCount() != 2)
-        return fail("library filter");
+    check.expect(library.trackCount() == 2, "leaves out excluded folders and short clips");
+    check.expect(library.visibleTrackCount() == 2, "shows every song left");
     const QVariantList found =
         library.tracksForPaths({"C:\\Music\\keep.flac", "C:/Music/hidden/song.mp3", "#comment", "C:/Music/keep.flac"});
-    if (found.size() != 4 || found[0].toMap().value("title") != "Keep" || !found[1].toMap().isEmpty() ||
-        !found[2].toMap().isEmpty() || found[3].toMap().value("title") != "Keep")
-        return fail("tracks for paths");
+    check.expect(found.size() == 4, "answers every path asked for");
+    check.expect(found.value(0).toMap().value("title") == "Keep", "finds a song by its path");
+    check.expect(found.value(1).toMap().isEmpty(), "finds no song in an excluded folder");
+    check.expect(found.value(2).toMap().isEmpty(), "finds no song for a playlist comment");
+    check.expect(found.value(3).toMap().value("title") == "Keep", "finds a song asked for twice");
 #ifdef Q_OS_WIN
-    if (library.tracksForPaths({"file:///C:/Music/ALTERNATE.wav"}).value(0).toMap().value("title") != "Alternate")
-        return fail("tracks for file urls");
+    check.expect(library.tracksForPaths({"file:///C:/Music/ALTERNATE.wav"}).value(0).toMap().value("title") ==
+                     "Alternate",
+                 "finds a song by its file link");
 #endif
-    if (library.availablePaths() != QStringList{"C:/Music/keep.flac", "C:/Music/alternate.wav"})
-        return fail("available paths");
+    check.expect(library.availablePaths() == QStringList{"C:/Music/keep.flac", "C:/Music/alternate.wav"},
+                 "lists the paths it shows");
+
     const QVariantMap home = library.homeRecommendations(
         {{"C:/Music/keep.flac", 3}}, {{"C:/Music/keep.flac", 50}, {"C:/Music/alternate.wav", 100}},
         {{"C:/Music/alternate.wav", true}}, {QVariantMap{{"filePath", "C:\\Music\\keep.flac"}, {"title", "Keep"}}});
@@ -502,41 +522,26 @@ bool LibraryController::selfCheck() {
             result.append(track.toMap().value("title").toString());
         return result;
     };
-    if (titles("quickPicks") != QStringList{"Alternate"} || titles("heavyRotation") != QStringList{"Keep"})
-        return fail("home shelves");
-    if (titles("recentlyPlayed") != QStringList{"Keep"} || titles("recentlyAdded") != QStringList{"Alternate", "Keep"})
-        return fail("home history shelves");
-    if (!titles("forgottenFavs").isEmpty() || home.value("spotlight").toMap().value("title") != "Alternate")
-        return fail("home recommendations");
-    if (library.data(library.index(0, 0), TrackRole).toMap().value("filePath").toString() != "C:/Music/alternate.wav")
-        return fail("library sort");
+    check.expect(titles("quickPicks") == QStringList{"Alternate"}, "quick picks");
+    check.expect(titles("heavyRotation") == QStringList{"Keep"}, "heavy rotation");
+    check.expect(titles("recentlyPlayed") == QStringList{"Keep"}, "recently played");
+    check.expect(titles("recentlyAdded") == QStringList{"Alternate", "Keep"}, "recently added");
+    check.expect(titles("forgottenFavs").isEmpty(), "forgotten favourites");
+    check.expect(home.value("spotlight").toMap().value("title") == "Alternate", "spotlight");
+    check.expect(library.data(library.index(0, 0), TrackRole).toMap().value("filePath").toString() ==
+                     "C:/Music/alternate.wav",
+                 "sorts the library");
     library.setLibraryFilter({}, "FAVORITES", {{"c:/music/keep.flac", true}}, "title", true, {"C:/Music/hidden"}, true);
-    if (library.visibleTrackCount() != 1)
-        return fail("normalized favorites");
+    check.expect(library.visibleTrackCount() == 1, "matches favourites whatever the path's case");
 
     library.setSearchFilter({}, "FLAC", {}, false);
     const QVariantMap groups = library.catalogGroups();
-    if (!(library.trackCount() == 4 && library.visibleTrackCount() == 2 &&
-          library.firstPlayableTrack().value("filePath").toString() == "C:/Music/keep.flac" &&
-          groups.value("artists").toList().size() == 1 && groups.value("albums").toList().size() == 1))
-        return fail("search filter");
-
-    library.m_tracks = {
-        QVariantMap{{"filePath", "a.flac"},
-                    {"lyrics", "[ar:Queen]\n[00:01.00]Don't stop me now\n[00:04.00]Having a time"}},
-        QVariantMap{{"filePath", "b.flac"}, {"lyrics", "Now stop, me don't"}},
-        QVariantMap{{"filePath", "c.flac"}, {"lyrics", "Stopping by"}},
-    };
-    library.readLyrics();
-    const QVariantList lyricHits = library.lyricMatches("DONT stop me");
-    const auto hitAt = [&lyricHits](int i, const char *key) {
-        const QVariantMap hit = lyricHits.value(i).toMap();
-        return QString(key) == "line" ? hit.value("line").toString() : hit.value("track").toMap().value(key).toString();
-    };
-    if (lyricHits.size() != 2 || hitAt(0, "filePath") != "a.flac" || hitAt(0, "line") != "Don't stop me now" ||
-        hitAt(1, "filePath") != "b.flac" || library.lyricMatches("stopp").size() != 1 ||
-        library.lyricMatches("me").size() != 0)
-        return fail("lyric matches");
+    check.expect(library.trackCount() == 4, "searches every song");
+    check.expect(library.visibleTrackCount() == 2, "shows songs of the chosen format");
+    check.expect(library.firstPlayableTrack().value("filePath").toString() == "C:/Music/keep.flac",
+                 "plays the first song shown");
+    check.expect(groups.value("artists").toList().size() == 1, "groups the songs shown by artist");
+    check.expect(groups.value("albums").toList().size() == 1, "groups the songs shown by album");
 
     library.m_tracks = {
         QVariantMap{{"filePath", "/Music/Live/song.flac"}},
@@ -544,101 +549,148 @@ bool LibraryController::selfCheck() {
         QVariantMap{{"filePath", "/Music/Live Sessions/song.flac"}},
         QVariantMap{{"filePath", "/Music/live/song.flac"}},
     };
+    // Windows paths ignore case, so the lowercase folder is excluded there too.
+#ifdef Q_OS_WIN
+    const int outsideLive = 1;
+#else
+    const int outsideLive = 2;
+#endif
     for (const QString &folder : {QString("/Music/Live"), QString("/Music/Live/")}) {
         library.setSearchFilter({}, "ALL", {folder}, false);
-#ifdef Q_OS_WIN
-        if (library.trackCount() != 1)
-            return fail("folder filter");
-#else
-        if (library.trackCount() != 2)
-            return fail("folder filter");
-#endif
-        if (library.firstPlayableTrack().value("filePath").toString() != "/Music/Live Sessions/song.flac")
-            return fail("folder sort");
-        if (library.playbackTracks().size() != library.trackCount())
-            return fail("playback tracks");
+        check.expect(library.trackCount() == outsideLive, "excludes a folder and the folders inside it");
+        check.expect(library.firstPlayableTrack().value("filePath").toString() == "/Music/Live Sessions/song.flac",
+                     "keeps a folder whose name only starts the same");
+        check.expect(library.playbackTracks().size() == library.trackCount(), "plays only songs shown");
     }
     const QVariantList candidates = {QVariantMap{{"filePath", "/Music/Live/song.flac"}},
                                      QVariantMap{{"filePath", "/Music/Live Sessions/song.flac"}}};
     const QVariantList inside = tracksInFolders(candidates, {"/Music/Live"});
-    if (inside.size() != 1 || inside[0].toMap().value("filePath") != "/Music/Live/song.flac")
-        return fail("folder membership");
-    const auto logLine = [](const QString &date, const QString &path, const QString &artist, qint64 ms) {
-        QJsonObject entry{{"path", path}, {"title", path}, {"artist", artist}, {"album", "Album"}};
-        entry.insert("at", QDateTime::fromString(date, Qt::ISODate).toMSecsSinceEpoch());
-        entry.insert("genre", "Pop");
-        entry.insert("ms", ms);
-        return QJsonDocument(entry).toJson(QJsonDocument::Compact) + '\n';
+    check.expect(inside.size() == 1, "finds songs in a folder");
+    check.expect(inside.value(0).toMap().value("filePath") == "/Music/Live/song.flac",
+                 "finds only songs in that folder");
+    library.setSearchFilter({}, "ALL", {"/"}, false);
+    check.expect(library.trackCount() == 0, "excludes everything under the root");
+    return check.passed();
+}
+
+bool LibraryController::checkLyricSearch() {
+    LibraryController library;
+    SelfCheck check("Library lyric search");
+    library.m_tracks = {
+        QVariantMap{{"filePath", "a.flac"},
+                    {"lyrics", "[ar:Queen]\n[00:01.00]Don't stop me now\n[00:04.00]Having a time"}},
+        QVariantMap{{"filePath", "b.flac"}, {"lyrics", "Now stop, me don't"}},
+        QVariantMap{{"filePath", "c.flac"}, {"lyrics", "Stopping by"}},
     };
-    const QByteArray log = logLine("2026-03-10T12:00:00", "a.flac", "Ann & Bo", 60000) +
-                           logLine("2026-03-11T12:00:00", "a.flac", "Ann & Bo", 30000) +
-                           logLine("2026-07-01T12:00:00", "b.flac", "Ann", 200000) +
-                           logLine("2025-12-31T12:00:00", "c.flac", "Cy", 90000) + "not json\n";
+    library.readLyrics();
+    const QVariantList hits = library.lyricMatches("DONT stop me");
+    const auto hit = [&hits](int i) { return hits.value(i).toMap(); };
+    check.expect(hits.size() == 2, "finds every song with the words");
+    check.expect(hit(0).value("track").toMap().value("filePath") == "a.flac", "ranks the song with the line first");
+    check.expect(hit(0).value("line").toString() == "Don't stop me now", "shows the matching line without its time");
+    check.expect(hit(1).value("track").toMap().value("filePath") == "b.flac", "finds the words in any order");
+    check.expect(library.lyricMatches("stopp").size() == 1, "matches the start of a word");
+    check.expect(library.lyricMatches("me").isEmpty(), "ignores a search too short to mean anything");
+    return check.passed();
+}
+
+namespace {
+QByteArray listenLine(const QString &date, const QString &path, const QString &artist, qint64 ms) {
+    QJsonObject entry{{"path", path}, {"title", path}, {"artist", artist}, {"album", "Album"}};
+    entry.insert("at", QDateTime::fromString(date, Qt::ISODate).toMSecsSinceEpoch());
+    entry.insert("genre", "Pop");
+    entry.insert("ms", ms);
+    return QJsonDocument(entry).toJson(QJsonDocument::Compact) + '\n';
+}
+
+QJsonObject phoneListen(const QString &title) {
+    return QJsonObject{{"at", QDateTime::fromString("2026-04-01T12:00:00", Qt::ISODate).toMSecsSinceEpoch()},
+                       {"title", title},
+                       {"artist", "Dee"},
+                       {"ms", 1000},
+                       {"device", "phone"}};
+}
+
+QByteArray logLine(const QJsonObject &entry) {
+    return QJsonDocument(entry).toJson(QJsonDocument::Compact) + '\n';
+}
+} // namespace
+
+bool LibraryController::checkRecap() {
+    SelfCheck check("Library listening recap");
+    const QByteArray log = listenLine("2026-03-10T12:00:00", "a.flac", "Ann & Bo", 60000) +
+                           listenLine("2026-03-11T12:00:00", "a.flac", "Ann & Bo", 30000) +
+                           listenLine("2026-07-01T12:00:00", "b.flac", "Ann", 200000) +
+                           listenLine("2025-12-31T12:00:00", "c.flac", "Cy", 90000) + "not json\n";
     const QVariantMap recap = recapFromLog(log, 2026, -1);
-    const QVariantList topSongs = recap.value("topSongs").toList();
-    const QVariantList topArtists = recap.value("topArtists").toList();
-    if (recap.value("plays").toInt() != 3 || recap.value("listenedMs").toLongLong() != 290000 ||
-        recap.value("songCount").toInt() != 2 || recap.value("artistCount").toInt() != 2 ||
-        topSongs.value(0).toMap().value("track").toMap().value("filePath") != "a.flac" ||
-        topArtists.value(0).toMap().value("name") != "Ann" || topArtists.value(0).toMap().value("plays") != 3 ||
-        recap.value("busiestMonth").toInt() != 6)
-        return fail("listening recap");
+    const QVariantMap topArtist = recap.value("topArtists").toList().value(0).toMap();
+    check.expect(recap.value("plays").toInt() == 3, "counts the year's plays");
+    check.expect(recap.value("listenedMs").toLongLong() == 290000, "adds up the year's listening time");
+    check.expect(recap.value("songCount").toInt() == 2, "counts the year's songs");
+    check.expect(recap.value("artistCount").toInt() == 2, "counts each artist of a collaboration");
+    check.expect(recap.value("topSongs").toList().value(0).toMap().value("track").toMap().value("filePath") ==
+                     "a.flac",
+                 "ranks the most played song first");
+    check.expect(topArtist.value("name") == "Ann", "ranks the most played artist first");
+    check.expect(topArtist.value("plays") == 3, "counts an artist's plays across collaborations");
+    check.expect(recap.value("busiestMonth").toInt() == 6, "finds the busiest month");
     const QVariantMap march = recapFromLog(log, 2026, 2);
-    if (march.value("plays").toInt() != 2 || march.value("listenedMs").toLongLong() != 90000 ||
-        march.value("months").toList().value(6).toDouble() != 200000)
-        return fail("monthly listening recap");
-    const auto phoneLine = [](const QString &title) {
-        return QJsonDocument(
-                   QJsonObject{{"at", QDateTime::fromString("2026-04-01T12:00:00", Qt::ISODate).toMSecsSinceEpoch()},
-                               {"title", title},
-                               {"artist", "Dee"},
-                               {"ms", 1000},
-                               {"device", "phone"}})
-                   .toJson(QJsonDocument::Compact) +
-               '\n';
-    };
-    const QVariantMap phoneOnly = recapFromLog(phoneLine("Gone") + phoneLine("Gone") + phoneLine("Here"), 2026, -1);
-    if (phoneOnly.value("plays").toInt() != 3 || phoneOnly.value("songCount").toInt() != 2)
-        return fail("phone listens of songs not in the library");
-    QJsonObject skip = QJsonDocument::fromJson(phoneLine("Skipped")).object();
+    check.expect(march.value("plays").toInt() == 2, "counts a month's plays");
+    check.expect(march.value("listenedMs").toLongLong() == 90000, "adds up a month's listening time");
+    check.expect(march.value("months").toList().value(6).toDouble() == 200000, "keeps every month's time");
+
+    const QVariantMap phoneOnly =
+        recapFromLog(logLine(phoneListen("Gone")) + logLine(phoneListen("Gone")) + logLine(phoneListen("Here")), 2026,
+                     -1);
+    check.expect(phoneOnly.value("plays").toInt() == 3, "counts phone plays of songs not in the library");
+    check.expect(phoneOnly.value("songCount").toInt() == 2, "counts phone songs not in the library");
+
+    QJsonObject skip = phoneListen("Skipped");
     skip.insert("counted", false);
-    const QVariantMap withSkip =
-        recapFromLog(phoneLine("Here") + QJsonDocument(skip).toJson(QJsonDocument::Compact) + '\n', 2026, -1);
-    if (withSkip.value("plays").toInt() != 1 || withSkip.value("songCount").toInt() != 1 ||
-        withSkip.value("listenedMs").toLongLong() != 2000 || withSkip.value("topSongs").toList().size() != 1)
-        return fail("skipped listens add time but not plays");
-    QJsonObject total = QJsonDocument::fromJson(phoneLine("Old")).object();
+    const QVariantMap withSkip = recapFromLog(logLine(phoneListen("Here")) + logLine(skip), 2026, -1);
+    check.expect(withSkip.value("plays").toInt() == 1, "doesn't count a skip as a play");
+    check.expect(withSkip.value("songCount").toInt() == 1, "doesn't count a skipped song");
+    check.expect(withSkip.value("listenedMs").toLongLong() == 2000, "adds a skip's time");
+    check.expect(withSkip.value("topSongs").toList().size() == 1, "leaves a skipped song out of the top songs");
+
+    QJsonObject total = phoneListen("Old");
     total.insert("plays", 4);
     total.insert("at", QDateTime::fromString("2026-01-01T00:00:00", Qt::ISODate).toMSecsSinceEpoch());
-    const QVariantMap withTotal =
-        recapFromLog(phoneLine("Here") + QJsonDocument(total).toJson(QJsonDocument::Compact) + '\n', 2026, -1);
-    if (withTotal.value("plays").toInt() != 5 || withTotal.value("songCount").toInt() != 2 ||
-        withTotal.value("firstListen").toLongLong() !=
-            QDateTime::fromString("2026-04-01T12:00:00", Qt::ISODate).toMSecsSinceEpoch())
-        return fail("monthly totals from the phone");
+    const QVariantMap withTotal = recapFromLog(logLine(phoneListen("Here")) + logLine(total), 2026, -1);
+    check.expect(withTotal.value("plays").toInt() == 5, "adds a month's total from the phone");
+    check.expect(withTotal.value("songCount").toInt() == 2, "counts the song in a monthly total");
+    check.expect(withTotal.value("firstListen").toLongLong() ==
+                     QDateTime::fromString("2026-04-01T12:00:00", Qt::ISODate).toMSecsSinceEpoch(),
+                 "doesn't date the first listen from a monthly total");
     total.insert("title", "");
-    const QVariantMap withUntitled =
-        recapFromLog(phoneLine("Here") + QJsonDocument(total).toJson(QJsonDocument::Compact) + '\n', 2026, -1);
-    if (withUntitled.value("plays").toInt() != 5 || withUntitled.value("songCount").toInt() != 1 ||
-        withUntitled.value("topSongs").toList().size() != 1)
-        return fail("untitled monthly totals from the phone");
-    QJsonObject desktopPlay = QJsonDocument::fromJson(phoneLine("Here")).object();
+    const QVariantMap withUntitled = recapFromLog(logLine(phoneListen("Here")) + logLine(total), 2026, -1);
+    check.expect(withUntitled.value("plays").toInt() == 5, "adds an untitled monthly total");
+    check.expect(withUntitled.value("songCount").toInt() == 1, "doesn't count an untitled total as a song");
+    check.expect(withUntitled.value("topSongs").toList().size() == 1, "leaves an untitled total out of the top songs");
+
+    QJsonObject desktopPlay = phoneListen("Here");
     desktopPlay.remove("device");
     desktopPlay.insert("path", "C:/Music/here.flac");
-    const QVariantMap totals = totalsFromLog(phoneLine("Here") + phoneLine("Gone") +
-                                             QJsonDocument(desktopPlay).toJson(QJsonDocument::Compact) + '\n' +
-                                             QJsonDocument(skip).toJson(QJsonDocument::Compact) + '\n');
-    if (totals.value("plays").toInt() != 3 || totals.value("listenedMs").toLongLong() != 4000 ||
-        totals.value("songCount").toInt() != 2 ||
-        totals.value("playsByPath").toMap().value("C:/Music/here.flac").toInt() != 1)
-        return fail("listening totals across both devices");
+    const QVariantMap totals = totalsFromLog(logLine(phoneListen("Here")) + logLine(phoneListen("Gone")) +
+                                             logLine(desktopPlay) + logLine(skip));
+    check.expect(totals.value("plays").toInt() == 3, "counts plays from both devices");
+    check.expect(totals.value("listenedMs").toLongLong() == 4000, "adds up time from both devices");
+    check.expect(totals.value("songCount").toInt() == 2, "counts a song played on both devices once");
+    check.expect(totals.value("playsByPath").toMap().value("C:/Music/here.flac").toInt() == 1,
+                 "counts plays of each library file");
+    return check.passed();
+}
 
+bool LibraryController::checkTagEdits() {
+    SelfCheck check("Library tag edits");
     // Half a second of 8 kHz mono silence is enough for TagLib to accept the file.
     QTemporaryDir tagDir;
     const QString wavPath = tagDir.filePath("tags.wav");
     QFile wav(wavPath);
-    if (!wav.open(QIODevice::WriteOnly))
-        return fail("batch tag file");
+    if (!wav.open(QIODevice::WriteOnly)) {
+        check.expect(false, "writes a test file");
+        return check.passed();
+    }
     QDataStream wavOut(&wav);
     wavOut.setByteOrder(QDataStream::LittleEndian);
     wavOut.writeRawData("RIFF", 4);
@@ -654,26 +706,32 @@ bool LibraryController::selfCheck() {
     writeTrackInfo({{"filePath", wavPath}, {"title", "Keep"}, {"artist", "Old"}});
     tagged.updateTracksMetadata({wavPath}, {{"artist", "New"}});
     const TrackInfo saved = readTrackInfo(wavPath);
-    if (saved.title != "Keep" || saved.artist != "New")
-        return fail("batch tag edit keeps other fields");
+    check.expect(saved.artist == "New", "edits a tag on several songs");
+    check.expect(saved.title == "Keep", "keeps the tags it wasn't asked to change");
 
     // A cover saved into the file leaves its tags alone.
     const QString coverPath = tagDir.filePath("cover.png");
     QImage(4, 4, QImage::Format_RGB32).save(coverPath);
-    if (tagged.hasEmbeddedArtwork(wavPath) ||
-        tagged.embedArtwork({wavPath}, QUrl::fromLocalFile(coverPath).toString()) != 1 ||
-        readTrackInfo(wavPath).title != "Keep" || !tagged.hasEmbeddedArtwork(wavPath))
-        return fail("cover saved into the file");
+    check.expect(!tagged.hasEmbeddedArtwork(wavPath), "sees a file without a cover");
+    check.expect(tagged.embedArtwork({wavPath}, QUrl::fromLocalFile(coverPath).toString()) == 1,
+                 "saves a cover into the file");
+    check.expect(readTrackInfo(wavPath).title == "Keep", "keeps the tags when saving a cover");
+    check.expect(tagged.hasEmbeddedArtwork(wavPath), "sees the saved cover");
 
     // Opened files play as the library's copy when it has one; files that aren't audio are skipped.
     const QString outsidePath = tagDir.filePath("outside.wav");
     QFile::copy(wavPath, outsidePath);
     tagged.m_tracks = {QVariantMap{{"filePath", wavPath}, {"title", "From library"}}};
     const QVariantList opened = tagged.openPaths({wavPath, coverPath, outsidePath});
-    if (opened.size() != 2 || opened[0].toMap().value("title").toString() != "From library" ||
-        opened[1].toMap().value("title").toString() != "Keep")
-        return fail("opened files");
+    check.expect(opened.size() == 2, "opens only audio files");
+    check.expect(opened.value(0).toMap().value("title").toString() == "From library",
+                 "opens the library's copy of a file");
+    check.expect(opened.value(1).toMap().value("title").toString() == "Keep", "reads the tags of a file it opens");
+    return check.passed();
+}
 
+bool LibraryController::checkSimilarTracks() {
+    SelfCheck check("Library similar tracks");
     LibraryController mixLibrary;
     mixLibrary.m_tracks = {
         QVariantMap{{"filePath", "/m/seed.flac"},
@@ -699,11 +757,9 @@ bool LibraryController::selfCheck() {
     };
     mixLibrary.m_trackCount = int(mixLibrary.m_tracks.size());
     const QVariantList mix = mixLibrary.similarTracks(mixLibrary.m_tracks.first().toMap(), {"/m/played.flac"}, 10);
-    if (mix.size() != 2 || mix.first().toMap().value("filePath") != "/m/close.flac")
-        return fail("similar tracks");
-
-    library.setSearchFilter({}, "ALL", {"/"}, false);
-    return library.trackCount() == 0;
+    check.expect(mix.size() == 2, "leaves out songs played recently");
+    check.expect(mix.value(0).toMap().value("filePath") == "/m/close.flac", "ranks the closest song first");
+    return check.passed();
 }
 
 QString LibraryController::localPath(const QUrl &url) const {

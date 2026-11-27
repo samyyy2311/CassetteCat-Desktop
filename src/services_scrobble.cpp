@@ -72,6 +72,12 @@ struct ScrobbleFields {
 };
 
 // Radio streams aren't scrobbled, and a song needs an artist and a title to be, so both come back empty for them.
+// Each account's record is kept by service and username, so signing in to a different account starts afresh.
+QString lovedKey(const QString &service) {
+    const QString user = SettingsController::globalValue("scrobble/" + service + "_user").toString();
+    return "scrobble/loved_" + service + "/" + user;
+}
+
 // Artist and title, ignoring case, identify a song across accounts and rescans.
 QString loveKey(const QString &artist, const QString &title) {
     return artist.toLower() + QChar(0x1f) + title.toLower();
@@ -160,10 +166,10 @@ void ServicesController::disconnectListenBrainz() {
     CredentialVault vault;
     vault.clearSecret("scrobble/listenbrainz_token");
     SettingsController::setGlobalValue("scrobble_secure/listenbrainz_token", QVariant());
+    // What this account loved is forgotten, as the next sign-in may be someone else.
+    SettingsController::setGlobalValue(lovedKey(QStringLiteral("listenbrainz")), QVariant());
     SettingsController::setGlobalValue("scrobble/listenbrainz_user", QString());
     SettingsController::setGlobalValue("scrobble/listenbrainz_enabled", false);
-    // The next sign-in may be someone else, so what this account loved is forgotten.
-    SettingsController::setGlobalValue("scrobble/loved_listenbrainz", QVariant());
     setListenBrainzProblem({});
 }
 
@@ -246,9 +252,9 @@ void ServicesController::disconnectScrobbleAccount(const QString &service) {
     vault.clearSecret(sessionVaultKey(service));
     if (service == kLibreFm.id)
         SettingsController::setGlobalValue("scrobble_secure/librefm_session_key", QVariant());
+    SettingsController::setGlobalValue(lovedKey(service), QVariant());
     SettingsController::setGlobalValue("scrobble/" + service + "_user", QString());
     SettingsController::setGlobalValue("scrobble/" + service + "_enabled", false);
-    SettingsController::setGlobalValue("scrobble/loved_" + service, QVariant());
 }
 
 void ServicesController::postToScrobbleAccounts(const QMap<QString, QString> &params) {
@@ -529,7 +535,7 @@ void ServicesController::syncLikes(const QVariantList &likedTracks, const QVaria
 }
 
 QStringList ServicesController::lovedSongs(const QString &service) {
-    return SettingsController::globalValue("scrobble/loved_" + service).toStringList();
+    return SettingsController::globalValue(lovedKey(service)).toStringList();
 }
 
 void ServicesController::recordLove(const QString &service, const QString &song, bool loved) {
@@ -540,7 +546,7 @@ void ServicesController::recordLove(const QString &service, const QString &song,
         songs.append(song);
     else
         songs.removeAll(song);
-    SettingsController::setGlobalValue("scrobble/loved_" + service, songs);
+    SettingsController::setGlobalValue(lovedKey(service), songs);
 }
 
 // The accounts a love goes to right now: signed in and switched on.

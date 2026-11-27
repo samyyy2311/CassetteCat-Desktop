@@ -28,6 +28,8 @@
 #include <QUrlQuery>
 #include <QUuid>
 
+#include <algorithm>
+
 #include <iostream>
 #include <memory>
 
@@ -702,6 +704,20 @@ void check(bool condition, const char *name) {
     }
 }
 
+// Whether a settings snapshot names or carries a credential, which it must never pass on.
+bool holdsSecret(const QVariantMap &snapshot) {
+    static const QStringList secretWords{"password", "token", "secret", "session", "credential"};
+    for (auto it = snapshot.cbegin(); it != snapshot.cend(); ++it) {
+        const QString key = it.key().toLower();
+        const QString value = it.value().toString();
+        const bool namesSecret =
+            std::any_of(secretWords.cbegin(), secretWords.cend(), [&](const QString &word) { return key.contains(word); });
+        if (namesSecret || value.contains("s3cret-pw") || value.contains("tok-abc"))
+            return true;
+    }
+    return false;
+}
+
 } // namespace
 
 bool runSelfChecks(bool includeVaultProbe) {
@@ -710,9 +726,10 @@ bool runSelfChecks(bool includeVaultProbe) {
     check(normalizeServerUrl("music.example.com") == "https://music.example.com", "normalize-adds-https");
     check(normalizeServerUrl("  http://music.example.com/ ") == "http://music.example.com",
           "normalize-keeps-typed-http");
-    check(isUnencryptedPublicUrl("http://music.example.com") && !isUnencryptedPublicUrl("http://jellyfin.lan") &&
-              !isUnencryptedPublicUrl("https://music.example.com") && isUnencryptedPublicUrl("http://100.101.1.2:8096"),
-          "unencrypted-public-url");
+    check(isUnencryptedPublicUrl("http://music.example.com"), "unencrypted-public-url");
+    check(!isUnencryptedPublicUrl("http://jellyfin.lan"), "unencrypted-home-url");
+    check(!isUnencryptedPublicUrl("https://music.example.com"), "encrypted-public-url");
+    check(isUnencryptedPublicUrl("http://100.101.1.2:8096"), "unencrypted-shared-address-url");
     check(normalizeServerUrl("https://user:password@music.example.com").isEmpty(), "normalize-rejects-userinfo");
     check(normalizeServerUrl("https://music.example.com?token=secret").isEmpty(), "normalize-rejects-query");
     check(normalizeServerUrl("https://music.example.com#fragment").isEmpty(), "normalize-rejects-fragment");
@@ -801,16 +818,18 @@ bool runSelfChecks(bool includeVaultProbe) {
         int downloads = 1;
         releaseArtworkDownload(pending, downloads, "jellyfin:1");
         releaseArtworkDownload(pending, downloads, "jellyfin:1");
-        check(pending.isEmpty() && downloads == 0, "remote-art-slot-released");
+        check(pending.isEmpty(), "remote-art-released");
+        check(downloads == 0, "remote-art-slot-released");
     }
 
     const QString redacted = CredentialVault::redactSecrets(
         "https://m.example.com/Audio/1/stream?static=true&api_key=tok123 and t=abc&s=def Token=\"tok123\"");
-    check(!redacted.contains("tok123") && !redacted.contains("t=abc"), "redact-secrets");
+    check(!redacted.contains("tok123"), "redact-token");
+    check(!redacted.contains("t=abc"), "redact-subsonic-token");
     const QString redactedHeaders =
         CredentialVault::redactSecrets("Authorization: Bearer secret-token\nX-Emby-Token: second-token");
-    check(!redactedHeaders.contains("secret-token") && !redactedHeaders.contains("second-token"),
-          "redact-secret-headers");
+    check(!redactedHeaders.contains("secret-token"), "redact-authorization-header");
+    check(!redactedHeaders.contains("second-token"), "redact-emby-header");
     check(redacted.contains("static=true"), "redact-keeps-rest");
 
 #ifdef _WIN32
@@ -849,18 +868,7 @@ bool runSelfChecks(bool includeVaultProbe) {
         check(StreamingController::hasPinnedCertificate(settingsPath, serverUrl), "pinned-cert-present");
         const QUrl otherUrl("https://other.example.com");
         check(!StreamingController::hasPinnedCertificate(settingsPath, otherUrl), "pinned-cert-other-host");
-        bool secretLeak = false;
-        for (auto it = snapshot.cbegin(); it != snapshot.cend(); ++it) {
-            const QString key = it.key().toLower();
-            if (key.contains("password") || key.contains("token") || key.contains("secret") ||
-                key.contains("session") || key.contains("credential")) {
-                secretLeak = true;
-            }
-            if (it.value().toString().contains("s3cret-pw") || it.value().toString().contains("tok-abc")) {
-                secretLeak = true;
-            }
-        }
-        check(!secretLeak, "snapshot-excludes-secrets");
+        check(!holdsSecret(snapshot), "snapshot-excludes-secrets");
     }
 
     return g_failures == 0;

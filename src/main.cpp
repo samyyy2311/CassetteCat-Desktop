@@ -49,6 +49,7 @@
 #include "player_controller.h"
 #include "services_controller.h"
 #include "streaming.h"
+#include "self_check.h"
 #ifdef Q_OS_WIN
 #include <windows.h>
 #include <dwmapi.h>
@@ -250,55 +251,39 @@ Fonts loadBundledFonts() {
     return fonts;
 }
 
+bool runAllSelfChecks() {
+    SelfCheck check("App");
+    check.expect(scanSelfCheck(), "library scan");
+    check.expect(SettingsController::selfCheck(), "settings");
+    check.expect(LibraryController::selfCheck(), "library controller");
+    check.expect(streaming::runSelfChecks(), "streaming");
+    check.expect(GlobalShortcutController::selfCheck(), "global shortcuts");
+    check.expect(ServicesController::selfCheck(), "services");
+    check.expect(PlayerController::selfCheck(), "player");
+    check.expect(MprisController::selfCheck(), "mpris");
+    check.expect(DiscordPresence::selfCheck(), "discord presence");
+    check.expect(RemoteControlServer::selfCheck(), "remote control");
+    QSize labelSize;
+    const QString bundledLabel = QStringLiteral("0.5/qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png");
+    check.expect(!CoverImageProvider().requestImage(bundledLabel, &labelSize, QSize(0, 0)).isNull(), "bundled cover");
+    check.expect(singleInstanceSelfCheck(), "single instance");
+    return check.passed();
+}
+
 /// Runs the self-check named by \p flag and returns its exit code, or nothing for any other argument.
 std::optional<int> runSelfCheck(const char *flag) {
-    if (std::strcmp(flag, "--single-instance-self-check") == 0) {
-        return singleInstanceSelfCheck() ? 0 : 1;
-    }
-
-    if (std::strcmp(flag, "--library-self-check") == 0) {
-        return (scanSelfCheck() && LibraryController::selfCheck()) ? 0 : 1;
-    }
-
-    if (std::strcmp(flag, "--services-self-check") == 0) {
-        return ServicesController::selfCheck() ? 0 : 1;
-    }
-
-    if (std::strcmp(flag, "--player-self-check") == 0) {
-        return PlayerController::selfCheck() ? 0 : 1;
-    }
-
-    if (std::strcmp(flag, "--streaming-self-check") == 0) {
-        return streaming::runSelfChecks() ? 0 : 1;
-    }
-
-    if (std::strcmp(flag, "--vault-self-check") == 0) {
-        return streaming::runSelfChecks(true) ? 0 : 1;
-    }
-
-    if (std::strcmp(flag, "--self-check") == 0) {
-        bool passed = true;
-        const auto check = [&passed](bool result, const char *name) {
-            if (result)
-                return;
-            qCritical().noquote() << "Self-check failed:" << name;
-            passed = false;
-        };
-        check(scanSelfCheck(), "library scan");
-        check(SettingsController::selfCheck(), "settings");
-        check(LibraryController::selfCheck(), "library controller");
-        check(streaming::runSelfChecks(), "streaming");
-        check(GlobalShortcutController::selfCheck(), "global shortcuts");
-        check(ServicesController::selfCheck(), "services");
-        check(PlayerController::selfCheck(), "player");
-        check(MprisController::selfCheck(), "mpris");
-        check(DiscordPresence::selfCheck(), "discord presence");
-        check(RemoteControlServer::selfCheck(), "remote control");
-        QSize labelSize;
-        const QString bundledLabel = QStringLiteral("0.5/qrc:/qt/qml/CassetteCat/assets/cassettecat_icon.png");
-        check(!CoverImageProvider().requestImage(bundledLabel, &labelSize, QSize(0, 0)).isNull(), "bundled cover");
-        check(singleInstanceSelfCheck(), "single instance");
-        return passed ? 0 : 1;
+    const std::pair<const char *, bool (*)()> checks[] = {
+        {"--single-instance-self-check", singleInstanceSelfCheck},
+        {"--library-self-check", [] { return scanSelfCheck() && LibraryController::selfCheck(); }},
+        {"--services-self-check", ServicesController::selfCheck},
+        {"--player-self-check", PlayerController::selfCheck},
+        {"--streaming-self-check", [] { return streaming::runSelfChecks(); }},
+        {"--vault-self-check", [] { return streaming::runSelfChecks(true); }},
+        {"--self-check", runAllSelfChecks},
+    };
+    for (const auto &[name, run] : checks) {
+        if (std::strcmp(flag, name) == 0)
+            return run() ? 0 : 1;
     }
     return std::nullopt;
 }

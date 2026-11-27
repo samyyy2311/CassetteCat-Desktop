@@ -2837,7 +2837,8 @@ ApplicationWindow {
         if (currentIndex < 0) return
 
         if (player.shuffleEnabled) {
-            const shuffled = queue.slice(0, currentIndex + 1).concat(shuffledTracks(queue.slice(currentIndex + 1)))
+            // The whole list is shuffled, as when playback starts shuffled, so songs before the current one still play.
+            const shuffled = [queue[currentIndex]].concat(shuffledTracks(queue.filter((_, index) => index !== currentIndex)))
             if (radioQueue) radioPlaybackQueue = shuffled
             else playbackQueue = shuffled
         } else if (radioQueue) {

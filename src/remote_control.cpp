@@ -396,6 +396,101 @@ void RemoteControlServer::regenerateCode() {
     setCode(randomCode());
 }
 
+namespace {
+struct RequestHead {
+    QByteArray method;
+    QByteArray target;
+    QByteArray authorization;
+    QByteArray deviceName;
+    QByteArray range;
+    qsizetype contentLength = 0;
+    // A request line with both a method and a target.
+    bool complete = false;
+};
+
+RequestHead parseRequestHead(const QByteArray &header) {
+    const QList<QByteArray> lines = header.split('\n');
+    const QList<QByteArray> requestLine = lines.first().trimmed().split(' ');
+    RequestHead head{requestLine.value(0), requestLine.value(1)};
+    head.complete = requestLine.size() >= 2;
+    for (const QByteArray &line : lines.mid(1)) {
+        const qsizetype colon = line.indexOf(':');
+        const QByteArray name = line.left(colon).trimmed().toLower();
+        const QByteArray value = line.mid(colon + 1).trimmed();
+        if (name == "authorization")
+            head.authorization = value;
+        else if (name == "x-device-name")
+            head.deviceName = value.left(64);
+        else if (name == "content-length")
+            head.contentLength = value.toLongLong();
+        else if (name == "range")
+            head.range = value;
+    }
+    return head;
+}
+
+// Synced data from the phone can be far larger than a command.
+qsizetype maxBodyBytes(const QByteArray &target) {
+    static const QList<QByteArray> syncTargets{"/api/backup", "/api/likes", "/api/playlists", "/api/listens"};
+    return syncTargets.contains(target) ? kMaxBackupBytes : kMaxBodyBytes;
+}
+
+QByteArray httpReply(int status, const QByteArray &contentType, QByteArray body) {
+    if (body.isEmpty())
+        body = status == 200 ? QByteArray(R"({"ok":true})") : QByteArray(R"({"ok":false})");
+    return "HTTP/1.1 " + QByteArray::number(status) + ' ' + reasonPhrase(status) + "\r\nContent-Type: " + contentType +
+           "\r\nContent-Length: " + QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+}
+
+struct ByteRange {
+    qint64 start;
+    qint64 end;
+    bool partial;
+};
+
+// A single range only: "bytes=start-", "bytes=start-end", or "bytes=-length" for the end of the file. An unreadable
+// bound is ignored, as HTTP asks.
+ByteRange byteRange(const QByteArray &range, qint64 size) {
+    ByteRange result{0, size - 1, range.startsWith("bytes=") && !range.contains(',')};
+    if (!result.partial)
+        return result;
+    const QList<QByteArray> bounds = range.mid(6).split('-');
+    bool startOk = false;
+    bool endOk = false;
+    const qint64 first = bounds.value(0).trimmed().toLongLong(&startOk);
+    const qint64 last = bounds.value(1).trimmed().toLongLong(&endOk);
+    if (bounds.size() != 2) {
+        result.partial = false;
+    } else if (bounds.value(0).trimmed().isEmpty() && endOk && last > 0) {
+        result.start = qMax<qint64>(0, size - last);
+    } else if (startOk) {
+        result.start = first;
+        if (endOk)
+            result.end = qMin(result.end, last);
+    } else {
+        result.partial = false;
+    }
+    return result;
+}
+
+// The phone's image loader and media player cannot send headers, so artwork and audio streams also take the code in
+// the query, the way Jellyfin artwork URLs carry their key.
+QByteArray requestCode(const QByteArray &method, const QByteArray &path, const QUrl &url,
+                       const QByteArray &authorization) {
+    if (authorization.startsWith("Bearer "))
+        return authorization.mid(7);
+    const bool mediaRequest = method == "GET" && (path == "/api/artwork" || path == "/api/stream");
+    return mediaRequest ? QUrlQuery(url).queryItemValue("code").toLatin1() : QByteArray();
+}
+
+// Every request names the phone, but only these mean it is controlling this computer; check-ins, syncing and
+// browsing happen while the phone plays itself.
+bool controlsPlayback(const QByteArray &path) {
+    return path == "/api/playback" || path == "/api/volume" || path == "/api/seek" || path.startsWith("/api/queue") ||
+           path == "/api/library/play" || path == "/api/handoff";
+}
+} // namespace
+
 void RemoteControlServer::serve(QTcpSocket *socket) {
     connect(socket, &QTcpSocket::disconnected, socket, &QObject::deleteLater);
     auto *deadline = new QTimer(socket);
@@ -403,70 +498,44 @@ void RemoteControlServer::serve(QTcpSocket *socket) {
     connect(deadline, &QTimer::timeout, socket, &QTcpSocket::abort);
     deadline->start(5000);
     connect(socket, &QTcpSocket::readyRead, socket, [this, socket, deadline, requestBytes = qsizetype(0)]() mutable {
-        // A backup arrives in many chunks; wait for all of it instead of re-reading what is buffered each time.
-        if (socket->bytesAvailable() < requestBytes)
-            return;
-        const QByteArray data = socket->peek(socket->bytesAvailable());
-        const qsizetype headerEnd = data.indexOf("\r\n\r\n");
-        if (headerEnd < 0) {
-            if (data.size() > kMaxHeaderBytes)
-                socket->abort();
-            return;
-        }
-        const QList<QByteArray> lines = data.left(headerEnd).split('\n');
-        const QList<QByteArray> requestLine = lines.first().trimmed().split(' ');
-        QByteArray authorization;
-        QByteArray deviceName;
-        QByteArray range;
-        qsizetype contentLength = 0;
-        for (const QByteArray &line : lines.mid(1)) {
-            const qsizetype colon = line.indexOf(':');
-            const QByteArray name = line.left(colon).trimmed().toLower();
-            if (name == "authorization")
-                authorization = line.mid(colon + 1).trimmed();
-            else if (name == "x-device-name")
-                deviceName = line.mid(colon + 1).trimmed().left(64);
-            else if (name == "content-length")
-                contentLength = line.mid(colon + 1).trimmed().toLongLong();
-            else if (name == "range")
-                range = line.mid(colon + 1).trimmed();
-        }
-
-        const QByteArray target = requestLine.value(1);
-        const qsizetype maxBodyBytes =
-            target == "/api/backup" || target == "/api/likes" || target == "/api/playlists" || target == "/api/listens"
-                ? kMaxBackupBytes
-                : kMaxBodyBytes;
-        Response response{413, {}};
-        // Only a paired phone may make the server wait for and hold a large upload.
-        if (contentLength > kMaxBodyBytes &&
-            !(authorization.startsWith("Bearer ") && acceptsCode(authorization.mid(7))))
-            response = respond(requestLine.value(0), requestLine.value(1), authorization, {}, socket->peerAddress(),
-                               deviceName);
-        else if (contentLength >= 0 && contentLength <= maxBodyBytes) {
-            requestBytes = headerEnd + 4 + contentLength;
-            if (data.size() < requestBytes)
-                return;
-            if (requestLine.size() < 2)
-                response = {400, {}};
-            else
-                response = respond(requestLine[0], requestLine[1], authorization,
-                                   data.mid(headerEnd + 4, contentLength), socket->peerAddress(), deviceName);
-        }
-        socket->readAll();
-        if (!response.filePath.isEmpty()) {
-            deadline->stop();
-            streamFile(socket, response, range);
-            return;
-        }
-        const QByteArray body = !response.body.isEmpty() ? response.body
-                                : response.status == 200 ? QByteArray(R"({"ok":true})")
-                                                         : QByteArray(R"({"ok":false})");
-        socket->write("HTTP/1.1 " + QByteArray::number(response.status) + ' ' + reasonPhrase(response.status) +
-                      "\r\nContent-Type: " + response.contentType + "\r\nContent-Length: " +
-                      QByteArray::number(body.size()) + "\r\nConnection: close\r\n\r\n" + body);
-        socket->disconnectFromHost();
+        readRequest(socket, deadline, requestBytes);
     });
+}
+
+void RemoteControlServer::readRequest(QTcpSocket *socket, QTimer *deadline, qsizetype &requestBytes) {
+    // A backup arrives in many chunks; wait for all of it instead of re-reading what is buffered each time.
+    if (socket->bytesAvailable() < requestBytes)
+        return;
+    const QByteArray data = socket->peek(socket->bytesAvailable());
+    const qsizetype headerEnd = data.indexOf("\r\n\r\n");
+    if (headerEnd < 0) {
+        if (data.size() > kMaxHeaderBytes)
+            socket->abort();
+        return;
+    }
+    const RequestHead head = parseRequestHead(data.left(headerEnd));
+    Response response{413, {}};
+    // Only a paired phone may make the server wait for and hold a large upload.
+    if (head.contentLength > kMaxBodyBytes &&
+        !(head.authorization.startsWith("Bearer ") && acceptsCode(head.authorization.mid(7)))) {
+        response = respond(head.method, head.target, head.authorization, {}, socket->peerAddress(), head.deviceName);
+    } else if (head.contentLength >= 0 && head.contentLength <= maxBodyBytes(head.target)) {
+        requestBytes = headerEnd + 4 + head.contentLength;
+        if (data.size() < requestBytes)
+            return;
+        response = head.complete
+                       ? respond(head.method, head.target, head.authorization,
+                                 data.mid(headerEnd + 4, head.contentLength), socket->peerAddress(), head.deviceName)
+                       : Response{400, {}};
+    }
+    socket->readAll();
+    if (!response.filePath.isEmpty()) {
+        deadline->stop();
+        streamFile(socket, response, head.range);
+        return;
+    }
+    socket->write(httpReply(response.status, response.contentType, response.body));
+    socket->disconnectFromHost();
 }
 
 void RemoteControlServer::streamFile(QTcpSocket *socket, const Response &response, const QByteArray &range) {
@@ -477,29 +546,7 @@ void RemoteControlServer::streamFile(QTcpSocket *socket, const Response &respons
         return;
     }
     const qint64 size = file->size();
-    qint64 start = 0;
-    qint64 end = size - 1;
-    // A single range only: "bytes=start-", "bytes=start-end", or "bytes=-length" for the end of the file. An
-    // unreadable bound is ignored, as HTTP asks.
-    bool partial = range.startsWith("bytes=") && !range.contains(',');
-    if (partial) {
-        const QList<QByteArray> bounds = range.mid(6).split('-');
-        bool startOk = false;
-        bool endOk = false;
-        const qint64 first = bounds.value(0).trimmed().toLongLong(&startOk);
-        const qint64 last = bounds.value(1).trimmed().toLongLong(&endOk);
-        if (bounds.size() != 2) {
-            partial = false;
-        } else if (bounds.value(0).trimmed().isEmpty() && endOk && last > 0) {
-            start = qMax<qint64>(0, size - last);
-        } else if (startOk) {
-            start = first;
-            if (endOk)
-                end = qMin(end, last);
-        } else {
-            partial = false;
-        }
-    }
+    const auto [start, end, partial] = byteRange(range, size);
     if (start < 0 || start > end || start >= size) {
         socket->write("HTTP/1.1 416 Range Not Satisfiable\r\nContent-Range: bytes */" + QByteArray::number(size) +
                       "\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
@@ -535,14 +582,6 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
                                                            const QHostAddress &peer, const QByteArray &deviceName) {
     const QUrl url(QString::fromLatin1(target));
     const QByteArray path = url.path().toLatin1();
-    // The phone's image loader and media player cannot send headers, so artwork and audio streams also take the
-    // code in the query, the way Jellyfin artwork URLs carry their key.
-    const bool artworkRequest = method == "GET" && path == "/api/artwork";
-    const bool streamRequest = method == "GET" && path == "/api/stream";
-    const QByteArray code =
-        authorization.startsWith("Bearer ")
-            ? authorization.mid(7)
-            : (artworkRequest || streamRequest ? QUrlQuery(url).queryItemValue("code").toLatin1() : QByteArray());
     if (!isLocalPeer(peer))
         return {403, {}};
     if (m_lockedSince.isValid() && m_lockedSince.elapsed() < kLockoutMs)
@@ -550,7 +589,7 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
     // Asking to pair needs no code: the person at this computer allows or denies it.
     if (path == "/api/pair-request")
         return answerPairRequest(method, url, body);
-    if (!acceptsCode(code)) {
+    if (!acceptsCode(requestCode(method, path, url, authorization))) {
         if (++m_failedAttempts >= kMaxFailedAttempts) {
             m_failedAttempts = 0;
             m_lockedSince.start();
@@ -558,27 +597,28 @@ RemoteControlServer::Response RemoteControlServer::respond(const QByteArray &met
         return {401, {}};
     }
     m_failedAttempts = 0;
-    // Every request names the phone, but only these mean it is controlling this computer; check-ins, syncing and
-    // browsing happen while the phone plays itself.
-    const bool controlsPlayback = path == "/api/playback" || path == "/api/volume" || path == "/api/seek" ||
-                                  path.startsWith("/api/queue") || path == "/api/library/play" ||
-                                  path == "/api/handoff";
-    // The poll that carries a disconnect request doesn't name the phone again.
-    if (controlsPlayback && !deviceName.isEmpty() && !disconnectRequestedFor(deviceName)) {
-        const QString name = QString::fromUtf8(deviceName);
-        m_controllerTimeout.start();
-        if (m_controllerName != name) {
-            m_controllerName = name;
-            emit controllerChanged();
-        }
-    }
+    const bool control = controlsPlayback(path);
+    if (control)
+        noteController(deviceName);
 
     if (method == "GET")
         return answerGet(url, deviceName);
     if (method != "POST")
         return {404, {}};
     const QJsonObject request = QJsonDocument::fromJson(body).object();
-    return controlsPlayback ? answerControl(path, request) : answerSync(path, request, body, deviceName);
+    return control ? answerControl(path, request) : answerSync(path, request, body, deviceName);
+}
+
+void RemoteControlServer::noteController(const QByteArray &deviceName) {
+    // The poll that carries a disconnect request doesn't name the phone again.
+    if (deviceName.isEmpty() || disconnectRequestedFor(deviceName))
+        return;
+    const QString name = QString::fromUtf8(deviceName);
+    m_controllerTimeout.start();
+    if (m_controllerName != name) {
+        m_controllerName = name;
+        emit controllerChanged();
+    }
 }
 
 RemoteControlServer::Response RemoteControlServer::answerPairRequest(const QByteArray &method, const QUrl &url,
@@ -1056,7 +1096,8 @@ bool RemoteControlServer::checkRequests() {
 
     check.expect(remote.respond("GET", "/api/playback", auth, {}, QHostAddress("8.8.8.8")).status == 403,
                  "rejects a peer outside the network");
-    check.expect(remote.respond("GET", "/api/playback", "Bearer XYZ999", {}, lan).status == 401, "rejects a wrong code");
+    check.expect(remote.respond("GET", "/api/playback", "Bearer XYZ999", {}, lan).status == 401,
+                 "rejects a wrong code");
     const Response status = remote.respond("GET", "/api/playback", auth, {}, lan);
     const QJsonObject payload = jsonOf(status.body);
     // Android's DevicePlaybackStatus has no defaults, so every field must be present.
@@ -1252,9 +1293,9 @@ bool RemoteControlServer::checkPairing() {
     const QJsonObject denied = pairingStatus(deniedId);
     check.expect(denied.value("status") == "denied", "tells a denied phone");
     check.expect(!denied.contains("code"), "gives a denied phone no code");
-    check.expect(remote.respond("POST", "/api/pair-request", {}, R"({"name":"Pixel"})", QHostAddress("8.8.8.8"))
-                         .status == 403,
-                 "refuses pairing from outside the network");
+    check.expect(
+        remote.respond("POST", "/api/pair-request", {}, R"({"name":"Pixel"})", QHostAddress("8.8.8.8")).status == 403,
+        "refuses pairing from outside the network");
     return check.passed();
 }
 
@@ -1304,10 +1345,11 @@ bool RemoteControlServer::checkLibraryData() {
     check.expect(servedPlaylists.size() == 1, "serves playlists");
     check.expect(served.value("name") == "Road", "names served playlists");
     check.expect(served.value("tracks").toArray().isEmpty(), "leaves out songs that are no longer there");
-    const QJsonObject sentPlaylist = jsonOf(
-        remote.respond("POST", "/api/playlists", auth, R"({"name":" Gym ","tracks":[{"title":"One","artist":"Ann"}]})",
-                       lan)
-            .body);
+    const QJsonObject sentPlaylist =
+        jsonOf(remote
+                   .respond("POST", "/api/playlists", auth,
+                            R"({"name":" Gym ","tracks":[{"title":"One","artist":"Ann"}]})", lan)
+                   .body);
     check.expect(receivedPlaylist == "Gym", "saves the phone's playlist");
     check.expect(sentPlaylist.value("matched").toInt() == 0, "counts the songs it matched");
     check.expect(sentPlaylist.value("total").toInt() == 1, "counts the songs it was sent");

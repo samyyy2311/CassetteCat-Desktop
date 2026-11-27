@@ -119,6 +119,10 @@ class PlayerController final : public QObject {
     void crossfadeReady();
 
   private:
+    static bool checkSettings();
+    static bool checkRestore();
+    static bool checkPlayback();
+
     // Local files resolve to file URLs; remote tracks resolve to an
     // authenticated stream URL built in C++ so secrets never reach QML.
     // Returns an empty URL when a remote track cannot be resolved.

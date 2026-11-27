@@ -5,6 +5,7 @@
 #include "app_settings.h"
 #include "audio_metadata.h"
 #include "streaming.h"
+#include "self_check.h"
 
 #include <QAudioBuffer>
 #include <QAudioBufferOutput>
@@ -280,55 +281,60 @@ void PlayerController::setAudioMeterEnabled(bool enabled) {
 }
 
 bool PlayerController::selfCheck() {
-    QBuffer source;
-    PlayerController player;
-    if (player.audioMeterEnabled())
-        return false;
-    if (!isNetworkStream(QUrl(QStringLiteral("https://radio.example/live"))))
-        return false;
-    if (isNetworkStream(QUrl::fromLocalFile(QStringLiteral("C:/music/track.flac"))))
-        return false;
+    SelfCheck check("Player");
+    check.expect(checkSettings(), "settings and meter");
+    check.expect(checkRestore(), "restored track");
+    check.expect(checkPlayback(), "playback");
+    return check.passed();
+}
 
-    if (!AudioPipeline::selfCheck())
-        return false;
+bool PlayerController::checkSettings() {
+    PlayerController player;
+    SelfCheck check("Player settings");
+    check.expect(!player.audioMeterEnabled(), "starts with the meter off");
+    check.expect(isNetworkStream(QUrl(QStringLiteral("https://radio.example/live"))), "sees a network stream");
+    check.expect(!isNetworkStream(QUrl::fromLocalFile(QStringLiteral("C:/music/track.flac"))), "sees a local file");
+    check.expect(AudioPipeline::selfCheck(), "audio pipeline");
+
     emit player.m_pipeline->levelReceived(0.25);
-    if (player.audioLevel() != 0.0)
-        return false;
+    check.expect(player.audioLevel() == 0.0, "ignores levels while the meter is off");
     for (int i = 0; i < 3; ++i) {
         player.setAudioMeterEnabled(true);
         emit player.m_pipeline->levelReceived(0.25);
-        if (!player.audioMeterEnabled() || qAbs(player.audioLevel() - 0.75) > 0.001)
-            return false;
+        check.expect(player.audioMeterEnabled(), "turns the meter on");
+        check.expect(qAbs(player.audioLevel() - 0.75) <= 0.001, "shows the level");
         player.setAudioMeterEnabled(false);
         emit player.m_pipeline->levelReceived(0.25);
-        if (player.audioMeterEnabled() || player.audioLevel() != 0.0)
-            return false;
+        check.expect(!player.audioMeterEnabled(), "turns the meter off");
+        check.expect(player.audioLevel() == 0.0, "clears the level");
     }
-    if (!player.m_player->audioBufferOutput() || !player.m_fadingPlayer->audioBufferOutput())
-        return false;
-    player.setReplayGainMode(QStringLiteral("track"));
-    if (player.replayGainMode() != QStringLiteral("track"))
-        return false;
-    player.setReplayGainMode(QStringLiteral("album"));
-    if (player.replayGainMode() != QStringLiteral("album"))
-        return false;
-    player.setReplayGainMode(QStringLiteral("off"));
-    if (player.replayGainMode() != QStringLiteral("off"))
-        return false;
-    if (extractReplayGain(QString()) != 0.0f)
-        return false;
+    check.expect(player.m_player->audioBufferOutput() != nullptr, "meters the main player");
+    check.expect(player.m_fadingPlayer->audioBufferOutput() != nullptr, "meters the fading player");
+    for (const QString &mode : {QStringLiteral("track"), QStringLiteral("album"), QStringLiteral("off")}) {
+        player.setReplayGainMode(mode);
+        check.expect(player.replayGainMode() == mode, "sets the ReplayGain mode");
+    }
+    check.expect(extractReplayGain(QString()) == 0.0f, "reads no gain from an empty tag");
+    return check.passed();
+}
 
+bool PlayerController::checkRestore() {
     PlayerController restored;
+    SelfCheck check("Player restored track");
     const QString restoredPath = QStringLiteral("C:/music/restored.flac");
     restored.restoreTrack({{"filePath", restoredPath}, {"durationSeconds", 200}}, 42000);
-    if (!restored.m_player->source().isEmpty() || restored.position() != 42000 || restored.duration() != 200000)
-        return false;
+    check.expect(restored.m_player->source().isEmpty(), "waits to open a restored song");
+    check.expect(restored.position() == 42000, "shows a restored song's position");
+    check.expect(restored.duration() == 200000, "shows a restored song's length");
     restored.seek(50000);
     restored.openDeferredSource();
-    if (restored.m_pendingRestorePositionMs != 50000 ||
-        restored.m_player->source() != QUrl::fromLocalFile(restoredPath))
-        return false;
+    check.expect(restored.m_pendingRestorePositionMs == 50000, "keeps a seek made before opening");
+    check.expect(restored.m_player->source() == QUrl::fromLocalFile(restoredPath), "opens the restored song");
+    return check.passed();
+}
 
+bool PlayerController::checkPlayback() {
+    SelfCheck check("Player playback");
     QByteArray pcm(128000, '\x20');
     QByteArray wave;
     QDataStream stream(&wave, QIODevice::WriteOnly);
@@ -344,17 +350,20 @@ bool PlayerController::selfCheck() {
     // TagLib cannot open a QTemporaryFile path on Windows, so the file goes in a temporary folder.
     const QTemporaryDir waveDir;
     QFile waveFile(waveDir.filePath("format-check.wav"));
-    if (!waveFile.open(QIODevice::WriteOnly) || waveFile.write(wave) != wave.size())
+    const bool written = waveFile.open(QIODevice::WriteOnly) && waveFile.write(wave) == wave.size();
+    check.expect(written, "writes a test file");
+    if (!written)
         return false;
     waveFile.close();
     const QVariantMap waveFormat = readAudioFormat(waveFile.fileName());
-    if (waveFormat.value("label") != "16-bit · 8 kHz · WAV" || waveFormat.value("badgeLabel") != "Lossless" ||
-        waveFormat.value("isHiRes").toBool())
-        return false;
+    check.expect(waveFormat.value("label") == "16-bit · 8 kHz · WAV", "labels the format");
+    check.expect(waveFormat.value("badgeLabel") == "Lossless", "marks lossless audio");
+    check.expect(!waveFormat.value("isHiRes").toBool(), "doesn't mark CD-quality audio as hi-res");
 
+    // The player reads from the buffer, so the buffer is declared first and outlives it.
+    QBuffer source;
     source.setData(wave);
     source.open(QIODevice::ReadOnly);
-
     const auto waitFor = [](auto condition) {
         QEventLoop loop;
         QTimer poll;
@@ -368,27 +377,28 @@ bool PlayerController::selfCheck() {
         return condition();
     };
 
+    PlayerController player;
     player.m_baseVolume = 0.0f;
     player.applyEffectiveVolume();
     player.m_player->setSourceDevice(&source, QUrl("meter-check.wav"));
     player.m_player->play();
-    if (!waitFor([&] { return player.position() > 100; }))
-        return false;
+    check.expect(waitFor([&] { return player.position() > 100; }), "plays");
     player.setAudioMeterEnabled(true);
-    if (!waitFor([&] { return player.audioLevel() > 0.1; }))
-        return false;
+    check.expect(waitFor([&] { return player.audioLevel() > 0.1; }), "meters playback");
     const qint64 position = player.position();
     int crossfadeSignals = 0;
     connect(&player, &PlayerController::crossfadeReady, [&] { ++crossfadeSignals; });
     player.m_crossfadeMs = 2000;
     player.m_player->setPosition(6500);
-    if (!waitFor([&] { return crossfadeSignals == 1 && player.position() > 7000; }) || crossfadeSignals != 1)
-        return false;
+    check.expect(waitFor([&] { return crossfadeSignals == 1 && player.position() > 7000; }),
+                 "plays on past the crossfade point");
+    check.expect(crossfadeSignals == 1, "starts the crossfade once");
     player.m_player->setPosition(position);
     player.setAudioMeterEnabled(false);
-    if (!waitFor([&] { return player.position() > position + 100; }))
-        return false;
-    return player.audioLevel() == 0.0 && player.error().isEmpty();
+    check.expect(waitFor([&] { return player.position() > position + 100; }), "keeps playing after a seek back");
+    check.expect(player.audioLevel() == 0.0, "clears the level when the meter turns off");
+    check.expect(player.error().isEmpty(), "plays without errors");
+    return check.passed();
 }
 
 QString PlayerController::getLyrics(const QString &filePath) const {

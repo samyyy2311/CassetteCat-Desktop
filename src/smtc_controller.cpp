@@ -16,6 +16,7 @@
 #include <QUrl>
 #include <algorithm>
 #include <functional>
+#include <iterator>
 #include <memory>
 
 #ifdef Q_OS_WIN
@@ -453,7 +454,7 @@ class SmtcController::Private {
     HRESULT createControls(HWND hwnd) {
         HSTRING hsClassName = nullptr;
         const wchar_t className[] = L"Windows.Media.SystemMediaTransportControls";
-        HRESULT hr = pWindowsCreateString(className, static_cast<UINT32>(wcslen(className)), &hsClassName);
+        HRESULT hr = pWindowsCreateString(className, static_cast<UINT32>(std::size(className) - 1), &hsClassName);
         if (FAILED(hr))
             return hr;
         ISystemMediaTransportControlsInterop *interop = nullptr;

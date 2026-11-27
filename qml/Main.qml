@@ -2075,7 +2075,11 @@ ApplicationWindow {
 
     // Loves the liked songs each account lacks, and takes back loves for library songs no longer liked.
     function loveAllFavorites() {
-        services.syncLikes(tracksForPaths(Object.keys(favoriteTracks)).filter(track => !!track), library.playbackTracks())
+        const libraryTracks = library.playbackTracks()
+        // The same check as the heart, so a favourite saved with its path in another case still counts as liked.
+        const liked = tracksForPaths(Object.keys(favoriteTracks)).filter(track => !!track)
+            .concat(libraryTracks.filter(track => isFavorite(track.filePath)))
+        services.syncLikes(liked, libraryTracks)
     }
 
     function setFavorites(filePaths, favorite) {

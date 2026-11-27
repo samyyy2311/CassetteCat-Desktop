@@ -251,8 +251,11 @@ void DiscordPresence::sendActivity() {
     const qint64 positionMs = m_player->position();
     const QVariantMap track = m_player->currentTrack();
     const QString key = artworkKey(track);
-    // Waiting for the cover sends the song once, rather than without it and again a moment later.
-    if (!key.isEmpty() && !m_artwork.contains(key)) {
+    if (key != m_artworkFailed)
+        m_artworkFailed.clear();
+    // Waiting for the cover sends the song once, rather than without it and again a moment later. A pause clears
+    // the status straight away, and a lookup that failed shows the logo until the song comes round again.
+    if (m_player->isPlaying() && !key.isEmpty() && !m_artwork.contains(key) && key != m_artworkFailed) {
         lookUpArtwork(track);
         return;
     }
@@ -263,12 +266,42 @@ void DiscordPresence::sendActivity() {
     sendFrame(Frame, setActivityPayload(activity));
 }
 
+namespace {
+// The cover of the search result that is this song, from the song's own album when iTunes has it there too, as the
+// same song is often on a single, the album and a deluxe edition, each with its own cover.
+// A title without its bracketed or dashed extras, which tags and iTunes write differently, such as "(feat. ...)".
+QString baseTitle(const QString &title) {
+    return title.section(" (", 0, 0).section(" [", 0, 0).section(" - ", 0, 0).trimmed();
+}
+
+QString coverFor(const QJsonArray &results, const QVariantMap &track) {
+    const QString title = baseTitle(track.value("title").toString());
+    const QString artist = track.value("artist").toString().trimmed();
+    const QString album = track.value("album").toString().trimmed();
+    QString cover;
+    for (const QJsonValue &result : results) {
+        const QJsonObject song = result.toObject();
+        // Collaborations are credited differently in tags and on iTunes, so either name may hold the other.
+        const QString resultArtist = song.value("artistName").toString();
+        const bool sameArtist =
+            resultArtist.contains(artist, Qt::CaseInsensitive) || artist.contains(resultArtist, Qt::CaseInsensitive);
+        if (baseTitle(song.value("trackName").toString()).compare(title, Qt::CaseInsensitive) != 0 || !sameArtist)
+            continue;
+        const bool sameAlbum = song.value("collectionName").toString().startsWith(album, Qt::CaseInsensitive);
+        if (cover.isEmpty() || sameAlbum)
+            cover = song.value("artworkUrl100").toString();
+        if (sameAlbum)
+            break;
+    }
+    return cover;
+}
+} // namespace
+
 void DiscordPresence::lookUpArtwork(const QVariantMap &track) {
     const QString key = artworkKey(track);
     if (m_artworkLookup == key)
         return;
     m_artworkLookup = key;
-    const QString album = track.value("album").toString().trimmed();
     // iTunes search returns a public cover URL from one request, without a key. Searching by song rather than
     // album finds soundtracks and compilations, whose album artist isn't the song's artist.
     QUrl url(QStringLiteral("https://itunes.apple.com/search"));
@@ -279,23 +312,20 @@ void DiscordPresence::lookUpArtwork(const QVariantMap &track) {
     // Short, as the status waits for it.
     request.setTransferTimeout(4000);
     QNetworkReply *reply = m_net.get(request);
-    connect(reply, &QNetworkReply::finished, this, [this, reply, key, album] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, key, track] {
         reply->deleteLater();
         if (m_artworkLookup == key)
             m_artworkLookup.clear();
-        const QJsonArray results = QJsonDocument::fromJson(reply->readAll()).object().value("results").toArray();
-        // The same song is often on a single, the album and a deluxe edition, each with its own cover.
-        QString small;
-        for (const QJsonValue &result : results) {
-            const QJsonObject song = result.toObject();
-            const bool sameAlbum = song.value("collectionName").toString().startsWith(album, Qt::CaseInsensitive);
-            if (small.isEmpty() || sameAlbum)
-                small = song.value("artworkUrl100").toString();
-            if (sameAlbum)
-                break;
+        // A request that didn't get through isn't remembered as a song without a cover.
+        if (reply->error() != QNetworkReply::NoError) {
+            m_artworkFailed = key;
+            sendActivity();
+            return;
         }
-        // A failed lookup shows the logo for this song rather than holding back its status.
-        m_artwork.insert(key, small.isEmpty() ? QString() : small.replace("100x100bb", "512x512bb"));
+        const QJsonArray results = QJsonDocument::fromJson(reply->readAll()).object().value("results").toArray();
+        const QString small = coverFor(results, track);
+        // A song iTunes doesn't have shows the logo.
+        m_artwork.insert(key, small.isEmpty() ? QString() : QString(small).replace("100x100bb", "512x512bb"));
         sendActivity();
     });
 }

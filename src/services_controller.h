@@ -180,12 +180,15 @@ class ServicesController : public QObject {
         QString artist;
         QString title;
         bool loved;
-        // Accounts that already have this love.
+        // The account records (service and username) this skips: ones that already have a love, or for an unlove
+        // from Sync Likes, ones the app never sent the love to.
         QStringList skip;
     };
     // The songs an account has loved through the app, so Sync Likes sends each account only what it lacks.
-    static QStringList lovedSongs(const QString &service);
-    static void recordLove(const QString &service, const QString &song, bool loved);
+    /// The songs loved through the app on the account whose record is \p record.
+    static QStringList lovedSongs(const QString &record);
+    static void recordLove(const QString &record, const QString &song, bool loved);
+    void queueLove(const Love &love);
     QStringList lovingServices() const;
     QList<Love> m_loves;
     QHash<QString, quint64> m_loveGenerations;
@@ -194,7 +197,8 @@ class ServicesController : public QObject {
     void sendLove(const Love &love);
     void sendLoveToScrobblers(const Love &love);
     void sendLoveToListenBrainz(const Love &love);
-    void sendListenBrainzFeedback(const QString &mbid, bool loved, const QString &key, const QString &token);
+    void sendListenBrainzFeedback(const QString &mbid, bool loved, const QString &key, const QString &record,
+                                  const QString &token);
     int m_libraryLyricsFailures = 0;
     int m_libraryLyricsFound = 0;
     int m_libraryLyricsTotal = 0;

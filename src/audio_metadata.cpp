@@ -218,10 +218,16 @@ QString pictureBlockArtwork(const QString &filePath, int maxDimension) {
 }
 
 // A cover image saved beside the song, for files whose tags carry none.
-QString folderArtwork(const QString &filePath) {
+// Cover images saved beside songs, in the order they're looked for.
+const QStringList kTagFallbackCovers = {"cover.jpg",   "cover.jpeg", "cover.png",  "folder.jpg",
+                                        "folder.jpeg", "folder.png", "front.jpg",  "front.jpeg",
+                                        "front.png",   "album.jpg",  "album.jpeg", "album.png"};
+// The library scan's order, which playlists follow so a song shows the same cover from either.
+const QStringList kLibraryCovers = {"cover.jpg",  "cover.jpeg", "cover.png", "folder.jpg",
+                                    "folder.png", "front.jpg",  "front.png"};
+
+QString folderArtwork(const QString &filePath, const QStringList &covers) {
     const QDir trackFolder = QFileInfo(filePath).absoluteDir();
-    const QStringList covers = {"cover.jpg", "cover.jpeg", "cover.png", "folder.jpg", "folder.jpeg", "folder.png",
-                                "front.jpg", "front.jpeg", "front.png", "album.jpg",  "album.jpeg",  "album.png"};
     for (const QString &name : covers) {
         const QString candidate = trackFolder.filePath(name);
         if (QFileInfo::exists(candidate))
@@ -247,7 +253,7 @@ QString extractEmbeddedArtwork(const QString &filePath, int maxDimension) {
     if (suffix == "mp3")
         return mp3Artwork(filePath, maxDimension);
     const QString tagged = pictureBlockArtwork(filePath, maxDimension);
-    return tagged.isEmpty() ? folderArtwork(filePath) : tagged;
+    return tagged.isEmpty() ? folderArtwork(filePath, kTagFallbackCovers) : tagged;
 }
 
 namespace {
@@ -745,7 +751,8 @@ QVariantMap fileEntry(const QString &path, const ExtInf &ext) {
         track["durationSeconds"] = ext.durationSeconds;
         track["duration"] = formatDuration(ext.durationSeconds);
     }
-    const QString folderCover = track.value("artworkUrl").toString().isEmpty() ? folderArtwork(path) : QString();
+    const QString folderCover =
+        track.value("artworkUrl").toString().isEmpty() ? folderArtwork(path, kLibraryCovers) : QString();
     if (!folderCover.isEmpty())
         track["artworkUrl"] = folderCover;
     return track;

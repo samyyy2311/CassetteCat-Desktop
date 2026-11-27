@@ -1372,14 +1372,14 @@ bool RemoteControlServer::checkLibraryData() {
                  "rejects an invalid backup");
     QTemporaryDir backupDir;
     const QString backupPath = backupDir.filePath("backup.json");
-    const auto read = [](const QString &path) {
+    const auto contents = [](const QString &path) {
         QFile file(path);
         return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
     };
     check.expect(saveBackup(backupPath, R"({"n":1})"), "saves a backup");
     check.expect(saveBackup(backupPath, R"({"n":2})"), "replaces a backup");
-    check.expect(read(backupPath) == R"({"n":2})", "keeps the new backup");
-    check.expect(read(backupPath + ".previous") == R"({"n":1})", "keeps the previous backup");
+    check.expect(contents(backupPath) == R"({"n":2})", "keeps the new backup");
+    check.expect(contents(backupPath + ".previous") == R"({"n":1})", "keeps the previous backup");
     return check.passed();
 }
 

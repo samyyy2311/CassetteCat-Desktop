@@ -78,8 +78,9 @@ Item {
             Drag.active: root.reorderEnabled && gripMouse.drag.active
             Drag.source: dragSourceItem
             Drag.keys: ["queue-track"]
-            property var dragTrack: root.track
-            property int dragIndex: root.queueIndex
+            // Taken when the drag starts, so a reshuffle under it can't change which song the drop moves.
+            property var dragTrack: null
+            property int dragIndex: -1
         }
 
         Label {
@@ -213,6 +214,8 @@ Item {
                     drag.target: dragSourceItem
                     drag.axis: Drag.YAxis
                     onPressed: mouse => {
+                        dragSourceItem.dragTrack = root.track
+                        dragSourceItem.dragIndex = root.queueIndex
                         dragSourceItem.Drag.hotSpot = gripMouse.mapToItem(dragSourceItem, mouse.x, mouse.y)
                     }
                     onReleased: {

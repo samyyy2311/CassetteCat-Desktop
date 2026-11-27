@@ -92,15 +92,29 @@ int MprisController::loopStatusToRepeatMode(const QString &loopStatus) {
     return 0;
 }
 
+namespace {
+QVariant trackIdValue(const QString &path) {
+#ifdef CASSETTECAT_HAVE_DBUS
+    return QVariant::fromValue(QDBusObjectPath(path));
+#else
+    return path;
+#endif
+}
+
+// MPRIS takes a URL, so a local cover path becomes one, and a cover that no longer exists is left out.
+QString mprisArtUrl(const QString &artworkUrl) {
+    if (artworkUrl.startsWith(QLatin1String("http://")) || artworkUrl.startsWith(QLatin1String("https://")) ||
+        artworkUrl.startsWith(QLatin1String("file://")))
+        return artworkUrl;
+    return QFileInfo::exists(artworkUrl) ? QUrl::fromLocalFile(artworkUrl).toString() : QString();
+}
+} // namespace
+
 QVariantMap MprisController::buildMetadata(const QVariantMap &track, qint64 durationMs) {
     QVariantMap meta;
     if (track.isEmpty()) {
-#ifdef CASSETTECAT_HAVE_DBUS
         meta.insert(QStringLiteral("mpris:trackid"),
-                    QVariant::fromValue(QDBusObjectPath(QStringLiteral("/org/mpris/MediaPlayer2/TrackList/NoTrack"))));
-#else
-        meta.insert(QStringLiteral("mpris:trackid"), QStringLiteral("/org/mpris/MediaPlayer2/TrackList/NoTrack"));
-#endif
+                    trackIdValue(QStringLiteral("/org/mpris/MediaPlayer2/TrackList/NoTrack")));
         return meta;
     }
 
@@ -127,34 +141,21 @@ QVariantMap MprisController::buildMetadata(const QVariantMap &track, qint64 dura
         meta.insert(QStringLiteral("mpris:length"), static_cast<qlonglong>(durationMs) * 1000);
     }
 
-    const QString artworkUrl = track.value(QStringLiteral("artworkUrl")).toString().trimmed();
-    if (!artworkUrl.isEmpty()) {
-        if (artworkUrl.startsWith(QLatin1String("http://")) || artworkUrl.startsWith(QLatin1String("https://")) ||
-            artworkUrl.startsWith(QLatin1String("file://"))) {
-            meta.insert(QStringLiteral("mpris:artUrl"), artworkUrl);
-        } else if (QFileInfo::exists(artworkUrl)) {
-            meta.insert(QStringLiteral("mpris:artUrl"), QUrl::fromLocalFile(artworkUrl).toString());
-        }
-    }
+    const QString artUrl = mprisArtUrl(track.value(QStringLiteral("artworkUrl")).toString().trimmed());
+    if (!artUrl.isEmpty())
+        meta.insert(QStringLiteral("mpris:artUrl"), artUrl);
 
     const QString filePath = track.value(QStringLiteral("filePath")).toString().trimmed();
     const QString streamUrl = track.value(QStringLiteral("streamUrl")).toString().trimmed();
-    if (!filePath.isEmpty()) {
-        meta.insert(QStringLiteral("xesam:url"), QUrl::fromLocalFile(filePath).toString());
-    } else if (!streamUrl.isEmpty()) {
-        meta.insert(QStringLiteral("xesam:url"), streamUrl);
-    }
+    const QString url = filePath.isEmpty() ? streamUrl : QUrl::fromLocalFile(filePath).toString();
+    if (!url.isEmpty())
+        meta.insert(QStringLiteral("xesam:url"), url);
 
     const QString pathSource = !filePath.isEmpty() ? filePath : (!streamUrl.isEmpty() ? streamUrl : title);
     const QString trackId =
         QStringLiteral("/io/github/samyyy2311/CassetteCat/Track/") +
         QString::fromLatin1(QCryptographicHash::hash(pathSource.toUtf8(), QCryptographicHash::Sha1).toHex());
-#ifdef CASSETTECAT_HAVE_DBUS
-    meta.insert(QStringLiteral("mpris:trackid"), QVariant::fromValue(QDBusObjectPath(trackId)));
-#else
-    meta.insert(QStringLiteral("mpris:trackid"), trackId);
-#endif
-
+    meta.insert(QStringLiteral("mpris:trackid"), trackIdValue(trackId));
     return meta;
 }
 

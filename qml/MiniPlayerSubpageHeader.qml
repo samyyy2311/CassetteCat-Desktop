@@ -111,6 +111,7 @@ Item {
             padding: 2
 
             Rectangle {
+                visible: root.miniPlayer.canStayOnTop
                 width: 22; height: 22; radius: 11
                 color: root.miniPlayer.alwaysOnTop ? root.miniPlayer.recordRed : (subPinH.containsMouse ? "#25FFFFFF" : "transparent")
                 scale: subPinH.pressed ? 0.90 : 1.0

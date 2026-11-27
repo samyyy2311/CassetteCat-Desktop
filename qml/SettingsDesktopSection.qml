@@ -181,9 +181,13 @@ ColumnLayout {
         }
     }
 
-    SectionLabel { text: qsTr("Mini Player Window") }
+    // Its only setting is keeping the window on top, which Wayland can't do.
+    readonly property bool canStayOnTop: !Qt.platform.pluginName.startsWith("wayland")
+
+    SectionLabel { text: qsTr("Mini Player Window"); visible: root.canStayOnTop }
 
     SettingCard {
+        visible: root.canStayOnTop
         SettingRow {
             iconName: "pin"
             title: qsTr("Keep Mini Player on Top")

@@ -93,6 +93,7 @@ Item {
                 padding: 2
 
                 Rectangle {
+                    visible: root.miniPlayer.canStayOnTop
                     width: 24; height: 24; radius: 12
                     color: root.miniPlayer.alwaysOnTop ? root.miniPlayer.recordRed : (artPinH.containsMouse ? "#30FFFFFF" : "transparent")
                     scale: artPinH.pressed ? 0.90 : 1.0

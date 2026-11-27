@@ -446,6 +446,91 @@ class SmtcController::Private {
         return pRoInitialize && pRoGetActivationFactory && pRoActivateInstance && pWindowsCreateString &&
                pWindowsDeleteString;
     }
+
+    void installThumbButtons(SmtcController *owner, HWND hwnd);
+
+    // Gets the media controls Windows keeps for this window.
+    HRESULT createControls(HWND hwnd) {
+        HSTRING hsClassName = nullptr;
+        const wchar_t className[] = L"Windows.Media.SystemMediaTransportControls";
+        HRESULT hr = pWindowsCreateString(className, static_cast<UINT32>(wcslen(className)), &hsClassName);
+        if (FAILED(hr))
+            return hr;
+        ISystemMediaTransportControlsInterop *interop = nullptr;
+        hr = pRoGetActivationFactory(hsClassName, IID_ISystemMediaTransportControlsInterop,
+                                     reinterpret_cast<void **>(&interop));
+        pWindowsDeleteString(hsClassName);
+        if (SUCCEEDED(hr) && interop) {
+            hr = interop->GetForWindow(hwnd, IID_ISystemMediaTransportControls, reinterpret_cast<void **>(&controls));
+            interop->Release();
+        }
+        return hr;
+    }
+
+    void enableControls(SmtcController *owner) {
+        controls->put_IsEnabled(TRUE);
+        controls->put_IsPlayEnabled(TRUE);
+        controls->put_IsPauseEnabled(TRUE);
+        controls->put_IsNextEnabled(TRUE);
+        controls->put_IsPreviousEnabled(TRUE);
+        controls->put_PlaybackStatus(MediaPlaybackStatus_Closed);
+
+        auto handler = new ButtonHandler(owner);
+        controls->add_ButtonPressed(handler, &buttonToken);
+        handler->Release();
+
+        // Seeking from the flyout needs the newer interface, which older Windows 10 builds lack.
+        const HRESULT hr =
+            controls->QueryInterface(IID_ISystemMediaTransportControls2, reinterpret_cast<void **>(&controls2));
+        if (SUCCEEDED(hr) && controls2) {
+            auto seekHandler = new SeekHandler(owner);
+            controls2->add_PlaybackPositionChangeRequested(seekHandler, &seekToken);
+            seekHandler->Release();
+        }
+    }
+
+    static void setThumbnail(ISystemMediaTransportControlsDisplayUpdater *updater, const QString &artworkPath) {
+        const QUrl artworkUrl(artworkPath);
+        const QString localArtworkPath = artworkUrl.isLocalFile() ? artworkUrl.toLocalFile() : artworkPath;
+        if (!QFileInfo::exists(localArtworkPath))
+            return;
+        try {
+            const auto file = winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(
+                                  QDir::toNativeSeparators(localArtworkPath).toStdWString())
+                                  .get();
+            const auto thumbnail = winrt::Windows::Storage::Streams::RandomAccessStreamReference::CreateFromFile(file);
+            updater->put_Thumbnail(winrt::get_abi(thumbnail));
+        } catch (...) {
+            qWarning() << "[SMTC] Failed to load artwork:" << localArtworkPath;
+        }
+    }
+
+    void setMusicProperties(ISystemMediaTransportControlsDisplayUpdater *updater, const QString &title,
+                            const QString &artist, const QString &album) {
+        IMusicDisplayProperties *props = nullptr;
+        if (FAILED(updater->get_MusicProperties(&props)) || !props)
+            return;
+        HSTRING hsTitle = nullptr, hsArtist = nullptr, hsAlbum = nullptr;
+        const std::wstring wTitle = title.toStdWString();
+        const std::wstring wArtist = artist.toStdWString();
+        const std::wstring wAlbum = album.toStdWString();
+        pWindowsCreateString(wTitle.c_str(), static_cast<UINT32>(wTitle.length()), &hsTitle);
+        pWindowsCreateString(wArtist.c_str(), static_cast<UINT32>(wArtist.length()), &hsArtist);
+        pWindowsCreateString(wAlbum.c_str(), static_cast<UINT32>(wAlbum.length()), &hsAlbum);
+        props->put_Title(hsTitle);
+        props->put_Artist(hsArtist);
+        IMusicDisplayProperties2 *props2 = nullptr;
+        if (!wAlbum.empty() &&
+            SUCCEEDED(props->QueryInterface(IID_IMusicDisplayProperties2, reinterpret_cast<void **>(&props2))) &&
+            props2) {
+            props2->put_AlbumTitle(hsAlbum);
+            props2->Release();
+        }
+        pWindowsDeleteString(hsTitle);
+        pWindowsDeleteString(hsArtist);
+        pWindowsDeleteString(hsAlbum);
+        props->Release();
+    }
 #endif
 };
 
@@ -480,6 +565,25 @@ class ThumbButtonFilter final : public QAbstractNativeEventFilter {
     UINT m_createdMessage;
 };
 } // namespace
+#endif
+
+#ifdef Q_OS_WIN
+void SmtcController::Private::installThumbButtons(SmtcController *owner, HWND hwnd) {
+    window = hwnd;
+    taskbarCreatedMessage = RegisterWindowMessageW(L"TaskbarButtonCreated");
+    thumbFilter = std::make_unique<ThumbButtonFilter>(
+        [this, owner] { addThumbButtons(owner->m_player && owner->m_player->isPlaying()); },
+        [owner](UINT id) {
+            if (id == ThumbPrevious)
+                emit owner->previousRequested();
+            else if (id == ThumbNext)
+                emit owner->nextRequested();
+            else if (id == ThumbPlayPause)
+                owner->togglePlayback();
+        },
+        window, taskbarCreatedMessage);
+    QCoreApplication::instance()->installNativeEventFilter(thumbFilter.get());
+}
 #endif
 
 SmtcController::SmtcController(PlayerController *player, QObject *parent)
@@ -518,102 +622,49 @@ SmtcController::~SmtcController() {
     delete d;
 }
 
+void SmtcController::togglePlayback() {
+    if (m_player && m_player->isPlaying())
+        emit pauseRequested();
+    else
+        emit playRequested();
+}
+
 void SmtcController::initialize(quintptr hwnd) {
 #ifdef Q_OS_WIN
     if (!hwnd || d->initialized)
         return;
-    if (!d->thumbFilter) {
-        d->window = reinterpret_cast<HWND>(hwnd);
-        d->taskbarCreatedMessage = RegisterWindowMessageW(L"TaskbarButtonCreated");
-        d->thumbFilter = std::make_unique<ThumbButtonFilter>(
-            [this] { d->addThumbButtons(m_player && m_player->isPlaying()); },
-            [this](UINT id) {
-                if (id == Private::ThumbPrevious)
-                    emit previousRequested();
-                else if (id == Private::ThumbNext)
-                    emit nextRequested();
-                else if (id == Private::ThumbPlayPause && m_player && m_player->isPlaying())
-                    emit pauseRequested();
-                else if (id == Private::ThumbPlayPause)
-                    emit playRequested();
-            },
-            d->window, d->taskbarCreatedMessage);
-        QCoreApplication::instance()->installNativeEventFilter(d->thumbFilter.get());
-    }
+    if (!d->thumbFilter)
+        d->installThumbButtons(this, reinterpret_cast<HWND>(hwnd));
     if (!d->loadCombase())
         return;
 
     d->pRoInitialize(1); // RO_INIT_MULTITHREADED
-
-    HSTRING hsClassName = nullptr;
-    const wchar_t className[] = L"Windows.Media.SystemMediaTransportControls";
-    HRESULT hr = d->pWindowsCreateString(className, static_cast<UINT32>(wcslen(className)), &hsClassName);
-    if (FAILED(hr))
-        return;
-
-    ISystemMediaTransportControlsInterop *interop = nullptr;
-    hr = d->pRoGetActivationFactory(hsClassName, IID_ISystemMediaTransportControlsInterop,
-                                    reinterpret_cast<void **>(&interop));
-    d->pWindowsDeleteString(hsClassName);
-
-    if (SUCCEEDED(hr) && interop) {
-        hr = interop->GetForWindow(reinterpret_cast<HWND>(hwnd), IID_ISystemMediaTransportControls,
-                                   reinterpret_cast<void **>(&d->controls));
-        interop->Release();
-    }
-
-    if (SUCCEEDED(hr) && d->controls) {
-        d->controls->put_IsEnabled(TRUE);
-        d->controls->put_IsPlayEnabled(TRUE);
-        d->controls->put_IsPauseEnabled(TRUE);
-        d->controls->put_IsNextEnabled(TRUE);
-        d->controls->put_IsPreviousEnabled(TRUE);
-        d->controls->put_PlaybackStatus(MediaPlaybackStatus_Closed);
-
-        auto handler = new ButtonHandler(this);
-        d->controls->add_ButtonPressed(handler, &d->buttonToken);
-        handler->Release();
-
-        hr = d->controls->QueryInterface(IID_ISystemMediaTransportControls2, reinterpret_cast<void **>(&d->controls2));
-        if (SUCCEEDED(hr) && d->controls2) {
-            auto seekHandler = new SeekHandler(this);
-            d->controls2->add_PlaybackPositionChangeRequested(seekHandler, &d->seekToken);
-            seekHandler->Release();
-        }
-
-        d->initialized = true;
-        qDebug() << "[SMTC] Windows System Media Transport Controls initialized successfully!";
-
-        // Sync initial state only if a valid track is already loaded
-        if (m_player && !m_player->currentTrack().isEmpty()) {
-            onTrackChanged();
-            onPlayingChanged();
-        }
-    } else {
+    const HRESULT hr = d->createControls(reinterpret_cast<HWND>(hwnd));
+    if (FAILED(hr) || !d->controls) {
         qWarning() << "[SMTC] Failed to initialize SMTC. hr=" << Qt::hex << hr;
+        return;
     }
+    d->enableControls(this);
+    d->initialized = true;
+    qDebug() << "[SMTC] Windows System Media Transport Controls initialized successfully!";
 #elif defined(Q_OS_MACOS)
     Q_UNUSED(hwnd);
     MacNowPlaying::initialize({
         [this] { emit playRequested(); },
         [this] { emit pauseRequested(); },
-        [this] {
-            if (m_player && m_player->isPlaying())
-                emit pauseRequested();
-            else
-                emit playRequested();
-        },
+        [this] { togglePlayback(); },
         [this] { emit nextRequested(); },
         [this] { emit previousRequested(); },
         [this](qint64 positionMs) { emit seekRequested(positionMs); },
     });
+#else
+    Q_UNUSED(hwnd);
+#endif
+    // Sync the initial state only if a song is already loaded.
     if (m_player && !m_player->currentTrack().isEmpty()) {
         onTrackChanged();
         onPlayingChanged();
     }
-#else
-    Q_UNUSED(hwnd);
-#endif
 }
 
 void SmtcController::updateTrack(const QString &title, const QString &artist, const QString &album,
@@ -621,69 +672,19 @@ void SmtcController::updateTrack(const QString &title, const QString &artist, co
 #ifdef Q_OS_WIN
     if (!d->controls || !d->initialized)
         return;
-
     ISystemMediaTransportControlsDisplayUpdater *updater = nullptr;
-    if (SUCCEEDED(d->controls->get_DisplayUpdater(&updater)) && updater) {
-        if (title.trimmed().isEmpty()) {
-            updater->ClearAll();
-            updater->put_Type(MediaPlaybackType_Unknown);
-            updater->Update();
-            updater->Release();
-            return;
-        }
-
+    if (FAILED(d->controls->get_DisplayUpdater(&updater)) || !updater)
+        return;
+    if (title.trimmed().isEmpty()) {
+        updater->ClearAll();
+        updater->put_Type(MediaPlaybackType_Unknown);
+    } else {
         updater->put_Type(MediaPlaybackType_Music);
-
-        const QUrl artworkUrl(artworkPath);
-        const QString localArtworkPath = artworkUrl.isLocalFile() ? artworkUrl.toLocalFile() : artworkPath;
-        if (QFileInfo::exists(localArtworkPath)) {
-            try {
-                const auto file = winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(
-                                      QDir::toNativeSeparators(localArtworkPath).toStdWString())
-                                      .get();
-                const auto thumbnail =
-                    winrt::Windows::Storage::Streams::RandomAccessStreamReference::CreateFromFile(file);
-                updater->put_Thumbnail(winrt::get_abi(thumbnail));
-            } catch (...) {
-                qWarning() << "[SMTC] Failed to load artwork:" << localArtworkPath;
-            }
-        }
-
-        IMusicDisplayProperties *props = nullptr;
-        if (SUCCEEDED(updater->get_MusicProperties(&props)) && props) {
-            HSTRING hsTitle = nullptr, hsArtist = nullptr, hsAlbum = nullptr;
-
-            std::wstring wTitle = title.toStdWString();
-            std::wstring wArtist = artist.toStdWString();
-            std::wstring wAlbum = album.toStdWString();
-
-            d->pWindowsCreateString(wTitle.c_str(), static_cast<UINT32>(wTitle.length()), &hsTitle);
-            d->pWindowsCreateString(wArtist.c_str(), static_cast<UINT32>(wArtist.length()), &hsArtist);
-            d->pWindowsCreateString(wAlbum.c_str(), static_cast<UINT32>(wAlbum.length()), &hsAlbum);
-
-            props->put_Title(hsTitle);
-            props->put_Artist(hsArtist);
-
-            if (!wAlbum.empty()) {
-                IMusicDisplayProperties2 *props2 = nullptr;
-                if (SUCCEEDED(
-                        props->QueryInterface(IID_IMusicDisplayProperties2, reinterpret_cast<void **>(&props2))) &&
-                    props2) {
-                    props2->put_AlbumTitle(hsAlbum);
-                    props2->Release();
-                }
-            }
-
-            d->pWindowsDeleteString(hsTitle);
-            d->pWindowsDeleteString(hsArtist);
-            d->pWindowsDeleteString(hsAlbum);
-
-            props->Release();
-        }
-
-        updater->Update();
-        updater->Release();
+        Private::setThumbnail(updater, artworkPath);
+        d->setMusicProperties(updater, title, artist, album);
     }
+    updater->Update();
+    updater->Release();
 #elif defined(Q_OS_MACOS)
     MacNowPlaying::setTrack(title, artist, album, artworkPath);
 #else

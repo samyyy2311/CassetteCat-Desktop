@@ -26,6 +26,7 @@
 #include <QLocale>
 #include <QTranslator>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -270,8 +271,11 @@ bool runAllSelfChecks() {
     return check.passed();
 }
 
-/// Runs the self-check named by \p flag and returns its exit code, or nothing for any other argument.
-std::optional<int> runSelfCheck(const char *flag) {
+/// Runs the self-check named by the only argument and returns its exit code, or nothing for anything else.
+std::optional<int> runSelfCheck(int argc, char *argv[]) {
+    if (argc != 2)
+        return std::nullopt;
+    const char *flag = argv[1];
     const std::pair<const char *, bool (*)()> checks[] = {
         {"--single-instance-self-check", singleInstanceSelfCheck},
         {"--library-self-check", [] { return scanSelfCheck() && LibraryController::selfCheck(); }},
@@ -292,7 +296,7 @@ std::optional<int> runSelfCheck(const char *flag) {
 // Cmd+Q and the Dock's Quit close every window first, so the window learns it's a real quit before it would hide.
 class MacQuitFilter : public QObject {
   public:
-    explicit MacQuitFilter(QObject *window) : m_window(window) {}
+    MacQuitFilter(QObject *window, QObject *parent) : QObject(parent), m_window(window) {}
     bool eventFilter(QObject *watched, QEvent *event) override {
         if (watched == qApp && event->type() == QEvent::Quit)
             QMetaObject::invokeMethod(m_window, "quitApp");
@@ -410,15 +414,9 @@ static void loadLanguage(QTranslator &translator, const QString &code) {
         QCoreApplication::installTranslator(&translator);
 }
 
-int main(int argc, char *argv[]) {
-    qInstallMessageHandler(writeDebugLog);
-
-    if (argc == 3 && std::strcmp(argv[1], "--scan-library") == 0) {
-        const QVariantList tracks = scanTracks(QString::fromLocal8Bit(argv[2]));
-        std::cout << QJsonDocument::fromVariant(tracks).toJson(QJsonDocument::Compact).constData();
-        return 0;
-    }
-
+namespace {
+// Settings that have to be in place before the application object exists.
+void prepareProcess() {
 #ifdef Q_OS_WIN
     SetCurrentProcessExplicitAppUserModelID(kAppUserModelId);
     // A flip-model swap chain waits on the compositor at every size change, so dragging the window's edge stutters.
@@ -433,7 +431,158 @@ int main(int argc, char *argv[]) {
     // scene graph is released in the tray.
     if (!qEnvironmentVariableIsSet("QSG_TRANSIENT_IMAGES"))
         qputenv("QSG_TRANSIENT_IMAGES", "1");
+}
 
+// Prints the songs in a folder as JSON and returns the exit code, for --scan-library; nothing for other arguments.
+std::optional<int> scanLibraryCommand(int argc, char *argv[]) {
+    if (argc != 3 || std::strcmp(argv[1], "--scan-library") != 0)
+        return std::nullopt;
+    const QVariantList tracks = scanTracks(QString::fromLocal8Bit(argv[2]));
+    std::cout << QJsonDocument::fromVariant(tracks).toJson(QJsonDocument::Compact).constData();
+    return 0;
+}
+
+// The first argument that names an existing file, to open once the app is up.
+QString fileToOpen(int argc, char *argv[]) {
+    for (int i = 1; i < argc; ++i) {
+        const QFileInfo candidate(QString::fromLocal8Bit(argv[i]));
+        if (candidate.exists())
+            return candidate.absoluteFilePath();
+    }
+    return {};
+}
+
+#ifdef _WIN32
+// The running instance answers once its event loop is free, which can take seconds while it starts up.
+bool handOffToRunningInstance(const QString &openPath) {
+    // Windows only lets the running instance come to the front if the foreground process allows it.
+    AllowSetForegroundWindow(ASFW_ANY);
+    constexpr int maxHandoffRetries = 20;
+    for (int attempt = 0; attempt < maxHandoffRetries; ++attempt) {
+        if (notifyRunningInstance(QString::fromLatin1(kInstanceServerName), openPath))
+            return true;
+        if (attempt + 1 < maxHandoffRetries)
+            QThread::msleep(250);
+    }
+    qWarning() << "Existing instance detected, but handoff notification failed.";
+    return false;
+}
+
+// Returns the exit code when another copy is already running and has been handed the file. \p instanceMutex stays
+// held while this copy runs, so later launches find it.
+std::optional<int> handOffIfAlreadyRunning(const QString &openPath, HANDLE &instanceMutex) {
+    SetLastError(0);
+    instanceMutex = CreateMutexW(nullptr, FALSE, kInstanceMutexName);
+    if (!instanceMutex || GetLastError() != ERROR_ALREADY_EXISTS)
+        return std::nullopt;
+    return handOffToRunningInstance(openPath) ? 0 : 1;
+}
+#endif
+
+// Returns the exit code when the file was handed to a running copy instead; carries on without the handoff
+// server if it can't start.
+std::optional<int> startHandoffServer(QLocalServer &server, const QString &openPath) {
+    switch (startInstanceServer(server, QString::fromLatin1(kInstanceServerName), openPath)) {
+    case InstanceStartResult::HandedOff:
+        return 0;
+    case InstanceStartResult::Unavailable:
+        qWarning() << "Proceeding without single-instance handoff server.";
+        return std::nullopt;
+    default:
+        return std::nullopt;
+    }
+}
+
+QIcon trayIconFor(const QIcon &appIcon) {
+#ifdef Q_OS_MACOS
+    // The menu bar wants a template image, which macOS tints to suit light and dark menu bars.
+    Q_UNUSED(appIcon);
+    QIcon icon(QStringLiteral(":/qt/qml/CassetteCat/qml/icons/logo.svg"));
+    icon.setIsMask(true);
+    return icon;
+#else
+    return appIcon;
+#endif
+}
+
+void reportStartupFailure() {
+    qCritical() << "FATAL: engine.rootObjects() is empty after loading Main module!";
+#ifdef Q_OS_WIN
+    MessageBoxA(NULL, "FATAL: QML root object creation failed. Check the CassetteCat log for details.",
+                "CassetteCat Error", MB_OK | MB_ICONERROR);
+#endif
+}
+
+bool startsInTray(const SettingsController &settings, const TrayController &tray) {
+    return settings.value(QStringLiteral("ui/startMinimizedToTray"), false).toBool() && tray.available();
+}
+
+// Later launches send the file they were asked to open here, and bring this window to the front.
+void acceptInstanceHandoffs(QLocalServer &server, const std::function<void(const QString &)> &handOff) {
+    const auto serve = [handOff](QLocalSocket *socket) {
+        const auto processRequest = [handOff, socket] {
+            const QString path = QJsonDocument::fromJson(socket->readAll()).object().value("path").toString();
+            qInfo() << "Instance handoff received:" << path;
+            handOff(path);
+            socket->disconnectFromServer();
+        };
+        QObject::connect(socket, &QLocalSocket::readyRead, socket, processRequest);
+        QObject::connect(socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater);
+        if (socket->bytesAvailable())
+            processRequest();
+    };
+    const auto acceptPending = [&server, serve] {
+        while (QLocalSocket *socket = server.nextPendingConnection())
+            serve(socket);
+    };
+    QObject::connect(&server, &QLocalServer::newConnection, &server, acceptPending);
+    acceptPending();
+}
+
+// A file MPRIS asks to open, or nothing for anything that isn't a file on this computer.
+QString localFileFromUri(const QString &uri) {
+    const QUrl url(uri);
+    const QFileInfo file(url.toLocalFile());
+    return url.isLocalFile() && file.exists() && file.isFile() ? file.filePath() : QString();
+}
+
+void logQmlWarnings(const QList<QQmlError> &warnings) {
+    for (const auto &w : warnings)
+        qWarning() << "QML warning:" << w.toString();
+}
+
+QQuickWindow *firstWindow(const QQmlApplicationEngine &engine) {
+    for (QObject *root : engine.rootObjects()) {
+        if (auto *window = qobject_cast<QQuickWindow *>(root))
+            return window;
+    }
+    return nullptr;
+}
+
+#ifdef Q_OS_MACOS
+// Mac apps keep running when their window closes: Cmd+Q still quits, and clicking the Dock icon reports the app
+// active again, which brings back a window closed with the red button.
+void followMacWindowConventions(QApplication &app, QQuickWindow *mainWindow) {
+    app.installEventFilter(new MacQuitFilter(mainWindow, &app));
+    QObject::connect(&app, &QGuiApplication::applicationStateChanged, &app, [mainWindow](Qt::ApplicationState state) {
+        if (state != Qt::ApplicationActive)
+            return;
+        for (const QWindow *window : QGuiApplication::topLevelWindows())
+            if (window->isVisible())
+                return;
+        activateWindow(mainWindow);
+    });
+}
+#endif
+} // namespace
+
+int main(int argc, char *argv[]) {
+    qInstallMessageHandler(writeDebugLog);
+
+    if (const std::optional<int> result = scanLibraryCommand(argc, argv))
+        return *result;
+
+    prepareProcess();
     QApplication app(argc, argv);
     app.setQuitOnLastWindowClosed(false);
     QQuickStyle::setStyle("Basic");
@@ -451,51 +600,19 @@ int main(int argc, char *argv[]) {
 
     const Fonts fonts = loadBundledFonts();
 
-    if (argc == 2) {
-        if (const std::optional<int> result = runSelfCheck(argv[1]))
-            return *result;
-    }
+    if (const std::optional<int> result = runSelfCheck(argc, argv))
+        return *result;
 
-    QString openPath;
-    for (int i = 1; i < argc; ++i) {
-        const QFileInfo candidate(QString::fromLocal8Bit(argv[i]));
-        if (candidate.exists()) {
-            openPath = candidate.absoluteFilePath();
-            break;
-        }
-    }
+    const QString openPath = fileToOpen(argc, argv);
 
     QLocalServer instanceServer;
 #ifdef _WIN32
-    SetLastError(0);
-    const HANDLE instanceMutex = CreateMutexW(nullptr, FALSE, kInstanceMutexName);
-    if (instanceMutex && GetLastError() == ERROR_ALREADY_EXISTS) {
-        // Windows only lets the running instance come to the front if the foreground process allows it.
-        AllowSetForegroundWindow(ASFW_ANY);
-        bool handedOff = false;
-        // The running instance answers once its event loop is free, which can take seconds while it starts up.
-        constexpr int maxHandoffRetries = 20;
-        for (int attempt = 0; attempt < maxHandoffRetries; ++attempt) {
-            if (notifyRunningInstance(QString::fromLatin1(kInstanceServerName), openPath)) {
-                handedOff = true;
-                break;
-            }
-            if (attempt + 1 < maxHandoffRetries)
-                QThread::msleep(250);
-        }
-        if (!handedOff) {
-            qWarning() << "Existing instance detected, but handoff notification failed.";
-            return 1;
-        }
-        return 0;
-    }
+    HANDLE instanceMutex = nullptr;
+    if (const std::optional<int> result = handOffIfAlreadyRunning(openPath, instanceMutex))
+        return *result;
 #endif
-    const InstanceStartResult instanceResult =
-        startInstanceServer(instanceServer, QString::fromLatin1(kInstanceServerName), openPath);
-    if (instanceResult == InstanceStartResult::HandedOff)
-        return 0;
-    if (instanceResult == InstanceStartResult::Unavailable)
-        qWarning() << "Proceeding without single-instance handoff server.";
+    if (const std::optional<int> result = startHandoffServer(instanceServer, openPath))
+        return *result;
 
     QQuickWindow *mainWindow = nullptr;
 
@@ -522,14 +639,7 @@ int main(int argc, char *argv[]) {
     DiscordPresence discord(&player, &app);
     RemoteControlServer phoneRemote(&player, &library, &app);
     GlobalShortcutController globalShortcuts(&app);
-#ifdef Q_OS_MACOS
-    // The menu bar wants a template image, which macOS tints to suit light and dark menu bars.
-    QIcon trayIcon(QStringLiteral(":/qt/qml/CassetteCat/qml/icons/logo.svg"));
-    trayIcon.setIsMask(true);
-    TrayController tray(trayIcon, &app);
-#else
-    TrayController tray(appIcon, &app);
-#endif
+    TrayController tray(trayIconFor(appIcon), &app);
 
     const auto openExternalPath = [&](const QString &path) {
         const QVariantList tracks = library.openPaths({path});
@@ -538,40 +648,17 @@ int main(int argc, char *argv[]) {
     };
 
     QObject::connect(&mpris, &MprisController::openUriRequested, [&](const QString &uri) {
-        const QUrl url(uri);
-        if (!url.isLocalFile())
-            return;
-        const QString path = url.toLocalFile();
-        const QFileInfo file(path);
-        if (file.exists() && file.isFile()) {
+        if (const QString path = localFileFromUri(uri); !path.isEmpty())
             openExternalPath(path);
-        }
     });
     QObject::connect(&mpris, &MprisController::raiseRequested, [&]() { activateWindow(mainWindow); });
     mpris.initialize();
 
-    const auto handleInstanceSocket = [&](QLocalSocket *socket) {
-        const auto processRequest = [&, socket] {
-            const QJsonDocument request = QJsonDocument::fromJson(socket->readAll());
-            const QString path = request.object().value("path").toString();
-            qInfo() << "Instance handoff received:" << path;
-            if (!path.isEmpty())
-                openExternalPath(path);
-            activateWindow(mainWindow);
-            socket->disconnectFromServer();
-        };
-        QObject::connect(socket, &QLocalSocket::readyRead, &app, processRequest);
-        QObject::connect(socket, &QLocalSocket::disconnected, socket, &QObject::deleteLater);
-        if (socket->bytesAvailable())
-            processRequest();
-    };
-
-    const auto processInstanceConnections = [&] {
-        while (QLocalSocket *socket = instanceServer.nextPendingConnection())
-            handleInstanceSocket(socket);
-    };
-    QObject::connect(&instanceServer, &QLocalServer::newConnection, &app, processInstanceConnections);
-    processInstanceConnections();
+    acceptInstanceHandoffs(instanceServer, [&](const QString &path) {
+        if (!path.isEmpty())
+            openExternalPath(path);
+        activateWindow(mainWindow);
+    });
     // Declared before the engine so it outlives the QML that binds to it while the app quits.
     WindowFrame windowFrame;
     QQmlApplicationEngine engine;
@@ -600,11 +687,7 @@ int main(int argc, char *argv[]) {
             QCoreApplication::exit(-1);
         },
         Qt::QueuedConnection);
-    QObject::connect(&engine, &QQmlApplicationEngine::warnings, [](const QList<QQmlError> &warnings) {
-        for (const auto &w : warnings) {
-            qWarning() << "QML warning:" << w.toString();
-        }
-    });
+    QObject::connect(&engine, &QQmlApplicationEngine::warnings, logQmlWarnings);
 
     QObject::connect(&appSettings, &SettingsController::languageChanged, &engine, [&] {
         loadLanguage(translator, appSettings.value(QStringLiteral("ui/language")).toString());
@@ -614,37 +697,15 @@ int main(int argc, char *argv[]) {
     // After the first pass this only reads image headers, so it runs on every launch rather than tracking a flag.
     QThreadPool::globalInstance()->start(shrinkOversizedCachedImages);
     if (engine.rootObjects().isEmpty()) {
-        qCritical() << "FATAL: engine.rootObjects() is empty after loading Main module!";
-#ifdef Q_OS_WIN
-        MessageBoxA(NULL, "FATAL: QML root object creation failed. Check the CassetteCat log for details.",
-                    "CassetteCat Error", MB_OK | MB_ICONERROR);
-#endif
+        reportStartupFailure();
         return 1;
     }
 
-    for (auto *rootObj : engine.rootObjects()) {
-        if (auto *quickWin = qobject_cast<QQuickWindow *>(rootObj)) {
-            mainWindow = quickWin;
-            showMainWindow(quickWin,
-                           appSettings.value(QStringLiteral("ui/startMinimizedToTray"), false).toBool() &&
-                               tray.available(),
-                           smtc, appIcon);
-            break;
-        }
-    }
-
+    mainWindow = firstWindow(engine);
+    if (mainWindow)
+        showMainWindow(mainWindow, startsInTray(appSettings, tray), smtc, appIcon);
 #ifdef Q_OS_MACOS
-    MacQuitFilter quitFilter(mainWindow);
-    app.installEventFilter(&quitFilter);
-    // Clicking the Dock icon reports the app active again, which brings back a window closed with the red button.
-    QObject::connect(&app, &QGuiApplication::applicationStateChanged, &app, [&](Qt::ApplicationState state) {
-        if (state != Qt::ApplicationActive)
-            return;
-        for (const QWindow *window : QGuiApplication::topLevelWindows())
-            if (window->isVisible())
-                return;
-        activateWindow(mainWindow);
-    });
+    followMacWindowConventions(app, mainWindow);
 #endif
 
     if (!openPath.isEmpty())

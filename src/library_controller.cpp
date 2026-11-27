@@ -199,31 +199,30 @@ QVariantMap totalsFromLog(const QByteArray &log) {
     return {{"plays", plays}, {"listenedMs", listenedMs}, {"songCount", songs.size()}, {"playsByPath", playsByPath}};
 }
 
-QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
-    struct Tally {
-        QVariantMap item;
-        int plays = 0;
-        qint64 listenedMs = 0;
-    };
-    const auto add = [](QHash<QString, Tally> &tallies, QList<QString> &order, const QString &key,
-                        const QVariantMap &item, qint64 ms, int plays) {
-        if (!tallies.contains(key)) {
-            order.append(key);
-            tallies.insert(key, Tally{item});
+// Plays and listening time per song, artist, album or genre, in the order each first appeared, so equal ranks keep
+// that order.
+class Tallies {
+  public:
+    void add(const QString &key, const QVariantMap &item, qint64 ms, int plays) {
+        if (!m_tallies.contains(key)) {
+            m_order.append(key);
+            m_tallies.insert(key, Tally{item});
         }
-        Tally &tally = tallies[key];
+        Tally &tally = m_tallies[key];
         tally.plays += plays;
         tally.listenedMs += ms;
-    };
+    }
+
     // Only what was played counts as a song, artist, album or genre; skips add listening time.
-    const auto played = [](const QHash<QString, Tally> &tallies) {
-        return std::count_if(tallies.cbegin(), tallies.cend(), [](const Tally &tally) { return tally.plays > 0; });
-    };
-    const auto ranked = [](const QHash<QString, Tally> &tallies, const QList<QString> &order, int limit) {
+    qsizetype playedCount() const {
+        return std::count_if(m_tallies.cbegin(), m_tallies.cend(), [](const Tally &tally) { return tally.plays > 0; });
+    }
+
+    QVariantList ranked(int limit) const {
         QList<Tally> list;
-        for (const QString &key : order) {
-            if (tallies.value(key).plays > 0)
-                list.append(tallies.value(key));
+        for (const QString &key : m_order) {
+            if (m_tallies.value(key).plays > 0)
+                list.append(m_tallies.value(key));
         }
         std::stable_sort(list.begin(), list.end(), [](const Tally &a, const Tally &b) {
             return a.plays != b.plays ? a.plays > b.plays : a.listenedMs > b.listenedMs;
@@ -236,10 +235,46 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
             result.append(item);
         }
         return result;
-    };
+    }
 
-    QHash<QString, Tally> songs, artists, albums, genres;
-    QList<QString> songOrder, artistOrder, albumOrder, genreOrder;
+  private:
+    struct Tally {
+        QVariantMap item;
+        int plays = 0;
+        qint64 listenedMs = 0;
+    };
+    QHash<QString, Tally> m_tallies;
+    QList<QString> m_order;
+};
+
+struct RecapTallies {
+    Tallies songs, artists, albums, genres;
+
+    void add(const QVariantMap &track, qint64 ms, int plays) {
+        // Playing a song on both devices counts as one song.
+        songs.add(LibraryController::matchKey(track), {{"track", track}}, ms, plays);
+        for (const QString &artist : splitArtists(track.value("artist").toString()))
+            artists.add(artist.toLower(), {{"name", artist}, {"track", track}}, ms, plays);
+        const QString album = track.value("album").toString().trimmed();
+        if (!album.isEmpty())
+            albums.add(album.toLower(), {{"name", album}, {"track", track}}, ms, plays);
+        const QString genre = track.value("genre").toString().trimmed();
+        if (!genre.isEmpty())
+            genres.add(genre.toLower(), {{"name", genre}}, ms, plays);
+    }
+};
+
+int busiestMonth(const QVariantList &months) {
+    int busiest = -1;
+    for (int i = 0; i < months.size(); ++i) {
+        if (months[i].toDouble() > 0 && (busiest < 0 || months[i].toDouble() > months[busiest].toDouble()))
+            busiest = i;
+    }
+    return busiest;
+}
+
+QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
+    RecapTallies tallies;
     QVariantList months(12, 0.0);
     int plays = 0;
     qint64 listenedMs = 0;
@@ -261,47 +296,29 @@ QVariantMap recapFromLog(const QByteArray &log, int year, int month) {
                                 {"genre", entry.value("genre").toString()}};
         // Listening time counts every minute. A month's total from the phone is dated the first of the month, so it
         // doesn't set when listening began.
-        const bool total = entry.contains("plays");
         const int entryPlays = logPlays(entry);
         plays += entryPlays;
         listenedMs += ms;
-        if (!total)
+        if (!entry.contains("plays"))
             firstListen = firstListen == 0 ? at : qMin(firstListen, at);
         // An untitled total covers songs the phone no longer has; like the phone, it counts but isn't listed.
-        if (track.value("title").toString().isEmpty())
-            continue;
-
-        // Playing a song on both devices counts as one song.
-        const QString songKey = LibraryController::matchKey(track);
-        add(songs, songOrder, songKey, {{"track", track}}, ms, entryPlays);
-        for (const QString &artist : splitArtists(track.value("artist").toString()))
-            add(artists, artistOrder, artist.toLower(), {{"name", artist}, {"track", track}}, ms, entryPlays);
-        const QString album = track.value("album").toString().trimmed();
-        if (!album.isEmpty())
-            add(albums, albumOrder, album.toLower(), {{"name", album}, {"track", track}}, ms, entryPlays);
-        const QString genre = track.value("genre").toString().trimmed();
-        if (!genre.isEmpty())
-            add(genres, genreOrder, genre.toLower(), {{"name", genre}}, ms, entryPlays);
+        if (!track.value("title").toString().isEmpty())
+            tallies.add(track, ms, entryPlays);
     }
 
-    int busiestMonth = -1;
-    for (int i = 0; i < 12; ++i) {
-        if (months[i].toDouble() > 0 && (busiestMonth < 0 || months[i].toDouble() > months[busiestMonth].toDouble()))
-            busiestMonth = i;
-    }
     return {{"year", year},
             {"month", month},
             {"plays", plays},
             {"listenedMs", listenedMs},
-            {"songCount", played(songs)},
-            {"artistCount", played(artists)},
+            {"songCount", tallies.songs.playedCount()},
+            {"artistCount", tallies.artists.playedCount()},
             {"firstListen", firstListen},
-            {"topSongs", ranked(songs, songOrder, 10)},
-            {"topArtists", ranked(artists, artistOrder, 10)},
-            {"topAlbums", ranked(albums, albumOrder, 5)},
-            {"topGenres", ranked(genres, genreOrder, 3)},
+            {"topSongs", tallies.songs.ranked(10)},
+            {"topArtists", tallies.artists.ranked(10)},
+            {"topAlbums", tallies.albums.ranked(5)},
+            {"topGenres", tallies.genres.ranked(3)},
             {"months", months},
-            {"busiestMonth", busiestMonth}};
+            {"busiestMonth", busiestMonth(months)}};
 }
 
 // Case-, accent- and punctuation-insensitive; apostrophes are dropped so "don't" matches "dont".
@@ -469,7 +486,8 @@ bool LibraryController::checkSortKeys() {
                  "sorts numbers before letters");
     check.expect(compareSortKeys(QStringLiteral("The Beatles"), QStringLiteral("Bee Gees")) < 0,
                  "sorts by the key without \"The\"");
-    check.expect(compareSortKeys(QStringLiteral("Émile"), QStringLiteral("1989")) > 0, "sorts accented letters as letters");
+    check.expect(compareSortKeys(QStringLiteral("Émile"), QStringLiteral("1989")) > 0,
+                 "sorts accented letters as letters");
     check.expect(compareSortKeys(QStringLiteral("Кино"), QStringLiteral("#1 Hits")) > 0,
                  "sorts other alphabets as letters");
     check.expect(indexLetter(QStringLiteral("The Beatles")) == QStringLiteral("B"), "indexes without \"The\"");
@@ -628,8 +646,7 @@ bool LibraryController::checkRecap() {
     check.expect(recap.value("listenedMs").toLongLong() == 290000, "adds up the year's listening time");
     check.expect(recap.value("songCount").toInt() == 2, "counts the year's songs");
     check.expect(recap.value("artistCount").toInt() == 2, "counts each artist of a collaboration");
-    check.expect(recap.value("topSongs").toList().value(0).toMap().value("track").toMap().value("filePath") ==
-                     "a.flac",
+    check.expect(recap.value("topSongs").toList().value(0).toMap().value("track").toMap().value("filePath") == "a.flac",
                  "ranks the most played song first");
     check.expect(topArtist.value("name") == "Ann", "ranks the most played artist first");
     check.expect(topArtist.value("plays") == 3, "counts an artist's plays across collaborations");
@@ -639,9 +656,8 @@ bool LibraryController::checkRecap() {
     check.expect(march.value("listenedMs").toLongLong() == 90000, "adds up a month's listening time");
     check.expect(march.value("months").toList().value(6).toDouble() == 200000, "keeps every month's time");
 
-    const QVariantMap phoneOnly =
-        recapFromLog(logLine(phoneListen("Gone")) + logLine(phoneListen("Gone")) + logLine(phoneListen("Here")), 2026,
-                     -1);
+    const QVariantMap phoneOnly = recapFromLog(
+        logLine(phoneListen("Gone")) + logLine(phoneListen("Gone")) + logLine(phoneListen("Here")), 2026, -1);
     check.expect(phoneOnly.value("plays").toInt() == 3, "counts phone plays of songs not in the library");
     check.expect(phoneOnly.value("songCount").toInt() == 2, "counts phone songs not in the library");
 
@@ -1072,6 +1088,38 @@ QStringList LibraryController::availablePaths() const {
     return paths;
 }
 
+namespace {
+QSet<QString> likedKeys(const QVariantMap &favorites) {
+    QSet<QString> keys;
+    for (auto it = favorites.cbegin(); it != favorites.cend(); ++it) {
+        if (it.value().toBool())
+            keys.insert(favoriteKey(it.key()));
+    }
+    return keys;
+}
+
+// The library's copy of each song in the play history, newest first, each song once.
+QList<QVariantMap> recentlyPlayedFrom(const QVariantList &history, const QHash<QString, QVariantMap> &tracksByPath) {
+    QList<QVariantMap> recent;
+    QSet<QString> identities;
+    for (const QVariant &value : history) {
+        const QVariantMap track = tracksByPath.value(pathKey(value.toMap().value("filePath").toString()));
+        if (!track.isEmpty() && !identities.contains(trackIdentity(track))) {
+            identities.insert(trackIdentity(track));
+            recent.append(track);
+        }
+    }
+    return recent;
+}
+
+QVariantList shelf(const QList<QVariantMap> &tracks, qsizetype limit) {
+    QVariantList result;
+    for (qsizetype i = 0; i < qMin(limit, tracks.size()); ++i)
+        result.append(tracks[i]);
+    return result;
+}
+} // namespace
+
 QVariantMap LibraryController::homeRecommendations(const QVariantMap &playCounts, const QVariantMap &seenAt,
                                                    const QVariantMap &favorites, const QVariantList &history) const {
     const auto path = [](const QVariantMap &track) { return track.value("filePath").toString(); };
@@ -1094,11 +1142,7 @@ QVariantMap LibraryController::homeRecommendations(const QVariantMap &playCounts
     QSet<QString> played;
     for (const QVariant &value : history)
         played.insert(trackIdentity(value.toMap()));
-    QSet<QString> favoriteKeys;
-    for (auto it = favorites.cbegin(); it != favorites.cend(); ++it) {
-        if (it.value().toBool())
-            favoriteKeys.insert(favoriteKey(it.key()));
-    }
+    const QSet<QString> favoriteKeys = likedKeys(favorites);
 
     QList<QVariantMap> unplayed;
     QList<QVariantMap> ranked;
@@ -1127,26 +1171,10 @@ QVariantMap LibraryController::homeRecommendations(const QVariantMap &playCounts
         return seenAt.value(path(left)).toDouble() > seenAt.value(path(right)).toDouble();
     });
 
-    QList<QVariantMap> recentlyPlayed;
-    QSet<QString> recentIdentities;
-    for (const QVariant &value : history) {
-        const QVariantMap track = tracksByPath.value(pathKey(path(value.toMap())));
-        if (!track.isEmpty() && !recentIdentities.contains(trackIdentity(track))) {
-            recentIdentities.insert(trackIdentity(track));
-            recentlyPlayed.append(track);
-        }
-    }
-
-    const auto shelf = [](const QList<QVariantMap> &list, qsizetype limit) {
-        QVariantList result;
-        for (qsizetype i = 0; i < qMin(limit, list.size()); ++i)
-            result.append(list[i]);
-        return result;
-    };
     return {{"spotlight", unplayed.isEmpty() ? QVariantMap() : unplayed.first()},
             {"quickPicks", shelf(unplayed, 8)},
             {"heavyRotation", shelf(ranked, 10)},
-            {"recentlyPlayed", shelf(recentlyPlayed, 10)},
+            {"recentlyPlayed", shelf(recentlyPlayedFrom(history, tracksByPath), 10)},
             {"recentlyAdded", shelf(added, 10)},
             {"forgottenFavs", forgotten.size() >= 3 ? shelf(forgotten, 10) : QVariantList()}};
 }
@@ -1343,6 +1371,78 @@ QVariantList LibraryController::similarTracks(const QVariantMap &seed, const QSt
     return result;
 }
 
+namespace {
+void addToGroup(QHash<QString, QVariantMap> &groups, const QString &key, const QVariantMap &track,
+                const QVariantMap &initial) {
+    auto it = groups.find(key);
+    if (it != groups.end()) {
+        it->insert("count", it->value("count").toInt() + 1);
+        return;
+    }
+    QVariantMap group = initial;
+    group.insert("track", track);
+    group.insert("count", 1);
+    groups.insert(key, group);
+}
+
+// Counted the way the search page's format filter matches them.
+struct FormatCounts {
+    int all = 0, lossless = 0, mp3 = 0, aac = 0;
+
+    void add(const QString &format) {
+        ++all;
+        if (format == "FLAC" || format == "WAV" || format == "ALAC")
+            ++lossless;
+        else if (format == "MP3")
+            ++mp3;
+        else if (format == "AAC" || format == "M4A")
+            ++aac;
+    }
+
+    QVariantMap toMap() const {
+        return {{"ALL", all}, {"FLAC", lossless}, {"MP3", mp3}, {"AAC", aac}};
+    }
+};
+
+// A song's folder and the name shown for it; songs at the top of a drive go under Music.
+std::pair<QString, QString> folderOf(const QString &path) {
+    const int slash = path.lastIndexOf('/');
+    const QString folderPath = slash < 0 ? QString("Music") : path.left(slash);
+    const QString folderName = folderPath.section('/', -1);
+    return {folderPath, folderName.isEmpty() ? QString("Music") : folderName};
+}
+
+// Sorted here, with each group's place in name order as "rank", so the pages can order them by comparing numbers
+// instead of calling back for every pair of names.
+QList<QVariantMap> sortedByName(const QHash<QString, QVariantMap> &groups) {
+    QList<QVariantMap> list = groups.values();
+    std::sort(list.begin(), list.end(), [](const QVariantMap &a, const QVariantMap &b) {
+        return compareSortKeys(a.value("name").toString(), b.value("name").toString()) < 0;
+    });
+    for (int i = 0; i < list.size(); ++i)
+        list[i].insert("rank", i);
+    return list;
+}
+
+void rankAlbumsByArtist(QList<QVariantMap> &albums) {
+    QList<int> byArtist(albums.size());
+    std::iota(byArtist.begin(), byArtist.end(), 0);
+    const auto artistOf = [&albums](int i) { return albums[i].value("track").toMap().value("artist").toString(); };
+    std::stable_sort(byArtist.begin(), byArtist.end(),
+                     [&artistOf](int a, int b) { return compareSortKeys(artistOf(a), artistOf(b)) < 0; });
+    for (int i = 0; i < byArtist.size(); ++i)
+        albums[byArtist[i]].insert("artistRank", i);
+}
+
+QVariantList toVariantList(const QList<QVariantMap> &groups) {
+    QVariantList result;
+    result.reserve(groups.size());
+    for (const QVariantMap &group : groups)
+        result.append(group);
+    return result;
+}
+} // namespace
+
 QVariantMap LibraryController::catalogGroups() const {
     // Kept until the tracks change, since the Library and Search pages ask for them each time they open.
     if (!m_catalogGroups.isEmpty())
@@ -1351,92 +1451,36 @@ QVariantMap LibraryController::catalogGroups() const {
     QHash<QString, QVariantMap> albums;
     QHash<QString, QVariantMap> genres;
     QHash<QString, QVariantMap> folders;
-    // Counted the way the search page's format filter matches them.
-    int allFormats = 0, lossless = 0, mp3 = 0, aac = 0;
-    const auto add = [](QHash<QString, QVariantMap> &groups, const QString &key, const QVariantMap &track,
-                        const QVariantMap &initial) {
-        auto it = groups.find(key);
-        if (it == groups.end()) {
-            QVariantMap group = initial;
-            group.insert("track", track);
-            group.insert("count", 1);
-            groups.insert(key, group);
-            return;
-        }
-        it->insert("count", it->value("count").toInt() + 1);
-    };
-
+    FormatCounts formats;
     for (const QVariant &value : m_tracks) {
         const QVariantMap track = value.toMap();
         if (!isAvailable(track))
             continue;
-
-        ++allFormats;
-        const QString format = track.value("format").toString().toUpper();
-        if (format == "FLAC" || format == "WAV" || format == "ALAC")
-            ++lossless;
-        else if (format == "MP3")
-            ++mp3;
-        else if (format == "AAC" || format == "M4A")
-            ++aac;
-
-        const QStringList trackArtists = splitArtists(track.value("artist").toString());
-        for (const QString &artist : trackArtists) {
-            add(artists, artist, track, {{"name", artist}});
-        }
-
+        formats.add(track.value("format").toString().toUpper());
+        for (const QString &artist : splitArtists(track.value("artist").toString()))
+            addToGroup(artists, artist, track, {{"name", artist}});
         const QString album =
             track.value("album").toString().isEmpty() ? QString("Unknown Album") : track.value("album").toString();
-        add(albums, album, track, {{"name", album}});
-
+        addToGroup(albums, album, track, {{"name", album}});
         const QString genre = track.value("genre").toString().trimmed().isEmpty()
                                   ? QString("Soundtrack")
                                   : track.value("genre").toString().trimmed();
-        add(genres, genre, track, {{"name", genre}});
+        addToGroup(genres, genre, track, {{"name", genre}});
 
         const QString path = track.value("filePath").toString().replace('\\', '/');
         if (path.isEmpty())
             continue;
-        const int slash = path.lastIndexOf('/');
-        const QString folderPath = slash < 0 ? QString("Music") : path.left(slash);
-        const QString folderName =
-            folderPath.section('/', -1).isEmpty() ? QString("Music") : folderPath.section('/', -1);
-        add(folders, folderPath, track, {{"name", folderName}, {"path", folderPath}});
+        const auto [folderPath, folderName] = folderOf(path);
+        addToGroup(folders, folderPath, track, {{"name", folderName}, {"path", folderPath}});
     }
 
-    // Sorted here, with each group's place in name order as "rank", so the pages can order them by comparing
-    // numbers instead of calling back for every pair of names.
-    const auto byName = [](const QHash<QString, QVariantMap> &groups) {
-        QList<QVariantMap> list = groups.values();
-        std::sort(list.begin(), list.end(), [](const QVariantMap &a, const QVariantMap &b) {
-            return compareSortKeys(a.value("name").toString(), b.value("name").toString()) < 0;
-        });
-        for (int i = 0; i < list.size(); ++i)
-            list[i].insert("rank", i);
-        return list;
-    };
-    const auto toList = [](const QList<QVariantMap> &groups) {
-        QVariantList result;
-        result.reserve(groups.size());
-        for (const QVariantMap &group : groups)
-            result.append(group);
-        return result;
-    };
-    QList<QVariantMap> albumList = byName(albums);
-    QList<int> byArtist(albumList.size());
-    std::iota(byArtist.begin(), byArtist.end(), 0);
-    const auto artistOf = [&albumList](int i) {
-        return albumList[i].value("track").toMap().value("artist").toString();
-    };
-    std::stable_sort(byArtist.begin(), byArtist.end(),
-                     [&artistOf](int a, int b) { return compareSortKeys(artistOf(a), artistOf(b)) < 0; });
-    for (int i = 0; i < byArtist.size(); ++i)
-        albumList[byArtist[i]].insert("artistRank", i);
-    m_catalogGroups = {{"artists", toList(byName(artists))},
-                       {"albums", toList(albumList)},
-                       {"genres", toList(byName(genres))},
-                       {"folders", toList(byName(folders))},
-                       {"formats", QVariantMap{{"ALL", allFormats}, {"FLAC", lossless}, {"MP3", mp3}, {"AAC", aac}}}};
+    QList<QVariantMap> albumList = sortedByName(albums);
+    rankAlbumsByArtist(albumList);
+    m_catalogGroups = {{"artists", toVariantList(sortedByName(artists))},
+                       {"albums", toVariantList(albumList)},
+                       {"genres", toVariantList(sortedByName(genres))},
+                       {"folders", toVariantList(sortedByName(folders))},
+                       {"formats", formats.toMap()}};
     return m_catalogGroups;
 }
 
@@ -1613,18 +1657,12 @@ void LibraryController::setFilter(const QString &query, const QString &format, b
         if (!value.toString().isEmpty())
             folders.append(folderPrefix(value.toString()));
     }
-
-    QSet<QString> favoritePaths;
-    for (auto it = favorites.cbegin(); it != favorites.cend(); ++it) {
-        if (it.value().toBool())
-            favoritePaths.insert(favoriteKey(it.key()));
-    }
+    QSet<QString> favoritePaths = likedKeys(favorites);
 
     const bool availabilityChanged = m_excludedFolders != folders || m_ignoreShortClips != ignoreShortClips;
     const bool favoritesChanged = favoritesOnly && (m_favorites != favoritePaths);
     if (m_query == query && m_format == format && m_strictFormat == strictFormat && m_favoritesOnly == favoritesOnly &&
-        !favoritesChanged && m_sortMetric == sortMetric && m_sortAscending == ascending &&
-        m_excludedFolders == folders && m_ignoreShortClips == ignoreShortClips) {
+        !favoritesChanged && m_sortMetric == sortMetric && m_sortAscending == ascending && !availabilityChanged) {
         m_favorites = std::move(favoritePaths);
         return;
     }
@@ -1665,29 +1703,69 @@ bool LibraryController::isAvailable(const QVariantMap &track) const {
     return true;
 }
 
+namespace {
+constexpr const char *kSearchFields[] = {"title", "fileName", "artist", "album"};
+
+// The FLAC filter also takes the other lossless formats unless it's strict.
+bool matchesFormat(const QString &filter, bool strict, const QString &format) {
+    if (filter == "FLAC")
+        return format == "FLAC" || (!strict && (format == "WAV" || format == "ALAC"));
+    if (filter == "MP3")
+        return format == "MP3";
+    if (filter == "AAC")
+        return format == "AAC" || format == "M4A";
+    return true;
+}
+
+bool matchesQuery(const QVariantMap &track, const QString &query) {
+    return std::any_of(std::begin(kSearchFields), std::end(kSearchFields),
+                       [&](const char *field) { return track.value(field).toString().toLower().contains(query); });
+}
+} // namespace
+
 bool LibraryController::matchesVisibleFilter(const QVariantMap &track) const {
-    const QString format = track.value("format").toString().toUpper();
     if (m_favoritesOnly && !m_favorites.contains(favoriteKey(track.value("filePath").toString())))
         return false;
-    if (m_format != "ALL" && !m_format.isEmpty()) {
-        if (m_format == "FLAC") {
-            if (format != "FLAC" && (m_strictFormat || (format != "WAV" && format != "ALAC")))
-                return false;
-        } else if (m_format == "MP3" && format != "MP3") {
-            return false;
-        } else if (m_format == "AAC" && format != "AAC" && format != "M4A") {
-            return false;
-        }
-    }
-    if (m_query.trimmed().isEmpty())
-        return true;
-
+    if (!matchesFormat(m_format, m_strictFormat, track.value("format").toString().toUpper()))
+        return false;
     const QString query = m_query.trimmed().toLower();
-    return track.value("title").toString().toLower().contains(query) ||
-           track.value("fileName").toString().toLower().contains(query) ||
-           track.value("artist").toString().toLower().contains(query) ||
-           track.value("album").toString().toLower().contains(query);
+    return query.isEmpty() || matchesQuery(track, query);
 }
+
+namespace {
+int compareField(const QVariantMap &a, const QVariantMap &b, const char *field) {
+    return compareSortKeys(a.value(field).toString(), b.value(field).toString());
+}
+
+// Album order follows track numbers where both songs have one, and titles otherwise.
+int compareByAlbum(const QVariantMap &a, const QVariantMap &b) {
+    if (const int album = compareField(a, b, "album"); album != 0)
+        return album;
+    const int trackA = a.value("trackNumber").toInt();
+    const int trackB = b.value("trackNumber").toInt();
+    if (trackA > 0 && trackB > 0 && trackA != trackB)
+        return trackA - trackB;
+    return compareField(a, b, "title");
+}
+
+QString shownTitle(const QVariantMap &track) {
+    const QString title = track.value("title").toString();
+    return title.isEmpty() ? track.value("fileName").toString() : title;
+}
+
+int compareTracks(const QVariantMap &a, const QVariantMap &b, const QString &metric) {
+    if (metric == "duration")
+        return a.value("durationSeconds").toInt() - b.value("durationSeconds").toInt();
+    if (metric == "album")
+        return compareByAlbum(a, b);
+    if (metric == "artist") {
+        const int artist = compareField(a, b, "artist");
+        return artist != 0 ? artist : compareField(a, b, "title");
+    }
+    const int title = compareSortKeys(shownTitle(a), shownTitle(b));
+    return title != 0 ? title : compareField(a, b, "artist");
+}
+} // namespace
 
 void LibraryController::rebuildVisibleRows() {
     m_visibleRows.clear();
@@ -1705,34 +1783,7 @@ void LibraryController::rebuildVisibleRows() {
     if (m_sortMetric.isEmpty())
         return;
     std::sort(m_visibleRows.begin(), m_visibleRows.end(), [this](int left, int right) {
-        const QVariantMap a = m_tracks.at(left).toMap();
-        const QVariantMap b = m_tracks.at(right).toMap();
-        int result = 0;
-        if (m_sortMetric == "duration") {
-            result = a.value("durationSeconds").toInt() - b.value("durationSeconds").toInt();
-        } else if (m_sortMetric == "artist") {
-            result = compareSortKeys(a.value("artist").toString(), b.value("artist").toString());
-            if (result == 0)
-                result = compareSortKeys(a.value("title").toString(), b.value("title").toString());
-        } else if (m_sortMetric == "album") {
-            result = compareSortKeys(a.value("album").toString(), b.value("album").toString());
-            if (result == 0) {
-                const int trackA = a.value("trackNumber").toInt();
-                const int trackB = b.value("trackNumber").toInt();
-                if (trackA > 0 && trackB > 0 && trackA != trackB)
-                    result = trackA - trackB;
-                else
-                    result = compareSortKeys(a.value("title").toString(), b.value("title").toString());
-            }
-        } else {
-            const QString aTitle =
-                a.value("title").toString().isEmpty() ? a.value("fileName").toString() : a.value("title").toString();
-            const QString bTitle =
-                b.value("title").toString().isEmpty() ? b.value("fileName").toString() : b.value("title").toString();
-            result = compareSortKeys(aTitle, bTitle);
-            if (result == 0)
-                result = compareSortKeys(a.value("artist").toString(), b.value("artist").toString());
-        }
+        const int result = compareTracks(m_tracks.at(left).toMap(), m_tracks.at(right).toMap(), m_sortMetric);
         return m_sortAscending ? result < 0 : result > 0;
     });
 }

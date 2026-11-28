@@ -431,7 +431,7 @@ void ServicesController::loveTrackOn(const QVariantMap &track, bool loved, const
     QStringList to;
     for (const QString &service : lovingServices()) {
         const QString record = lovedKey(service);
-        const auto known = onAccounts.constFind(service);
+        const auto known = onAccounts.constFind(record);
         const bool has = known != onAccounts.cend() ? known->contains(song) : hasLove(record, song);
         if (!loved || !has)
             to.append(record);
@@ -587,28 +587,32 @@ void ServicesController::readAccountLoves(const QString &service, quint64 sync, 
     QNetworkRequest request(url);
     request.setTransferTimeout(services::detail::requestTimeoutMs);
     QNetworkReply *reply = trackReply(m_net->get(request));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, service, sync, position, listenBrainz] {
-        reply->deleteLater();
-        if (sync != m_likesSyncId || !m_likesSync)
-            return;
-        const QJsonObject body = QJsonDocument::fromJson(reply->readAll()).object();
-        const std::optional<LovedPage> page = reply->error() != QNetworkReply::NoError ? std::nullopt
-                                              : listenBrainz                           ? feedbackPage(body)
-                                                                                       : lovedTracksPage(body);
-        // An account whose list can't be read whole is left to the app's own record.
-        if (!page) {
-            m_likesSync->onAccounts.remove(service);
-        } else {
-            m_likesSync->onAccounts[service].unite(page->songs);
-            const int next = position + (listenBrainz ? kLovesPerPage : 1);
-            if (next < page->total) {
-                readAccountLoves(service, sync, next);
-                return;
-            }
-        }
-        if (--m_likesSync->waiting == 0)
-            finishLikesSync();
-    });
+    // The list is kept by account record, so one read before someone else signed in is never used for them.
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, service, sync, position, listenBrainz, record = lovedKey(service)] {
+                reply->deleteLater();
+                if (sync != m_likesSyncId || !m_likesSync)
+                    return;
+                const QJsonObject body = QJsonDocument::fromJson(reply->readAll()).object();
+                const std::optional<LovedPage> page =
+                    reply->error() != QNetworkReply::NoError || record != lovedKey(service) ? std::nullopt
+                    : listenBrainz                                                          ? feedbackPage(body)
+                                                                                            : lovedTracksPage(body);
+                // An account whose list can't be read whole, or whose sign-in changed meanwhile, is left to the app's
+                // record.
+                if (!page) {
+                    m_likesSync->onAccounts.remove(record);
+                } else {
+                    m_likesSync->onAccounts[record].unite(page->songs);
+                    const int next = position + (listenBrainz ? kLovesPerPage : 1);
+                    if (next < page->total) {
+                        readAccountLoves(service, sync, next);
+                        return;
+                    }
+                }
+                if (--m_likesSync->waiting == 0)
+                    finishLikesSync();
+            });
 }
 
 std::optional<ServicesController::LovedPage> ServicesController::lovedTracksPage(const QJsonObject &reply) {

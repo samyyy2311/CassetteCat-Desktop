@@ -192,7 +192,7 @@ class ServicesController : public QObject {
     // Whether the account has the app's love, not counting one an unlove is on its way to take back.
     bool hasLove(const QString &record, const QString &song) const;
     void queueLove(const Love &love);
-    // Each service's own list of loves, by song, for the accounts whose list could be read.
+    // Each account's own list of loves, by song and keyed by account record, for the accounts whose list could be read.
     using AccountLoves = QHash<QString, QSet<QString>>;
     void loveTrackOn(const QVariantMap &track, bool loved, const AccountLoves &onAccounts);
     // One page of an account's loves: \c total is the page count for Last.fm and Libre.fm, and the number of loves

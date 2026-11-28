@@ -84,6 +84,56 @@ QString StreamingController::serverBase(const QString &protocol) const {
     return settings.value("stream/" + protocol + "Url").toString();
 }
 
+// The queue is kept on your Navidrome or Subsonic server, so CassetteCat on another device can carry on from it.
+// Songs from elsewhere are left out, and so is anything past the first 200, which keeps the request short.
+void StreamingController::saveServerQueue(const QStringList &filePaths, const QString &currentPath, qint64 positionMs) {
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    const QString password = CredentialVault().loadSecret("subsonic");
+    if (blackoutEnabled() || !currentPath.startsWith("subsonic:") || password.isEmpty() ||
+        !settings.value("stream/subsonicConnected", false).toBool())
+        return;
+    QList<QPair<QString, QString>> extra;
+    for (const QString &path : filePaths) {
+        if (path.startsWith("subsonic:") && extra.size() < 200)
+            extra.append({"id", path.mid(9)});
+    }
+    extra.append({{"current", currentPath.mid(9)}, {"position", QString::number(qMax<qint64>(0, positionMs))}});
+    const QString salt = randomSalt();
+    QNetworkRequest request(subsonicUrl(serverBase(QStringLiteral("subsonic")), "savePlayQueue.view",
+                                        settings.value("stream/subsonicUsername").toString(), md5Hex(password + salt),
+                                        salt, extra));
+    request.setTransferTimeout(streaming::detail::requestTimeoutMs);
+    QNetworkReply *reply = trackReply(m_net->get(request));
+    connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
+}
+
+// The queue another player left on the server, offered to carry on here; one this app saved itself isn't.
+void StreamingController::checkServerQueue() {
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    const QString password = CredentialVault().loadSecret("subsonic");
+    if (blackoutEnabled() || password.isEmpty() || !settings.value("stream/subsonicConnected", false).toBool())
+        return;
+    const QString salt = randomSalt();
+    QNetworkRequest request(subsonicUrl(serverBase(QStringLiteral("subsonic")), "getPlayQueue.view",
+                                        settings.value("stream/subsonicUsername").toString(), md5Hex(password + salt),
+                                        salt));
+    request.setTransferTimeout(streaming::detail::requestTimeoutMs);
+    QNetworkReply *reply = trackReply(m_net->get(request));
+    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+        reply->deleteLater();
+        const QJsonObject queue = parseSubsonicBody(reply->readAll()).value("playQueue").toObject();
+        const QString from = queue.value("changedBy").toString();
+        if (reply->error() != QNetworkReply::NoError || from.isEmpty() || from == subsonicClientName())
+            return;
+        QStringList paths;
+        for (const QJsonValue &entry : jsonArrayTolerant(queue, "entry"))
+            paths.append("subsonic:" + entry.toObject().value("id").toVariant().toString());
+        const QString current = queue.value("current").toVariant().toString();
+        if (!paths.isEmpty() && !current.isEmpty())
+            emit serverQueueFound(paths, "subsonic:" + current, queue.value("position").toVariant().toLongLong(), from);
+    });
+}
+
 // How good a server stream is, in kbps; 0 is the original file. A metered connection, such as a phone's hotspot, has
 // its own choice, so data isn't spent on large files there.
 int StreamingController::streamLimitKbps() const {
@@ -912,7 +962,7 @@ bool runSelfChecks(bool includeVaultProbe) {
     check(subQuery.queryItemValue("t") == "0123456789abcdef0123456789abcdef", "subsonic-token");
     check(subQuery.queryItemValue("s") == "abcdef012345", "subsonic-salt");
     check(subQuery.queryItemValue("v") == "1.16.1", "subsonic-version");
-    check(subQuery.queryItemValue("c") == "CassetteCat", "subsonic-client");
+    check(subQuery.queryItemValue("c") == "CassetteCat Desktop", "subsonic-client");
     check(subQuery.queryItemValue("f") == "json", "subsonic-format");
     check(!subUrl.toString().contains("secret-password"), "subsonic-no-password-in-url");
     check(subsonicUrl("https://m.example.com", "stream.view", "u", "t", "s", {{"id", "42"}})

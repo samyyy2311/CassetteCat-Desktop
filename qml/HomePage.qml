@@ -73,6 +73,56 @@ Item {
                                 }
                             }
 
+                            // The song CassetteCat on another device was on, with a button to carry on from there here.
+                            Rectangle {
+                                x: 32
+                                width: homeScrollView.availableWidth - 64
+                                height: elsewhereRow.implicitHeight + 24
+                                radius: 12
+                                color: surfaceCard
+                                border.width: 1
+                                border.color: borderSubtle
+                                visible: !!root.appWindow.queueElsewhere
+
+                                RowLayout {
+                                    id: elsewhereRow
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 16
+                                    anchors.rightMargin: 12
+                                    spacing: 12
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 2
+
+                                        OverlineLabel {
+                                            text: root.appWindow.queueElsewhere ? qsTr("Continue from %1").arg(root.appWindow.queueElsewhere.from) : ""
+                                        }
+                                        Label {
+                                            Layout.fillWidth: true
+                                            readonly property var track: root.appWindow.queueElsewhere ? root.appWindow.queueElsewhere.tracks[root.appWindow.queueElsewhere.index] : null
+                                            text: track ? (track.title || track.fileName || "") + (track.artist ? " · " + track.artist : "") : ""
+                                            color: textPrimary
+                                            font.family: bodyFont
+                                            font.pixelSize: 13
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+
+                                    SettingButton {
+                                        text: qsTr("Play here")
+                                        primary: true
+                                        onClicked: root.appWindow.continueQueueElsewhere()
+                                    }
+
+                                    SettingButton {
+                                        iconName: "x"
+                                        accessibleName: qsTr("Dismiss")
+                                        onClicked: root.appWindow.queueElsewhere = null
+                                    }
+                                }
+                            }
+
                             Rectangle {
                                 id: heroCard
                                 readonly property var heroTrack: spotlightTrack || root.libraryModel.firstPlayableTrack()

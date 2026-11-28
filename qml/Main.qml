@@ -418,6 +418,7 @@ ApplicationWindow {
                 restoreLastPlayedTrack()
                 restorePlaybackQueue()
                 restorePlaybackHistory()
+                streaming.checkServerQueue()
             }
         }
         function onServerLyricsFetched(filePath, lyrics, provider) {
@@ -2671,6 +2672,50 @@ ApplicationWindow {
         playQueuedTrack(playbackQueue[shuffle ? 0 : index])
     }
 
+    // A queue CassetteCat on another device left on your Navidrome or Subsonic server, offered on Home to carry on here.
+    property var queueElsewhere: null
+    // Each offer is made once: dismissing or taking it doesn't bring the same queue back.
+    property var answeredServerQueues: ({})
+
+    function saveServerQueue() {
+        const current = player.currentTrack
+        if (!current || !String(current.filePath || "").startsWith("subsonic:")) return
+        const queue = activePlaybackQueue()
+        const index = currentQueueIndex(queue)
+        const paths = (index >= 0 ? queue.slice(index) : [current]).map(track => track.filePath)
+        streaming.saveServerQueue(paths, current.filePath, player.position)
+    }
+
+    function continueQueueElsewhere() {
+        const offer = queueElsewhere
+        queueElsewhere = null
+        if (!offer) return
+        startPlayback(offer.tracks, offer.index)
+        if (offer.positionMs > 0) player.seek(offer.positionMs)
+    }
+
+    Timer {
+        // The place in the song is saved every half minute while it plays, as well as on every change.
+        interval: 30000
+        repeat: true
+        running: player.isPlaying && !!player.currentTrack && String(player.currentTrack.filePath || "").startsWith("subsonic:")
+        onTriggered: window.saveServerQueue()
+    }
+
+    Connections {
+        target: streaming
+        function onServerQueueFound(filePaths, currentPath, positionMs, from) {
+            const key = [from, currentPath, positionMs].join("|")
+            if (window.answeredServerQueues[key]) return
+            const tracks = window.tracksForPaths(filePaths).filter(track => !!track)
+            const index = tracks.findIndex(track => track.filePath === currentPath)
+            // Already playing that song here: there's nothing to carry on.
+            if (index < 0 || (player.currentTrack && player.currentTrack.filePath === currentPath)) return
+            window.answeredServerQueues[key] = true
+            window.queueElsewhere = { from: from, tracks: tracks, index: index, positionMs: positionMs }
+        }
+    }
+
     // Continues a queue handed over from the phone with the matching songs in this library, by title and artist.
     function continueHandoff(tracks, index, positionMs, playing) {
         const byKey = {}
@@ -2981,9 +3026,11 @@ ApplicationWindow {
             updateActiveLyric()
             playerStateDirty = true
             persistPlayerState()
+            saveServerQueue()
         }
         function onIsPlayingChanged() {
             tray.setPlaying(player.isPlaying)
+            saveServerQueue()
             if (player.isPlaying) {
                 // Music plays on one device at a time, so starting here stops the phone.
                 if (phonePlayback.isPlaying) phoneRemote.sendToPhone("pause")

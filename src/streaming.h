@@ -108,6 +108,10 @@ class StreamingController final : public QObject {
     Q_INVOKABLE void setAwayUrl(const QString &protocol, const QString &url);
     /// The most a server stream may use, in kbps, on metered connections or on others; 0 is the original file.
     Q_INVOKABLE void setStreamQuality(bool metered, int kbps);
+    /// Keeps the queue on the Subsonic server, from the song playing on.
+    Q_INVOKABLE void saveServerQueue(const QStringList &filePaths, const QString &currentPath, qint64 positionMs);
+    /// Asks for a queue another player left on the server, answered with serverQueueFound.
+    Q_INVOKABLE void checkServerQueue();
     /// Reads non-secret remote-server configuration from \p settingsPath.
     static QVariantMap serverConfigSnapshot(const QString &settingsPath);
     /// Returns whether a certificate digest is already saved for the server at \p url.
@@ -123,6 +127,8 @@ class StreamingController final : public QObject {
     void jellyfinQuickConnectChanged();
     void serverFavoriteFailed(const QString &filePath);
     void serverLyricsFetched(const QString &filePath, const QString &lyrics, const QString &provider);
+    void serverQueueFound(const QStringList &filePaths, const QString &currentPath, qint64 positionMs,
+                          const QString &from);
 
   private:
     /// The address requests for the server go to: its away address when only that answers.

@@ -18,6 +18,8 @@ bool isUnencryptedPublicUrl(const QString &raw);
 // A host on the home network: a private or loopback address, or a name only a home network answers for.
 bool isPrivateOrLocalHost(const QString &host);
 QString withoutTrailingSlashes(QString url);
+// The name the app gives Subsonic servers, which they record as who saved a queue.
+QString subsonicClientName();
 QString md5Hex(const QString &input);
 QString randomSalt();
 QUrl subsonicUrl(const QString &base, const QString &endpoint, const QString &username, const QString &token,

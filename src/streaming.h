@@ -93,7 +93,8 @@ class StreamingController final : public QObject {
     Q_INVOKABLE void setBlackoutEnabled(bool enabled);
     Q_INVOKABLE void setServerFavorite(const QString &filePath, bool favorite);
     Q_INVOKABLE QString remoteArtwork(const QString &filePath);
-    Q_INVOKABLE void fetchJellyfinLyrics(const QString &filePath, const QString &remoteId);
+    /// The song's lyrics from your Jellyfin or Subsonic server, answered with serverLyricsFetched.
+    Q_INVOKABLE void fetchServerLyrics(const QString &filePath, const QString &remoteId);
 
     // C++-only: build an authenticated stream URL for playback. Never exposed to QML.
     QUrl streamSourceFor(const QString &source, const QString &remoteId) const;
@@ -117,9 +118,11 @@ class StreamingController final : public QObject {
     void serverFailed(const QString &protocol, const QString &message);
     void jellyfinQuickConnectChanged();
     void serverFavoriteFailed(const QString &filePath);
-    void jellyfinLyricsFetched(const QString &filePath, const QString &lyrics);
+    void serverLyricsFetched(const QString &filePath, const QString &lyrics, const QString &provider);
 
   private:
+    void fetchJellyfinLyrics(const QString &filePath, const QString &remoteId);
+    void fetchSubsonicLyrics(const QString &filePath, const QString &remoteId);
     void updateStatusTexts();
     void setRemoteTracks(const QVariantList &tracks);
     void replaceProviderTracks(const QString &prefix, const QVariantList &tracks);

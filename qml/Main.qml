@@ -420,10 +420,10 @@ ApplicationWindow {
                 restorePlaybackHistory()
             }
         }
-        function onJellyfinLyricsFetched(filePath, lyrics) {
+        function onServerLyricsFetched(filePath, lyrics, provider) {
             if (!player.currentTrack || player.currentTrack.filePath !== filePath) return
             if (lyrics && lyrics.trim().length) {
-                applyLyrics(lyrics, "Jellyfin")
+                applyLyrics(lyrics, provider)
             } else if (!offlineBlackout && svcLrclib) {
                 services.fetchLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", player.currentTrack.durationSeconds || 0)
             }
@@ -2328,9 +2328,9 @@ ApplicationWindow {
             applyLyrics(embedded, "Embedded metadata")
         } else if (!preferLocalLyrics && local && local.trim().length) {
             applyLyrics(local, "Local file")
-        } else if (!offlineBlackout && track.source === "jellyfin" && track.remoteId) {
+        } else if (!offlineBlackout && (track.source === "jellyfin" || track.source === "subsonic") && track.remoteId) {
             applyLyrics("", "")
-            streaming.fetchJellyfinLyrics(track.filePath, track.remoteId)
+            streaming.fetchServerLyrics(track.filePath, track.remoteId)
         } else if (!offlineBlackout && svcLrclib) {
             applyLyrics("", "")
             services.fetchLyrics(track.title || track.fileName || "", track.artist || "", track.album || "", track.durationSeconds || 0)

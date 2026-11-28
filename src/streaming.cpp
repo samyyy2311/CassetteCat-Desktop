@@ -526,18 +526,61 @@ void StreamingController::setServerFavorite(const QString &filePath, bool favori
     }
 }
 
-void StreamingController::fetchJellyfinLyrics(const QString &filePath, const QString &remoteId) {
-    if (!filePath.startsWith("jellyfin:") || remoteId.isEmpty()) {
-        emit jellyfinLyricsFetched(filePath, QString());
-        return;
-    }
+namespace {
+// One lyric line, timed as LRC when it has a start time.
+QString lyricLine(const QString &text, qint64 startMs, bool timed) {
+    if (!timed || startMs < 0)
+        return text + QLatin1Char('\n');
+    return QString("[%1:%2.%3]%4\n")
+        .arg(startMs / 60000, 2, 10, QLatin1Char('0'))
+        .arg((startMs / 1000) % 60, 2, 10, QLatin1Char('0'))
+        .arg((startMs % 1000) / 10, 2, 10, QLatin1Char('0'))
+        .arg(text);
+}
 
+// Timed lyrics when the server has them, else the first plain ones; the offset is how much later they should show.
+QString subsonicLyricsText(const QJsonObject &response) {
+    const QJsonArray all = response.value("lyricsList").toObject().value("structuredLyrics").toArray();
+    QJsonObject chosen;
+    for (const QJsonValue &value : all) {
+        const QJsonObject lyrics = value.toObject();
+        if (lyrics.value("line").toArray().isEmpty())
+            continue;
+        if (chosen.isEmpty() || (lyrics.value("synced").toBool() && !chosen.value("synced").toBool()))
+            chosen = lyrics;
+    }
+    const bool timed = chosen.value("synced").toBool();
+    const qint64 offset = chosen.value("offset").toInteger();
+    QString result;
+    for (const QJsonValue &value : chosen.value("line").toArray()) {
+        const QJsonObject line = value.toObject();
+        const QString text = line.value("value").toString();
+        if (!text.trimmed().isEmpty())
+            result += lyricLine(text, line.contains("start") ? line.value("start").toInteger() + offset : -1, timed);
+    }
+    return result.trimmed();
+}
+} // namespace
+
+// Lyrics kept on your own server, asked for before an online search.
+void StreamingController::fetchServerLyrics(const QString &filePath, const QString &remoteId) {
+    if (remoteId.isEmpty())
+        emit serverLyricsFetched(filePath, QString(), QString());
+    else if (filePath.startsWith("jellyfin:"))
+        fetchJellyfinLyrics(filePath, remoteId);
+    else if (filePath.startsWith("subsonic:"))
+        fetchSubsonicLyrics(filePath, remoteId);
+    else
+        emit serverLyricsFetched(filePath, QString(), QString());
+}
+
+void StreamingController::fetchJellyfinLyrics(const QString &filePath, const QString &remoteId) {
     QSettings settings(m_settingsPath, QSettings::IniFormat);
     CredentialVault vault;
     const QString base = settings.value("stream/jellyfinUrl").toString();
     const QString token = vault.loadSecret("jellyfin");
     if (base.isEmpty() || token.isEmpty()) {
-        emit jellyfinLyricsFetched(filePath, QString());
+        emit serverLyricsFetched(filePath, QString(), QString());
         return;
     }
 
@@ -551,25 +594,41 @@ void StreamingController::fetchJellyfinLyrics(const QString &filePath, const QSt
     connect(reply, &QNetworkReply::finished, this, [this, reply, filePath] {
         QString result;
         if (reply->error() == QNetworkReply::NoError) {
-            const QJsonArray lines = QJsonDocument::fromJson(reply->readAll()).object().value("Lyrics").toArray();
-            for (const QJsonValue &value : lines) {
+            const QJsonObject body = QJsonDocument::fromJson(reply->readAll()).object();
+            // Timed lyrics are timed throughout, including a first line that starts at zero.
+            const bool timed = body.value("Metadata").toObject().value("IsSynced").toBool();
+            for (const QJsonValue &value : body.value("Lyrics").toArray()) {
                 const QJsonObject line = value.toObject();
                 const QString text = line.value("Text").toString();
-                if (text.isEmpty())
-                    continue;
-                const qint64 startMs = line.value("Start").toVariant().toLongLong() / 10000;
-                if (startMs > 0) {
-                    result += QString("[%1:%2.%3]%4\n")
-                                  .arg(startMs / 60000, 2, 10, QLatin1Char('0'))
-                                  .arg((startMs / 1000) % 60, 2, 10, QLatin1Char('0'))
-                                  .arg((startMs % 1000) / 10, 2, 10, QLatin1Char('0'))
-                                  .arg(text);
-                } else {
-                    result += text + QLatin1Char('\n');
-                }
+                if (!text.isEmpty())
+                    result += lyricLine(text, line.value("Start").toVariant().toLongLong() / 10000, timed);
             }
         }
-        emit jellyfinLyricsFetched(filePath, result.trimmed());
+        emit serverLyricsFetched(filePath, result.trimmed(), QStringLiteral("Jellyfin"));
+    });
+}
+
+// OpenSubsonic servers, such as Navidrome, keep a song's lyrics, sometimes in several languages and timed or not.
+void StreamingController::fetchSubsonicLyrics(const QString &filePath, const QString &remoteId) {
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    const QString password = CredentialVault().loadSecret("subsonic");
+    const QString base = settings.value("stream/subsonicUrl").toString();
+    if (base.isEmpty() || password.isEmpty()) {
+        emit serverLyricsFetched(filePath, QString(), QString());
+        return;
+    }
+    const QString user = settings.value("stream/subsonicUsername").toString();
+    const QString salt = randomSalt();
+    QNetworkRequest request(
+        subsonicUrl(base, "getLyricsBySongId.view", user, md5Hex(password + salt), salt, {{"id", remoteId}}));
+    request.setTransferTimeout(streaming::detail::requestTimeoutMs);
+    QNetworkReply *reply = trackReply(m_net->get(request));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, filePath] {
+        // A server without OpenSubsonic doesn't know the request, which counts as no lyrics.
+        const QString result = reply->error() == QNetworkReply::NoError
+                                   ? subsonicLyricsText(parseSubsonicBody(reply->readAll()))
+                                   : QString();
+        emit serverLyricsFetched(filePath, result, QStringLiteral("Your server"));
     });
 }
 
@@ -765,6 +824,13 @@ bool runSelfChecks(bool includeVaultProbe) {
               .toString()
               .contains("stream.view"),
           "subsonic-stream-endpoint");
+
+    const QJsonObject lyricsResponse = QJsonDocument::fromJson(R"({"lyricsList": {"structuredLyrics": [
+        {"synced": false, "line": [{"value": "Plain"}]},
+        {"synced": true, "offset": 500, "line": [{"start": 0, "value": "First"}, {"start": 61000, "value": "Second"}]}]}})")
+                                           .object();
+    check(subsonicLyricsText(lyricsResponse) == "[00:00.50]First\n[01:01.50]Second", "subsonic-timed-lyrics-first");
+    check(subsonicLyricsText(QJsonObject{}).isEmpty(), "subsonic-no-lyrics");
 
     const QByteArray okBody = R"({"subsonic-response": {"status": "ok", "albumList2": {"album": [{"id": "a1"}]}}})";
     const QJsonObject okResponse = parseSubsonicBody(okBody);

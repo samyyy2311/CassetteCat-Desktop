@@ -267,8 +267,18 @@ Item {
 
                                 Loader {
                                     required property var modelData
-                                    // An empty section hides itself, and the column then leaves no gap for it.
-                                    visible: !!item && item.visible
+                                    // A section with nothing in it is left out, so the column leaves no gap for it. This is decided
+                                    // here, from what the section would show: the section's own visibility can't be read once this
+                                    // has hidden it.
+                                    visible: ({
+                                        startHere: root.quickPicks.length > 0,
+                                        heavyRotation: root.heavyRotation.length > 0,
+                                        recentlyPlayed: root.recentlyPlayed.length > 0,
+                                        recentlyAdded: root.recentlyAdded.length > 0,
+                                        forgottenFavorites: root.forgottenFavs.length > 0,
+                                        albums: root.albumsRotation.length > 0,
+                                        artists: root.artistsRotation.length > 0
+                                    })[modelData.id] === true
                                     sourceComponent: ({
                                         startHere: startHereSection,
                                         heavyRotation: heavyRotationSection,

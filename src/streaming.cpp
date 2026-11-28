@@ -84,6 +84,19 @@ QString StreamingController::serverBase(const QString &protocol) const {
     return settings.value("stream/" + protocol + "Url").toString();
 }
 
+// How good a server stream is, in kbps; 0 is the original file. A metered connection, such as a phone's hotspot, has
+// its own choice, so data isn't spent on large files there.
+int StreamingController::streamLimitKbps() const {
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    const bool metered = QNetworkInformation::instance() && QNetworkInformation::instance()->isMetered();
+    return settings.value(metered ? "stream/meteredQualityKbps" : "stream/qualityKbps", 0).toInt();
+}
+
+void StreamingController::setStreamQuality(bool metered, int kbps) {
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    settings.setValue(metered ? "stream/meteredQualityKbps" : "stream/qualityKbps", kbps);
+}
+
 void StreamingController::setAwayUrl(const QString &protocol, const QString &url) {
     QSettings settings(m_settingsPath, QSettings::IniFormat);
     const QString trimmed = withoutTrailingSlashes(url.trimmed());
@@ -775,9 +788,12 @@ QUrl StreamingController::streamSourceFor(const QString &source, const QString &
             return {};
         }
         const QString salt = randomSalt();
+        QList<QPair<QString, QString>> extra{{"id", remoteId}};
+        // Over the chosen quality, the server converts the song to MP3 at that bitrate.
+        if (const int kbps = streamLimitKbps(); kbps > 0)
+            extra.append({{"maxBitRate", QString::number(kbps)}, {"format", "mp3"}});
         return subsonicUrl(serverBase(QStringLiteral("subsonic")), "stream.view",
-                           settings.value("stream/subsonicUsername").toString(), md5Hex(password + salt), salt,
-                           {{"id", remoteId}});
+                           settings.value("stream/subsonicUsername").toString(), md5Hex(password + salt), salt, extra);
     }
     if (source == "jellyfin" && settings.value("stream/jellyfinConnected", false).toBool()) {
         const QString token = vault.loadSecret("jellyfin");
@@ -794,9 +810,11 @@ QUrl StreamingController::streamSourceFor(const QString &source, const QString &
         q.addQueryItem("transcodingContainer", "mp3");
         q.addQueryItem("transcodingProtocol", "http");
         q.addQueryItem("audioCodec", "mp3");
-        q.addQueryItem("audioBitRate", "320000");
-        // High enough that lossless files are sent as they are rather than converted to fit.
-        q.addQueryItem("maxStreamingBitrate", "140000000");
+        // Without a chosen quality the limit is high enough that lossless files are sent as they are; with one, a
+        // song over it is converted to MP3 at that bitrate.
+        const int kbps = streamLimitKbps();
+        q.addQueryItem("audioBitRate", kbps > 0 ? QString::number(kbps * 1000) : QStringLiteral("320000"));
+        q.addQueryItem("maxStreamingBitrate", kbps > 0 ? QString::number(kbps * 1000) : QStringLiteral("140000000"));
         q.addQueryItem("userId", settings.value("stream/jellyfinUserId").toString());
         q.addQueryItem("deviceId", settings.value("stream/deviceId").toString());
         q.addQueryItem("api_key", token);
@@ -827,6 +845,8 @@ QVariantMap StreamingController::serverConfigSnapshot(const QString &settingsPat
     snapshot.insert("jellyfin/connected", settings.value("stream/jellyfinConnected", false).toBool());
     snapshot.insert("jellyfin/trustCert", settings.value("stream/jellyfinTrustCert", false).toBool());
     snapshot.insert("jellyfin/awayUrl", settings.value("stream/jellyfinAwayUrl").toString());
+    snapshot.insert("quality/normal", settings.value("stream/qualityKbps", 0).toInt());
+    snapshot.insert("quality/metered", settings.value("stream/meteredQualityKbps", 0).toInt());
     return snapshot;
 }
 

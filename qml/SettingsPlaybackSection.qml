@@ -9,6 +9,16 @@ ColumnLayout {
     property string sleepTimerMode: "off"
     property string sleepTimerStatus: qsTr("Off")
     property bool sleepFadeOut: true
+    // Saved by the streaming controller, which builds the stream links.
+    property int streamQuality: streaming.serverConfigSnapshot()["quality/normal"] || 0
+    property int meteredStreamQuality: streaming.serverConfigSnapshot()["quality/metered"] || 0
+    readonly property var qualityOptions: [
+        { value: "0", label: qsTr("Original") },
+        { value: "320", label: qsTr("320 kbps") },
+        { value: "256", label: qsTr("256 kbps") },
+        { value: "192", label: qsTr("192 kbps") },
+        { value: "128", label: qsTr("128 kbps") }
+    ]
 
     signal resumeQueueOnLaunchSelected(bool value)
     signal autoplaySelected(bool value)
@@ -43,6 +53,36 @@ ColumnLayout {
             SettingSwitch {
                 checked: root.autoplayEnabled
                 onToggled: val => root.autoplaySelected(val)
+            }
+        }
+    }
+
+    SectionLabel { text: qsTr("Streaming") }
+
+    SettingCard {
+        SettingChoiceGroup {
+            iconName: "audio-lines"
+            title: qsTr("Stream Quality")
+            subtitle: qsTr("How good songs from your server sound")
+            options: root.qualityOptions
+            selectedValue: String(root.streamQuality)
+            onOptionSelected: val => {
+                root.streamQuality = Number(val)
+                streaming.setStreamQuality(false, root.streamQuality)
+            }
+        }
+
+        SettingDivider {}
+
+        SettingChoiceGroup {
+            iconName: "smartphone"
+            title: qsTr("On Metered Connections")
+            subtitle: qsTr("Such as your phone's hotspot. A lower quality uses less data")
+            options: root.qualityOptions
+            selectedValue: String(root.meteredStreamQuality)
+            onOptionSelected: val => {
+                root.meteredStreamQuality = Number(val)
+                streaming.setStreamQuality(true, root.meteredStreamQuality)
             }
         }
     }

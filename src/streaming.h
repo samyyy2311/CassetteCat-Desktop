@@ -106,6 +106,8 @@ class StreamingController final : public QObject {
     Q_INVOKABLE QVariantMap serverConfigSnapshot() const;
     /// A second address for the server, used when its own doesn't answer, such as away from home. Empty removes it.
     Q_INVOKABLE void setAwayUrl(const QString &protocol, const QString &url);
+    /// The most a server stream may use, in kbps, on metered connections or on others; 0 is the original file.
+    Q_INVOKABLE void setStreamQuality(bool metered, int kbps);
     /// Reads non-secret remote-server configuration from \p settingsPath.
     static QVariantMap serverConfigSnapshot(const QString &settingsPath);
     /// Returns whether a certificate digest is already saved for the server at \p url.
@@ -125,6 +127,7 @@ class StreamingController final : public QObject {
   private:
     /// The address requests for the server go to: its away address when only that answers.
     QString serverBase(const QString &protocol) const;
+    int streamLimitKbps() const;
     void checkServerAddresses();
     void probeServerAddress(const QString &protocol, const QStringList &candidates, quint64 check);
     QHash<QString, QString> m_activeBase;

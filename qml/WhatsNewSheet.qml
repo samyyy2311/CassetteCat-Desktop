@@ -40,30 +40,51 @@ AppDialog {
                 width: parent.width
                 spacing: 10
 
+                // Each part of the release, such as Lyrics or Fixes, under the small capitals used above page titles.
                 Repeater {
                     model: root.notes
 
-                    RowLayout {
+                    ColumnLayout {
+                        required property var modelData
+                        required property int index
+
                         Layout.fillWidth: true
+                        Layout.topMargin: index > 0 ? 8 : 0
                         spacing: 10
 
-                        Rectangle {
-                            Layout.alignment: Qt.AlignTop
-                            Layout.topMargin: 8
-                            width: 4
-                            height: 4
-                            radius: 2
-                            color: textSecondary
+                        OverlineLabel {
+                            visible: text.length > 0
+                            text: modelData.title
                         }
 
-                        Label {
-                            Layout.fillWidth: true
-                            text: modelData
-                            color: textSecondary
-                            font.family: bodyFont
-                            font.pixelSize: 13
-                            lineHeight: 1.3
-                            wrapMode: Text.WordWrap
+                        Repeater {
+                            model: modelData.notes
+
+                            RowLayout {
+                                required property string modelData
+
+                                Layout.fillWidth: true
+                                spacing: 10
+
+                                Rectangle {
+                                    Layout.alignment: Qt.AlignTop
+                                    Layout.topMargin: 8
+                                    width: 4
+                                    height: 4
+                                    radius: 2
+                                    color: accentText
+                                }
+
+                                Label {
+                                    Layout.fillWidth: true
+                                    text: modelData
+                                    color: textSecondary
+                                    font.family: bodyFont
+                                    font.pixelSize: 13
+                                    lineHeight: 1.3
+                                    wrapMode: Text.WordWrap
+                                }
+                            }
                         }
                     }
                 }

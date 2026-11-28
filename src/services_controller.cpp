@@ -63,10 +63,14 @@ bool ServicesController::serviceEnabled(const QSettings &settings, const QString
 
 bool ServicesController::selfCheck() {
     SelfCheck check("Services");
-    const QStringList notes = releaseNotesFrom(
-        QStringLiteral("## [1.1.0]\n### Added\n* **Lyrics**: synced.\n* Faster.\n\n---\n\n## [1.0.0]\n* Old.\n"),
+    const QVariantList notes = releaseNotesFrom(
+        QStringLiteral("## [1.1.0]\n* First.\n### Lyrics\n* **Lyrics**: synced.\n* `Faster`.\n### Empty\n\n---\n\n"
+                       "## [1.0.0]\n* Old.\n"),
         QStringLiteral("1.1.0"));
-    check.expect(notes == QStringList{QStringLiteral("Lyrics: synced."), QStringLiteral("Faster.")}, "release notes");
+    check.expect(
+        notes == QVariantList{QVariantMap{{"title", QString()}, {"notes", QStringList{"First."}}},
+                              QVariantMap{{"title", "Lyrics"}, {"notes", QStringList{"Lyrics: synced.", "Faster."}}}},
+        "release notes keep their parts");
     class PendingReply final : public QNetworkReply {
       public:
         void abort() override {
@@ -289,26 +293,37 @@ int ServicesController::compareVersions(const QString &v1, const QString &v2) {
     return 0;
 }
 
-QStringList ServicesController::releaseNotes(const QString &version) const {
+QVariantList ServicesController::releaseNotes(const QString &version) const {
     QFile changelog(QStringLiteral(":/qt/qml/CassetteCat/CHANGELOG.md"));
     if (!changelog.open(QIODevice::ReadOnly | QIODevice::Text))
         return {};
     return releaseNotesFrom(QString::fromUtf8(changelog.readAll()), version);
 }
 
-QStringList ServicesController::releaseNotesFrom(const QString &changelog, const QString &version) {
-    QStringList notes;
+// Each part of the version's notes, such as Lyrics or Fixes, as {title, notes}. Notes before any "### " heading go in
+// an untitled part, and parts with no notes are left out.
+QVariantList ServicesController::releaseNotesFrom(const QString &changelog, const QString &version) {
+    QList<std::pair<QString, QStringList>> parts;
     bool inSection = false;
     for (const QString &line : changelog.split('\n')) {
         if (line.startsWith(QStringLiteral("## ["))) {
             if (inSection)
                 break;
             inSection = line.startsWith(QStringLiteral("## [") + version + ']');
+        } else if (inSection && line.startsWith(QStringLiteral("### "))) {
+            parts.append({line.mid(4).trimmed(), {}});
         } else if (inSection && line.startsWith(QStringLiteral("* "))) {
-            notes.append(line.mid(2).remove(QStringLiteral("**")).trimmed());
+            if (parts.isEmpty())
+                parts.append({QString(), {}});
+            parts.last().second.append(line.mid(2).remove(QStringLiteral("**")).remove(u'`').trimmed());
         }
     }
-    return notes;
+    QVariantList sections;
+    for (const auto &[title, notes] : parts) {
+        if (!notes.isEmpty())
+            sections.append(QVariantMap{{"title", title}, {"notes", notes}});
+    }
+    return sections;
 }
 
 void ServicesController::checkForUpdates(bool manual) {

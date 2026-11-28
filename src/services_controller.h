@@ -97,7 +97,7 @@ class ServicesController : public QObject {
     /// Queries the latest release and emits the resulting update status.
     Q_INVOKABLE void checkForUpdates(bool manual = false);
     /// The changelog's points for \p version, empty when it has none.
-    Q_INVOKABLE QStringList releaseNotes(const QString &version) const;
+    Q_INVOKABLE QVariantList releaseNotes(const QString &version) const;
     /// Compares dotted release versions, returning their relative order.
     static int compareVersions(const QString &v1, const QString &v2);
 
@@ -128,7 +128,7 @@ class ServicesController : public QObject {
     void updateCheckFailed(const QString &error, bool manual);
 
   private:
-    static QStringList releaseNotesFrom(const QString &changelog, const QString &version);
+    static QVariantList releaseNotesFrom(const QString &changelog, const QString &version);
     enum class LyricsLookup { Found, Missing, Failed };
     /// Exact match first, then search; synced lyrics preferred.
     void lookUpLyrics(const QVariantMap &song, std::function<void(LyricsLookup, const QString &)> done);

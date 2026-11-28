@@ -42,6 +42,8 @@ class ServicesController : public QObject {
 
     Q_INVOKABLE QString getArtistImage(const QString &artist) const;
     Q_INVOKABLE QString localLyricsFor(const QString &filePath) const;
+    /// Lyrics picked or written by hand for the song, as {text, provider}, or empty when there are none.
+    Q_INVOKABLE QVariantMap chosenLyrics(const QString &title, const QString &artist, const QString &album) const;
     Q_INVOKABLE void cacheLyrics(const QString &title, const QString &artist, const QString &album,
                                  const QString &syncedLyrics, const QString &plainLyrics, const QString &provider);
     Q_INVOKABLE void fetchLyrics(const QString &title, const QString &artist, const QString &album,

@@ -73,6 +73,56 @@ Item {
                                 }
                             }
 
+                            // The song CassetteCat on another device was on, with a button to carry on from there here.
+                            Rectangle {
+                                x: 32
+                                width: homeScrollView.availableWidth - 64
+                                height: elsewhereRow.implicitHeight + 24
+                                radius: 12
+                                color: surfaceCard
+                                border.width: 1
+                                border.color: borderSubtle
+                                visible: !!root.appWindow.queueElsewhere
+
+                                RowLayout {
+                                    id: elsewhereRow
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 16
+                                    anchors.rightMargin: 12
+                                    spacing: 12
+
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 2
+
+                                        OverlineLabel {
+                                            text: root.appWindow.queueElsewhere ? qsTr("Continue from %1").arg(root.appWindow.queueElsewhere.from) : ""
+                                        }
+                                        Label {
+                                            Layout.fillWidth: true
+                                            readonly property var track: root.appWindow.queueElsewhere ? root.appWindow.queueElsewhere.tracks[root.appWindow.queueElsewhere.index] : null
+                                            text: track ? (track.title || track.fileName || "") + (track.artist ? " · " + track.artist : "") : ""
+                                            color: textPrimary
+                                            font.family: bodyFont
+                                            font.pixelSize: 13
+                                            elide: Text.ElideRight
+                                        }
+                                    }
+
+                                    SettingButton {
+                                        text: qsTr("Play here")
+                                        primary: true
+                                        onClicked: root.appWindow.continueQueueElsewhere()
+                                    }
+
+                                    SettingButton {
+                                        iconName: "x"
+                                        accessibleName: qsTr("Dismiss")
+                                        onClicked: root.appWindow.queueElsewhere = null
+                                    }
+                                }
+                            }
+
                             Rectangle {
                                 id: heroCard
                                 readonly property var heroTrack: spotlightTrack || root.libraryModel.firstPlayableTrack()
@@ -211,169 +261,227 @@ Item {
                                 }
                             }
 
-                            Column {
-                                x: 32
-                                width: homeScrollView.availableWidth - 64
-                                visible: quickPicks.length > 0
-                                spacing: 16
+                            // Home's sections in the order chosen in Settings > Look & Feel, leaving out the ones switched off.
+                            Repeater {
+                                model: root.appWindow.homeSections.filter(section => section.shown)
 
-                                HomeSectionHeader {
-                                    title: qsTr("Start here")
-                                    subtitle: qsTr("Handpicked from your library")
-                                    onPlayClicked: {
-                                        if (quickPicks.length > 0) root.appWindow.playTrack(quickPicks[0])
-                                    }
-                                    onShuffleClicked: {
-                                        root.appWindow.refreshHomeRecommendations()
-                                        if (quickPicks.length > 0) root.appWindow.playTrack(quickPicks[0])
-                                    }
+                                Loader {
+                                    required property var modelData
+                                    // A section with nothing in it is left out, so the column leaves no gap for it. This is decided
+                                    // here, from what the section would show: the section's own visibility can't be read once this
+                                    // has hidden it.
+                                    visible: ({
+                                        startHere: root.quickPicks.length > 0,
+                                        heavyRotation: root.heavyRotation.length > 0,
+                                        recentlyPlayed: root.recentlyPlayed.length > 0,
+                                        recentlyAdded: root.recentlyAdded.length > 0,
+                                        forgottenFavorites: root.forgottenFavs.length > 0,
+                                        albums: root.albumsRotation.length > 0,
+                                        artists: root.artistsRotation.length > 0
+                                    })[modelData.id] === true
+                                    sourceComponent: ({
+                                        startHere: startHereSection,
+                                        heavyRotation: heavyRotationSection,
+                                        recentlyPlayed: recentlyPlayedSection,
+                                        recentlyAdded: recentlyAddedSection,
+                                        forgottenFavorites: forgottenFavoritesSection,
+                                        albums: albumsSection,
+                                        artists: artistsSection
+                                    })[modelData.id] || null
                                 }
+                            }
 
-                                AppListView {
-                                    width: parent.width
-                                    activeFocusOnTab: true
-                                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
-                                    height: 225
-                                    orientation: ListView.Horizontal
+                            Component {
+                                id: startHereSection
+
+                                Column {
+                                    x: 32
+                                    width: homeScrollView.availableWidth - 64
+                                    visible: quickPicks.length > 0
                                     spacing: 16
-                                    clip: false
-                                    reuseItems: true
-                                    model: quickPicks
 
-                                    delegate: HomeSongCard {
-                                        track: modelData
-                                        onClicked: root.appWindow.playTrack(modelData)
+                                    HomeSectionHeader {
+                                        title: qsTr("Start here")
+                                        subtitle: qsTr("Handpicked from your library")
+                                        onPlayClicked: {
+                                            if (quickPicks.length > 0) root.appWindow.playTrack(quickPicks[0])
+                                        }
+                                        onShuffleClicked: {
+                                            root.appWindow.refreshHomeRecommendations()
+                                            if (quickPicks.length > 0) root.appWindow.playTrack(quickPicks[0])
+                                        }
+                                    }
+
+                                    AppListView {
+                                        width: parent.width
+                                        activeFocusOnTab: true
+                                        onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
+                                        height: 225
+                                        orientation: ListView.Horizontal
+                                        spacing: 16
+                                        clip: false
+                                        reuseItems: true
+                                        model: quickPicks
+
+                                        delegate: HomeSongCard {
+                                            track: modelData
+                                            onClicked: root.appWindow.playTrack(modelData)
+                                        }
                                     }
                                 }
                             }
 
-                            Column {
-                                x: 32
-                                width: homeScrollView.availableWidth - 64
-                                visible: heavyRotation.length > 0
-                                spacing: 16
+                            Component {
+                                id: heavyRotationSection
 
-                                HomeSectionHeader {
-                                    title: qsTr("Heavy Rotation")
-                                    subtitle: qsTr("Your most played tracks")
-                                    onPlayClicked: {
-                                        if (heavyRotation.length > 0) root.appWindow.playTrack(heavyRotation[0])
-                                    }
-                                    onShuffleClicked: root.appWindow.shuffleAll()
-                                }
-
-                                AppListView {
-                                    width: parent.width
-                                    activeFocusOnTab: true
-                                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
-                                    height: 225
-                                    orientation: ListView.Horizontal
+                                Column {
+                                    x: 32
+                                    width: homeScrollView.availableWidth - 64
+                                    visible: heavyRotation.length > 0
                                     spacing: 16
-                                    clip: false
-                                    reuseItems: true
-                                    model: heavyRotation
 
-                                    delegate: HomeSongCard {
-                                        track: modelData
-                                        onClicked: root.appWindow.playTrack(modelData)
+                                    HomeSectionHeader {
+                                        title: qsTr("Heavy Rotation")
+                                        subtitle: qsTr("Your most played tracks")
+                                        onPlayClicked: {
+                                            if (heavyRotation.length > 0) root.appWindow.playTrack(heavyRotation[0])
+                                        }
+                                        onShuffleClicked: root.appWindow.shuffleAll()
+                                    }
+
+                                    AppListView {
+                                        width: parent.width
+                                        activeFocusOnTab: true
+                                        onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
+                                        height: 225
+                                        orientation: ListView.Horizontal
+                                        spacing: 16
+                                        clip: false
+                                        reuseItems: true
+                                        model: heavyRotation
+
+                                        delegate: HomeSongCard {
+                                            track: modelData
+                                            onClicked: root.appWindow.playTrack(modelData)
+                                        }
                                     }
                                 }
                             }
 
-                            HomeTrackShelf {
-                                title: qsTr("Recently Played")
-                                subtitle: qsTr("Continue where you left off")
-                                tracks: recentlyPlayed
-                                onTrackSelected: track => root.appWindow.playTrack(track)
-                                onShuffleSelected: root.appWindow.shufflePlayback(recentlyPlayed)
-                            }
+                            Component {
+                                id: recentlyPlayedSection
 
-                            HomeTrackShelf {
-                                title: qsTr("Recently Added")
-                                subtitle: qsTr("New to your library")
-                                tracks: recentlyAdded
-                                onTrackSelected: track => root.appWindow.playTrack(track)
-                                onShuffleSelected: root.appWindow.shufflePlayback(recentlyAdded)
-                            }
-
-                            HomeTrackShelf {
-                                title: qsTr("Forgotten Favorites")
-                                subtitle: qsTr("Liked tracks waiting for another spin")
-                                tracks: forgottenFavs
-                                onTrackSelected: track => root.appWindow.playTrack(track)
-                                onShuffleSelected: root.appWindow.shufflePlayback(forgottenFavs)
-                            }
-
-                            Column {
-                                x: 32
-                                width: homeScrollView.availableWidth - 64
-                                visible: albumsRotation.length > 0
-                                spacing: 16
-
-                                HomeSectionHeader {
-                                    title: qsTr("Albums in Rotation")
-                                    subtitle: qsTr("%n album(s) in your library", "", albumCount)
-                                    onPlayClicked: {
-                                        if (albumsRotation.length > 0) root.appWindow.playTrack(albumsRotation[0].track)
-                                    }
-                                    onShuffleClicked: root.appWindow.shuffleAll()
+                                HomeTrackShelf {
+                                    title: qsTr("Recently Played")
+                                    subtitle: qsTr("Continue where you left off")
+                                    tracks: recentlyPlayed
+                                    onTrackSelected: track => root.appWindow.playTrack(track)
+                                    onShuffleSelected: root.appWindow.shufflePlayback(recentlyPlayed)
                                 }
+                            }
 
-                                AppListView {
-                                    width: parent.width
-                                    activeFocusOnTab: true
-                                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
-                                    height: 225
-                                    orientation: ListView.Horizontal
+                            Component {
+                                id: recentlyAddedSection
+
+                                HomeTrackShelf {
+                                    title: qsTr("Recently Added")
+                                    subtitle: qsTr("New to your library")
+                                    tracks: recentlyAdded
+                                    onTrackSelected: track => root.appWindow.playTrack(track)
+                                    onShuffleSelected: root.appWindow.shufflePlayback(recentlyAdded)
+                                }
+                            }
+
+                            Component {
+                                id: forgottenFavoritesSection
+
+                                HomeTrackShelf {
+                                    title: qsTr("Forgotten Favorites")
+                                    subtitle: qsTr("Liked tracks waiting for another spin")
+                                    tracks: forgottenFavs
+                                    onTrackSelected: track => root.appWindow.playTrack(track)
+                                    onShuffleSelected: root.appWindow.shufflePlayback(forgottenFavs)
+                                }
+                            }
+
+                            Component {
+                                id: albumsSection
+
+                                Column {
+                                    x: 32
+                                    width: homeScrollView.availableWidth - 64
+                                    visible: albumsRotation.length > 0
                                     spacing: 16
-                                    clip: false
-                                    reuseItems: true
-                                    model: albumsRotation
 
-                                    delegate: AlbumCard {
-                                        cardWidth: 150
-                                        cardHeight: 225
-                                        name: modelData.name
-                                        count: modelData.count
-                                        track: modelData.track
-                                        onClicked: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
+                                    HomeSectionHeader {
+                                        title: qsTr("Albums in Rotation")
+                                        subtitle: qsTr("%n album(s) in your library", "", albumCount)
+                                        onPlayClicked: {
+                                            if (albumsRotation.length > 0) root.appWindow.playTrack(albumsRotation[0].track)
+                                        }
+                                        onShuffleClicked: root.appWindow.shuffleAll()
+                                    }
+
+                                    AppListView {
+                                        width: parent.width
+                                        activeFocusOnTab: true
+                                        onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
+                                        height: 225
+                                        orientation: ListView.Horizontal
+                                        spacing: 16
+                                        clip: false
+                                        reuseItems: true
+                                        model: albumsRotation
+
+                                        delegate: AlbumCard {
+                                            cardWidth: 150
+                                            cardHeight: 225
+                                            name: modelData.name
+                                            count: modelData.count
+                                            track: modelData.track
+                                            onClicked: root.appWindow.openCatalogDetail("album", modelData.name, modelData.track)
+                                        }
                                     }
                                 }
                             }
 
-                            Column {
-                                x: 32
-                                width: homeScrollView.availableWidth - 64
-                                visible: artistsRotation.length > 0
-                                spacing: 16
+                            Component {
+                                id: artistsSection
 
-                                HomeSectionHeader {
-                                    title: qsTr("Artists")
-                                    subtitle: qsTr("%n artist(s) in your library", "", artistCount)
-                                    onPlayClicked: {
-                                        if (artistsRotation.length > 0) root.appWindow.playTrack(artistsRotation[0].track)
-                                    }
-                                    onShuffleClicked: root.appWindow.shuffleAll()
-                                }
-
-                                AppListView {
-                                    width: parent.width
-                                    activeFocusOnTab: true
-                                    onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
-                                    height: 195
-                                    orientation: ListView.Horizontal
+                                Column {
+                                    x: 32
+                                    width: homeScrollView.availableWidth - 64
+                                    visible: artistsRotation.length > 0
                                     spacing: 16
-                                    clip: false
-                                    reuseItems: true
-                                    model: artistsRotation
 
-                                    delegate: ArtistCard {
-                                        cardWidth: 120
-                                        cardHeight: 185
-                                        name: modelData.name
-                                        count: modelData.count
-                                        track: modelData.track
-                                        onClicked: root.appWindow.openCatalogDetail("artist", modelData.name, modelData.track)
+                                    HomeSectionHeader {
+                                        title: qsTr("Artists")
+                                        subtitle: qsTr("%n artist(s) in your library", "", artistCount)
+                                        onPlayClicked: {
+                                            if (artistsRotation.length > 0) root.appWindow.playTrack(artistsRotation[0].track)
+                                        }
+                                        onShuffleClicked: root.appWindow.shuffleAll()
+                                    }
+
+                                    AppListView {
+                                        width: parent.width
+                                        activeFocusOnTab: true
+                                        onCurrentIndexChanged: if (activeFocus) positionViewAtIndex(currentIndex, ListView.Contain)
+                                        height: 195
+                                        orientation: ListView.Horizontal
+                                        spacing: 16
+                                        clip: false
+                                        reuseItems: true
+                                        model: artistsRotation
+
+                                        delegate: ArtistCard {
+                                            cardWidth: 120
+                                            cardHeight: 185
+                                            name: modelData.name
+                                            count: modelData.count
+                                            track: modelData.track
+                                            onClicked: root.appWindow.openCatalogDetail("artist", modelData.name, modelData.track)
+                                        }
                                     }
                                 }
                             }

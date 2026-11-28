@@ -93,7 +93,8 @@ class StreamingController final : public QObject {
     Q_INVOKABLE void setBlackoutEnabled(bool enabled);
     Q_INVOKABLE void setServerFavorite(const QString &filePath, bool favorite);
     Q_INVOKABLE QString remoteArtwork(const QString &filePath);
-    Q_INVOKABLE void fetchJellyfinLyrics(const QString &filePath, const QString &remoteId);
+    /// The song's lyrics from your Jellyfin or Subsonic server, answered with serverLyricsFetched.
+    Q_INVOKABLE void fetchServerLyrics(const QString &filePath, const QString &remoteId);
 
     // C++-only: build an authenticated stream URL for playback. Never exposed to QML.
     QUrl streamSourceFor(const QString &source, const QString &remoteId) const;
@@ -103,6 +104,14 @@ class StreamingController final : public QObject {
     // Tested to exclude secrets.
     /// Returns the non-secret configuration for the current remote servers.
     Q_INVOKABLE QVariantMap serverConfigSnapshot() const;
+    /// A second address for the server, used when its own doesn't answer, such as away from home. Empty removes it.
+    Q_INVOKABLE void setAwayUrl(const QString &protocol, const QString &url);
+    /// The most a server stream may use, in kbps, on metered connections or on others; 0 is the original file.
+    Q_INVOKABLE void setStreamQuality(bool metered, int kbps);
+    /// Keeps the queue on the Subsonic server, from the song playing on.
+    Q_INVOKABLE void saveServerQueue(const QStringList &filePaths, const QString &currentPath, qint64 positionMs);
+    /// Asks for a queue another player left on the server, answered with serverQueueFound.
+    Q_INVOKABLE void checkServerQueue();
     /// Reads non-secret remote-server configuration from \p settingsPath.
     static QVariantMap serverConfigSnapshot(const QString &settingsPath);
     /// Returns whether a certificate digest is already saved for the server at \p url.
@@ -117,9 +126,20 @@ class StreamingController final : public QObject {
     void serverFailed(const QString &protocol, const QString &message);
     void jellyfinQuickConnectChanged();
     void serverFavoriteFailed(const QString &filePath);
-    void jellyfinLyricsFetched(const QString &filePath, const QString &lyrics);
+    void serverLyricsFetched(const QString &filePath, const QString &lyrics, const QString &provider);
+    void serverQueueFound(const QStringList &filePaths, const QString &currentPath, qint64 positionMs,
+                          const QString &from);
 
   private:
+    /// The address requests for the server go to: its away address when only that answers.
+    QString serverBase(const QString &protocol) const;
+    int streamLimitKbps() const;
+    void checkServerAddresses();
+    void probeServerAddress(const QString &protocol, const QStringList &candidates, quint64 check);
+    QHash<QString, QString> m_activeBase;
+    QHash<QString, quint64> m_addressChecks;
+    void fetchJellyfinLyrics(const QString &filePath, const QString &remoteId);
+    void fetchSubsonicLyrics(const QString &filePath, const QString &remoteId);
     void updateStatusTexts();
     void setRemoteTracks(const QVariantList &tracks);
     void replaceProviderTracks(const QString &prefix, const QVariantList &tracks);

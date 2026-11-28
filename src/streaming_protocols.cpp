@@ -14,6 +14,8 @@ namespace {
 
 constexpr char kSubsonicVersion[] = "1.16.1";
 constexpr char kClientName[] = "CassetteCat";
+// Subsonic servers record this as who saved a queue, so it tells the desktop app from the phone.
+constexpr char kSubsonicClientName[] = "CassetteCat Desktop";
 constexpr char kJellyfinVersion[] = "2.0.0";
 
 QString formatTrackDuration(int totalSeconds) {
@@ -45,6 +47,8 @@ bool isPrivateIpv6(const Q_IPV6ADDR &ipv6) {
     return (ipv6.c[0] & 0xfe) == 0xfc || (ipv6.c[0] == 0xfe && (ipv6.c[1] & 0xc0) == 0x80);
 }
 
+} // namespace
+
 bool isPrivateOrLocalHost(const QString &host) {
     const QString value = host.trimmed();
     if (value.isEmpty()) {
@@ -65,12 +69,18 @@ bool isPrivateOrLocalHost(const QString &host) {
     return isIpv4 ? isPrivateIpv4(ipv4) : isPrivateIpv6(address.toIPv6Address());
 }
 
+QString subsonicClientName() {
+    return QString::fromLatin1(kSubsonicClientName);
+}
+
 QString withoutTrailingSlashes(QString url) {
     while (url.endsWith('/')) {
         url.chop(1);
     }
     return url;
 }
+
+namespace {
 
 // A bare http(s) server address: nothing but a scheme, host, port and path.
 bool isBareServerUrl(const QUrl &url) {
@@ -138,7 +148,7 @@ QUrl subsonicUrl(const QString &base, const QString &endpoint, const QString &us
     q.addQueryItem("t", token);
     q.addQueryItem("s", salt);
     q.addQueryItem("v", kSubsonicVersion);
-    q.addQueryItem("c", kClientName);
+    q.addQueryItem("c", kSubsonicClientName);
     q.addQueryItem("f", "json");
     for (const auto &item : extra) {
         q.addQueryItem(item.first, item.second);

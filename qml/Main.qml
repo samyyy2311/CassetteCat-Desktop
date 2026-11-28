@@ -346,6 +346,10 @@ ApplicationWindow {
     property bool svcWiki: true
     property bool svcArchive: true
     property bool svcDiscord: false
+    // Home's sections, in order, and whether each is shown.
+    readonly property var defaultHomeSections: ["startHere", "heavyRotation", "recentlyPlayed", "recentlyAdded",
+        "forgottenFavorites", "albums", "artists"].map(id => ({ id: id, shown: true }))
+    property var homeSections: defaultHomeSections
     property bool svcPhoneRemote: true
     property bool scrobbleListenBrainzEnabled: false
     property string scrobbleListenBrainzUser: ""
@@ -418,12 +422,13 @@ ApplicationWindow {
                 restoreLastPlayedTrack()
                 restorePlaybackQueue()
                 restorePlaybackHistory()
+                streaming.checkServerQueue()
             }
         }
-        function onJellyfinLyricsFetched(filePath, lyrics) {
+        function onServerLyricsFetched(filePath, lyrics, provider) {
             if (!player.currentTrack || player.currentTrack.filePath !== filePath) return
             if (lyrics && lyrics.trim().length) {
-                applyLyrics(lyrics, "Jellyfin")
+                applyLyrics(lyrics, provider)
             } else if (!offlineBlackout && svcLrclib) {
                 services.fetchLyrics(player.currentTrack.title || player.currentTrack.fileName || "", player.currentTrack.artist || "", player.currentTrack.album || "", player.currentTrack.durationSeconds || 0)
             }
@@ -790,6 +795,7 @@ ApplicationWindow {
         svcWiki = appSettings.value("services/wiki", true)
         svcArchive = appSettings.value("services/archive", true)
         svcDiscord = appSettings.value("services/discord", false)
+        homeSections = savedHomeSections(appSettings.value("home/sections", ""))
         svcPhoneRemote = appSettings.value("services/phoneRemote", true)
         phoneRemote.code = appSettings.value("services/phoneRemoteCode", "")
         try {
@@ -1624,6 +1630,22 @@ ApplicationWindow {
     onSvcWikiChanged: saveSetting("services/wiki", svcWiki)
     onSvcArchiveChanged: saveSetting("services/archive", svcArchive)
     onSvcDiscordChanged: saveSetting("services/discord", svcDiscord)
+    onHomeSectionsChanged: saveSetting("home/sections", JSON.stringify(homeSections))
+
+    // The saved order, keeping only sections that still exist and adding any new ones at the end, shown.
+    function savedHomeSections(saved) {
+        let list = []
+        try {
+            list = JSON.parse(saved || "[]")
+        } catch (e) {
+            list = []
+        }
+        const known = defaultHomeSections.map(section => section.id)
+        const kept = (Array.isArray(list) ? list : []).filter(section => section && known.includes(section.id))
+            .map(section => ({ id: section.id, shown: section.shown !== false }))
+        const missing = defaultHomeSections.filter(section => !kept.some(other => other.id === section.id))
+        return kept.concat(missing)
+    }
     onSvcPhoneRemoteChanged: saveSetting("services/phoneRemote", svcPhoneRemote)
     onScrobbleListenBrainzEnabledChanged: saveSetting("scrobble/listenbrainz_enabled", scrobbleListenBrainzEnabled)
     onScrobbleLibreFmEnabledChanged: saveSetting("scrobble/librefm_enabled", scrobbleLibreFmEnabled)
@@ -1867,6 +1889,7 @@ ApplicationWindow {
             "services/wiki": svcWiki,
             "services/archive": svcArchive,
             "services/discord": svcDiscord,
+            "home/sections": JSON.stringify(homeSections),
             "services/phoneRemote": svcPhoneRemote,
             "scrobble/listenbrainz_enabled": scrobbleListenBrainzEnabled,
             "scrobble/listenbrainz_user": scrobbleListenBrainzUser,
@@ -2314,6 +2337,12 @@ ApplicationWindow {
 
     function loadLyricsForTrack(track) {
         lyricsSyncOffsetMs = appSettings.value(lyricsSyncKey(track), 0)
+        // Lyrics picked or written by hand come first, so a pick isn't undone by the song's own lyrics next time.
+        const chosen = services.chosenLyrics(track.title || track.fileName || "", track.artist || "", track.album || "")
+        if (chosen.text) {
+            applyLyrics(chosen.text, chosen.provider)
+            return
+        }
         const local = services.localLyricsFor(track.filePath)
         const embedded = track.lyrics || player.getLyrics(track.filePath)
         if (preferLocalLyrics && local && local.trim().length) {
@@ -2322,9 +2351,9 @@ ApplicationWindow {
             applyLyrics(embedded, "Embedded metadata")
         } else if (!preferLocalLyrics && local && local.trim().length) {
             applyLyrics(local, "Local file")
-        } else if (!offlineBlackout && track.source === "jellyfin" && track.remoteId) {
+        } else if (!offlineBlackout && (track.source === "jellyfin" || track.source === "subsonic") && track.remoteId) {
             applyLyrics("", "")
-            streaming.fetchJellyfinLyrics(track.filePath, track.remoteId)
+            streaming.fetchServerLyrics(track.filePath, track.remoteId)
         } else if (!offlineBlackout && svcLrclib) {
             applyLyrics("", "")
             services.fetchLyrics(track.title || track.fileName || "", track.artist || "", track.album || "", track.durationSeconds || 0)
@@ -2665,6 +2694,50 @@ ApplicationWindow {
         playQueuedTrack(playbackQueue[shuffle ? 0 : index])
     }
 
+    // A queue CassetteCat on another device left on your Navidrome or Subsonic server, offered on Home to carry on here.
+    property var queueElsewhere: null
+    // Each offer is made once: dismissing or taking it doesn't bring the same queue back.
+    property var answeredServerQueues: ({})
+
+    function saveServerQueue() {
+        const current = player.currentTrack
+        if (!current || !String(current.filePath || "").startsWith("subsonic:")) return
+        const queue = activePlaybackQueue()
+        const index = currentQueueIndex(queue)
+        const paths = (index >= 0 ? queue.slice(index) : [current]).map(track => track.filePath)
+        streaming.saveServerQueue(paths, current.filePath, player.position)
+    }
+
+    function continueQueueElsewhere() {
+        const offer = queueElsewhere
+        queueElsewhere = null
+        if (!offer) return
+        startPlayback(offer.tracks, offer.index)
+        if (offer.positionMs > 0) player.seek(offer.positionMs)
+    }
+
+    Timer {
+        // The place in the song is saved every half minute while it plays, as well as on every change.
+        interval: 30000
+        repeat: true
+        running: player.isPlaying && !!player.currentTrack && String(player.currentTrack.filePath || "").startsWith("subsonic:")
+        onTriggered: window.saveServerQueue()
+    }
+
+    Connections {
+        target: streaming
+        function onServerQueueFound(filePaths, currentPath, positionMs, from) {
+            const key = [from, currentPath, positionMs].join("|")
+            if (window.answeredServerQueues[key]) return
+            const tracks = window.tracksForPaths(filePaths).filter(track => !!track)
+            const index = tracks.findIndex(track => track.filePath === currentPath)
+            // Already playing that song here: there's nothing to carry on.
+            if (index < 0 || (player.currentTrack && player.currentTrack.filePath === currentPath)) return
+            window.answeredServerQueues[key] = true
+            window.queueElsewhere = { from: from, tracks: tracks, index: index, positionMs: positionMs }
+        }
+    }
+
     // Continues a queue handed over from the phone with the matching songs in this library, by title and artist.
     function continueHandoff(tracks, index, positionMs, playing) {
         const byKey = {}
@@ -2975,9 +3048,11 @@ ApplicationWindow {
             updateActiveLyric()
             playerStateDirty = true
             persistPlayerState()
+            saveServerQueue()
         }
         function onIsPlayingChanged() {
             tray.setPlaying(player.isPlaying)
+            saveServerQueue()
             if (player.isPlaying) {
                 // Music plays on one device at a time, so starting here stops the phone.
                 if (phonePlayback.isPlaying) phoneRemote.sendToPhone("pause")

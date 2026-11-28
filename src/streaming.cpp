@@ -15,6 +15,7 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
+#include <QNetworkInformation>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPointer>
@@ -68,6 +69,141 @@ StreamingController::StreamingController(const QString &settingsPath, QObject *p
         m_subsonicModel->setTracks(m_remoteTracks);
     }
     updateStatusTexts();
+    // Which address answers is checked again whenever the network changes, such as leaving home.
+    if (QNetworkInformation::loadDefaultBackend())
+        connect(QNetworkInformation::instance(), &QNetworkInformation::reachabilityChanged, this,
+                &StreamingController::checkServerAddresses);
+    checkServerAddresses();
+}
+
+QString StreamingController::serverBase(const QString &protocol) const {
+    const QString active = m_activeBase.value(protocol);
+    if (!active.isEmpty())
+        return active;
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    return settings.value("stream/" + protocol + "Url").toString();
+}
+
+// The queue is kept on your Navidrome or Subsonic server, so CassetteCat on another device can carry on from it.
+// Songs from elsewhere are left out, and so is anything past the first 200, which keeps the request short.
+void StreamingController::saveServerQueue(const QStringList &filePaths, const QString &currentPath, qint64 positionMs) {
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    const QString password = CredentialVault().loadSecret("subsonic");
+    if (blackoutEnabled() || !currentPath.startsWith("subsonic:") || password.isEmpty() ||
+        !settings.value("stream/subsonicConnected", false).toBool())
+        return;
+    QList<QPair<QString, QString>> extra;
+    for (const QString &path : filePaths) {
+        if (path.startsWith("subsonic:") && extra.size() < 200)
+            extra.append({"id", path.mid(9)});
+    }
+    extra.append({{"current", currentPath.mid(9)}, {"position", QString::number(qMax<qint64>(0, positionMs))}});
+    const QString salt = randomSalt();
+    QNetworkRequest request(subsonicUrl(serverBase(QStringLiteral("subsonic")), "savePlayQueue.view",
+                                        settings.value("stream/subsonicUsername").toString(), md5Hex(password + salt),
+                                        salt, extra));
+    request.setTransferTimeout(streaming::detail::requestTimeoutMs);
+    QNetworkReply *reply = trackReply(m_net->get(request));
+    connect(reply, &QNetworkReply::finished, reply, &QObject::deleteLater);
+}
+
+// The queue another player left on the server, offered to carry on here; one this app saved itself isn't.
+void StreamingController::checkServerQueue() {
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    const QString password = CredentialVault().loadSecret("subsonic");
+    if (blackoutEnabled() || password.isEmpty() || !settings.value("stream/subsonicConnected", false).toBool())
+        return;
+    const QString salt = randomSalt();
+    QNetworkRequest request(subsonicUrl(serverBase(QStringLiteral("subsonic")), "getPlayQueue.view",
+                                        settings.value("stream/subsonicUsername").toString(), md5Hex(password + salt),
+                                        salt));
+    request.setTransferTimeout(streaming::detail::requestTimeoutMs);
+    QNetworkReply *reply = trackReply(m_net->get(request));
+    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+        reply->deleteLater();
+        const QJsonObject queue = parseSubsonicBody(reply->readAll()).value("playQueue").toObject();
+        const QString from = queue.value("changedBy").toString();
+        if (reply->error() != QNetworkReply::NoError || from.isEmpty() || from == subsonicClientName())
+            return;
+        QStringList paths;
+        for (const QJsonValue &entry : jsonArrayTolerant(queue, "entry"))
+            paths.append("subsonic:" + entry.toObject().value("id").toVariant().toString());
+        const QString current = queue.value("current").toVariant().toString();
+        if (!paths.isEmpty() && !current.isEmpty())
+            emit serverQueueFound(paths, "subsonic:" + current, queue.value("position").toVariant().toLongLong(), from);
+    });
+}
+
+// How good a server stream is, in kbps; 0 is the original file. A metered connection, such as a phone's hotspot, has
+// its own choice, so data isn't spent on large files there.
+int StreamingController::streamLimitKbps() const {
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    const bool metered = QNetworkInformation::instance() && QNetworkInformation::instance()->isMetered();
+    return settings.value(metered ? "stream/meteredQualityKbps" : "stream/qualityKbps", 0).toInt();
+}
+
+void StreamingController::setStreamQuality(bool metered, int kbps) {
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    settings.setValue(metered ? "stream/meteredQualityKbps" : "stream/qualityKbps", kbps);
+}
+
+void StreamingController::setAwayUrl(const QString &protocol, const QString &url) {
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    const QString trimmed = withoutTrailingSlashes(url.trimmed());
+    if (trimmed.isEmpty())
+        settings.remove("stream/" + protocol + "AwayUrl");
+    else
+        settings.setValue("stream/" + protocol + "AwayUrl", trimmed);
+    m_activeBase.remove(protocol);
+    checkServerAddresses();
+}
+
+// A server with an away address, such as a domain name for when you're out, uses whichever address answers, a home
+// network one first. Nothing answering keeps the address already in use.
+void StreamingController::checkServerAddresses() {
+    if (blackoutEnabled())
+        return;
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    for (const QString protocol : {QStringLiteral("subsonic"), QStringLiteral("jellyfin")}) {
+        const QString home = withoutTrailingSlashes(settings.value("stream/" + protocol + "Url").toString());
+        const QString away = settings.value("stream/" + protocol + "AwayUrl").toString();
+        if (home.isEmpty() || away.isEmpty() || !settings.value("stream/" + protocol + "Connected", false).toBool()) {
+            m_activeBase.remove(protocol);
+            continue;
+        }
+        QStringList candidates{home, away};
+        std::stable_sort(candidates.begin(), candidates.end(), [](const QString &a, const QString &b) {
+            return isPrivateOrLocalHost(QUrl(a).host()) && !isPrivateOrLocalHost(QUrl(b).host());
+        });
+        probeServerAddress(protocol, candidates, ++m_addressChecks[protocol]);
+    }
+}
+
+void StreamingController::probeServerAddress(const QString &protocol, const QStringList &candidates, quint64 check) {
+    if (candidates.isEmpty() || check != m_addressChecks.value(protocol))
+        return;
+    const QString base = candidates.first();
+    // Any answer means the server is there; these need no sign-in, or turn down the missing one.
+    QNetworkRequest request(QUrl(base + (protocol == u"jellyfin" ? "/System/Info/Public" : "/rest/ping.view")));
+    request.setTransferTimeout(4000);
+    QNetworkReply *reply = trackReply(m_net->get(request));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, protocol, candidates, check, base] {
+        reply->deleteLater();
+        const bool answered = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).isValid();
+        if (check != m_addressChecks.value(protocol))
+            return;
+        if (!answered) {
+            probeServerAddress(protocol, candidates.mid(1), check);
+            return;
+        }
+        if (m_activeBase.value(protocol) == base)
+            return;
+        const bool switched = !m_activeBase.value(protocol).isEmpty();
+        m_activeBase.insert(protocol, base);
+        // Covers were linked to the other address, so the library is fetched again from this one.
+        if (switched)
+            refreshLibrary();
+    });
 }
 
 bool StreamingController::isRemotePath(const QString &filePath) {
@@ -375,7 +511,7 @@ void StreamingController::beginRefresh() {
         } else {
             m_subsonicRefreshActive = true;
             ++m_pendingStages;
-            refreshSubsonic(settings.value("stream/subsonicUrl").toString(),
+            refreshSubsonic(serverBase(QStringLiteral("subsonic")),
                             settings.value("stream/subsonicUsername").toString(), password, ++m_subsonicRefreshToken);
         }
     }
@@ -388,7 +524,7 @@ void StreamingController::beginRefresh() {
         } else {
             m_jellyfinRefreshActive = true;
             ++m_pendingStages;
-            refreshJellyfin(settings.value("stream/jellyfinUrl").toString(), userId, token, ++m_jellyfinRefreshToken);
+            refreshJellyfin(serverBase(QStringLiteral("jellyfin")), userId, token, ++m_jellyfinRefreshToken);
         }
     }
     if (m_pendingStages == 0) {
@@ -485,7 +621,7 @@ void StreamingController::setServerFavorite(const QString &filePath, bool favori
             emit serverFavoriteFailed(filePath);
             return;
         }
-        const QString base = settings.value("stream/subsonicUrl").toString();
+        const QString base = serverBase(QStringLiteral("subsonic"));
         const QString user = settings.value("stream/subsonicUsername").toString();
         const QString salt = randomSalt();
         const QString endpoint = favorite ? "star.view" : "unstar.view";
@@ -508,7 +644,7 @@ void StreamingController::setServerFavorite(const QString &filePath, bool favori
             emit serverFavoriteFailed(filePath);
             return;
         }
-        const QString base = settings.value("stream/jellyfinUrl").toString();
+        const QString base = serverBase(QStringLiteral("jellyfin"));
         QNetworkRequest request(QUrl(base + "/Users/" + userId + "/FavoriteItems/" + filePath.mid(9)));
         request.setTransferTimeout(streaming::detail::requestTimeoutMs);
         const QString header = jellyfinAuthHeader(deviceId(), token);
@@ -526,18 +662,61 @@ void StreamingController::setServerFavorite(const QString &filePath, bool favori
     }
 }
 
-void StreamingController::fetchJellyfinLyrics(const QString &filePath, const QString &remoteId) {
-    if (!filePath.startsWith("jellyfin:") || remoteId.isEmpty()) {
-        emit jellyfinLyricsFetched(filePath, QString());
-        return;
-    }
+namespace {
+// One lyric line, timed as LRC when it has a start time.
+QString lyricLine(const QString &text, qint64 startMs, bool timed) {
+    if (!timed || startMs < 0)
+        return text + QLatin1Char('\n');
+    return QString("[%1:%2.%3]%4\n")
+        .arg(startMs / 60000, 2, 10, QLatin1Char('0'))
+        .arg((startMs / 1000) % 60, 2, 10, QLatin1Char('0'))
+        .arg((startMs % 1000) / 10, 2, 10, QLatin1Char('0'))
+        .arg(text);
+}
 
+// Timed lyrics when the server has them, else the first plain ones; the offset is how much later they should show.
+QString subsonicLyricsText(const QJsonObject &response) {
+    const QJsonArray all = response.value("lyricsList").toObject().value("structuredLyrics").toArray();
+    QJsonObject chosen;
+    for (const QJsonValue &value : all) {
+        const QJsonObject lyrics = value.toObject();
+        if (lyrics.value("line").toArray().isEmpty())
+            continue;
+        if (chosen.isEmpty() || (lyrics.value("synced").toBool() && !chosen.value("synced").toBool()))
+            chosen = lyrics;
+    }
+    const bool timed = chosen.value("synced").toBool();
+    const qint64 offset = chosen.value("offset").toInteger();
+    QString result;
+    for (const QJsonValue &value : chosen.value("line").toArray()) {
+        const QJsonObject line = value.toObject();
+        const QString text = line.value("value").toString();
+        if (!text.trimmed().isEmpty())
+            result += lyricLine(text, line.contains("start") ? line.value("start").toInteger() + offset : -1, timed);
+    }
+    return result.trimmed();
+}
+} // namespace
+
+// Lyrics kept on your own server, asked for before an online search.
+void StreamingController::fetchServerLyrics(const QString &filePath, const QString &remoteId) {
+    if (remoteId.isEmpty())
+        emit serverLyricsFetched(filePath, QString(), QString());
+    else if (filePath.startsWith("jellyfin:"))
+        fetchJellyfinLyrics(filePath, remoteId);
+    else if (filePath.startsWith("subsonic:"))
+        fetchSubsonicLyrics(filePath, remoteId);
+    else
+        emit serverLyricsFetched(filePath, QString(), QString());
+}
+
+void StreamingController::fetchJellyfinLyrics(const QString &filePath, const QString &remoteId) {
     QSettings settings(m_settingsPath, QSettings::IniFormat);
     CredentialVault vault;
-    const QString base = settings.value("stream/jellyfinUrl").toString();
+    const QString base = serverBase(QStringLiteral("jellyfin"));
     const QString token = vault.loadSecret("jellyfin");
     if (base.isEmpty() || token.isEmpty()) {
-        emit jellyfinLyricsFetched(filePath, QString());
+        emit serverLyricsFetched(filePath, QString(), QString());
         return;
     }
 
@@ -551,25 +730,41 @@ void StreamingController::fetchJellyfinLyrics(const QString &filePath, const QSt
     connect(reply, &QNetworkReply::finished, this, [this, reply, filePath] {
         QString result;
         if (reply->error() == QNetworkReply::NoError) {
-            const QJsonArray lines = QJsonDocument::fromJson(reply->readAll()).object().value("Lyrics").toArray();
-            for (const QJsonValue &value : lines) {
+            const QJsonObject body = QJsonDocument::fromJson(reply->readAll()).object();
+            // Timed lyrics are timed throughout, including a first line that starts at zero.
+            const bool timed = body.value("Metadata").toObject().value("IsSynced").toBool();
+            for (const QJsonValue &value : body.value("Lyrics").toArray()) {
                 const QJsonObject line = value.toObject();
                 const QString text = line.value("Text").toString();
-                if (text.isEmpty())
-                    continue;
-                const qint64 startMs = line.value("Start").toVariant().toLongLong() / 10000;
-                if (startMs > 0) {
-                    result += QString("[%1:%2.%3]%4\n")
-                                  .arg(startMs / 60000, 2, 10, QLatin1Char('0'))
-                                  .arg((startMs / 1000) % 60, 2, 10, QLatin1Char('0'))
-                                  .arg((startMs % 1000) / 10, 2, 10, QLatin1Char('0'))
-                                  .arg(text);
-                } else {
-                    result += text + QLatin1Char('\n');
-                }
+                if (!text.isEmpty())
+                    result += lyricLine(text, line.value("Start").toVariant().toLongLong() / 10000, timed);
             }
         }
-        emit jellyfinLyricsFetched(filePath, result.trimmed());
+        emit serverLyricsFetched(filePath, result.trimmed(), QStringLiteral("Jellyfin"));
+    });
+}
+
+// OpenSubsonic servers, such as Navidrome, keep a song's lyrics, sometimes in several languages and timed or not.
+void StreamingController::fetchSubsonicLyrics(const QString &filePath, const QString &remoteId) {
+    QSettings settings(m_settingsPath, QSettings::IniFormat);
+    const QString password = CredentialVault().loadSecret("subsonic");
+    const QString base = serverBase(QStringLiteral("subsonic"));
+    if (base.isEmpty() || password.isEmpty()) {
+        emit serverLyricsFetched(filePath, QString(), QString());
+        return;
+    }
+    const QString user = settings.value("stream/subsonicUsername").toString();
+    const QString salt = randomSalt();
+    QNetworkRequest request(
+        subsonicUrl(base, "getLyricsBySongId.view", user, md5Hex(password + salt), salt, {{"id", remoteId}}));
+    request.setTransferTimeout(streaming::detail::requestTimeoutMs);
+    QNetworkReply *reply = trackReply(m_net->get(request));
+    connect(reply, &QNetworkReply::finished, this, [this, reply, filePath] {
+        // A server without OpenSubsonic doesn't know the request, which counts as no lyrics.
+        const QString result = reply->error() == QNetworkReply::NoError
+                                   ? subsonicLyricsText(parseSubsonicBody(reply->readAll()))
+                                   : QString();
+        emit serverLyricsFetched(filePath, result, QStringLiteral("Your server"));
     });
 }
 
@@ -643,9 +838,12 @@ QUrl StreamingController::streamSourceFor(const QString &source, const QString &
             return {};
         }
         const QString salt = randomSalt();
-        return subsonicUrl(settings.value("stream/subsonicUrl").toString(), "stream.view",
-                           settings.value("stream/subsonicUsername").toString(), md5Hex(password + salt), salt,
-                           {{"id", remoteId}});
+        QList<QPair<QString, QString>> extra{{"id", remoteId}};
+        // Over the chosen quality, the server converts the song to MP3 at that bitrate.
+        if (const int kbps = streamLimitKbps(); kbps > 0)
+            extra.append({{"maxBitRate", QString::number(kbps)}, {"format", "mp3"}});
+        return subsonicUrl(serverBase(QStringLiteral("subsonic")), "stream.view",
+                           settings.value("stream/subsonicUsername").toString(), md5Hex(password + salt), salt, extra);
     }
     if (source == "jellyfin" && settings.value("stream/jellyfinConnected", false).toBool()) {
         const QString token = vault.loadSecret("jellyfin");
@@ -655,16 +853,18 @@ QUrl StreamingController::streamSourceFor(const QString &source, const QString &
         // The universal stream sends a song as it is when the player reads its format, and otherwise has the server
         // convert it, so songs in formats the player can't decode still play. FFmpeg decodes nearly every format, so
         // conversion is rarely needed here.
-        QUrl url(settings.value("stream/jellyfinUrl").toString() + "/Audio/" + remoteId + "/universal");
+        QUrl url(serverBase(QStringLiteral("jellyfin")) + "/Audio/" + remoteId + "/universal");
         QUrlQuery q;
         q.addQueryItem("container", "mp3,aac,m4a,m4b,flac,alac,ogg,oga,opus,webm,webma,wav,aiff,aif,wma,ape,wv,mka,"
                                     "mpc,dsf,dff");
         q.addQueryItem("transcodingContainer", "mp3");
         q.addQueryItem("transcodingProtocol", "http");
         q.addQueryItem("audioCodec", "mp3");
-        q.addQueryItem("audioBitRate", "320000");
-        // High enough that lossless files are sent as they are rather than converted to fit.
-        q.addQueryItem("maxStreamingBitrate", "140000000");
+        // Without a chosen quality the limit is high enough that lossless files are sent as they are; with one, a
+        // song over it is converted to MP3 at that bitrate.
+        const int kbps = streamLimitKbps();
+        q.addQueryItem("audioBitRate", kbps > 0 ? QString::number(kbps * 1000) : QStringLiteral("320000"));
+        q.addQueryItem("maxStreamingBitrate", kbps > 0 ? QString::number(kbps * 1000) : QStringLiteral("140000000"));
         q.addQueryItem("userId", settings.value("stream/jellyfinUserId").toString());
         q.addQueryItem("deviceId", settings.value("stream/deviceId").toString());
         q.addQueryItem("api_key", token);
@@ -689,10 +889,14 @@ QVariantMap StreamingController::serverConfigSnapshot(const QString &settingsPat
     snapshot.insert("subsonic/username", settings.value("stream/subsonicUsername").toString());
     snapshot.insert("subsonic/connected", settings.value("stream/subsonicConnected", false).toBool());
     snapshot.insert("subsonic/trustCert", settings.value("stream/subsonicTrustCert", false).toBool());
+    snapshot.insert("subsonic/awayUrl", settings.value("stream/subsonicAwayUrl").toString());
     snapshot.insert("jellyfin/url", settings.value("stream/jellyfinUrl").toString());
     snapshot.insert("jellyfin/username", settings.value("stream/jellyfinUsername").toString());
     snapshot.insert("jellyfin/connected", settings.value("stream/jellyfinConnected", false).toBool());
     snapshot.insert("jellyfin/trustCert", settings.value("stream/jellyfinTrustCert", false).toBool());
+    snapshot.insert("jellyfin/awayUrl", settings.value("stream/jellyfinAwayUrl").toString());
+    snapshot.insert("quality/normal", settings.value("stream/qualityKbps", 0).toInt());
+    snapshot.insert("quality/metered", settings.value("stream/meteredQualityKbps", 0).toInt());
     return snapshot;
 }
 
@@ -758,13 +962,20 @@ bool runSelfChecks(bool includeVaultProbe) {
     check(subQuery.queryItemValue("t") == "0123456789abcdef0123456789abcdef", "subsonic-token");
     check(subQuery.queryItemValue("s") == "abcdef012345", "subsonic-salt");
     check(subQuery.queryItemValue("v") == "1.16.1", "subsonic-version");
-    check(subQuery.queryItemValue("c") == "CassetteCat", "subsonic-client");
+    check(subQuery.queryItemValue("c") == "CassetteCat Desktop", "subsonic-client");
     check(subQuery.queryItemValue("f") == "json", "subsonic-format");
     check(!subUrl.toString().contains("secret-password"), "subsonic-no-password-in-url");
     check(subsonicUrl("https://m.example.com", "stream.view", "u", "t", "s", {{"id", "42"}})
               .toString()
               .contains("stream.view"),
           "subsonic-stream-endpoint");
+
+    const QJsonObject lyricsResponse = QJsonDocument::fromJson(R"({"lyricsList": {"structuredLyrics": [
+        {"synced": false, "line": [{"value": "Plain"}]},
+        {"synced": true, "offset": 500, "line": [{"start": 0, "value": "First"}, {"start": 61000, "value": "Second"}]}]}})")
+                                           .object();
+    check(subsonicLyricsText(lyricsResponse) == "[00:00.50]First\n[01:01.50]Second", "subsonic-timed-lyrics-first");
+    check(subsonicLyricsText(QJsonObject{}).isEmpty(), "subsonic-no-lyrics");
 
     const QByteArray okBody = R"({"subsonic-response": {"status": "ok", "albumList2": {"album": [{"id": "a1"}]}}})";
     const QJsonObject okResponse = parseSubsonicBody(okBody);

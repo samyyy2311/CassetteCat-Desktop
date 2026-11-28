@@ -2821,8 +2821,14 @@ ApplicationWindow {
         if (!sourceTrack || !targetTrack) return
         const queue = activePlaybackQueue()
         const currentIndex = currentQueueIndex(queue)
-        let fromIdx = (sourceIndex !== undefined && sourceIndex >= 0) ? sourceIndex : queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(sourceTrack))
-        let toIdx = (targetIndex !== undefined && targetIndex >= 0) ? targetIndex : queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(targetTrack))
+        // A place is trusted only while it still holds the same song, as the queue may have changed during the drag.
+        const placeOf = (track, index) => {
+            const identity = trackIdentity(track)
+            if (index !== undefined && index >= 0 && queue[index] && trackIdentity(queue[index]) === identity) return index
+            return queue.findIndex(candidate => trackIdentity(candidate) === identity)
+        }
+        const fromIdx = placeOf(sourceTrack, sourceIndex)
+        const toIdx = placeOf(targetTrack, targetIndex)
         if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx || fromIdx <= currentIndex || toIdx <= currentIndex) return
         const nextQueue = queue.slice()
         const [moved] = nextQueue.splice(fromIdx, 1)

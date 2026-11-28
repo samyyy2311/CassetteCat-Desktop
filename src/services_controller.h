@@ -208,6 +208,8 @@ class ServicesController : public QObject {
         QVariantList liked;
         QVariantList library;
         AccountLoves onAccounts;
+        // Songs liked or unliked while the accounts were read, which keep that newer choice.
+        QSet<QString> changed;
         int waiting = 0;
     };
     std::optional<LikesSync> m_likesSync;

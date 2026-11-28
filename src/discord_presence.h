@@ -6,6 +6,7 @@
 #include <QLocalSocket>
 #include <QNetworkAccessManager>
 #include <QObject>
+#include <QPointer>
 #include <QStringList>
 #include <QTimer>
 #include <QVariantMap>
@@ -58,6 +59,8 @@ class DiscordPresence final : public QObject {
     // Cover image URLs by artist and album; empty when none was found, so it isn't looked up again.
     QHash<QString, QString> m_artwork;
     QString m_artworkLookup;
+    // The lookup in flight, stopped when Discord is turned off so nothing more goes out.
+    QPointer<QNetworkReply> m_artworkReply;
     // The song whose cover couldn't be looked up, shown with the logo instead of being asked for again and again.
     QString m_artworkFailed;
 };

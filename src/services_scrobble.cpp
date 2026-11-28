@@ -414,6 +414,11 @@ void ServicesController::scrobbleNowPlaying(const QVariantMap &track) {
 }
 
 void ServicesController::loveTrack(const QVariantMap &track, bool loved) {
+    // A choice made while Sync Likes reads the accounts is the newer one, so the sync leaves that song alone.
+    if (m_likesSync) {
+        const auto [artist, title, album] = scrobbleFields(track);
+        m_likesSync->changed.insert(loveKey(artist, title));
+    }
     loveTrackOn(track, loved, {});
 }
 
@@ -553,7 +558,7 @@ void ServicesController::sendListenBrainzFeedback(const QString &mbid, bool love
 
 // Each account's own list of loves is read first, so loves sent from another device or the website aren't sent again.
 void ServicesController::syncLikes(const QVariantList &likedTracks, const QVariantList &libraryTracks) {
-    m_likesSync = LikesSync{likedTracks, libraryTracks, {}, 0};
+    m_likesSync = LikesSync{likedTracks, libraryTracks};
     const quint64 sync = ++m_likesSyncId;
     const QStringList services = onlineEnabled() ? lovingServices() : QStringList();
     m_likesSync->waiting = int(services.size());
@@ -655,7 +660,8 @@ void ServicesController::finishLikesSync() {
         const QVariantMap track = value.toMap();
         const auto [artist, title, album] = scrobbleFields(track);
         liked.insert(loveKey(artist, title));
-        loveTrackOn(track, true, sync.onAccounts);
+        if (!sync.changed.contains(loveKey(artist, title)))
+            loveTrackOn(track, true, sync.onAccounts);
     }
     // A love is only taken back from the accounts the app sent it to, so one made on the website stays.
     QStringList records;
@@ -664,7 +670,7 @@ void ServicesController::finishLikesSync() {
     for (const QVariant &value : sync.library) {
         const auto [artist, title, album] = scrobbleFields(value.toMap());
         const QString key = loveKey(artist, title);
-        if (artist.isEmpty() || title.isEmpty() || liked.contains(key))
+        if (artist.isEmpty() || title.isEmpty() || liked.contains(key) || sync.changed.contains(key))
             continue;
         QStringList to;
         for (const QString &record : records) {

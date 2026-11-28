@@ -15,6 +15,7 @@
 #include <QNetworkRequest>
 #include <QThread>
 #include <QUrl>
+#include <QRegularExpression>
 #include <QUrlQuery>
 #include <QUuid>
 #include <QtEndian>
@@ -160,6 +161,8 @@ void DiscordPresence::setEnabled(bool enabled) {
     } else {
         m_retryTimer.stop();
         m_updateTimer.stop();
+        if (m_artworkReply)
+            m_artworkReply->abort();
         if (m_ready)
             sendFrame(Frame, setActivityPayload({}));
         m_ready = false;
@@ -181,8 +184,10 @@ QJsonObject DiscordPresence::activityFor(const QVariantMap &track, bool playing,
     const QString artist = track.value("artist").toString().trimmed();
     if (artist.size() >= 2) {
         activity.insert("state", artist.left(128));
-        activity.insert("buttons",
-                        QJsonArray{QJsonObject{{"label", "Open on Last.fm"}, {"url", lastFmUrl(artist, title)}}});
+        // Discord turns down a button link over 512 characters, and a shortened one would lead nowhere.
+        const QString url = lastFmUrl(artist, title);
+        if (url.size() <= 512)
+            activity.insert("buttons", QJsonArray{QJsonObject{{"label", "Open on Last.fm"}, {"url", url}}});
     }
 
     const qint64 startMs = nowMs - positionMs;
@@ -269,9 +274,13 @@ void DiscordPresence::sendActivity() {
 namespace {
 // The cover of the search result that is this song, from the song's own album when iTunes has it there too, as the
 // same song is often on a single, the album and a deluxe edition, each with its own cover.
-// A title without its bracketed or dashed extras, which tags and iTunes write differently, such as "(feat. ...)".
+// A title without credits for other artists, which tags and iTunes write differently, such as "(feat. ...)". Other
+// bracketed parts, like "(Part One)", are kept, so different songs stay different.
 QString baseTitle(const QString &title) {
-    return title.section(" (", 0, 0).section(" [", 0, 0).section(" - ", 0, 0).trimmed();
+    static const QRegularExpression credit(
+        QStringLiteral(R"(\s*[(\[]\s*(feat\.?|ft\.?|featuring|with|prod\.?)\s[^)\]]*[)\]])"),
+        QRegularExpression::CaseInsensitiveOption);
+    return QString(title).remove(credit).trimmed();
 }
 
 QString coverFor(const QJsonArray &results, const QVariantMap &track) {
@@ -287,7 +296,7 @@ QString coverFor(const QJsonArray &results, const QVariantMap &track) {
             resultArtist.contains(artist, Qt::CaseInsensitive) || artist.contains(resultArtist, Qt::CaseInsensitive);
         if (baseTitle(song.value("trackName").toString()).compare(title, Qt::CaseInsensitive) != 0 || !sameArtist)
             continue;
-        const bool sameAlbum = song.value("collectionName").toString().startsWith(album, Qt::CaseInsensitive);
+        const bool sameAlbum = song.value("collectionName").toString().compare(album, Qt::CaseInsensitive) == 0;
         if (cover.isEmpty() || sameAlbum)
             cover = song.value("artworkUrl100").toString();
         if (sameAlbum)
@@ -312,10 +321,14 @@ void DiscordPresence::lookUpArtwork(const QVariantMap &track) {
     // Short, as the status waits for it.
     request.setTransferTimeout(4000);
     QNetworkReply *reply = m_net.get(request);
+    m_artworkReply = reply;
     connect(reply, &QNetworkReply::finished, this, [this, reply, key, track] {
         reply->deleteLater();
         if (m_artworkLookup == key)
             m_artworkLookup.clear();
+        // Turned off, or offline blackout started, while the lookup ran: nothing from it is kept.
+        if (!m_enabled)
+            return;
         // A request that didn't get through isn't remembered as a song without a cover.
         if (reply->error() != QNetworkReply::NoError) {
             m_artworkFailed = key;
@@ -341,6 +354,16 @@ bool DiscordPresence::selfCheck() {
     const QJsonObject timestamps = activity.value("timestamps").toObject();
     const QJsonObject assets = activity.value("assets").toObject();
     check.expect(activity.value("type").toInt() == 2, "shows as listening");
+    const auto song = [](const char *name, const char *album, const char *cover) {
+        return QJsonObject{
+            {"trackName", name}, {"artistName", "Some Artist"}, {"collectionName", album}, {"artworkUrl100", cover}};
+    };
+    const QJsonArray results{song("Song Title (Part Two)", "An Album", "two"),
+                             song("Song Title (feat. Guest)", "An Album (Deluxe)", "deluxe"),
+                             song("Song Title", "An Album", "album")};
+    check.expect(coverFor(results, track) == "album", "picks the song on its own album, not a deluxe edition");
+    check.expect(coverFor(QJsonArray{results[1]}, track) == "deluxe", "matches a title credited to a guest");
+    check.expect(coverFor(QJsonArray{results[0]}, track).isEmpty(), "keeps a differently named part apart");
     check.expect(activity.value("details") == "Song Title", "names the song");
     check.expect(activity.value("state") == "Some Artist", "names the artist");
     check.expect(timestamps.value("start").toInteger() == 970000, "starts the timer at the song's start");

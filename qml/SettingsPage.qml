@@ -420,6 +420,8 @@ Item {
                                         fontFamilies: root.appWindow.fontFamilies
                                         trackDensity: root.trackDensity
                                         showFormatBadges: root.showFormatBadges
+                                        homeSections: root.appWindow.homeSections
+                                        onHomeSectionsSelected: value => root.appWindow.homeSections = value
                                         onAppFontSelected: value => root.appWindow.appFont = value
                                         onTrackDensitySelected: value => root.trackDensitySelected(value)
                                         onShowFormatBadgesSelected: value => root.showFormatBadgesSelected(value)

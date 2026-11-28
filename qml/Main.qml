@@ -346,6 +346,10 @@ ApplicationWindow {
     property bool svcWiki: true
     property bool svcArchive: true
     property bool svcDiscord: false
+    // Home's sections, in order, and whether each is shown.
+    readonly property var defaultHomeSections: ["startHere", "heavyRotation", "recentlyPlayed", "recentlyAdded",
+        "forgottenFavorites", "albums", "artists"].map(id => ({ id: id, shown: true }))
+    property var homeSections: defaultHomeSections
     property bool svcPhoneRemote: true
     property bool scrobbleListenBrainzEnabled: false
     property string scrobbleListenBrainzUser: ""
@@ -791,6 +795,7 @@ ApplicationWindow {
         svcWiki = appSettings.value("services/wiki", true)
         svcArchive = appSettings.value("services/archive", true)
         svcDiscord = appSettings.value("services/discord", false)
+        homeSections = savedHomeSections(appSettings.value("home/sections", ""))
         svcPhoneRemote = appSettings.value("services/phoneRemote", true)
         phoneRemote.code = appSettings.value("services/phoneRemoteCode", "")
         try {
@@ -1625,6 +1630,22 @@ ApplicationWindow {
     onSvcWikiChanged: saveSetting("services/wiki", svcWiki)
     onSvcArchiveChanged: saveSetting("services/archive", svcArchive)
     onSvcDiscordChanged: saveSetting("services/discord", svcDiscord)
+    onHomeSectionsChanged: saveSetting("home/sections", JSON.stringify(homeSections))
+
+    // The saved order, keeping only sections that still exist and adding any new ones at the end, shown.
+    function savedHomeSections(saved) {
+        let list = []
+        try {
+            list = JSON.parse(saved || "[]")
+        } catch (e) {
+            list = []
+        }
+        const known = defaultHomeSections.map(section => section.id)
+        const kept = (Array.isArray(list) ? list : []).filter(section => section && known.includes(section.id))
+            .map(section => ({ id: section.id, shown: section.shown !== false }))
+        const missing = defaultHomeSections.filter(section => !kept.some(other => other.id === section.id))
+        return kept.concat(missing)
+    }
     onSvcPhoneRemoteChanged: saveSetting("services/phoneRemote", svcPhoneRemote)
     onScrobbleListenBrainzEnabledChanged: saveSetting("scrobble/listenbrainz_enabled", scrobbleListenBrainzEnabled)
     onScrobbleLibreFmEnabledChanged: saveSetting("scrobble/librefm_enabled", scrobbleLibreFmEnabled)
@@ -1868,6 +1889,7 @@ ApplicationWindow {
             "services/wiki": svcWiki,
             "services/archive": svcArchive,
             "services/discord": svcDiscord,
+            "home/sections": JSON.stringify(homeSections),
             "services/phoneRemote": svcPhoneRemote,
             "scrobble/listenbrainz_enabled": scrobbleListenBrainzEnabled,
             "scrobble/listenbrainz_user": scrobbleListenBrainzUser,

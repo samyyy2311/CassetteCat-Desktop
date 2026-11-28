@@ -13,6 +13,16 @@ ColumnLayout {
     property var fontFamilies: []
     property string trackDensity: "comfortable"
     property bool showFormatBadges: true
+    property var homeSections: []
+    readonly property var homeSectionNames: ({
+        startHere: qsTr("Start here"),
+        heavyRotation: qsTr("Heavy Rotation"),
+        recentlyPlayed: qsTr("Recently Played"),
+        recentlyAdded: qsTr("Recently Added"),
+        forgottenFavorites: qsTr("Forgotten Favorites"),
+        albums: qsTr("Albums in Rotation"),
+        artists: qsTr("Artists")
+    })
 
     signal accentSelected(string value)
     signal customAccentSelected(string hexColor)
@@ -22,6 +32,14 @@ ColumnLayout {
     signal appFontSelected(string value)
     signal trackDensitySelected(string value)
     signal showFormatBadgesSelected(bool value)
+    signal homeSectionsSelected(var value)
+
+    function movedHomeSection(index, step) {
+        const list = root.homeSections.slice()
+        const [moved] = list.splice(index, 1)
+        list.splice(index + step, 0, moved)
+        return list
+    }
 
     Layout.fillWidth: true
     spacing: 16
@@ -145,6 +163,55 @@ ColumnLayout {
             SettingSwitch {
                 checked: root.showFormatBadges
                 onToggled: val => root.showFormatBadgesSelected(val)
+            }
+        }
+    }
+
+    SectionLabel { text: qsTr("Home") }
+
+    SettingCard {
+        Repeater {
+            model: root.homeSections
+
+            ColumnLayout {
+                required property var modelData
+                required property int index
+                Layout.fillWidth: true
+                spacing: 0
+
+                SettingDivider { visible: index > 0 }
+
+                SettingRow {
+                    title: root.homeSectionNames[modelData.id] || modelData.id
+                    subtitle: index === 0 ? qsTr("Choose which sections Home shows, and their order") : ""
+
+                    RowLayout {
+                        spacing: 6
+
+                        SettingButton {
+                            iconName: "chevron-up"
+                            accessibleName: qsTr("Move %1 up").arg(root.homeSectionNames[modelData.id])
+                            enabled: index > 0
+                            onClicked: root.homeSectionsSelected(root.movedHomeSection(index, -1))
+                        }
+
+                        SettingButton {
+                            iconName: "chevron-down"
+                            accessibleName: qsTr("Move %1 down").arg(root.homeSectionNames[modelData.id])
+                            enabled: index < root.homeSections.length - 1
+                            onClicked: root.homeSectionsSelected(root.movedHomeSection(index, 1))
+                        }
+
+                        SettingSwitch {
+                            checked: modelData.shown
+                            onToggled: val => {
+                                const list = root.homeSections.slice()
+                                list[index] = { id: modelData.id, shown: val }
+                                root.homeSectionsSelected(list)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

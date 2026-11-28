@@ -56,12 +56,17 @@ QString keyFor(const QVariantMap &track) {
 
 Stored load(const QString &key) {
     const QJsonObject object = readObject(key);
-    return {object.value("text").toString(), object.value("provider").toString(),
-            object.value("missingAt").toInteger()};
+    return {object.value("text").toString(), object.value("provider").toString(), object.value("missingAt").toInteger(),
+            object.value("chosen").toBool()};
 }
 
-bool save(const QString &key, const QString &text, const QString &provider) {
-    return writeObject(key, {{"text", text}, {"provider", provider}});
+bool save(const QString &key, const QString &text, const QString &provider, bool chosen) {
+    if (!chosen && load(key).chosen)
+        return false;
+    QJsonObject object{{"text", text}, {"provider", provider}};
+    if (chosen)
+        object.insert("chosen", true);
+    return writeObject(key, object);
 }
 
 void markMissing(const QString &key) {

@@ -63,8 +63,15 @@ void ServicesController::cacheLyrics(const QString &title, const QString &artist
     if (text.isEmpty())
         return;
     const QString key = lyrics::key(title, artist, album);
-    if (lyrics::save(key, text, provider.isEmpty() ? "LRCLIB" : provider))
+    if (lyrics::save(key, text, provider.isEmpty() ? "LRCLIB" : provider, true))
         emit lyricsSaved(key, text);
+}
+
+QVariantMap ServicesController::chosenLyrics(const QString &title, const QString &artist, const QString &album) const {
+    const lyrics::Stored stored = lyrics::load(lyrics::key(title, artist, album));
+    if (!stored.chosen || stored.text.isEmpty())
+        return {};
+    return {{"text", stored.text}, {"provider", stored.provider.isEmpty() ? "LRCLIB" : stored.provider}};
 }
 
 void ServicesController::fetchLyrics(const QString &title, const QString &artist, const QString &album,
@@ -86,7 +93,11 @@ void ServicesController::fetchLyrics(const QString &title, const QString &artist
     lookUpLyrics(song, [this, title, artist, album, requestToken](LyricsLookup result, const QString &text) {
         if (result != LyricsLookup::Found)
             return;
-        cacheLyrics(title, artist, album, text, {}, "LRCLIB");
+        // Lyrics picked by hand while the lookup ran are kept, and stay on screen.
+        const QString key = lyrics::key(title, artist, album);
+        if (!lyrics::save(key, text, "LRCLIB"))
+            return;
+        emit lyricsSaved(key, text);
         if (requestToken == m_lyricsRequestToken)
             emit lyricsFetched(title, artist, text, "LRCLIB");
     });

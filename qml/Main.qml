@@ -2314,6 +2314,12 @@ ApplicationWindow {
 
     function loadLyricsForTrack(track) {
         lyricsSyncOffsetMs = appSettings.value(lyricsSyncKey(track), 0)
+        // Lyrics picked or written by hand come first, so a pick isn't undone by the song's own lyrics next time.
+        const chosen = services.chosenLyrics(track.title || track.fileName || "", track.artist || "", track.album || "")
+        if (chosen.text) {
+            applyLyrics(chosen.text, chosen.provider)
+            return
+        }
         const local = services.localLyricsFor(track.filePath)
         const embedded = track.lyrics || player.getLyrics(track.filePath)
         if (preferLocalLyrics && local && local.trim().length) {

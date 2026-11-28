@@ -81,7 +81,7 @@ class RemoteControlServer final : public QObject {
     /// Allows or denies the phone in pairingRequest; once allowed, it receives the pairing code on its next check.
     Q_INVOKABLE void answerPairing(bool allow);
 
-    /// Verifies pairing, routing and the status payload without opening sockets.
+    /// Verifies requests, the phone protocol, pairing, synced data and the encrypted server.
     static bool selfCheck();
 
   signals:
@@ -127,8 +127,16 @@ class RemoteControlServer final : public QObject {
         QString filePath;
     };
 
+    static bool checkRequests();
+    static bool checkPhone();
+    static bool checkPairing();
+    static bool checkLibraryData();
+    static bool checkConnections();
+
     bool acceptsCode(const QByteArray &code) const;
     void serve(QTcpSocket *socket);
+    /// Answers once the whole request has arrived; \p requestBytes remembers how much it waits for.
+    void readRequest(QTcpSocket *socket, QTimer *deadline, qsizetype &requestBytes);
     /// Sends \p response's library file over \p socket, from the byte range in \p range if one was asked for.
     void streamFile(QTcpSocket *socket, const Response &response, const QByteArray &range);
     Response respond(const QByteArray &method, const QByteArray &target, const QByteArray &authorization,
@@ -158,6 +166,8 @@ class RemoteControlServer final : public QObject {
     /// Whether a disconnect is waiting for the phone; it is handed over once.
     bool takeDisconnectRequest(const QByteArray &deviceName);
     bool disconnectRequestedFor(const QByteArray &deviceName) const;
+    /// Marks the phone named \p deviceName as the one controlling playback here.
+    void noteController(const QByteArray &deviceName);
     /// Emits addressChanged when the address a phone should use differs from the one last shown.
     void checkAddress();
 

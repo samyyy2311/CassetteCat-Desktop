@@ -1,6 +1,7 @@
 #include "mpris_controller.h"
 #include "mpris_adaptor.h"
 #include "player_controller.h"
+#include "self_check.h"
 
 #include <QCryptographicHash>
 #include <QFileInfo>
@@ -91,15 +92,29 @@ int MprisController::loopStatusToRepeatMode(const QString &loopStatus) {
     return 0;
 }
 
+namespace {
+QVariant trackIdValue(const QString &path) {
+#ifdef CASSETTECAT_HAVE_DBUS
+    return QVariant::fromValue(QDBusObjectPath(path));
+#else
+    return path;
+#endif
+}
+
+// MPRIS takes a URL, so a local cover path becomes one, and a cover that no longer exists is left out.
+QString mprisArtUrl(const QString &artworkUrl) {
+    if (artworkUrl.startsWith(QLatin1String("http://")) || artworkUrl.startsWith(QLatin1String("https://")) ||
+        artworkUrl.startsWith(QLatin1String("file://")))
+        return artworkUrl;
+    return QFileInfo::exists(artworkUrl) ? QUrl::fromLocalFile(artworkUrl).toString() : QString();
+}
+} // namespace
+
 QVariantMap MprisController::buildMetadata(const QVariantMap &track, qint64 durationMs) {
     QVariantMap meta;
     if (track.isEmpty()) {
-#ifdef CASSETTECAT_HAVE_DBUS
         meta.insert(QStringLiteral("mpris:trackid"),
-                    QVariant::fromValue(QDBusObjectPath(QStringLiteral("/org/mpris/MediaPlayer2/TrackList/NoTrack"))));
-#else
-        meta.insert(QStringLiteral("mpris:trackid"), QStringLiteral("/org/mpris/MediaPlayer2/TrackList/NoTrack"));
-#endif
+                    trackIdValue(QStringLiteral("/org/mpris/MediaPlayer2/TrackList/NoTrack")));
         return meta;
     }
 
@@ -126,64 +141,45 @@ QVariantMap MprisController::buildMetadata(const QVariantMap &track, qint64 dura
         meta.insert(QStringLiteral("mpris:length"), static_cast<qlonglong>(durationMs) * 1000);
     }
 
-    const QString artworkUrl = track.value(QStringLiteral("artworkUrl")).toString().trimmed();
-    if (!artworkUrl.isEmpty()) {
-        if (artworkUrl.startsWith(QLatin1String("http://")) || artworkUrl.startsWith(QLatin1String("https://")) ||
-            artworkUrl.startsWith(QLatin1String("file://"))) {
-            meta.insert(QStringLiteral("mpris:artUrl"), artworkUrl);
-        } else if (QFileInfo::exists(artworkUrl)) {
-            meta.insert(QStringLiteral("mpris:artUrl"), QUrl::fromLocalFile(artworkUrl).toString());
-        }
-    }
+    const QString artUrl = mprisArtUrl(track.value(QStringLiteral("artworkUrl")).toString().trimmed());
+    if (!artUrl.isEmpty())
+        meta.insert(QStringLiteral("mpris:artUrl"), artUrl);
 
     const QString filePath = track.value(QStringLiteral("filePath")).toString().trimmed();
     const QString streamUrl = track.value(QStringLiteral("streamUrl")).toString().trimmed();
-    if (!filePath.isEmpty()) {
-        meta.insert(QStringLiteral("xesam:url"), QUrl::fromLocalFile(filePath).toString());
-    } else if (!streamUrl.isEmpty()) {
-        meta.insert(QStringLiteral("xesam:url"), streamUrl);
-    }
+    const QString url = filePath.isEmpty() ? streamUrl : QUrl::fromLocalFile(filePath).toString();
+    if (!url.isEmpty())
+        meta.insert(QStringLiteral("xesam:url"), url);
 
     const QString pathSource = !filePath.isEmpty() ? filePath : (!streamUrl.isEmpty() ? streamUrl : title);
     const QString trackId =
         QStringLiteral("/io/github/samyyy2311/CassetteCat/Track/") +
         QString::fromLatin1(QCryptographicHash::hash(pathSource.toUtf8(), QCryptographicHash::Sha1).toHex());
-#ifdef CASSETTECAT_HAVE_DBUS
-    meta.insert(QStringLiteral("mpris:trackid"), QVariant::fromValue(QDBusObjectPath(trackId)));
-#else
-    meta.insert(QStringLiteral("mpris:trackid"), trackId);
-#endif
-
+    meta.insert(QStringLiteral("mpris:trackid"), trackIdValue(trackId));
     return meta;
 }
 
 bool MprisController::selfCheck() {
-    if (playbackStatusString(true, true) != QLatin1String("Playing"))
-        return false;
-    if (playbackStatusString(false, true) != QLatin1String("Paused"))
-        return false;
-    if (playbackStatusString(false, false) != QLatin1String("Stopped"))
-        return false;
+    SelfCheck check("MPRIS");
+    check.expect(playbackStatusString(true, true) == QLatin1String("Playing"), "reports playing");
+    check.expect(playbackStatusString(false, true) == QLatin1String("Paused"), "reports paused");
+    check.expect(playbackStatusString(false, false) == QLatin1String("Stopped"), "reports stopped");
+    check.expect(loopStatusString(0) == QLatin1String("None"), "reports repeat off");
+    check.expect(loopStatusToRepeatMode(QStringLiteral("None")) == 0, "turns repeat off");
+    check.expect(loopStatusString(1) == QLatin1String("Playlist"), "reports repeat all");
+    check.expect(loopStatusToRepeatMode(QStringLiteral("Playlist")) == 1, "repeats all");
+    check.expect(loopStatusString(2) == QLatin1String("Track"), "reports repeat one");
+    check.expect(loopStatusToRepeatMode(QStringLiteral("Track")) == 2, "repeats one");
 
-    if (loopStatusString(0) != QLatin1String("None") || loopStatusToRepeatMode(QStringLiteral("None")) != 0)
-        return false;
-    if (loopStatusString(1) != QLatin1String("Playlist") || loopStatusToRepeatMode(QStringLiteral("Playlist")) != 1)
-        return false;
-    if (loopStatusString(2) != QLatin1String("Track") || loopStatusToRepeatMode(QStringLiteral("Track")) != 2)
-        return false;
-
-    const QVariantMap emptyMeta = buildMetadata(QVariantMap(), 0);
+    const auto trackId = [](const QVariantMap &metadata) {
 #ifdef CASSETTECAT_HAVE_DBUS
-    if (emptyMeta.value(QStringLiteral("mpris:trackid")).value<QDBusObjectPath>().path() !=
-        QLatin1String("/org/mpris/MediaPlayer2/TrackList/NoTrack")) {
-        return false;
-    }
+        return metadata.value(QStringLiteral("mpris:trackid")).value<QDBusObjectPath>().path();
 #else
-    if (emptyMeta.value(QStringLiteral("mpris:trackid")).toString() !=
-        QLatin1String("/org/mpris/MediaPlayer2/TrackList/NoTrack")) {
-        return false;
-    }
+        return metadata.value(QStringLiteral("mpris:trackid")).toString();
 #endif
+    };
+    check.expect(trackId(buildMetadata(QVariantMap(), 0)) == QLatin1String("/org/mpris/MediaPlayer2/TrackList/NoTrack"),
+                 "names no track when nothing plays");
 
     QVariantMap sampleTrack;
     sampleTrack.insert(QStringLiteral("title"), QStringLiteral("Test Song"));
@@ -191,31 +187,22 @@ bool MprisController::selfCheck() {
     sampleTrack.insert(QStringLiteral("album"), QStringLiteral("Test Album"));
     sampleTrack.insert(QStringLiteral("filePath"), QStringLiteral("/music/test.flac"));
     sampleTrack.insert(QStringLiteral("artworkUrl"), QStringLiteral("https://example.com/cover.jpg"));
-
     const QVariantMap fullMeta = buildMetadata(sampleTrack, 120000);
     const QString expectedTrackId =
         QStringLiteral("/io/github/samyyy2311/CassetteCat/Track/") +
         QString::fromLatin1(QCryptographicHash::hash(QByteArray("/music/test.flac"), QCryptographicHash::Sha1).toHex());
-#ifdef CASSETTECAT_HAVE_DBUS
-    if (fullMeta.value(QStringLiteral("mpris:trackid")).value<QDBusObjectPath>().path() != expectedTrackId)
-        return false;
-#else
-    if (fullMeta.value(QStringLiteral("mpris:trackid")).toString() != expectedTrackId)
-        return false;
-#endif
-    if (fullMeta.value(QStringLiteral("xesam:title")).toString() != QLatin1String("Test Song"))
-        return false;
-    if (fullMeta.value(QStringLiteral("xesam:album")).toString() != QLatin1String("Test Album"))
-        return false;
-    if (fullMeta.value(QStringLiteral("xesam:artist")).toStringList() != QStringList{QStringLiteral("Test Artist")})
-        return false;
-    if (fullMeta.value(QStringLiteral("mpris:length")).toLongLong() != 120000000LL)
-        return false;
-    if (fullMeta.value(QStringLiteral("mpris:artUrl")).toString() != QLatin1String("https://example.com/cover.jpg"))
-        return false;
-    if (fullMeta.value(QStringLiteral("xesam:url")).toString() !=
-        QUrl::fromLocalFile(QStringLiteral("/music/test.flac")).toString())
-        return false;
-
-    return true;
+    check.expect(trackId(fullMeta) == expectedTrackId, "names the track by its file");
+    check.expect(fullMeta.value(QStringLiteral("xesam:title")).toString() == QLatin1String("Test Song"), "title");
+    check.expect(fullMeta.value(QStringLiteral("xesam:album")).toString() == QLatin1String("Test Album"), "album");
+    check.expect(fullMeta.value(QStringLiteral("xesam:artist")).toStringList() ==
+                     QStringList{QStringLiteral("Test Artist")},
+                 "artist");
+    check.expect(fullMeta.value(QStringLiteral("mpris:length")).toLongLong() == 120000000LL, "length in microseconds");
+    check.expect(fullMeta.value(QStringLiteral("mpris:artUrl")).toString() ==
+                     QLatin1String("https://example.com/cover.jpg"),
+                 "cover");
+    check.expect(fullMeta.value(QStringLiteral("xesam:url")).toString() ==
+                     QUrl::fromLocalFile(QStringLiteral("/music/test.flac")).toString(),
+                 "file link");
+    return check.passed();
 }

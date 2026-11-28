@@ -1,15 +1,22 @@
 #include "discord_presence.h"
 
 #include "player_controller.h"
+#include "self_check.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDebug>
 #include <QEventLoop>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QLocalServer>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QThread>
+#include <QUrl>
+#include <QRegularExpression>
+#include <QUrlQuery>
 #include <QUuid>
 #include <QtEndian>
 
@@ -19,6 +26,26 @@ namespace {
 constexpr auto kClientId = "1553132340107149476";
 
 enum Opcode : quint32 { Handshake = 0, Frame = 1, Close = 2, Ping = 3, Pong = 4 };
+
+// Which field the member list shows after "Listening to": 2 is details, the song.
+constexpr int kShowDetails = 2;
+
+// Empty for a song that can't be looked up, which then shows the logo.
+QString artworkKey(const QVariantMap &track) {
+    const QString artist = track.value("artist").toString().trimmed().toLower();
+    const QString title = track.value("title").toString().trimmed().toLower();
+    if (artist.isEmpty() || title.isEmpty())
+        return {};
+    return artist + QChar(0x1f) + title + QChar(0x1f) + track.value("album").toString().trimmed().toLower();
+}
+
+// The song's public Last.fm page, which needs no account to open.
+QString lastFmUrl(const QString &artist, const QString &title) {
+    const auto part = [](const QString &text) {
+        return QString::fromUtf8(QUrl::toPercentEncoding(text, " ")).replace(u' ', u'+');
+    };
+    return "https://www.last.fm/music/" + part(artist) + "/_/" + part(title);
+}
 
 QStringList ipcCandidates() {
     QStringList names;
@@ -74,7 +101,7 @@ QJsonObject setActivityPayload(const QJsonObject &activity) {
 } // namespace
 
 DiscordPresence::DiscordPresence(PlayerController *player, QObject *parent)
-    : QObject(parent), m_player(player), m_socket(this), m_retryTimer(this), m_updateTimer(this) {
+    : QObject(parent), m_player(player), m_socket(this), m_retryTimer(this), m_updateTimer(this), m_net(this) {
     m_retryTimer.setSingleShot(true);
     m_retryTimer.setInterval(15000);
     connect(&m_retryTimer, &QTimer::timeout, this, [this] {
@@ -134,6 +161,8 @@ void DiscordPresence::setEnabled(bool enabled) {
     } else {
         m_retryTimer.stop();
         m_updateTimer.stop();
+        if (m_artworkReply)
+            m_artworkReply->abort();
         if (m_ready)
             sendFrame(Frame, setActivityPayload({}));
         m_ready = false;
@@ -143,7 +172,7 @@ void DiscordPresence::setEnabled(bool enabled) {
 }
 
 QJsonObject DiscordPresence::activityFor(const QVariantMap &track, bool playing, qint64 positionMs, qint64 durationMs,
-                                         qint64 nowMs) {
+                                         qint64 nowMs, const QString &artworkUrl) {
     QString title = track.value("title").toString().trimmed();
     if (title.isEmpty())
         title = track.value("fileName").toString().trimmed();
@@ -151,10 +180,15 @@ QJsonObject DiscordPresence::activityFor(const QVariantMap &track, bool playing,
     if (!playing || title.size() < 2)
         return {};
 
-    QJsonObject activity{{"type", 2}, {"details", title.left(128)}};
+    QJsonObject activity{{"type", 2}, {"status_display_type", kShowDetails}, {"details", title.left(128)}};
     const QString artist = track.value("artist").toString().trimmed();
-    if (artist.size() >= 2)
+    if (artist.size() >= 2) {
         activity.insert("state", artist.left(128));
+        // Discord turns down a button link over 512 characters, and a shortened one would lead nowhere.
+        const QString url = lastFmUrl(artist, title);
+        if (url.size() <= 512)
+            activity.insert("buttons", QJsonArray{QJsonObject{{"label", "Open on Last.fm"}, {"url", url}}});
+    }
 
     const qint64 startMs = nowMs - positionMs;
     QJsonObject timestamps{{"start", startMs}};
@@ -162,7 +196,12 @@ QJsonObject DiscordPresence::activityFor(const QVariantMap &track, bool playing,
         timestamps.insert("end", startMs + durationMs);
     activity.insert("timestamps", timestamps);
 
-    QJsonObject assets{{"large_image", "cassettecat"}};
+    // With a cover, the app logo moves to the small corner image.
+    QJsonObject assets{{"large_image", artworkUrl.isEmpty() ? QStringLiteral("cassettecat") : artworkUrl}};
+    if (!artworkUrl.isEmpty()) {
+        assets.insert("small_image", "cassettecat");
+        assets.insert("small_text", "CassetteCat");
+    }
     const QString album = track.value("album").toString().trimmed();
     if (album.size() >= 2)
         assets.insert("large_text", album.left(128));
@@ -216,10 +255,92 @@ void DiscordPresence::sendActivity() {
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     const qint64 positionMs = m_player->position();
     const QVariantMap track = m_player->currentTrack();
-    const QJsonObject activity = activityFor(track, m_player->isPlaying(), positionMs, m_player->duration(), nowMs);
+    const QString key = artworkKey(track);
+    if (key != m_artworkFailed)
+        m_artworkFailed.clear();
+    // Waiting for the cover sends the song once, rather than without it and again a moment later. A pause clears
+    // the status straight away, and a lookup that failed shows the logo until the song comes round again.
+    if (m_player->isPlaying() && !key.isEmpty() && !m_artwork.contains(key) && key != m_artworkFailed) {
+        lookUpArtwork(track);
+        return;
+    }
+    const QJsonObject activity =
+        activityFor(track, m_player->isPlaying(), positionMs, m_player->duration(), nowMs, m_artwork.value(key));
     m_sentStartMs = activity.isEmpty() ? 0 : nowMs - positionMs;
     m_lastSentMs = nowMs;
     sendFrame(Frame, setActivityPayload(activity));
+}
+
+namespace {
+// The cover of the search result that is this song, from the song's own album when iTunes has it there too, as the
+// same song is often on a single, the album and a deluxe edition, each with its own cover.
+// A title without credits for other artists, which tags and iTunes write differently, such as "(feat. ...)". Other
+// bracketed parts, like "(Part One)", are kept, so different songs stay different.
+QString baseTitle(const QString &title) {
+    static const QRegularExpression credit(
+        QStringLiteral(R"(\s*[(\[]\s*(feat\.?|ft\.?|featuring|with|prod\.?)\s[^)\]]*[)\]])"),
+        QRegularExpression::CaseInsensitiveOption);
+    return QString(title).remove(credit).trimmed();
+}
+
+QString coverFor(const QJsonArray &results, const QVariantMap &track) {
+    const QString title = baseTitle(track.value("title").toString());
+    const QString artist = track.value("artist").toString().trimmed();
+    const QString album = track.value("album").toString().trimmed();
+    QString cover;
+    for (const QJsonValue &result : results) {
+        const QJsonObject song = result.toObject();
+        // Collaborations are credited differently in tags and on iTunes, so either name may hold the other.
+        const QString resultArtist = song.value("artistName").toString();
+        const bool sameArtist =
+            resultArtist.contains(artist, Qt::CaseInsensitive) || artist.contains(resultArtist, Qt::CaseInsensitive);
+        if (baseTitle(song.value("trackName").toString()).compare(title, Qt::CaseInsensitive) != 0 || !sameArtist)
+            continue;
+        const bool sameAlbum = song.value("collectionName").toString().compare(album, Qt::CaseInsensitive) == 0;
+        if (cover.isEmpty() || sameAlbum)
+            cover = song.value("artworkUrl100").toString();
+        if (sameAlbum)
+            break;
+    }
+    return cover;
+}
+} // namespace
+
+void DiscordPresence::lookUpArtwork(const QVariantMap &track) {
+    const QString key = artworkKey(track);
+    if (m_artworkLookup == key)
+        return;
+    m_artworkLookup = key;
+    // iTunes search returns a public cover URL from one request, without a key. Searching by song rather than
+    // album finds soundtracks and compilations, whose album artist isn't the song's artist.
+    QUrl url(QStringLiteral("https://itunes.apple.com/search"));
+    url.setQuery(QUrlQuery{{"term", track.value("artist").toString() + u' ' + track.value("title").toString()},
+                           {"entity", "song"},
+                           {"limit", "10"}});
+    QNetworkRequest request(url);
+    // Short, as the status waits for it.
+    request.setTransferTimeout(4000);
+    QNetworkReply *reply = m_net.get(request);
+    m_artworkReply = reply;
+    connect(reply, &QNetworkReply::finished, this, [this, reply, key, track] {
+        reply->deleteLater();
+        if (m_artworkLookup == key)
+            m_artworkLookup.clear();
+        // Turned off, or offline blackout started, while the lookup ran: nothing from it is kept.
+        if (!m_enabled)
+            return;
+        // A request that didn't get through isn't remembered as a song without a cover.
+        if (reply->error() != QNetworkReply::NoError) {
+            m_artworkFailed = key;
+            sendActivity();
+            return;
+        }
+        const QJsonArray results = QJsonDocument::fromJson(reply->readAll()).object().value("results").toArray();
+        const QString small = coverFor(results, track);
+        // A song iTunes doesn't have shows the logo.
+        m_artwork.insert(key, small.isEmpty() ? QString() : QString(small).replace("100x100bb", "512x512bb"));
+        sendActivity();
+    });
 }
 
 void DiscordPresence::sendFrame(quint32 opcode, const QJsonObject &payload) {
@@ -227,22 +348,46 @@ void DiscordPresence::sendFrame(quint32 opcode, const QJsonObject &payload) {
 }
 
 bool DiscordPresence::selfCheck() {
+    SelfCheck check("Discord presence");
     const QVariantMap track{{"title", "Song Title"}, {"artist", "Some Artist"}, {"album", "An Album"}};
     const QJsonObject activity = activityFor(track, true, 30000, 200000, 1000000);
     const QJsonObject timestamps = activity.value("timestamps").toObject();
-    if (activity.value("type").toInt() != 2 || activity.value("details") != "Song Title" ||
-        activity.value("state") != "Some Artist" || timestamps.value("start").toInteger() != 970000 ||
-        timestamps.value("end").toInteger() != 1170000 ||
-        activity.value("assets").toObject().value("large_text") != "An Album")
-        return false;
-    if (!activityFor(track, false, 0, 0, 0).isEmpty() || !activityFor({{"title", "X"}}, true, 0, 0, 0).isEmpty())
-        return false;
+    const QJsonObject assets = activity.value("assets").toObject();
+    check.expect(activity.value("type").toInt() == 2, "shows as listening");
+    const auto song = [](const char *name, const char *album, const char *cover) {
+        return QJsonObject{
+            {"trackName", name}, {"artistName", "Some Artist"}, {"collectionName", album}, {"artworkUrl100", cover}};
+    };
+    const QJsonArray results{song("Song Title (Part Two)", "An Album", "two"),
+                             song("Song Title (feat. Guest)", "An Album (Deluxe)", "deluxe"),
+                             song("Song Title", "An Album", "album")};
+    check.expect(coverFor(results, track) == "album", "picks the song on its own album, not a deluxe edition");
+    check.expect(coverFor(QJsonArray{results[1]}, track) == "deluxe", "matches a title credited to a guest");
+    check.expect(coverFor(QJsonArray{results[0]}, track).isEmpty(), "keeps a differently named part apart");
+    check.expect(activity.value("details") == "Song Title", "names the song");
+    check.expect(activity.value("state") == "Some Artist", "names the artist");
+    check.expect(timestamps.value("start").toInteger() == 970000, "starts the timer at the song's start");
+    check.expect(timestamps.value("end").toInteger() == 1170000, "ends the timer at the song's end");
+    check.expect(assets.value("large_text") == "An Album", "names the album");
+    check.expect(assets.value("large_image") == "cassettecat", "shows the logo without a cover");
+    check.expect(activity.value("status_display_type").toInt() == kShowDetails, "shows the song in the member list");
+    check.expect(activity.value("buttons")[0].toObject().value("url") ==
+                     "https://www.last.fm/music/Some+Artist/_/Song+Title",
+                 "links the song on Last.fm");
+    const QJsonObject coverAssets =
+        activityFor(track, true, 0, 1000, 0, "https://example.org/cover.jpg").value("assets").toObject();
+    check.expect(coverAssets.value("large_image") == "https://example.org/cover.jpg", "shows the cover");
+    check.expect(coverAssets.value("small_image") == "cassettecat", "shows the logo beside the cover");
+    check.expect(activityFor(track, false, 0, 0, 0).isEmpty(), "clears the status when paused");
+    check.expect(activityFor({{"title", "X"}}, true, 0, 0, 0).isEmpty(), "shows nothing without an artist");
 
     // Exchange frames with a local stand-in for the Discord client.
     const QString name = QStringLiteral("cassettecat-discord-check-%1").arg(QCoreApplication::applicationPid());
     QLocalServer::removeServer(name);
     QLocalServer server;
-    if (!server.listen(name))
+    const bool listening = server.listen(name);
+    check.expect(listening, "opens a stand-in for Discord");
+    if (!listening)
         return false;
 
     PlayerController player;
@@ -278,11 +423,17 @@ bool DiscordPresence::selfCheck() {
     const int firstWaitMs = presence.m_updateTimer.remainingTime();
     QThread::msleep(20);
     presence.scheduleUpdate();
-    const bool keepsPendingUpdate = presence.m_updateTimer.remainingTime() < firstWaitMs;
+    check.expect(presence.m_updateTimer.remainingTime() < firstWaitMs, "keeps a pending update");
 
+    const QPair<quint32, QJsonObject> none{0, {}};
+    const auto handshake = frames.value(0, none);
+    const auto update = frames.value(1, none);
+    check.expect(frames.size() == 2, "sends a handshake and one update");
+    check.expect(handshake.first == Handshake, "starts with a handshake");
+    check.expect(handshake.second.value("client_id").toString() == kClientId, "names the app in the handshake");
+    check.expect(update.first == Frame, "sends the update as a frame");
+    check.expect(update.second.value("cmd") == "SET_ACTIVITY", "sets the activity");
     // The player is paused, so the first update clears the activity.
-    return keepsPendingUpdate && frames.size() == 2 && frames[0].first == Handshake &&
-           frames[0].second.value("client_id").toString() == kClientId && frames[1].first == Frame &&
-           frames[1].second.value("cmd") == "SET_ACTIVITY" &&
-           frames[1].second.value("args").toObject().value("activity").isNull();
+    check.expect(update.second.value("args").toObject().value("activity").isNull(), "clears the activity when paused");
+    return check.passed();
 }

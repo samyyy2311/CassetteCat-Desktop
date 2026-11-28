@@ -1353,6 +1353,14 @@ ApplicationWindow {
         }
     }
 
+    function quitApp() {
+        if (appQuitting) return
+        appQuitting = true
+        finishHistoryTracking()
+        persistBeforeExit()
+        Qt.quit()
+    }
+
     function finishHistoryTracking() {
         pauseHistoryTracking()
         // Every listen is logged for the Listening Record's time, marked as a play once it counted as one.
@@ -1787,6 +1795,10 @@ ApplicationWindow {
             // The mini player keeps playing, and going back to the full player brings this window back.
             close.accepted = false
             window.hide()
+        } else if (!appQuitting && Qt.platform.os === "osx") {
+            // Mac apps keep running when their window closes; the Dock icon brings it back.
+            close.accepted = false
+            window.hide()
         } else if (!appQuitting) {
             appQuitting = true
             finishHistoryTracking()
@@ -2061,9 +2073,13 @@ ApplicationWindow {
         if (track) services.loveTrack(track, !!favs[norm])
     }
 
-    // Sends every liked song as a love, for likes made before loves were sent.
+    // Loves the liked songs each account lacks, and takes back loves for library songs no longer liked.
     function loveAllFavorites() {
-        tracksForPaths(Object.keys(favoriteTracks)).forEach(track => { if (track) services.loveTrack(track, true) })
+        const libraryTracks = library.playbackTracks()
+        // The same check as the heart, so a favourite saved with its path in another case still counts as liked.
+        const liked = tracksForPaths(Object.keys(favoriteTracks)).filter(track => !!track)
+            .concat(libraryTracks.filter(track => isFavorite(track.filePath)))
+        services.syncLikes(liked, libraryTracks)
     }
 
     function setFavorites(filePaths, favorite) {
@@ -2805,8 +2821,14 @@ ApplicationWindow {
         if (!sourceTrack || !targetTrack) return
         const queue = activePlaybackQueue()
         const currentIndex = currentQueueIndex(queue)
-        let fromIdx = (sourceIndex !== undefined && sourceIndex >= 0) ? sourceIndex : queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(sourceTrack))
-        let toIdx = (targetIndex !== undefined && targetIndex >= 0) ? targetIndex : queue.findIndex(candidate => trackIdentity(candidate) === trackIdentity(targetTrack))
+        // A place is trusted only while it still holds the same song, as the queue may have changed during the drag.
+        const placeOf = (track, index) => {
+            const identity = trackIdentity(track)
+            if (index !== undefined && index >= 0 && queue[index] && trackIdentity(queue[index]) === identity) return index
+            return queue.findIndex(candidate => trackIdentity(candidate) === identity)
+        }
+        const fromIdx = placeOf(sourceTrack, sourceIndex)
+        const toIdx = placeOf(targetTrack, targetIndex)
         if (fromIdx < 0 || toIdx < 0 || fromIdx === toIdx || fromIdx <= currentIndex || toIdx <= currentIndex) return
         const nextQueue = queue.slice()
         const [moved] = nextQueue.splice(fromIdx, 1)
@@ -2825,7 +2847,8 @@ ApplicationWindow {
         if (currentIndex < 0) return
 
         if (player.shuffleEnabled) {
-            const shuffled = queue.slice(0, currentIndex + 1).concat(shuffledTracks(queue.slice(currentIndex + 1)))
+            // The whole list is shuffled, as when playback starts shuffled, so songs before the current one still play.
+            const shuffled = [queue[currentIndex]].concat(shuffledTracks(queue.filter((_, index) => index !== currentIndex)))
             if (radioQueue) radioPlaybackQueue = shuffled
             else playbackQueue = shuffled
         } else if (radioQueue) {
@@ -3225,12 +3248,7 @@ ApplicationWindow {
         function onVolumeRequested(volume) {
             window.setPlayerVolume(volume)
         }
-        function onQuitRequested() {
-            appQuitting = true
-            finishHistoryTracking()
-            persistBeforeExit()
-            Qt.quit()
-        }
+        function onQuitRequested() { window.quitApp() }
     }
 
     Connections {
@@ -3316,12 +3334,7 @@ ApplicationWindow {
         function onPlayPauseRequested() { player.togglePlay() }
         function onNextRequested() { window.playNext() }
         function onPreviousRequested() { window.playPrevious() }
-        function onQuitRequested() {
-            appQuitting = true
-            finishHistoryTracking()
-            persistBeforeExit()
-            Qt.quit()
-        }
+        function onQuitRequested() { window.quitApp() }
     }
 
     // Sleep timer helpers

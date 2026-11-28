@@ -13,6 +13,7 @@
 #include <QVariantList>
 
 #include <functional>
+#include <optional>
 
 class QNetworkReply;
 class QSettings;
@@ -72,6 +73,9 @@ class ServicesController : public QObject {
     /// Marks a liked song as loved on the connected Last.fm, Libre.fm and ListenBrainz accounts, or clears it. Loves
     /// are sent one a second, so liking many songs at once stays under the services' rate limits.
     Q_INVOKABLE void loveTrack(const QVariantMap &track, bool loved);
+    // Loves the liked songs each account lacks, and takes back loves the app sent for library songs no
+    // longer liked. Songs outside the library are left alone.
+    Q_INVOKABLE void syncLikes(const QVariantList &likedTracks, const QVariantList &libraryTracks);
     int lovesLeft() const {
         return int(m_loves.size());
     }
@@ -93,7 +97,7 @@ class ServicesController : public QObject {
     /// Queries the latest release and emits the resulting update status.
     Q_INVOKABLE void checkForUpdates(bool manual = false);
     /// The changelog's points for \p version, empty when it has none.
-    Q_INVOKABLE QStringList releaseNotes(const QString &version) const;
+    Q_INVOKABLE QVariantList releaseNotes(const QString &version) const;
     /// Compares dotted release versions, returning their relative order.
     static int compareVersions(const QString &v1, const QString &v2);
 
@@ -124,12 +128,16 @@ class ServicesController : public QObject {
     void updateCheckFailed(const QString &error, bool manual);
 
   private:
-    static QStringList releaseNotesFrom(const QString &changelog, const QString &version);
+    static QVariantList releaseNotesFrom(const QString &changelog, const QString &version);
     enum class LyricsLookup { Found, Missing, Failed };
     /// Exact match first, then search; synced lyrics preferred.
     void lookUpLyrics(const QVariantMap &song, std::function<void(LyricsLookup, const QString &)> done);
+    /// Falls back to LRCLIB's search when it has no exact match for the song.
+    void searchLyrics(const QString &title, const QString &artist,
+                      std::function<void(LyricsLookup, const QString &)> done);
     void fetchNextLibraryLyrics();
     static QString canonicalArtistName(const QString &artist);
+    static QString deezerPicture(const QJsonArray &artists, const QString &key);
     static bool serviceEnabled(const QSettings &settings, const QString &service);
     bool onlineEnabled() const;
     bool serviceEnabled(const QString &service) const;
@@ -173,12 +181,54 @@ class ServicesController : public QObject {
         QString artist;
         QString title;
         bool loved;
+        // The account records (service and username) this goes to, fixed when it's queued so it never reaches an
+        // account signed in afterwards.
+        QStringList to;
     };
+    // The songs an account has loved through the app, so Sync Likes sends each account only what it lacks.
+    /// The songs loved through the app on the account whose record is \p record.
+    static QStringList lovedSongs(const QString &record);
+    static void recordLove(const QString &record, const QString &song, bool loved);
+    // Whether the account has the app's love, not counting one an unlove is on its way to take back.
+    bool hasLove(const QString &record, const QString &song) const;
+    void queueLove(const Love &love);
+    // Each account's own list of loves, by song and keyed by account record, for the accounts whose list could be read.
+    using AccountLoves = QHash<QString, QSet<QString>>;
+    void loveTrackOn(const QVariantMap &track, bool loved, const AccountLoves &onAccounts);
+    // One page of an account's loves: \c total is the page count for Last.fm and Libre.fm, and the number of loves
+    // for ListenBrainz. Empty when the reply isn't such a page.
+    struct LovedPage {
+        QSet<QString> songs;
+        int total = 0;
+    };
+    static std::optional<LovedPage> lovedTracksPage(const QJsonObject &reply);
+    static std::optional<LovedPage> feedbackPage(const QJsonObject &reply);
+    // A Sync Likes waiting for the accounts' lists of loves, so it sends only what each account is missing.
+    struct LikesSync {
+        QVariantList liked;
+        QVariantList library;
+        AccountLoves onAccounts;
+        // Songs liked or unliked while the accounts were read, which keep that newer choice.
+        QSet<QString> changed;
+        int waiting = 0;
+    };
+    std::optional<LikesSync> m_likesSync;
+    quint64 m_likesSyncId = 0;
+    void readAccountLoves(const QString &service, quint64 sync, int position);
+    void finishLikesSync();
+    QStringList lovingServices() const;
     QList<Love> m_loves;
     QHash<QString, quint64> m_loveGenerations;
+    // Unloves waiting for an answer. Their love stays recorded until the account takes them, so a failed one is
+    // tried again, while liking the song again meanwhile still sends the love.
+    QSet<QString> m_unloving;
     bool m_lovesRunning = false;
     void sendNextLove();
     void sendLove(const Love &love);
+    void sendLoveToScrobblers(const Love &love);
+    void sendLoveToListenBrainz(const Love &love);
+    void sendListenBrainzFeedback(const QString &mbid, bool loved, const QString &key, const QString &record,
+                                  const QString &token);
     int m_libraryLyricsFailures = 0;
     int m_libraryLyricsFound = 0;
     int m_libraryLyricsTotal = 0;

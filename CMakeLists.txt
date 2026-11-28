@@ -33,6 +33,7 @@ endif()
 qt_add_executable(CassetteCat
     src/main.cpp
     src/app_paths.h
+    src/self_check.h
     src/app_paths.cpp
     src/app_settings.h
     src/app_settings.cpp
@@ -536,6 +537,12 @@ if(UNIX AND NOT APPLE)
         DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/256x256/apps
         RENAME io.github.samyyy2311.CassetteCat.png
         COMPONENT runtime
+    )
+    # Qt's deploy script copies only the default platform plugin, xcb, so Wayland sessions would fall back to XWayland.
+    install(DIRECTORY "${QT6_INSTALL_PREFIX}/${QT6_INSTALL_PLUGINS}/platforms/"
+        DESTINATION plugins/platforms
+        COMPONENT runtime
+        FILES_MATCHING PATTERN "libqwayland*.so"
     )
 endif()
 

@@ -31,6 +31,8 @@ class SmtcController final : public QObject {
     void onPositionChanged();
 
   private:
+    /// Plays when paused and pauses when playing, for buttons that do both.
+    void togglePlayback();
     class Private;
     Private *d = nullptr;
     PlayerController *m_player = nullptr;

@@ -54,6 +54,27 @@ TestCase {
         compare(model.get(1999).key, "next:song0#0")
     }
 
+    function test_shuffle_rewrites_rows_without_rebuilding() {
+        const songs = []
+        for (let i = 0; i < 200; ++i) songs.push(next("s" + i, i))
+        model.entries = []
+        model.entries = songs.slice()
+
+        let rebuilds = 0
+        let removed = 0
+        const onRebuilt = () => ++rebuilds
+        const onRemoved = () => ++removed
+        model.rebuilt.connect(onRebuilt)
+        model.rowsRemoved.connect(onRemoved)
+        model.entries = songs.slice().reverse()
+        model.rebuilt.disconnect(onRebuilt)
+        model.rowsRemoved.disconnect(onRemoved)
+        compare(rebuilds, 0)
+        compare(removed, 0)
+        compare(model.count, 200)
+        compare(model.get(0).key, "next:s199#0")
+    }
+
     function test_single_change_in_large_queue_keeps_other_rows() {
         const songs = []
         for (let i = 0; i < 200; ++i) songs.push(next("s" + i, i))

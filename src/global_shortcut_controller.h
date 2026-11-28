@@ -47,6 +47,9 @@ class GlobalShortcutController final : public QObject, public QAbstractNativeEve
 
   private:
     bool registerShortcuts();
+#ifdef Q_OS_WIN
+    bool registerOrRestore(const QString &action, const QString &previous);
+#endif
     void unregisterShortcuts();
     void setStatus(const QString &status);
     bool trigger(int id);

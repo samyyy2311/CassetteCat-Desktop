@@ -57,6 +57,8 @@ Window {
     readonly property color silverDim: window.silverDim
 
     property bool alwaysOnTop: true
+    // Wayland leaves stacking to the compositor, so there is no way to keep a window on top.
+    readonly property bool canStayOnTop: !Qt.platform.pluginName.startsWith("wayland")
     property int albumArtRadius: 16
     property bool playerVisuallyPlaying: false
     property int repeatMode: 0
@@ -218,6 +220,7 @@ Window {
                     padding: 2
 
                     Rectangle {
+                        visible: root.canStayOnTop
                         width: 22; height: 22; radius: 11
                         color: root.alwaysOnTop ? root.recordRed : (pinHover.containsMouse ? "#25FFFFFF" : "transparent")
                         scale: pinHover.pressed ? 0.90 : 1.0

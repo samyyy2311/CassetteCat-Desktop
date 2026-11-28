@@ -6,6 +6,8 @@
 #include <QRandomGenerator>
 #include <QUrlQuery>
 
+#include <algorithm>
+
 namespace streaming::protocol {
 
 namespace {
@@ -21,17 +23,36 @@ QString formatTrackDuration(int totalSeconds) {
     return QString("%1:%2").arg(totalSeconds / 60).arg(totalSeconds % 60, 2, 10, QChar('0'));
 }
 
+// Names a home network answers for itself, so they never reach the internet's DNS.
+bool isLocalName(const QString &host) {
+    static const QStringList localSuffixes{".local", ".lan", ".home.arpa", ".internal", ".localdomain"};
+    return host.compare("localhost", Qt::CaseInsensitive) == 0 ||
+           std::any_of(localSuffixes.cbegin(), localSuffixes.cend(),
+                       [&](const QString &suffix) { return host.endsWith(suffix, Qt::CaseInsensitive); });
+}
+
+bool isPrivateIpv4(quint32 ipv4) {
+    const quint8 first = static_cast<quint8>(ipv4 >> 24);
+    const quint8 second = static_cast<quint8>((ipv4 >> 16) & 0xff);
+    // 100.64.0.0/10 isn't counted: Tailscale uses it, but so do mobile carriers, so it may not be the user's
+    // network.
+    return first == 10 || (first == 172 && second >= 16 && second <= 31) || (first == 192 && second == 168) ||
+           (first == 169 && second == 254);
+}
+
+// Unique local (fc00::/7) and link-local (fe80::/10) addresses.
+bool isPrivateIpv6(const Q_IPV6ADDR &ipv6) {
+    return (ipv6.c[0] & 0xfe) == 0xfc || (ipv6.c[0] == 0xfe && (ipv6.c[1] & 0xc0) == 0x80);
+}
+
 bool isPrivateOrLocalHost(const QString &host) {
     const QString value = host.trimmed();
     if (value.isEmpty()) {
         return false;
     }
-    if (value.compare("localhost", Qt::CaseInsensitive) == 0 || value.endsWith(".local", Qt::CaseInsensitive) ||
-        value.endsWith(".lan", Qt::CaseInsensitive) || value.endsWith(".home.arpa", Qt::CaseInsensitive) ||
-        value.endsWith(".internal", Qt::CaseInsensitive) || value.endsWith(".localdomain", Qt::CaseInsensitive)) {
+    if (isLocalName(value)) {
         return true;
     }
-
     QHostAddress address;
     if (!address.setAddress(value)) {
         return !value.contains('.');
@@ -39,20 +60,24 @@ bool isPrivateOrLocalHost(const QString &host) {
     if (address.isLoopback()) {
         return true;
     }
-
     bool isIpv4 = false;
     const quint32 ipv4 = address.toIPv4Address(&isIpv4);
-    if (isIpv4) {
-        const quint8 first = static_cast<quint8>(ipv4 >> 24);
-        const quint8 second = static_cast<quint8>((ipv4 >> 16) & 0xff);
-        // 100.64.0.0/10 isn't counted: Tailscale uses it, but so do mobile carriers, so it may not be the user's
-        // network.
-        return first == 10 || (first == 172 && second >= 16 && second <= 31) || (first == 192 && second == 168) ||
-               (first == 169 && second == 254);
-    }
+    return isIpv4 ? isPrivateIpv4(ipv4) : isPrivateIpv6(address.toIPv6Address());
+}
 
-    const Q_IPV6ADDR ipv6 = address.toIPv6Address();
-    return (ipv6.c[0] & 0xfe) == 0xfc || (ipv6.c[0] == 0xfe && (ipv6.c[1] & 0xc0) == 0x80);
+QString withoutTrailingSlashes(QString url) {
+    while (url.endsWith('/')) {
+        url.chop(1);
+    }
+    return url;
+}
+
+// A bare http(s) server address: nothing but a scheme, host, port and path.
+bool isBareServerUrl(const QUrl &url) {
+    const bool web = url.scheme().compare("http", Qt::CaseInsensitive) == 0 ||
+                     url.scheme().compare("https", Qt::CaseInsensitive) == 0;
+    return url.isValid() && !url.host().isEmpty() && web && url.userInfo().isEmpty() && !url.hasQuery() &&
+           !url.hasFragment();
 }
 
 QString hostFromUnschemedUrl(const QString &value) {
@@ -67,10 +92,7 @@ bool isUnencryptedPublicUrl(const QString &raw) {
 }
 
 QString normalizeServerUrl(const QString &raw, int defaultPort) {
-    QString url = raw.trimmed();
-    while (url.endsWith('/')) {
-        url.chop(1);
-    }
+    QString url = withoutTrailingSlashes(raw.trimmed());
     if (url.isEmpty()) {
         return {};
     }
@@ -83,28 +105,15 @@ QString normalizeServerUrl(const QString &raw, int defaultPort) {
     }
 
     const QUrl parsed(url);
-    if (!parsed.isValid() || parsed.host().isEmpty() ||
-        (parsed.scheme().compare("http", Qt::CaseInsensitive) != 0 &&
-         parsed.scheme().compare("https", Qt::CaseInsensitive) != 0) ||
-        !parsed.userInfo().isEmpty() || parsed.hasQuery() || parsed.hasFragment()) {
+    if (!isBareServerUrl(parsed)) {
         return {};
     }
-
-    QString normalized = parsed.toString();
-    while (normalized.endsWith('/')) {
-        normalized.chop(1);
+    if (defaultPort <= 0 || parsed.port() != -1 || !isPrivateOrLocalHost(parsed.host())) {
+        return withoutTrailingSlashes(parsed.toString());
     }
-    if (defaultPort > 0) {
-        QUrl withPort(parsed);
-        if (withPort.port() == -1 && isPrivateOrLocalHost(parsed.host())) {
-            withPort.setPort(defaultPort);
-            normalized = withPort.toString();
-            while (normalized.endsWith('/')) {
-                normalized.chop(1);
-            }
-        }
-    }
-    return normalized;
+    QUrl withPort(parsed);
+    withPort.setPort(defaultPort);
+    return withoutTrailingSlashes(withPort.toString());
 }
 
 QString md5Hex(const QString &input) {
@@ -198,6 +207,44 @@ QString jellyfinAuthHeader(const QString &deviceId, const QString &accessToken) 
     return header;
 }
 
+namespace {
+QString joinedNames(const QJsonArray &values, const QString &field = {}) {
+    QStringList names;
+    for (const QJsonValue &value : values) {
+        const QString name = (field.isEmpty() ? value.toString() : value.toObject().value(field).toString()).trimmed();
+        if (!name.isEmpty())
+            names << name;
+    }
+    return names.join(", ");
+}
+
+// Jellyfin lists artists as names in Artists and as objects in ArtistItems, and either may be missing.
+QString jellyfinArtist(const QJsonObject &item) {
+    for (const QString &artist :
+         {joinedNames(item.value("Artists").toArray()), joinedNames(item.value("ArtistItems").toArray(), "Name"),
+          item.value("AlbumArtist").toString().trimmed()}) {
+        if (!artist.isEmpty())
+            return artist;
+    }
+    return QStringLiteral("Unknown Artist");
+}
+
+// Maps Jellyfin's container names, which can list several, to the formats the library shows.
+QString jellyfinFormat(const QString &rawContainer) {
+    const QString container = rawContainer.toUpper();
+    static const std::pair<const char *, const char *> known[] = {
+        {"M4A", "M4A"},   {"AAC", "M4A"}, {"MP4", "M4A"}, {"FLAC", "FLAC"}, {"MP3", "MP3"},
+        {"OPUS", "OPUS"}, {"OGG", "OGG"}, {"WAV", "WAV"}, {"ALAC", "ALAC"},
+    };
+    for (const auto &[part, format] : known) {
+        if (container.contains(part))
+            return format;
+    }
+    const QString first = container.section(',', 0, 0).trimmed();
+    return first.isEmpty() ? QStringLiteral("AUDIO") : first;
+}
+} // namespace
+
 QVariantMap jellyfinTrackMap(const QJsonObject &item) {
     const QString id = item.value("Id").toString();
     const long long ticks = item.value("RunTimeTicks").toVariant().toLongLong();
@@ -207,36 +254,7 @@ QVariantMap jellyfinTrackMap(const QJsonObject &item) {
     track.insert("fileName", item.value("Name").toString());
     track.insert("title", item.value("Name").toString());
 
-    QString artist;
-    const QJsonArray artistsArray = item.value("Artists").toArray();
-    if (!artistsArray.isEmpty()) {
-        QStringList names;
-        for (const auto &val : artistsArray) {
-            const QString n = val.toString().trimmed();
-            if (!n.isEmpty())
-                names << n;
-        }
-        artist = names.join(", ");
-    }
-    if (artist.isEmpty()) {
-        const QJsonArray artistItems = item.value("ArtistItems").toArray();
-        if (!artistItems.isEmpty()) {
-            QStringList names;
-            for (const auto &val : artistItems) {
-                const QString n = val.toObject().value("Name").toString().trimmed();
-                if (!n.isEmpty())
-                    names << n;
-            }
-            artist = names.join(", ");
-        }
-    }
-    if (artist.isEmpty()) {
-        artist = item.value("AlbumArtist").toString().trimmed();
-    }
-    if (artist.isEmpty()) {
-        artist = "Unknown Artist";
-    }
-    track.insert("artist", artist);
+    track.insert("artist", jellyfinArtist(item));
 
     const QString album = item.value("Album").toString().trimmed();
     track.insert("album", album.isEmpty() ? QString("Unknown Album") : album);
@@ -247,42 +265,16 @@ QVariantMap jellyfinTrackMap(const QJsonObject &item) {
     track.insert("durationSeconds", secs);
     track.insert("duration", formatTrackDuration(secs));
 
-    QString container = item.value("Container").toString().toUpper();
-    if (container.contains("M4A") || container.contains("AAC") || container.contains("MP4"))
-        container = "M4A";
-    else if (container.contains("FLAC"))
-        container = "FLAC";
-    else if (container.contains("MP3"))
-        container = "MP3";
-    else if (container.contains("OPUS"))
-        container = "OPUS";
-    else if (container.contains("OGG"))
-        container = "OGG";
-    else if (container.contains("WAV"))
-        container = "WAV";
-    else if (container.contains("ALAC"))
-        container = "ALAC";
-    else if (container.contains(","))
-        container = container.section(',', 0, 0).trimmed();
-    track.insert("format", container.isEmpty() ? QString("AUDIO") : container);
+    track.insert("format", jellyfinFormat(item.value("Container").toString()));
 
     track.insert("source", QString("jellyfin"));
     track.insert("remoteId", id);
     track.insert("isFavorite", item.value("UserData").toObject().value("IsFavorite").toBool(false));
 
+    // A song without its own picture shows its album's.
     const QJsonObject imageTags = item.value("ImageTags").toObject();
     const bool hasPrimary = imageTags.contains("Primary") && !imageTags.value("Primary").isNull();
-    const QString albumId = item.value("AlbumId").toString();
-    const QString albumTag = item.value("AlbumPrimaryImageTag").toString();
-    QString artId;
-    if (hasPrimary) {
-        artId = id;
-    } else if (!albumId.isEmpty() && !albumTag.isEmpty()) {
-        artId = albumId;
-    } else if (!albumId.isEmpty()) {
-        artId = albumId;
-    }
-    track.insert("remoteArtId", artId);
+    track.insert("remoteArtId", hasPrimary ? id : item.value("AlbumId").toString());
     return track;
 }
 

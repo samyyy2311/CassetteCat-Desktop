@@ -16,30 +16,48 @@
 
 #include <algorithm>
 
+namespace {
+// The details read last time, by file path, so files that haven't changed aren't read again.
+QHash<QString, TrackInfo> cachedTracks() {
+    QFile cacheFile(libraryCacheFilePath());
+    if (!cacheFile.open(QIODevice::ReadOnly))
+        return {};
+    const QJsonDocument doc = QJsonDocument::fromJson(cacheFile.readAll());
+    if (!doc.isArray())
+        return {};
+    const QVariantList list = doc.toVariant().toList();
+    QHash<QString, TrackInfo> tracks;
+    tracks.reserve(list.size());
+    for (const QVariant &item : list) {
+        const TrackInfo info = TrackInfo::fromMap(item.toMap());
+        if (!info.filePath.isEmpty())
+            tracks.insert(info.filePath, info);
+    }
+    return tracks;
+}
+
+// A cover image in the folder, saved as a thumbnail when it can be, or linked as it is.
+QString folderCover(const QString &folderPath) {
+    const QDir trackFolder(folderPath);
+    const QStringList covers = {"cover.jpg",  "cover.jpeg", "cover.png", "folder.jpg",
+                                "folder.png", "front.jpg",  "front.png"};
+    for (const QString &name : covers) {
+        const QString candidate = trackFolder.filePath(name);
+        if (!QFileInfo::exists(candidate))
+            continue;
+        const QString cover = saveFolderArtwork(candidate, 512);
+        return cover.isEmpty() ? QUrl::fromLocalFile(candidate).toString() : cover;
+    }
+    return {};
+}
+} // namespace
+
 QVariantList scanTracks(const QString &folder) {
     const QStringList filters = {"*.aac", "*.aiff", "*.alac", "*.flac", "*.m4a",
                                  "*.mp3", "*.ogg",  "*.opus", "*.wav",  "*.wma"};
     QList<TrackInfo> trackList;
     QHash<QString, QString> artworkByFolder;
-
-    QHash<QString, TrackInfo> cachedTracks;
-    const QString cachePath = libraryCacheFilePath();
-    QFile cacheFile(cachePath);
-    if (cacheFile.open(QIODevice::ReadOnly)) {
-        const QJsonDocument doc = QJsonDocument::fromJson(cacheFile.readAll());
-        cacheFile.close();
-        if (doc.isArray()) {
-            const QVariantList list = doc.toVariant().toList();
-            cachedTracks.reserve(list.size());
-            for (const QVariant &item : list) {
-                const TrackInfo info = TrackInfo::fromMap(item.toMap());
-                if (!info.filePath.isEmpty()) {
-                    cachedTracks.insert(info.filePath, info);
-                }
-            }
-        }
-    }
-
+    const QHash<QString, TrackInfo> cached = cachedTracks();
     QDirIterator iterator(folder, filters, QDir::Files, QDirIterator::Subdirectories);
 
     while (iterator.hasNext()) {
@@ -50,32 +68,15 @@ QVariantList scanTracks(const QString &folder) {
         }
 
         const QString folderPath = fileInfo.absolutePath();
-        if (!artworkByFolder.contains(folderPath)) {
-            const QDir trackFolder(folderPath);
-            const QStringList covers = {"cover.jpg",  "cover.jpeg", "cover.png", "folder.jpg",
-                                        "folder.png", "front.jpg",  "front.png"};
-            QString cover;
-
-            for (const QString &name : covers) {
-                const QString candidate = trackFolder.filePath(name);
-                if (QFileInfo::exists(candidate)) {
-                    cover = saveFolderArtwork(candidate, 512);
-                    if (cover.isEmpty()) {
-                        cover = QUrl::fromLocalFile(candidate).toString();
-                    }
-                    break;
-                }
-            }
-
-            artworkByFolder.insert(folderPath, cover);
-        }
+        if (!artworkByFolder.contains(folderPath))
+            artworkByFolder.insert(folderPath, folderCover(folderPath));
 
         const qint64 fileSize = fileInfo.size();
         const qint64 lastModified = fileInfo.lastModified().toMSecsSinceEpoch();
 
         TrackInfo track;
-        auto it = cachedTracks.constFind(filePath);
-        if (it != cachedTracks.constEnd() && it->fileSize == fileSize && it->lastModified == lastModified) {
+        auto it = cached.constFind(filePath);
+        if (it != cached.constEnd() && it->fileSize == fileSize && it->lastModified == lastModified) {
             track = it.value();
         } else {
             track = readTrackInfo(filePath);

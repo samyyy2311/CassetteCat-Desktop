@@ -52,11 +52,20 @@ ListModel {
             }
         }
 
-        if (steps.length > 64 || count === 0) {
-            clear()
+        if (count === 0) {
             append(keys.map(key => ({ key: key })))
             rowKeys = keys
             rebuilt()
+            return
+        }
+        // Rewriting rows in place keeps their delegates and the scroll position, so a shuffle doesn't flash.
+        if (steps.length > 64) {
+            for (let i = 0; i < Math.min(count, keys.length); ++i) {
+                if (rowKeys[i] !== keys[i]) set(i, { key: keys[i] })
+            }
+            if (count > keys.length) remove(keys.length, count - keys.length)
+            else if (keys.length > count) append(keys.slice(count).map(key => ({ key: key })))
+            rowKeys = keys
             return
         }
         for (const step of steps) {

@@ -7,6 +7,7 @@
 #include <QSet>
 #include <QUrl>
 #include <QSslCertificate>
+#include <QSslError>
 #include <QVariantList>
 #include <QVariantMap>
 
@@ -129,6 +130,12 @@ class StreamingController final : public QObject {
     QString deviceId();
     /// Tracks \p reply and optionally accepts only its self-signed trust errors.
     QNetworkReply *trackReply(QNetworkReply *reply, bool allowSelfSigned = false);
+    void pollJellyfinQuickConnect(const QString &base, const QString &secret, int attempt, bool trustCert, int count);
+    void authenticateJellyfinQuickConnect(const QString &base, const QString &secret, int attempt, bool trustCert);
+    void handleSslErrors(QNetworkReply *reply, const QUrl &originalUrl, bool allowSelfSigned,
+                         const QList<QSslError> &errors);
+    /// Whether to accept \p cert from \p url; \p connecting is true while the user is adding the server.
+    bool acceptsCertificate(const QUrl &url, const QSslCertificate &cert, bool connecting);
     /// Returns whether \p url matches a server configured for certificate trust.
     bool isServerCertTrusted(const QUrl &url, const QSslCertificate &cert = QSslCertificate()) const;
     QString friendlyError(QNetworkReply *reply, const QString &fallback);

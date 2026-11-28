@@ -6,6 +6,9 @@
 #include <QStringList>
 
 class QQuickItem;
+#ifdef Q_OS_WIN
+struct tagMSG;
+#endif
 
 /// Makes the drawn maximize button behave like a native one on Windows, so hovering it shows Snap Layouts on
 /// Windows 11. While the pointer is over it, Windows owns the mouse, so hover and clicks are reported from here.
@@ -42,6 +45,12 @@ class WindowFrame final : public QObject, public QAbstractNativeEventFilter {
     bool overButton(int x, int y) const;
     void setHovered(bool hovered);
     void setMaximizedMargin(qreal margin);
+#ifdef Q_OS_WIN
+    /// Keeps the frame Windows needs for snapping and maximizing, without drawing it.
+    bool frameMessage(const tagMSG *msg, qintptr *result);
+    /// Reports hover and clicks on the drawn maximize button, which Windows owns while the pointer is over it.
+    bool buttonMessage(const tagMSG *msg, qintptr *result);
+#endif
     static QStringList readLinuxButtons();
 
     QPointer<QQuickItem> m_button;

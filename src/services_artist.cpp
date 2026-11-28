@@ -66,25 +66,33 @@ void ServicesController::fetchArtistImage(const QString &artist) {
         reply->deleteLater();
         if (!onlineEnabled() || !serviceEnabled("deezer"))
             return;
-        if (reply->error() == QNetworkReply::NoError) {
-            const auto artists = QJsonDocument::fromJson(reply->readAll()).object().value("data").toArray();
-            for (const auto &value : artists) {
-                const auto entry = value.toObject();
-                if (canonicalArtistName(entry.value("name").toString()) != key)
-                    continue;
-                const QString image =
-                    entry.value("picture_xl").toString().isEmpty()
-                        ? (entry.value("picture_big").toString().isEmpty() ? entry.value("picture_medium").toString()
-                                                                           : entry.value("picture_big").toString())
-                        : entry.value("picture_xl").toString();
-                if (!image.isEmpty() && !image.contains("/artist//") && !image.contains("default-artist")) {
-                    downloadArtistImage(artistName, image, "deezer");
-                    return;
-                }
-            }
-        }
-        fetchArtistImageFromAudioDb(artistName);
+        const QString image =
+            reply->error() == QNetworkReply::NoError
+                ? deezerPicture(QJsonDocument::fromJson(reply->readAll()).object().value("data").toArray(), key)
+                : QString();
+        if (image.isEmpty())
+            fetchArtistImageFromAudioDb(artistName);
+        else
+            downloadArtistImage(artistName, image, "deezer");
     });
+}
+
+// The largest picture of the artist whose name matches, skipping Deezer's placeholder for artists without one.
+QString ServicesController::deezerPicture(const QJsonArray &artists, const QString &key) {
+    for (const auto &value : artists) {
+        const auto entry = value.toObject();
+        if (canonicalArtistName(entry.value("name").toString()) != key)
+            continue;
+        QString image;
+        for (const char *size : {"picture_xl", "picture_big", "picture_medium"}) {
+            image = entry.value(size).toString();
+            if (!image.isEmpty())
+                break;
+        }
+        if (!image.isEmpty() && !image.contains("/artist//") && !image.contains("default-artist"))
+            return image;
+    }
+    return {};
 }
 
 QString ServicesController::canonicalArtistName(const QString &artist) {

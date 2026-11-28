@@ -18,6 +18,8 @@
 
 namespace {
 constexpr auto kListenBrainzBaseUrl = "https://api.listenbrainz.org/1";
+// The most loves the services hand back in one request.
+constexpr int kLovesPerPage = 1000;
 
 // Libre.fm and Last.fm speak the same Audioscrobbler 2.0 API.
 struct ScrobbleNetwork {
@@ -72,6 +74,21 @@ struct ScrobbleFields {
 };
 
 // Radio streams aren't scrobbled, and a song needs an artist and a title to be, so both come back empty for them.
+// Each account's record is kept by service and username, so signing in to a different account starts afresh.
+QString lovedKey(const QString &service) {
+    const QString user = SettingsController::globalValue("scrobble/" + service + "_user").toString();
+    return "scrobble/loved_" + service + "/" + user;
+}
+
+// Artist and title, ignoring case, identify a song across accounts and rescans.
+QString loveKey(const QString &artist, const QString &title) {
+    return artist.toLower() + QChar(0x1f) + title.toLower();
+}
+
+QString unloveId(const QString &record, const QString &song) {
+    return record + QChar(0x1e) + song;
+}
+
 ScrobbleFields scrobbleFields(const QVariantMap &track) {
     if (track.value("format").toString().toUpper() == "STREAM")
         return {};
@@ -155,6 +172,8 @@ void ServicesController::disconnectListenBrainz() {
     CredentialVault vault;
     vault.clearSecret("scrobble/listenbrainz_token");
     SettingsController::setGlobalValue("scrobble_secure/listenbrainz_token", QVariant());
+    // What this account loved is forgotten, as the next sign-in may be someone else.
+    SettingsController::setGlobalValue(lovedKey(QStringLiteral("listenbrainz")), QVariant());
     SettingsController::setGlobalValue("scrobble/listenbrainz_user", QString());
     SettingsController::setGlobalValue("scrobble/listenbrainz_enabled", false);
     setListenBrainzProblem({});
@@ -239,6 +258,7 @@ void ServicesController::disconnectScrobbleAccount(const QString &service) {
     vault.clearSecret(sessionVaultKey(service));
     if (service == kLibreFm.id)
         SettingsController::setGlobalValue("scrobble_secure/librefm_session_key", QVariant());
+    SettingsController::setGlobalValue(lovedKey(service), QVariant());
     SettingsController::setGlobalValue("scrobble/" + service + "_user", QString());
     SettingsController::setGlobalValue("scrobble/" + service + "_enabled", false);
 }
@@ -394,6 +414,16 @@ void ServicesController::scrobbleNowPlaying(const QVariantMap &track) {
 }
 
 void ServicesController::loveTrack(const QVariantMap &track, bool loved) {
+    // A choice made while Sync Likes reads the accounts is the newer one, so the sync leaves that song alone.
+    if (m_likesSync) {
+        const auto [artist, title, album] = scrobbleFields(track);
+        m_likesSync->changed.insert(loveKey(artist, title));
+    }
+    loveTrackOn(track, loved, {});
+}
+
+// A love skips accounts that already have it: by the account's own list when it was read, else by the app's record.
+void ServicesController::loveTrackOn(const QVariantMap &track, bool loved, const AccountLoves &onAccounts) {
     if (!onlineEnabled())
         return;
     const auto [artist, title, album] = scrobbleFields(track);
@@ -401,7 +431,26 @@ void ServicesController::loveTrack(const QVariantMap &track, bool loved) {
         return;
     // A song liked and unliked before its turn is sent once, as it ended up.
     m_loves.removeIf([&](const Love &queued) { return queued.artist == artist && queued.title == title; });
-    m_loves.append({artist, title, loved});
+    // A love isn't queued when every account has it.
+    const QString song = loveKey(artist, title);
+    QStringList to;
+    for (const QString &service : lovingServices()) {
+        const QString record = lovedKey(service);
+        const auto known = onAccounts.constFind(record);
+        const bool has = known != onAccounts.cend() ? known->contains(song) : hasLove(record, song);
+        if (!loved || !has)
+            to.append(record);
+    }
+    if (to.isEmpty()) {
+        emit lovesChanged();
+        return;
+    }
+    queueLove({artist, title, loved, to});
+}
+
+void ServicesController::queueLove(const Love &love) {
+    m_loves.removeIf([&](const Love &queued) { return queued.artist == love.artist && queued.title == love.title; });
+    m_loves.append(love);
     emit lovesChanged();
     if (!m_lovesRunning)
         sendNextLove();
@@ -423,44 +472,247 @@ void ServicesController::sendNextLove() {
 }
 
 void ServicesController::sendLove(const Love &love) {
-    const QString &artist = love.artist;
-    const QString &title = love.title;
-    const bool loved = love.loved;
     initScrobbleCredentials();
-
-    postToScrobbleAccounts({{"method", loved ? "track.love" : "track.unlove"}, {"artist", artist}, {"track", title}});
-
-    if (!SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool() ||
+    sendLoveToScrobblers(love);
+    if (!love.to.contains(lovedKey(QStringLiteral("listenbrainz"))) ||
+        !SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool() ||
         m_listenBrainzToken.isEmpty())
         return;
-    // ListenBrainz takes feedback for a MusicBrainz recording, which the files don't name, so it's looked up first.
+    sendLoveToListenBrainz(love);
+}
+
+void ServicesController::sendLoveToScrobblers(const Love &love) {
+    const QString key = loveKey(love.artist, love.title);
+    for (auto it = m_scrobbleSessionKeys.cbegin(); it != m_scrobbleSessionKeys.cend(); ++it) {
+        const ScrobbleNetwork *network = scrobbleNetwork(it.key());
+        const QString record = lovedKey(it.key());
+        if (!network || it.value().isEmpty() || !love.to.contains(record) ||
+            !SettingsController::globalValue("scrobble/" + it.key() + "_enabled", false).toBool())
+            continue;
+        if (!love.loved)
+            m_unloving.insert(unloveId(record, key));
+        const QMap<QString, QString> params{{"method", love.loved ? "track.love" : "track.unlove"},
+                                            {"artist", love.artist},
+                                            {"track", love.title},
+                                            {"sk", it.value()}};
+        QNetworkReply *sent = trackReply(m_net->post(scrobbleRequest(*network), signedRequestBody(*network, params)));
+        // The record is the account this was sent from, even if someone else signs in before the answer comes.
+        connect(sent, &QNetworkReply::finished, this, [this, sent, record, key, loved = love.loved] {
+            sent->deleteLater();
+            m_unloving.remove(unloveId(record, key));
+            // Only what the account took is recorded, so a failed love or unlove is sent again by the next Sync Likes.
+            if (sent->error() == QNetworkReply::NoError && !sent->readAll().contains("\"error\""))
+                recordLove(record, key, loved);
+        });
+    }
+}
+
+// ListenBrainz takes feedback for a MusicBrainz recording, which the files don't name, so it's looked up first.
+void ServicesController::sendLoveToListenBrainz(const Love &love) {
+    const QString record = lovedKey(QStringLiteral("listenbrainz"));
+    if (!love.loved)
+        m_unloving.insert(unloveId(record, loveKey(love.artist, love.title)));
     QUrl lookupUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/metadata/lookup/");
-    lookupUrl.setQuery(QUrlQuery{{"artist_name", artist}, {"recording_name", title}});
+    lookupUrl.setQuery(QUrlQuery{{"artist_name", love.artist}, {"recording_name", love.title}});
     QNetworkRequest lookup(lookupUrl);
     lookup.setRawHeader("Authorization", "Token " + m_listenBrainzToken.toUtf8());
     lookup.setTransferTimeout(services::detail::requestTimeoutMs);
     // Lookups can finish out of order, so only the newest like or unlike of a song is sent.
-    const QString song = artist + u'' + title;
+    const QString song = love.artist + u'\x1f' + love.title;
     const quint64 generation = ++m_loveGenerations[song];
     auto *reply = trackReply(m_net->get(lookup));
-    connect(reply, &QNetworkReply::finished, this, [this, reply, loved, song, generation, token = m_listenBrainzToken] {
-        reply->deleteLater();
-        const QString mbid = QJsonDocument::fromJson(reply->readAll()).object().value("recording_mbid").toString();
-        if (reply->error() != QNetworkReply::NoError || mbid.isEmpty() || token != m_listenBrainzToken ||
-            m_loveGenerations.value(song) != generation)
-            return;
-        m_loveGenerations.remove(song);
-        // ListenBrainz may have been turned off, or the app taken offline, while the lookup ran.
-        if (!onlineEnabled() || !SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool())
-            return;
-        QNetworkRequest feedback(QUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/feedback/recording-feedback"));
-        feedback.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
-        feedback.setRawHeader("Authorization", "Token " + token.toUtf8());
-        feedback.setTransferTimeout(services::detail::requestTimeoutMs);
-        const QJsonObject body{{"recording_mbid", mbid}, {"score", loved ? 1 : 0}};
-        QNetworkReply *sent = trackReply(m_net->post(feedback, QJsonDocument(body).toJson(QJsonDocument::Compact)));
-        connect(sent, &QNetworkReply::finished, sent, &QObject::deleteLater);
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, loved = love.loved, song, key = loveKey(love.artist, love.title), generation, record,
+             token = m_listenBrainzToken] {
+                reply->deleteLater();
+                const QString mbid =
+                    QJsonDocument::fromJson(reply->readAll()).object().value("recording_mbid").toString();
+                const bool current = reply->error() == QNetworkReply::NoError && !mbid.isEmpty() &&
+                                     token == m_listenBrainzToken && m_loveGenerations.value(song) == generation;
+                if (current)
+                    m_loveGenerations.remove(song);
+                // ListenBrainz may have been turned off, or the app taken offline, while the lookup ran.
+                if (current && onlineEnabled() &&
+                    SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool())
+                    sendListenBrainzFeedback(mbid, loved, key, record, token);
+                else if (!loved)
+                    m_unloving.remove(unloveId(record, key));
+            });
+}
+
+void ServicesController::sendListenBrainzFeedback(const QString &mbid, bool loved, const QString &key,
+                                                  const QString &record, const QString &token) {
+    QNetworkRequest feedback(QUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/feedback/recording-feedback"));
+    feedback.setHeader(QNetworkRequest::ContentTypeHeader, "application/json; charset=utf-8");
+    feedback.setRawHeader("Authorization", "Token " + token.toUtf8());
+    feedback.setTransferTimeout(services::detail::requestTimeoutMs);
+    const QJsonObject body{{"recording_mbid", mbid}, {"score", loved ? 1 : 0}};
+    QNetworkReply *sent = trackReply(m_net->post(feedback, QJsonDocument(body).toJson(QJsonDocument::Compact)));
+    connect(sent, &QNetworkReply::finished, this, [this, sent, key, loved, record] {
+        sent->deleteLater();
+        m_unloving.remove(unloveId(record, key));
+        if (sent->error() == QNetworkReply::NoError)
+            recordLove(record, key, loved);
     });
+}
+
+// Each account's own list of loves is read first, so loves sent from another device or the website aren't sent again.
+void ServicesController::syncLikes(const QVariantList &likedTracks, const QVariantList &libraryTracks) {
+    m_likesSync = LikesSync{likedTracks, libraryTracks};
+    const quint64 sync = ++m_likesSyncId;
+    const QStringList services = onlineEnabled() ? lovingServices() : QStringList();
+    m_likesSync->waiting = int(services.size());
+    for (const QString &service : services)
+        readAccountLoves(service, sync, 0);
+    if (services.isEmpty())
+        finishLikesSync();
+}
+
+void ServicesController::readAccountLoves(const QString &service, quint64 sync, int position) {
+    const QString user = SettingsController::globalValue("scrobble/" + service + "_user").toString();
+    const bool listenBrainz = service == u"listenbrainz";
+    QUrl url;
+    if (listenBrainz) {
+        url = QUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/feedback/user/" +
+                   QString::fromLatin1(QUrl::toPercentEncoding(user)) + "/get-feedback");
+        url.setQuery(QUrlQuery{{"score", "1"},
+                               {"count", QString::number(kLovesPerPage)},
+                               {"offset", QString::number(position)},
+                               {"metadata", "true"}});
+    } else {
+        const ScrobbleNetwork *network = scrobbleNetwork(service);
+        url = QUrl(QString(network->apiUrl));
+        url.setQuery(QUrlQuery{{"method", "user.getLovedTracks"},
+                               {"user", user},
+                               {"api_key", QString(network->apiKey)},
+                               {"limit", QString::number(kLovesPerPage)},
+                               {"page", QString::number(position + 1)},
+                               {"format", "json"}});
+    }
+    QNetworkRequest request(url);
+    request.setTransferTimeout(services::detail::requestTimeoutMs);
+    QNetworkReply *reply = trackReply(m_net->get(request));
+    // The list is kept by account record, so one read before someone else signed in is never used for them.
+    connect(reply, &QNetworkReply::finished, this,
+            [this, reply, service, sync, position, listenBrainz, record = lovedKey(service)] {
+                reply->deleteLater();
+                if (sync != m_likesSyncId || !m_likesSync)
+                    return;
+                const QJsonObject body = QJsonDocument::fromJson(reply->readAll()).object();
+                const std::optional<LovedPage> page =
+                    reply->error() != QNetworkReply::NoError || record != lovedKey(service) ? std::nullopt
+                    : listenBrainz                                                          ? feedbackPage(body)
+                                                                                            : lovedTracksPage(body);
+                // An account whose list can't be read whole, or whose sign-in changed meanwhile, is left to the app's
+                // record.
+                if (!page) {
+                    m_likesSync->onAccounts.remove(record);
+                } else {
+                    m_likesSync->onAccounts[record].unite(page->songs);
+                    const int next = position + (listenBrainz ? kLovesPerPage : 1);
+                    if (next < page->total) {
+                        readAccountLoves(service, sync, next);
+                        return;
+                    }
+                }
+                if (--m_likesSync->waiting == 0)
+                    finishLikesSync();
+            });
+}
+
+std::optional<ServicesController::LovedPage> ServicesController::lovedTracksPage(const QJsonObject &reply) {
+    const QJsonValue loved = reply.value("lovedtracks");
+    if (!loved.isObject())
+        return std::nullopt;
+    // A page holding a single song gives it as an object rather than a list of one.
+    const QJsonValue track = loved["track"];
+    const QJsonArray tracks = track.isArray() ? track.toArray() : QJsonArray{track};
+    LovedPage page;
+    for (const QJsonValue &value : tracks) {
+        const QString title = value["name"].toString();
+        const QString artist = value["artist"]["name"].toString();
+        if (!title.isEmpty() && !artist.isEmpty())
+            page.songs.insert(loveKey(artist, title));
+    }
+    page.total = loved["@attr"]["totalPages"].toString().toInt();
+    return page;
+}
+
+std::optional<ServicesController::LovedPage> ServicesController::feedbackPage(const QJsonObject &reply) {
+    if (!reply.value("feedback").isArray())
+        return std::nullopt;
+    LovedPage page;
+    for (const QJsonValue &value : reply.value("feedback").toArray()) {
+        // Recordings ListenBrainz has no details for can't be matched to a song.
+        const QString title = value["track_metadata"]["track_name"].toString();
+        const QString artist = value["track_metadata"]["artist_name"].toString();
+        if (!title.isEmpty() && !artist.isEmpty())
+            page.songs.insert(loveKey(artist, title));
+    }
+    page.total = reply.value("total_count").toInt();
+    return page;
+}
+
+void ServicesController::finishLikesSync() {
+    const LikesSync sync = *std::exchange(m_likesSync, std::nullopt);
+    QSet<QString> liked;
+    for (const QVariant &value : sync.liked) {
+        const QVariantMap track = value.toMap();
+        const auto [artist, title, album] = scrobbleFields(track);
+        liked.insert(loveKey(artist, title));
+        if (!sync.changed.contains(loveKey(artist, title)))
+            loveTrackOn(track, true, sync.onAccounts);
+    }
+    // A love is only taken back from the accounts the app sent it to, so one made on the website stays.
+    QStringList records;
+    for (const QString &service : lovingServices())
+        records.append(lovedKey(service));
+    for (const QVariant &value : sync.library) {
+        const auto [artist, title, album] = scrobbleFields(value.toMap());
+        const QString key = loveKey(artist, title);
+        if (artist.isEmpty() || title.isEmpty() || liked.contains(key) || sync.changed.contains(key))
+            continue;
+        QStringList to;
+        for (const QString &record : records) {
+            if (hasLove(record, key))
+                to.append(record);
+        }
+        if (!to.isEmpty())
+            queueLove({artist, title, false, to});
+    }
+}
+
+QStringList ServicesController::lovedSongs(const QString &record) {
+    return SettingsController::globalValue(record).toStringList();
+}
+
+bool ServicesController::hasLove(const QString &record, const QString &song) const {
+    return lovedSongs(record).contains(song) && !m_unloving.contains(unloveId(record, song));
+}
+
+void ServicesController::recordLove(const QString &record, const QString &song, bool loved) {
+    QStringList songs = lovedSongs(record);
+    if (loved == songs.contains(song))
+        return;
+    if (loved)
+        songs.append(song);
+    else
+        songs.removeAll(song);
+    SettingsController::setGlobalValue(record, songs);
+}
+
+// The accounts a love goes to right now: signed in and switched on.
+QStringList ServicesController::lovingServices() const {
+    QStringList services;
+    for (auto it = m_scrobbleSessionKeys.cbegin(); it != m_scrobbleSessionKeys.cend(); ++it) {
+        if (scrobbleNetwork(it.key()) && !it.value().isEmpty() &&
+            SettingsController::globalValue("scrobble/" + it.key() + "_enabled", false).toBool())
+            services.append(it.key());
+    }
+    if (!m_listenBrainzToken.isEmpty() &&
+        SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool())
+        services.append(QStringLiteral("listenbrainz"));
+    return services;
 }
 
 void ServicesController::scrobbleTrack(const QVariantMap &track, qint64 timestampSec) {

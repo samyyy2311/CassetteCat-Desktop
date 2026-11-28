@@ -1,4 +1,5 @@
 #include "global_shortcut_controller.h"
+#include "self_check.h"
 
 #include <QCoreApplication>
 #include <QGuiApplication>
@@ -26,6 +27,27 @@ constexpr Shortcut shortcutDefinitions[] = {
     {Search, "search", QT_TRANSLATE_NOOP("GlobalShortcutController", "Focus Search")},
     {MiniPlayer, "miniPlayer", QT_TRANSLATE_NOOP("GlobalShortcutController", "Toggle Mini Player")}};
 
+#ifdef CASSETTECAT_HAVE_DBUS
+// Ctrl or Alt with one key, as the portal reads it.
+bool isPortalShortcut(const QString &shortcut) {
+    QStringList parts = shortcut.split(QLatin1Char('+'), Qt::SkipEmptyParts);
+    // "Ctrl++" splits to just "Ctrl"; its key is the plus, as the portal trigger reads it.
+    if (shortcut.endsWith(QStringLiteral("++")))
+        parts.append(QStringLiteral("Plus"));
+    static const QStringList modifiers{QStringLiteral("Ctrl"), QStringLiteral("Alt"), QStringLiteral("Shift")};
+    return parts.size() >= 2 && !modifiers.contains(parts.constLast()) &&
+           (parts.contains(QStringLiteral("Ctrl")) || parts.contains(QStringLiteral("Alt")));
+}
+
+bool takenByAnother(const QVariantMap &shortcuts, const QString &action, const QString &shortcut) {
+    for (auto it = shortcuts.cbegin(); it != shortcuts.cend(); ++it) {
+        if (it.key() != action && it.value().toString() == shortcut)
+            return true;
+    }
+    return false;
+}
+#endif
+
 } // namespace
 
 #ifdef CASSETTECAT_HAVE_DBUS
@@ -37,6 +59,56 @@ constexpr Shortcut shortcutDefinitions[] = {
 #include <windows.h>
 
 namespace {
+
+UINT modifierFor(const QString &token) {
+    if (token.compare("Ctrl", Qt::CaseInsensitive) == 0 || token.compare("Control", Qt::CaseInsensitive) == 0)
+        return MOD_CONTROL;
+    if (token.compare("Alt", Qt::CaseInsensitive) == 0)
+        return MOD_ALT;
+    if (token.compare("Shift", Qt::CaseInsensitive) == 0)
+        return MOD_SHIFT;
+    return 0;
+}
+
+// Splits a shortcut into its modifiers and one key; a repeated modifier or a second key makes it invalid.
+bool splitShortcut(const QStringList &parts, UINT &modifiers, QString &keyText) {
+    for (const QString &part : parts) {
+        const QString token = part.trimmed();
+        const UINT modifier = modifierFor(token);
+        if (modifier && (modifiers & modifier))
+            return false;
+        if (modifier)
+            modifiers |= modifier;
+        else if (keyText.isEmpty())
+            keyText = token;
+        else
+            return false;
+    }
+    return true;
+}
+
+// The virtual key for a key's name, or 0 for one that can't be a global shortcut.
+UINT virtualKey(const QString &keyText) {
+    if (keyText.size() == 1 && keyText.at(0).isLetterOrNumber())
+        return keyText.at(0).toUpper().unicode();
+    static const std::pair<const char *, UINT> namedKeys[] = {
+        {"Space", VK_SPACE},   {"Left", VK_LEFT},   {"Right", VK_RIGHT},     {"Up", VK_UP},
+        {"Down", VK_DOWN},     {"=", VK_OEM_PLUS},  {"Equal", VK_OEM_PLUS},  {"+", VK_OEM_PLUS},
+        {"Plus", VK_OEM_PLUS}, {"-", VK_OEM_MINUS}, {"Minus", VK_OEM_MINUS},
+    };
+    for (const auto &[name, key] : namedKeys) {
+        if (keyText.compare(QLatin1String(name), Qt::CaseInsensitive) == 0)
+            return key;
+    }
+    // Some keyboard layouts name the =/+ key after the character it types there.
+    if (keyText == QStringLiteral("»"))
+        return VK_OEM_PLUS;
+    if (!keyText.startsWith('F', Qt::CaseInsensitive))
+        return 0;
+    bool ok = false;
+    const int number = keyText.mid(1).toInt(&ok);
+    return ok && number >= 1 && number <= 24 ? VK_F1 + number - 1 : 0;
+}
 
 bool parseShortcut(const QString &text, UINT *modifiers, UINT *key) {
     QString normalized = text.trimmed();
@@ -50,62 +122,40 @@ bool parseShortcut(const QString &text, UINT *modifiers, UINT *key) {
     const QStringList parts = normalized.split('+', Qt::SkipEmptyParts);
     if (parts.size() < 2)
         return false;
-
     UINT parsedModifiers = 0;
     QString keyText;
-    for (const QString &part : parts) {
-        const QString token = part.trimmed();
-        if (token.compare("Ctrl", Qt::CaseInsensitive) == 0 || token.compare("Control", Qt::CaseInsensitive) == 0) {
-            if (parsedModifiers & MOD_CONTROL)
-                return false;
-            parsedModifiers |= MOD_CONTROL;
-        } else if (token.compare("Alt", Qt::CaseInsensitive) == 0) {
-            if (parsedModifiers & MOD_ALT)
-                return false;
-            parsedModifiers |= MOD_ALT;
-        } else if (token.compare("Shift", Qt::CaseInsensitive) == 0) {
-            if (parsedModifiers & MOD_SHIFT)
-                return false;
-            parsedModifiers |= MOD_SHIFT;
-        } else if (keyText.isEmpty()) {
-            keyText = token;
-        } else {
-            return false;
-        }
-    }
+    if (!splitShortcut(parts, parsedModifiers, keyText))
+        return false;
     if (!(parsedModifiers & (MOD_CONTROL | MOD_ALT)) || keyText.isEmpty())
         return false;
-
-    UINT parsedKey = 0;
-    if (keyText.size() == 1 && keyText.at(0).isLetterOrNumber()) {
-        parsedKey = keyText.at(0).toUpper().unicode();
-    } else if (keyText.compare("Space", Qt::CaseInsensitive) == 0) {
-        parsedKey = VK_SPACE;
-    } else if (keyText.compare("Left", Qt::CaseInsensitive) == 0) {
-        parsedKey = VK_LEFT;
-    } else if (keyText.compare("Right", Qt::CaseInsensitive) == 0) {
-        parsedKey = VK_RIGHT;
-    } else if (keyText.compare("Up", Qt::CaseInsensitive) == 0) {
-        parsedKey = VK_UP;
-    } else if (keyText.compare("Down", Qt::CaseInsensitive) == 0) {
-        parsedKey = VK_DOWN;
-    } else if (keyText.startsWith('F', Qt::CaseInsensitive)) {
-        bool ok = false;
-        const int number = keyText.mid(1).toInt(&ok);
-        if (!ok || number < 1 || number > 24)
-            return false;
-        parsedKey = VK_F1 + number - 1;
-    } else if (keyText == "=" || keyText.compare("Equal", Qt::CaseInsensitive) == 0 || keyText == "+" ||
-               keyText.compare("Plus", Qt::CaseInsensitive) == 0 || keyText == QStringLiteral("\u00BB")) {
-        parsedKey = VK_OEM_PLUS;
-    } else if (keyText == "-" || keyText.compare("Minus", Qt::CaseInsensitive) == 0) {
-        parsedKey = VK_OEM_MINUS;
-    } else {
+    const UINT parsedKey = virtualKey(keyText);
+    if (!parsedKey)
         return false;
-    }
     *modifiers = parsedModifiers;
     *key = parsedKey;
     return true;
+}
+
+int shortcutId(const QString &action) {
+    for (const auto &entry : shortcutDefinitions) {
+        if (action == QLatin1String(entry.action))
+            return entry.id;
+    }
+    return 0;
+}
+
+// Whether another action already uses this key combination.
+bool takenByAnother(const QVariantMap &shortcuts, const QString &action, UINT modifiers, UINT key) {
+    for (const auto &entry : shortcutDefinitions) {
+        const QString otherAction = QString::fromLatin1(entry.action);
+        UINT otherModifiers = 0;
+        UINT otherKey = 0;
+        if (otherAction != action &&
+            parseShortcut(shortcuts.value(otherAction).toString(), &otherModifiers, &otherKey) &&
+            modifiers == otherModifiers && key == otherKey)
+            return true;
+    }
+    return false;
 }
 
 QString normalizedShortcut(UINT modifiers, UINT key) {
@@ -242,6 +292,17 @@ void GlobalShortcutController::setEnabled(bool enabled) {
     emit enabledChanged();
 }
 
+#ifdef Q_OS_WIN
+// Puts the previous shortcut back when the new one can't be registered, such as one another app already holds.
+bool GlobalShortcutController::registerOrRestore(const QString &action, const QString &previous) {
+    if (registerShortcuts() && m_registeredIds.contains(shortcutId(action)))
+        return true;
+    m_shortcuts.insert(action, previous);
+    registerShortcuts();
+    return false;
+}
+#endif
+
 bool GlobalShortcutController::setShortcut(const QString &action, const QString &shortcut) {
 #ifdef Q_OS_WIN
     if (!m_shortcuts.contains(action))
@@ -253,17 +314,9 @@ bool GlobalShortcutController::setShortcut(const QString &action, const QString 
         setStatus(tr("Use Ctrl or Alt with a letter, number, arrow, Space, F key, or supported punctuation"));
         return false;
     }
-    for (const auto &entry : shortcutDefinitions) {
-        const QString otherAction = QString::fromLatin1(entry.action);
-        if (otherAction == action)
-            continue;
-        UINT otherModifiers = 0;
-        UINT otherKey = 0;
-        if (parseShortcut(m_shortcuts.value(otherAction).toString(), &otherModifiers, &otherKey) &&
-            modifiers == otherModifiers && key == otherKey) {
-            setStatus(tr("Each shortcut must use a different key combination"));
-            return false;
-        }
+    if (takenByAnother(m_shortcuts, action, modifiers, key)) {
+        setStatus(tr("Each shortcut must use a different key combination"));
+        return false;
     }
 
     const QString normalized = normalizedShortcut(modifiers, key);
@@ -271,43 +324,21 @@ bool GlobalShortcutController::setShortcut(const QString &action, const QString 
     if (previous == normalized)
         return true;
 
-    int actionId = 0;
-    for (const auto &entry : shortcutDefinitions) {
-        if (action == QLatin1String(entry.action)) {
-            actionId = entry.id;
-            break;
-        }
-    }
-
     m_shortcuts.insert(action, normalized);
-    if (m_enabled) {
-        const bool registered = registerShortcuts();
-        if (!registered || !m_registeredIds.contains(actionId)) {
-            m_shortcuts.insert(action, previous);
-            registerShortcuts();
-            return false;
-        }
-    }
+    if (m_enabled && !registerOrRestore(action, previous))
+        return false;
     emit shortcutsChanged();
     return true;
 #elif defined(CASSETTECAT_HAVE_DBUS)
     if (!m_portal || !m_shortcuts.contains(action))
         return false;
-    QStringList parts = shortcut.split(QLatin1Char('+'), Qt::SkipEmptyParts);
-    // "Ctrl++" splits to just "Ctrl"; its key is the plus, as the portal trigger reads it.
-    if (shortcut.endsWith(QStringLiteral("++")))
-        parts.append(QStringLiteral("Plus"));
-    static const QStringList modifiers{QStringLiteral("Ctrl"), QStringLiteral("Alt"), QStringLiteral("Shift")};
-    if (parts.size() < 2 || modifiers.contains(parts.constLast()) ||
-        (!parts.contains(QStringLiteral("Ctrl")) && !parts.contains(QStringLiteral("Alt")))) {
+    if (!isPortalShortcut(shortcut)) {
         setStatus(tr("Use Ctrl or Alt with a letter, number, arrow, Space, F key, or supported punctuation"));
         return false;
     }
-    for (auto it = m_shortcuts.cbegin(); it != m_shortcuts.cend(); ++it) {
-        if (it.key() != action && it.value().toString() == shortcut) {
-            setStatus(tr("Each shortcut must use a different key combination"));
-            return false;
-        }
+    if (takenByAnother(m_shortcuts, action, shortcut)) {
+        setStatus(tr("Each shortcut must use a different key combination"));
+        return false;
     }
     if (m_shortcuts.value(action).toString() == shortcut)
         return true;
@@ -455,31 +486,34 @@ bool GlobalShortcutController::registerShortcuts() {
 }
 
 bool GlobalShortcutController::selfCheck() {
+    SelfCheck check("Global shortcuts");
 #ifdef Q_OS_WIN
     UINT modifiers = 0;
     UINT key = 0;
-    if (!parseShortcut("Ctrl+Alt+Space", &modifiers, &key) || modifiers != (MOD_CONTROL | MOD_ALT) || key != VK_SPACE) {
-        return false;
-    }
-    if (parseShortcut("Space", &modifiers, &key) || parseShortcut("Ctrl+Alt+", &modifiers, &key))
-        return false;
-    return parseShortcut("Ctrl+Equal", &modifiers, &key) && key == VK_OEM_PLUS &&
-           parseShortcut("Ctrl++", &modifiers, &key) && key == VK_OEM_PLUS &&
-           parseShortcut("Ctrl+Shift+Plus", &modifiers, &key) && key == VK_OEM_PLUS &&
-           parseShortcut(QStringLiteral("Ctrl+\u00BB"), &modifiers, &key) && key == VK_OEM_PLUS &&
-           parseShortcut("Ctrl+-", &modifiers, &key) && key == VK_OEM_MINUS &&
-           normalizedShortcut(MOD_CONTROL, VK_OEM_PLUS) == "Ctrl+Equal" &&
-           normalizedShortcut(MOD_CONTROL | MOD_SHIFT, VK_OEM_PLUS) == "Ctrl+Shift+Plus" &&
-           normalizedShortcut(MOD_CONTROL, VK_OEM_MINUS) == "Ctrl+-";
+    const auto keyFor = [&](const QString &shortcut) {
+        key = 0;
+        return parseShortcut(shortcut, &modifiers, &key) ? key : 0;
+    };
+    check.expect(keyFor("Ctrl+Alt+Space") == VK_SPACE, "reads a key");
+    check.expect(modifiers == (MOD_CONTROL | MOD_ALT), "reads its modifiers");
+    check.expect(!parseShortcut("Space", &modifiers, &key), "needs a modifier");
+    check.expect(!parseShortcut("Ctrl+Alt+", &modifiers, &key), "needs a key");
+    check.expect(keyFor("Ctrl+Equal") == VK_OEM_PLUS, "reads Equal");
+    check.expect(keyFor("Ctrl++") == VK_OEM_PLUS, "reads +");
+    check.expect(keyFor("Ctrl+Shift+Plus") == VK_OEM_PLUS, "reads Plus");
+    check.expect(keyFor(QStringLiteral("Ctrl+»")) == VK_OEM_PLUS, "reads a layout's own name for +");
+    check.expect(keyFor("Ctrl+-") == VK_OEM_MINUS, "reads -");
+    check.expect(normalizedShortcut(MOD_CONTROL, VK_OEM_PLUS) == "Ctrl+Equal", "names Equal");
+    check.expect(normalizedShortcut(MOD_CONTROL | MOD_SHIFT, VK_OEM_PLUS) == "Ctrl+Shift+Plus", "names Plus");
+    check.expect(normalizedShortcut(MOD_CONTROL, VK_OEM_MINUS) == "Ctrl+-", "names -");
 #elif defined(CASSETTECAT_HAVE_DBUS)
-    return PortalShortcuts::portalTrigger("Ctrl+Alt+Space") == "CTRL+ALT+space" &&
-           PortalShortcuts::portalTrigger("Ctrl+Alt+Left") == "CTRL+ALT+Left" &&
-           PortalShortcuts::portalTrigger("Ctrl+Shift+F") == "CTRL+SHIFT+f" &&
-           PortalShortcuts::portalTrigger("Ctrl++") == "CTRL+plus" &&
-           PortalShortcuts::portalTrigger("Alt+F5") == "ALT+F5";
-#else
-    return true;
+    check.expect(PortalShortcuts::portalTrigger("Ctrl+Alt+Space") == "CTRL+ALT+space", "portal space");
+    check.expect(PortalShortcuts::portalTrigger("Ctrl+Alt+Left") == "CTRL+ALT+Left", "portal arrow");
+    check.expect(PortalShortcuts::portalTrigger("Ctrl+Shift+F") == "CTRL+SHIFT+f", "portal letter");
+    check.expect(PortalShortcuts::portalTrigger("Ctrl++") == "CTRL+plus", "portal plus");
+    check.expect(PortalShortcuts::portalTrigger("Alt+F5") == "ALT+F5", "portal function key");
 #endif
+    return check.passed();
 }
 
 void GlobalShortcutController::unregisterShortcuts() {

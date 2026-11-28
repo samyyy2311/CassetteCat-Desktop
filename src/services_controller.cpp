@@ -143,6 +143,22 @@ bool ServicesController::selfCheck() {
                      QVariantMap{{"title", "Song (Live)"}, {"artist", "Band"}},
                  "leaves the album alone without an original");
 
+    const auto loved = [](const char *json) { return QJsonDocument::fromJson(json).object(); };
+    const std::optional<LovedPage> two =
+        lovedTracksPage(loved(R"({"lovedtracks": {"track": [{"name": "One", "artist": {"name": "A"}},
+                  {"name": "Two", "artist": {"name": "B"}}], "@attr": {"totalPages": "3"}}})"));
+    check.expect(two && two->songs.size() == 2 && two->total == 3, "reads a page of loved songs");
+    const std::optional<LovedPage> solo = lovedTracksPage(loved(
+        R"({"lovedtracks": {"track": {"name": "Solo", "artist": {"name": "C"}}, "@attr": {"totalPages": "1"}}})"));
+    check.expect(solo && solo->songs.size() == 1, "reads a page holding one loved song");
+    check.expect(!lovedTracksPage(loved(R"({"error": 6, "message": "User not found"})")),
+                 "turns down an error instead of an empty list");
+    const std::optional<LovedPage> feedback =
+        feedbackPage(loved(R"({"feedback": [{"track_metadata": {"artist_name": "A", "track_name": "One"}},
+                  {"track_metadata": null}], "total_count": 1500})"));
+    check.expect(feedback && feedback->songs.size() == 1 && feedback->total == 1500,
+                 "reads ListenBrainz loves, skipping recordings without details");
+
     check.expect(compareVersions("0.6.1", "0.6.0") > 0, "orders a newer patch version");
     check.expect(compareVersions("0.6.0", "0.6.0") == 0, "matches the same version");
     check.expect(compareVersions("0.5.1", "0.6.0") < 0, "orders an older minor version");

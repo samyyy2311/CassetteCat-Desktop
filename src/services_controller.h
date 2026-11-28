@@ -13,6 +13,7 @@
 #include <QVariantList>
 
 #include <functional>
+#include <optional>
 
 class QNetworkReply;
 class QSettings;
@@ -191,6 +192,28 @@ class ServicesController : public QObject {
     // Whether the account has the app's love, not counting one an unlove is on its way to take back.
     bool hasLove(const QString &record, const QString &song) const;
     void queueLove(const Love &love);
+    // Each service's own list of loves, by song, for the accounts whose list could be read.
+    using AccountLoves = QHash<QString, QSet<QString>>;
+    void loveTrackOn(const QVariantMap &track, bool loved, const AccountLoves &onAccounts);
+    // One page of an account's loves: \c total is the page count for Last.fm and Libre.fm, and the number of loves
+    // for ListenBrainz. Empty when the reply isn't such a page.
+    struct LovedPage {
+        QSet<QString> songs;
+        int total = 0;
+    };
+    static std::optional<LovedPage> lovedTracksPage(const QJsonObject &reply);
+    static std::optional<LovedPage> feedbackPage(const QJsonObject &reply);
+    // A Sync Likes waiting for the accounts' lists of loves, so it sends only what each account is missing.
+    struct LikesSync {
+        QVariantList liked;
+        QVariantList library;
+        AccountLoves onAccounts;
+        int waiting = 0;
+    };
+    std::optional<LikesSync> m_likesSync;
+    quint64 m_likesSyncId = 0;
+    void readAccountLoves(const QString &service, quint64 sync, int position);
+    void finishLikesSync();
     QStringList lovingServices() const;
     QList<Love> m_loves;
     QHash<QString, quint64> m_loveGenerations;

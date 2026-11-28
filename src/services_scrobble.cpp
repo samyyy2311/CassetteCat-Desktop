@@ -83,6 +83,10 @@ QString loveKey(const QString &artist, const QString &title) {
     return artist.toLower() + QChar(0x1f) + title.toLower();
 }
 
+QString unloveId(const QString &record, const QString &song) {
+    return record + QChar(0x1e) + song;
+}
+
 ScrobbleFields scrobbleFields(const QVariantMap &track) {
     if (track.value("format").toString().toUpper() == "STREAM")
         return {};
@@ -416,19 +420,18 @@ void ServicesController::loveTrack(const QVariantMap &track, bool loved) {
     // A song liked and unliked before its turn is sent once, as it ended up.
     m_loves.removeIf([&](const Love &queued) { return queued.artist == artist && queued.title == title; });
     // A love skips accounts that already have it, and isn't queued when all of them do.
-    QStringList skip;
-    if (loved) {
-        const QString song = loveKey(artist, title);
-        for (const QString &service : lovingServices()) {
-            if (lovedSongs(lovedKey(service)).contains(song))
-                skip.append(lovedKey(service));
-        }
-        if (skip.size() == lovingServices().size()) {
-            emit lovesChanged();
-            return;
-        }
+    const QString song = loveKey(artist, title);
+    QStringList to;
+    for (const QString &service : lovingServices()) {
+        const QString record = lovedKey(service);
+        if (!loved || !hasLove(record, song))
+            to.append(record);
     }
-    queueLove({artist, title, loved, skip});
+    if (to.isEmpty()) {
+        emit lovesChanged();
+        return;
+    }
+    queueLove({artist, title, loved, to});
 }
 
 void ServicesController::queueLove(const Love &love) {
@@ -457,7 +460,7 @@ void ServicesController::sendNextLove() {
 void ServicesController::sendLove(const Love &love) {
     initScrobbleCredentials();
     sendLoveToScrobblers(love);
-    if (love.skip.contains(lovedKey(QStringLiteral("listenbrainz"))) ||
+    if (!love.to.contains(lovedKey(QStringLiteral("listenbrainz"))) ||
         !SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool() ||
         m_listenBrainzToken.isEmpty())
         return;
@@ -469,23 +472,23 @@ void ServicesController::sendLoveToScrobblers(const Love &love) {
     for (auto it = m_scrobbleSessionKeys.cbegin(); it != m_scrobbleSessionKeys.cend(); ++it) {
         const ScrobbleNetwork *network = scrobbleNetwork(it.key());
         const QString record = lovedKey(it.key());
-        if (!network || it.value().isEmpty() || love.skip.contains(record) ||
+        if (!network || it.value().isEmpty() || !love.to.contains(record) ||
             !SettingsController::globalValue("scrobble/" + it.key() + "_enabled", false).toBool())
             continue;
-        // An unlove leaves the record as it's sent, so liking the song again straight after isn't skipped.
         if (!love.loved)
-            recordLove(record, key, false);
+            m_unloving.insert(unloveId(record, key));
         const QMap<QString, QString> params{{"method", love.loved ? "track.love" : "track.unlove"},
                                             {"artist", love.artist},
                                             {"track", love.title},
                                             {"sk", it.value()}};
         QNetworkReply *sent = trackReply(m_net->post(scrobbleRequest(*network), signedRequestBody(*network, params)));
         // The record is the account this was sent from, even if someone else signs in before the answer comes.
-        connect(sent, &QNetworkReply::finished, this, [sent, record, key, loved = love.loved] {
+        connect(sent, &QNetworkReply::finished, this, [this, sent, record, key, loved = love.loved] {
             sent->deleteLater();
-            // Only a love the account took is remembered, so a failed one is sent again by the next Sync Likes.
-            if (loved && sent->error() == QNetworkReply::NoError && !sent->readAll().contains("\"error\""))
-                recordLove(record, key, true);
+            m_unloving.remove(unloveId(record, key));
+            // Only what the account took is recorded, so a failed love or unlove is sent again by the next Sync Likes.
+            if (sent->error() == QNetworkReply::NoError && !sent->readAll().contains("\"error\""))
+                recordLove(record, key, loved);
         });
     }
 }
@@ -494,7 +497,7 @@ void ServicesController::sendLoveToScrobblers(const Love &love) {
 void ServicesController::sendLoveToListenBrainz(const Love &love) {
     const QString record = lovedKey(QStringLiteral("listenbrainz"));
     if (!love.loved)
-        recordLove(record, loveKey(love.artist, love.title), false);
+        m_unloving.insert(unloveId(record, loveKey(love.artist, love.title)));
     QUrl lookupUrl(QString::fromLatin1(kListenBrainzBaseUrl) + "/metadata/lookup/");
     lookupUrl.setQuery(QUrlQuery{{"artist_name", love.artist}, {"recording_name", love.title}});
     QNetworkRequest lookup(lookupUrl);
@@ -510,13 +513,16 @@ void ServicesController::sendLoveToListenBrainz(const Love &love) {
                 reply->deleteLater();
                 const QString mbid =
                     QJsonDocument::fromJson(reply->readAll()).object().value("recording_mbid").toString();
-                if (reply->error() != QNetworkReply::NoError || mbid.isEmpty() || token != m_listenBrainzToken ||
-                    m_loveGenerations.value(song) != generation)
-                    return;
-                m_loveGenerations.remove(song);
+                const bool current = reply->error() == QNetworkReply::NoError && !mbid.isEmpty() &&
+                                     token == m_listenBrainzToken && m_loveGenerations.value(song) == generation;
+                if (current)
+                    m_loveGenerations.remove(song);
                 // ListenBrainz may have been turned off, or the app taken offline, while the lookup ran.
-                if (onlineEnabled() && SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool())
+                if (current && onlineEnabled() &&
+                    SettingsController::globalValue("scrobble/listenbrainz_enabled", false).toBool())
                     sendListenBrainzFeedback(mbid, loved, key, record, token);
+                else if (!loved)
+                    m_unloving.remove(unloveId(record, key));
             });
 }
 
@@ -528,10 +534,11 @@ void ServicesController::sendListenBrainzFeedback(const QString &mbid, bool love
     feedback.setTransferTimeout(services::detail::requestTimeoutMs);
     const QJsonObject body{{"recording_mbid", mbid}, {"score", loved ? 1 : 0}};
     QNetworkReply *sent = trackReply(m_net->post(feedback, QJsonDocument(body).toJson(QJsonDocument::Compact)));
-    connect(sent, &QNetworkReply::finished, this, [sent, key, loved, record] {
+    connect(sent, &QNetworkReply::finished, this, [this, sent, key, loved, record] {
         sent->deleteLater();
-        if (loved && sent->error() == QNetworkReply::NoError)
-            recordLove(record, key, true);
+        m_unloving.remove(unloveId(record, key));
+        if (sent->error() == QNetworkReply::NoError)
+            recordLove(record, key, loved);
     });
 }
 
@@ -552,18 +559,22 @@ void ServicesController::syncLikes(const QVariantList &likedTracks, const QVaria
         const QString key = loveKey(artist, title);
         if (artist.isEmpty() || title.isEmpty() || liked.contains(key))
             continue;
-        QStringList skip;
+        QStringList to;
         for (const QString &record : records) {
-            if (!lovedSongs(record).contains(key))
-                skip.append(record);
+            if (hasLove(record, key))
+                to.append(record);
         }
-        if (skip.size() < records.size())
-            queueLove({artist, title, false, skip});
+        if (!to.isEmpty())
+            queueLove({artist, title, false, to});
     }
 }
 
 QStringList ServicesController::lovedSongs(const QString &record) {
     return SettingsController::globalValue(record).toStringList();
+}
+
+bool ServicesController::hasLove(const QString &record, const QString &song) const {
+    return lovedSongs(record).contains(song) && !m_unloving.contains(unloveId(record, song));
 }
 
 void ServicesController::recordLove(const QString &record, const QString &song, bool loved) {

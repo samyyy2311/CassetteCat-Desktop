@@ -180,18 +180,23 @@ class ServicesController : public QObject {
         QString artist;
         QString title;
         bool loved;
-        // The account records (service and username) this skips: ones that already have a love, or for an unlove
-        // from Sync Likes, ones the app never sent the love to.
-        QStringList skip;
+        // The account records (service and username) this goes to, fixed when it's queued so it never reaches an
+        // account signed in afterwards.
+        QStringList to;
     };
     // The songs an account has loved through the app, so Sync Likes sends each account only what it lacks.
     /// The songs loved through the app on the account whose record is \p record.
     static QStringList lovedSongs(const QString &record);
     static void recordLove(const QString &record, const QString &song, bool loved);
+    // Whether the account has the app's love, not counting one an unlove is on its way to take back.
+    bool hasLove(const QString &record, const QString &song) const;
     void queueLove(const Love &love);
     QStringList lovingServices() const;
     QList<Love> m_loves;
     QHash<QString, quint64> m_loveGenerations;
+    // Unloves waiting for an answer. Their love stays recorded until the account takes them, so a failed one is
+    // tried again, while liking the song again meanwhile still sends the love.
+    QSet<QString> m_unloving;
     bool m_lovesRunning = false;
     void sendNextLove();
     void sendLove(const Love &love);

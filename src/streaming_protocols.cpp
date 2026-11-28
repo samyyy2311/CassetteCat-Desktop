@@ -45,6 +45,8 @@ bool isPrivateIpv6(const Q_IPV6ADDR &ipv6) {
     return (ipv6.c[0] & 0xfe) == 0xfc || (ipv6.c[0] == 0xfe && (ipv6.c[1] & 0xc0) == 0x80);
 }
 
+} // namespace
+
 bool isPrivateOrLocalHost(const QString &host) {
     const QString value = host.trimmed();
     if (value.isEmpty()) {
@@ -71,6 +73,8 @@ QString withoutTrailingSlashes(QString url) {
     }
     return url;
 }
+
+namespace {
 
 // A bare http(s) server address: nothing but a scheme, host, port and path.
 bool isBareServerUrl(const QUrl &url) {

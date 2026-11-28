@@ -118,6 +118,7 @@ Item {
         const saved = root.streamingController.serverConfigSnapshot()
         if (!serverUrl.text) serverUrl.text = saved[root.protocol + "/url"] || ""
         if (!serverUser.text) serverUser.text = saved[root.protocol + "/username"] || ""
+        if (!serverAwayUrl.text) serverAwayUrl.text = saved[root.protocol + "/awayUrl"] || ""
         root.trustCert = Boolean(saved[root.protocol + "/trustCert"])
     }
 
@@ -152,6 +153,7 @@ Item {
         if (!url || !username || !password) { setError(qsTr("Enter server URL, username, and password.")); return }
         if (!confirmed && !confirmUnencrypted(() => doConnect(true))) return
         setError("")
+        streamingController.setAwayUrl(protocol, serverAwayUrl.text.trim())
         if (protocol === "jellyfin") { appWindow.jellyfinConnecting = true; streamingController.connectJellyfin(url, username, password, root.trustCert) }
         else { appWindow.subsonicConnecting = true; streamingController.connectSubsonic(url, username, password, root.trustCert) }
     }
@@ -627,6 +629,31 @@ Item {
                         accessibleName: qsTr("Server address")
                         text: { const s = root.streamingController.serverConfigSnapshot(); return s[root.protocol + "/url"] || "" }
                         onSubmitted: serverUser.forceActiveFocus()
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    Label { text: qsTr("Away Address (optional)"); color: textSecondary; font.family: monoFont; font.pixelSize: 10; font.weight: Font.DemiBold; font.letterSpacing: 0.8 }
+
+                    RefineTextInput {
+                        id: serverAwayUrl
+                        Layout.fillWidth: true
+                        placeholder: "https://music.example.com"
+                        accessibleName: qsTr("Away address")
+                        text: { const s = root.streamingController.serverConfigSnapshot(); return s[root.protocol + "/awayUrl"] || "" }
+                        onSubmitted: serverUser.forceActiveFocus()
+                    }
+
+                    Label {
+                        Layout.fillWidth: true
+                        text: qsTr("Used when the address above doesn't answer, such as when you're away from home. CassetteCat switches between them by itself.")
+                        color: textSecondary
+                        font.family: bodyFont
+                        font.pixelSize: 11
+                        wrapMode: Text.WordWrap
                     }
                 }
 

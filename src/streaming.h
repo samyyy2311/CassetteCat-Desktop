@@ -104,6 +104,8 @@ class StreamingController final : public QObject {
     // Tested to exclude secrets.
     /// Returns the non-secret configuration for the current remote servers.
     Q_INVOKABLE QVariantMap serverConfigSnapshot() const;
+    /// A second address for the server, used when its own doesn't answer, such as away from home. Empty removes it.
+    Q_INVOKABLE void setAwayUrl(const QString &protocol, const QString &url);
     /// Reads non-secret remote-server configuration from \p settingsPath.
     static QVariantMap serverConfigSnapshot(const QString &settingsPath);
     /// Returns whether a certificate digest is already saved for the server at \p url.
@@ -121,6 +123,12 @@ class StreamingController final : public QObject {
     void serverLyricsFetched(const QString &filePath, const QString &lyrics, const QString &provider);
 
   private:
+    /// The address requests for the server go to: its away address when only that answers.
+    QString serverBase(const QString &protocol) const;
+    void checkServerAddresses();
+    void probeServerAddress(const QString &protocol, const QStringList &candidates, quint64 check);
+    QHash<QString, QString> m_activeBase;
+    QHash<QString, quint64> m_addressChecks;
     void fetchJellyfinLyrics(const QString &filePath, const QString &remoteId);
     void fetchSubsonicLyrics(const QString &filePath, const QString &remoteId);
     void updateStatusTexts();

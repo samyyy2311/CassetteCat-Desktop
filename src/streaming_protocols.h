@@ -15,6 +15,9 @@ namespace streaming::protocol {
 QString normalizeServerUrl(const QString &raw, int defaultPort = 0);
 // Plain HTTP to a server that isn't on a home network, which the app asks about before sending a password.
 bool isUnencryptedPublicUrl(const QString &raw);
+// A host on the home network: a private or loopback address, or a name only a home network answers for.
+bool isPrivateOrLocalHost(const QString &host);
+QString withoutTrailingSlashes(QString url);
 QString md5Hex(const QString &input);
 QString randomSalt();
 QUrl subsonicUrl(const QString &base, const QString &endpoint, const QString &username, const QString &token,
